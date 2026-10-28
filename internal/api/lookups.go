@@ -14,6 +14,57 @@ func (s *Server) lookupRoutes() {
 		delete: func(ctx context.Context, id int64, r *http.Request) error { return s.DB.DeleteArea(ctx, id) },
 		list:   func(ctx context.Context) (any, error) { return s.DB.ListAreas(ctx) },
 	})
+	s.crud("statuses", crudOps{
+		create: func(ctx context.Context, f db.Fields) (any, error) { return s.DB.CreateStatus(ctx, f) },
+		patch:  func(ctx context.Context, id int64, f db.Fields) (any, error) { return s.DB.PatchStatus(ctx, id, f) },
+		delete: func(ctx context.Context, id int64, r *http.Request) error {
+			to, ok, err := queryID(r, "reassign_to")
+			if err != nil {
+				return err
+			}
+			if !ok {
+				return s.DB.DeleteStatus(ctx, id, nil)
+			}
+			return s.DB.DeleteStatus(ctx, id, &to)
+		},
+		list: func(ctx context.Context) (any, error) { return s.DB.ListStatuses(ctx) },
+	})
+	s.crud("status-categories", crudOps{
+		create: func(ctx context.Context, f db.Fields) (any, error) { return s.DB.CreateStatusCategory(ctx, f) },
+		patch: func(ctx context.Context, id int64, f db.Fields) (any, error) {
+			return s.DB.PatchStatusCategory(ctx, id, f)
+		},
+		delete: func(ctx context.Context, id int64, r *http.Request) error { return s.DB.DeleteStatusCategory(ctx, id) },
+		list:   func(ctx context.Context) (any, error) { return s.DB.ListStatusCategories(ctx) },
+	})
+	s.crud("priorities", crudOps{
+		create: func(ctx context.Context, f db.Fields) (any, error) { return s.DB.CreatePriority(ctx, f) },
+		patch:  func(ctx context.Context, id int64, f db.Fields) (any, error) { return s.DB.PatchPriority(ctx, id, f) },
+		delete: func(ctx context.Context, id int64, r *http.Request) error {
+			to, ok, err := queryID(r, "reassign_to")
+			if err != nil {
+				return err
+			}
+			clear := r.URL.Query().Get("clear") == "true"
+			if !ok {
+				return s.DB.DeletePriority(ctx, id, nil, clear)
+			}
+			return s.DB.DeletePriority(ctx, id, &to, clear)
+		},
+		list: func(ctx context.Context) (any, error) { return s.DB.ListPriorities(ctx) },
+	})
+	s.crud("energy-types", crudOps{
+		create: func(ctx context.Context, f db.Fields) (any, error) { return s.DB.CreateEnergyType(ctx, f) },
+		patch:  func(ctx context.Context, id int64, f db.Fields) (any, error) { return s.DB.PatchEnergyType(ctx, id, f) },
+		delete: func(ctx context.Context, id int64, r *http.Request) error { return s.DB.DeleteEnergyType(ctx, id) },
+		list:   func(ctx context.Context) (any, error) { return s.DB.ListEnergyTypes(ctx) },
+	})
+	s.crud("subtypes", crudOps{
+		create: func(ctx context.Context, f db.Fields) (any, error) { return s.DB.CreateSubtype(ctx, f) },
+		patch:  func(ctx context.Context, id int64, f db.Fields) (any, error) { return s.DB.PatchSubtype(ctx, id, f) },
+		delete: func(ctx context.Context, id int64, r *http.Request) error { return s.DB.DeleteSubtype(ctx, id) },
+		list:   func(ctx context.Context) (any, error) { return s.DB.ListSubtypes(ctx) },
+	})
 	s.crud("views", crudOps{
 		create: func(ctx context.Context, f db.Fields) (any, error) { return s.DB.CreateView(ctx, f) },
 		patch:  func(ctx context.Context, id int64, f db.Fields) (any, error) { return s.DB.PatchView(ctx, id, f) },

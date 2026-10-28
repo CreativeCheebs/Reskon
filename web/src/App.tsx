@@ -6,6 +6,7 @@ import { useApp } from "./store";
 import { palette } from "./theme/palette";
 import { ViewScreen } from "./views/ViewScreen";
 import { FirstRun } from "./admin/FirstRun";
+import { Settings } from "./admin/Settings";
 
 // Screens are addressed by the URL hash (#/view/3, #/settings) so a reload
 // lands where you were. Overlays like the backlog are never routes.
@@ -103,6 +104,7 @@ export function App() {
         <Layout.Content style={{ padding: 14, overflow: "auto", display: "flex", flexDirection: "column" }}>
           {view && <ViewScreen key={view.id} view={view} />}
           {current.kind === "view" && !view && <Alert type="info" message="That view no longer exists." />}
+          {current.kind === "settings" && <Settings />}
         </Layout.Content>
       </Layout>
       {boot.areas.length === 0 && <FirstRun />}

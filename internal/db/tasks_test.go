@@ -128,3 +128,6 @@ func TestNewTaskTakesAreaDefaultEnergyType(t *testing.T) {
 		t.Errorf("energy_type_id = %v, want 1", tk.EnergyTypeID)
 	}
 }
+
+func rawInt(n int64) []byte  { return []byte(fmt.Sprint(n)) }
+func rawStr(s string) []byte { b, _ := json.Marshal(s); return b }

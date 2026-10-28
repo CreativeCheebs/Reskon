@@ -42,3 +42,12 @@ Append-only. One entry per non-obvious choice: date, what, why, what was rejecte
 ## 2026-10-29 — Renormalise threshold applies to the new card's gap
 **What:** The column is renumbered when the midpoint would land within 1e-6 of a neighbour (i.e. neighbours less than 2e-6 apart), not only when neighbours are already within 1e-6.
 **Why:** Otherwise inserting between two cards 1.5e-6 apart creates a pair 7.5e-7 apart, breaking the invariant the test checks.
+
+## 2026-10-29 — Soft-deleted lookup rows are renamed
+**What:** Deleting a status, priority, energy type, subtype or area sets `deleted_at` and renames it `name [deleted #id]`.
+**Why:** `name` is `UNIQUE` in the schema, so without the rename a deleted "Blocked" would block creating a new "Blocked" forever. History still points at the row by id.
+**Rejected:** Partial unique indexes (`WHERE deleted_at IS NULL`) — needs a schema change to migration 001's constraints.
+
+## 2026-10-29 — Status categories are hard-deleted
+**What:** `DELETE /api/status-categories/:id` removes the row, only for non-builtin categories with no statuses.
+**Why:** `status_category` has no `deleted_at` column, and an unused category is referenced by nothing.

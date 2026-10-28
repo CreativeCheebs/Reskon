@@ -38,3 +38,6 @@ The **Stuck** view needs "open items only", which the section 7 filter cannot ex
 
 ### Table layout always sorts by time in status first
 Rows start in time-in-status-descending order even when the "time in status" column is toggled off.
+
+### Energy types and subtypes delete without reassignment
+The spec gives a reassign dialog for statuses and priorities only. Energy types and subtypes are soft-deleted and existing tasks/sessions keep pointing at them, so history is unchanged; they stop being offered in pickers.

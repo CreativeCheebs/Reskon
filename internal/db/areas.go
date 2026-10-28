@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"regexp"
@@ -95,7 +96,7 @@ func (d *DB) DeleteArea(ctx context.Context, id int64) error {
 	if n > 0 {
 		return &ConflictError{Msg: fmt.Sprintf("area has %d tasks; move them to another area first", n)}
 	}
-	return d.softDelete(ctx, "area", id)
+	return d.inTx(ctx, func(tx *sql.Tx) error { return softDeleteNamed(ctx, tx, "area", id) })
 }
 
 // patchRow applies f to one non-deleted row of table. Table names are
