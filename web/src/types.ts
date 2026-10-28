@@ -164,6 +164,7 @@ export interface Segment {
   from: string;
   to: string;
   hours: number;
+  current: boolean;
 }
 
 export interface SessionSubtype {

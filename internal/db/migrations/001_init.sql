@@ -186,11 +186,11 @@ INSERT INTO status_category (id, name, behaviour, is_builtin) VALUES
   (4, 'Cancelled',   'cancelled',   1);
 
 INSERT INTO status (id, name, category_id, color, on_board, is_builtin, position) VALUES
-  (1, 'Backlog',     1, '#a1a1aa', 0, 1, 0),
+  (1, 'Backlog',     1, '#71717a', 0, 1, 0),
   (2, 'To do',       1, '#a1a1aa', 1, 1, 1),
   (3, 'In progress', 2, '#60a5fa', 1, 1, 2),
   (4, 'Done',        3, '#4ade80', 1, 1, 3),
-  (5, 'Cancelled',   4, '#71717a', 0, 1, 4);
+  (5, 'Cancelled',   4, '#52525b', 0, 1, 4);
 
 INSERT INTO priority (id, name, color, weight, position, is_builtin) VALUES
   (1, 'Low',    '#a1a1aa', 0.75, 0, 1),

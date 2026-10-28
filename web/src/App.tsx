@@ -9,6 +9,7 @@ import { FirstRun } from "./admin/FirstRun";
 import { Settings } from "./admin/Settings";
 import { SessionsScreen } from "./sessions/SessionsScreen";
 import { CaptureButton } from "./capture/CaptureButton";
+import { CycleTimeScreen } from "./chart/CycleTimeScreen";
 
 // Screens are addressed by the URL hash (#/view/3, #/settings) so a reload
 // lands where you were. Overlays like the backlog are never routes.
@@ -108,6 +109,7 @@ export function App() {
           {current.kind === "view" && !view && <Alert type="info" message="That view no longer exists." />}
           {current.kind === "settings" && <Settings />}
           {current.kind === "sessions" && <SessionsScreen />}
+          {current.kind === "cycle" && <CycleTimeScreen />}
         </Layout.Content>
       </Layout>
       {boot.areas.length === 0 && <FirstRun />}

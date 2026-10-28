@@ -74,3 +74,6 @@ Section 5 shows `CREATE INDEX task_review_due ON task (json_extract(custom, '$.r
 
 ### Custom field keys
 Keys must match `^[a-z][a-z0-9_]{0,63}$` so they can be placed in a JSON path safely. A deleted field's key cannot be reused (the `UNIQUE (entity, key)` constraint, and its data is still stored under that key).
+
+### `GET /api/cycle-time?view=:id`
+The stacked cycle-time chart needs segments for every task in a view; deriving them client-side would break "one implementation, server-side". Added this endpoint. `GET /api/tasks/:id/transitions` returns `{transitions, segments}`.

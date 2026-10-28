@@ -15,6 +15,7 @@ func (s *Server) taskRoutes() {
 	m.HandleFunc("DELETE /api/tasks/{id}", s.deleteTask)
 	m.HandleFunc("POST /api/tasks/{id}/move", s.moveTask)
 	m.HandleFunc("GET /api/tasks/{id}/transitions", s.taskTransitions)
+	m.HandleFunc("GET /api/cycle-time", s.cycleTime)
 }
 
 func (s *Server) moveTask(w http.ResponseWriter, r *http.Request) {
@@ -42,8 +43,22 @@ func (s *Server) taskTransitions(w http.ResponseWriter, r *http.Request) {
 		respond(w, nil, err)
 		return
 	}
-	tr, err := s.DB.Transitions(r.Context(), id)
-	respond(w, map[string]any{"transitions": tr}, err)
+	tr, segs, err := s.DB.TaskCycle(r.Context(), id)
+	respond(w, map[string]any{"transitions": tr, "segments": segs}, err)
+}
+
+// cycleTime is the stacked cycle-time chart for every task in a view.
+func (s *Server) cycleTime(w http.ResponseWriter, r *http.Request) {
+	viewID, ok, err := queryID(r, "view")
+	if err == nil && !ok {
+		err = &db.InvalidError{Msg: "view is required"}
+	}
+	if err != nil {
+		respond(w, nil, err)
+		return
+	}
+	ct, err := s.DB.CycleTimeForView(r.Context(), viewID)
+	respond(w, ct, err)
 }
 
 // listTasks resolves the view's filter server-side; the client sends only
