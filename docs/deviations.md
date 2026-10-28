@@ -22,3 +22,13 @@ The spec does not say what happens to tasks when their area is deleted. Every ta
 - `GET /api/health` — used by the client to detect offline/online.
 - `PUT /api/settings/:key` — the spec puts the LLM endpoint and model in `setting` but lists no write endpoint for it. `llm_api_key` is write-only (never returned by bootstrap).
 - `GET /api/tasks/:id` — single-task read for the task panel.
+
+### No `task_dates` SQL view
+Section 4 shows a `task_dates` view. It is not created; the same values (and more) are computed in `internal/db/derive.go`, to keep one implementation. See decisions.md.
+
+### `cancelled_at` clears when a task leaves cancelled
+Section 4 only says Completed returns to NULL when the task moves back out. Cancelled is treated the same way: a reopened task is not "cancelled".
+
+### Points formula
+Section 10 lists `points` as a derived field but the spec never gives the formula. Implemented as `difficulty × priority weight` (unset priority = 1.0, no difficulty = no points). See Needs review.
+- **Points formula** (`taskPoints` in `internal/db/derive.go`): `difficulty × priority.weight`. Confirm or give the real formula.
