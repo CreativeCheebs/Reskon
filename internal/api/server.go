@@ -45,6 +45,7 @@ func (s *Server) routes() {
 
 	s.taskRoutes()
 	s.lookupRoutes()
+	s.sessionRoutes()
 }
 
 func (s *Server) bootstrap(w http.ResponseWriter, r *http.Request) {

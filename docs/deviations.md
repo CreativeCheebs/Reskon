@@ -41,3 +41,15 @@ Rows start in time-in-status-descending order even when the "time in status" col
 
 ### Energy types and subtypes delete without reassignment
 The spec gives a reassign dialog for statuses and priorities only. Energy types and subtypes are soft-deleted and existing tasks/sessions keep pointing at them, so history is unchanged; they stop being offered in pickers.
+
+### Sessions have no optimistic concurrency
+Section 9 says writes send the `updated_at` they last saw, but the `session` table has no `updated_at` column. Session edits are last-write-wins until an additive migration adds the column.
+
+### `GET /api/sessions` filters
+Accepts `?from=YYYY-MM-DD&to=YYYY-MM-DD&task_id=N`. The spec lists the route without parameters.
+
+### `GET /api/day/:date` shape
+Returns `{day, plan, spend: [...], restore: [...], subtype_totals, sessions}`. Spend and restore are two separate lists per energy type; there is no combined figure anywhere.
+
+### Session hours limit
+`hours` must be in (0, 24]. Not in the spec; prevents a typo of 25 or 250.
