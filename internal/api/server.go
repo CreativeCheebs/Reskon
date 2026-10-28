@@ -27,6 +27,10 @@ type Server struct {
 func New(d *db.DB, p *capture.Parser, web fs.FS) *Server {
 	s := &Server{DB: d, Capture: p, mux: http.NewServeMux()}
 	s.routes()
+	// Unknown API paths are a JSON 404, never the SPA's index.html.
+	s.mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
+		writeError(w, http.StatusNotFound, "not found", r.Method+" "+r.URL.Path)
+	})
 	if web != nil {
 		s.mux.Handle("/", spa(web))
 	}

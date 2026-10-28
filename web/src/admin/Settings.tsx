@@ -3,6 +3,7 @@ import { useApp } from "../store";
 import { LookupEditor } from "./LookupEditor";
 import { useReassignDelete } from "./ReassignDialog";
 import { CaptureSettings } from "./CaptureSettings";
+import { CustomFieldSettings } from "./CustomFieldSettings";
 
 // Settings: every lookup is a row the user can edit.
 
@@ -150,6 +151,7 @@ export function Settings() {
         />
       ),
     },
+    { key: "custom", label: "Custom fields", children: <CustomFieldSettings /> },
     { key: "capture", label: "Capture & weights", children: <CaptureSettings /> },
   ];
 

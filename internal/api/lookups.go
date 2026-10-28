@@ -65,6 +65,14 @@ func (s *Server) lookupRoutes() {
 		delete: func(ctx context.Context, id int64, r *http.Request) error { return s.DB.DeleteSubtype(ctx, id) },
 		list:   func(ctx context.Context) (any, error) { return s.DB.ListSubtypes(ctx) },
 	})
+	s.crud("custom-fields", crudOps{
+		create: func(ctx context.Context, f db.Fields) (any, error) { return s.DB.CreateCustomField(ctx, f) },
+		patch: func(ctx context.Context, id int64, f db.Fields) (any, error) {
+			return s.DB.PatchCustomField(ctx, id, f)
+		},
+		delete: func(ctx context.Context, id int64, r *http.Request) error { return s.DB.DeleteCustomField(ctx, id) },
+		list:   func(ctx context.Context) (any, error) { return s.DB.ListCustomFields(ctx) },
+	})
 	s.crud("views", crudOps{
 		create: func(ctx context.Context, f db.Fields) (any, error) { return s.DB.CreateView(ctx, f) },
 		patch:  func(ctx context.Context, id int64, f db.Fields) (any, error) { return s.DB.PatchView(ctx, id, f) },

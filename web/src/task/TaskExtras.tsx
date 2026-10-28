@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Divider, List, Tag } from "antd";
+import { Divider, Form, List, Tag } from "antd";
 import { api } from "../api";
 import { useApp } from "../store";
 import { WriteButton } from "../offline";
 import { formatHours } from "../format";
 import { palette } from "../theme/palette";
 import { SessionModal } from "../sessions/SessionModal";
+import { CustomFieldsEditor } from "../fields/CustomFieldsEditor";
 import type { Session, Task } from "../types";
 
 // Task panel sections below the core fields: sessions logged against the
@@ -13,13 +14,15 @@ import type { Session, Task } from "../types";
 
 export function TaskExtras({
   task,
+  patch,
   onTaskChanged,
 }: {
   task: Task;
   patch: (changes: Record<string, unknown>) => Promise<void>;
   onTaskChanged: () => void;
 }) {
-  const { boot } = useApp();
+  const { boot, online } = useApp();
+  const hasFields = boot.custom_fields.some((f) => f.entity === "task");
   const [sessions, setSessions] = useState<Session[]>([]);
   const [logging, setLogging] = useState<{ editing?: Session } | null>(null);
 
@@ -35,6 +38,21 @@ export function TaskExtras({
 
   return (
     <>
+      {hasFields && (
+        <>
+          <Divider plain orientation="left" style={{ margin: "4px 0" }}>
+            Fields
+          </Divider>
+          <Form layout="vertical" size="small">
+            <CustomFieldsEditor
+              entity="task"
+              value={task.custom}
+              disabled={!online}
+              onChange={(k, v) => patch({ custom: { [k]: v } })}
+            />
+          </Form>
+        </>
+      )}
       <Divider plain orientation="left" style={{ margin: "4px 0" }}>
         Sessions · {formatHours(task.logged_h)}
       </Divider>
