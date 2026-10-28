@@ -65,3 +65,6 @@ When the parse has no intent (always, in manual mode), the confirm form shows Ta
 
 ### Capture shortcut is Ctrl/⌘+K
 The spec asks for "a global shortcut" without naming one.
+
+### Capture settings precedence
+`llm_endpoint`, `llm_model`, `llm_api_key` in `setting` win; the env vars `JITTERBUG_LLM_ENDPOINT`, `JITTERBUG_LLM_MODEL`, `JITTERBUG_LLM_API_KEY` are used when a setting is blank. The API key setting is never returned by `/api/bootstrap`.

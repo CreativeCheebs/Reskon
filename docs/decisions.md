@@ -51,3 +51,12 @@ Append-only. One entry per non-obvious choice: date, what, why, what was rejecte
 ## 2026-10-29 — Status categories are hard-deleted
 **What:** `DELETE /api/status-categories/:id` removes the row, only for non-builtin categories with no statuses.
 **Why:** `status_category` has no `deleted_at` column, and an unused category is referenced by nothing.
+
+## 2026-10-29 — Capture provider: one interface, OpenAI-compatible client
+**What:** `capture.Provider` has one method; `capture.OpenAI` calls `<endpoint>/chat/completions` with `temperature 0` and `response_format: json_object`, and pulls the first `{...}` out of the reply (tolerates code fences). Every returned field is checked against the real lookups by `capture.Normalise`; unknown names, impossible hours/difficulty and keys not among the SQLite candidates become null.
+**Why:** The model picks from real rows, never invents them. Settings are read per call, so changing the endpoint needs no restart. The 5 s budget covers the whole model round trip.
+**Rejected:** Letting the model return ids (it would invent them); vendor SDKs (adds dependencies for one POST).
+
+## 2026-10-29 — Candidate matching by shared words
+**What:** Open tasks (todo/in-progress behaviour) are scored by how many distinct words (3+ letters, not stopwords) of the capture text appear in the title; the top 8 go into the prompt.
+**Why:** Plain SQL `instr`, no FTS table to keep in sync (FTS5 would need a schema addition).

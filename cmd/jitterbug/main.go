@@ -32,7 +32,7 @@ func main() {
 	}
 	defer d.Close()
 
-	parser := &capture.Parser{Config: captureConfig(d)}
+	parser := &capture.Parser{Config: captureConfig(d), Provider: capture.OpenAI{Client: &http.Client{}}}
 	srv := api.New(d, parser, web.Dist())
 	log.Printf("jitterbug: database %s, listening on %s", dbPath, addr)
 	log.Fatal(http.ListenAndServe(addr, srv))

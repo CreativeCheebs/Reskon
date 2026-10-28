@@ -2,6 +2,7 @@ import { Tabs, Typography } from "antd";
 import { useApp } from "../store";
 import { LookupEditor } from "./LookupEditor";
 import { useReassignDelete } from "./ReassignDialog";
+import { CaptureSettings } from "./CaptureSettings";
 
 // Settings: every lookup is a row the user can edit.
 
@@ -149,6 +150,7 @@ export function Settings() {
         />
       ),
     },
+    { key: "capture", label: "Capture & weights", children: <CaptureSettings /> },
   ];
 
   return (
