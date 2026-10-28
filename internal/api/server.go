@@ -12,18 +12,20 @@ import (
 	"strconv"
 	"strings"
 
+	"jitterbug/internal/capture"
 	"jitterbug/internal/db"
 )
 
 // Server holds what handlers need.
 type Server struct {
-	DB  *db.DB
-	mux *http.ServeMux
+	DB      *db.DB
+	Capture *capture.Parser
+	mux     *http.ServeMux
 }
 
 // New wires every route. web is the built frontend (may be nil in tests).
-func New(d *db.DB, web fs.FS) *Server {
-	s := &Server{DB: d, mux: http.NewServeMux()}
+func New(d *db.DB, p *capture.Parser, web fs.FS) *Server {
+	s := &Server{DB: d, Capture: p, mux: http.NewServeMux()}
 	s.routes()
 	if web != nil {
 		s.mux.Handle("/", spa(web))
@@ -46,6 +48,7 @@ func (s *Server) routes() {
 	s.taskRoutes()
 	s.lookupRoutes()
 	s.sessionRoutes()
+	s.captureRoutes()
 }
 
 func (s *Server) bootstrap(w http.ResponseWriter, r *http.Request) {

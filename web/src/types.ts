@@ -201,6 +201,7 @@ export interface CaptureParse {
   area: string | null;
   matched_task_key: string | null;
   confidence: number | null;
+  matched_task_id?: number | null;
   fallback?: boolean;
   fallback_reason?: string;
 }

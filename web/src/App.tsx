@@ -8,6 +8,7 @@ import { ViewScreen } from "./views/ViewScreen";
 import { FirstRun } from "./admin/FirstRun";
 import { Settings } from "./admin/Settings";
 import { SessionsScreen } from "./sessions/SessionsScreen";
+import { CaptureButton } from "./capture/CaptureButton";
 
 // Screens are addressed by the URL hash (#/view/3, #/settings) so a reload
 // lands where you were. Overlays like the backlog are never routes.
@@ -110,6 +111,7 @@ export function App() {
         </Layout.Content>
       </Layout>
       {boot.areas.length === 0 && <FirstRun />}
+      <CaptureButton />
     </Layout>
   );
 }

@@ -53,3 +53,15 @@ Returns `{day, plan, spend: [...], restore: [...], subtype_totals, sessions}`. S
 
 ### Session hours limit
 `hours` must be in (0, 24]. Not in the spec; prevents a typo of 25 or 250.
+
+### Capture audit is also stored on tasks
+Section 8 says to store the raw input and parse in `session.custom._capture`. Captured tasks get the same `task.custom._capture` — the parser is as likely to be wrong about tasks, and the test corpus needs both.
+
+### Capture response carries `matched_task_id`, `fallback`, `fallback_reason`
+Beyond the section 8 contract, so the form can preselect the task without a key lookup and say quietly why it is in manual mode.
+
+### Unknown intent is not guessed
+When the parse has no intent (always, in manual mode), the confirm form shows Task / Session with neither selected and Save disabled until one is picked. One extra click, but no silent guess.
+
+### Capture shortcut is Ctrl/⌘+K
+The spec asks for "a global shortcut" without naming one.
