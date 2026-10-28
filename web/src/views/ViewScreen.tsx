@@ -80,6 +80,7 @@ export function ViewScreen({ view }: { view: View }) {
       {openTask !== null && (
         <TaskPanel
           taskId={openTask}
+          initial={tasks.find((t) => t.id === openTask)}
           onClose={() => {
             setOpenTask(null);
             refetch();

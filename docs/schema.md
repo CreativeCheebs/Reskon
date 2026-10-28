@@ -21,4 +21,6 @@ Applied migration version is kept in `PRAGMA user_version` (no bookkeeping table
 | `state` | Buffs, debuffs, modifiers with a decay curve. No Phase 1 UI; API exists. |
 | `view` | Saved views: filter + layout (`board`/`table`) + card configuration. |
 | `custom_field` | Definitions for keys in `task.custom` / `session.custom`. `key` and `type` are immutable. |
-| `setting` | Key → JSON value. `subtype_weights`, `llm_endpoint`, `llm_model`, `llm_api_key`. |
+| `setting` | Key → JSON value. `subtype_weights` (rank → weight list), `llm_endpoint`, `llm_model`, `llm_api_key` (write-only via the API). |
+
+Seeds: the four status categories, five statuses (all built-in; Backlog and Cancelled hidden from the board), three priorities, five energy types, three custom field presets, the Everything and Stuck views, and default settings. Areas and subtypes ship empty.

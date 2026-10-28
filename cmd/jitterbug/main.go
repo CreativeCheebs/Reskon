@@ -32,6 +32,16 @@ func main() {
 	}
 	defer d.Close()
 
+	// `jitterbug backup <file>` writes a consistent copy and exits. Works
+	// while another jitterbug process is serving the same database.
+	if len(os.Args) == 3 && os.Args[1] == "backup" {
+		if err := d.Backup(context.Background(), os.Args[2]); err != nil {
+			log.Fatalf("backup: %v", err)
+		}
+		log.Printf("backed up %s to %s", dbPath, os.Args[2])
+		return
+	}
+
 	parser := &capture.Parser{Config: captureConfig(d), Provider: capture.OpenAI{Client: &http.Client{}}}
 	srv := api.New(d, parser, web.Dist())
 	log.Printf("jitterbug: database %s, listening on %s", dbPath, addr)

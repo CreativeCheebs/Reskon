@@ -14,16 +14,18 @@ import { TaskExtras } from "./TaskExtras";
 
 interface Props {
   taskId: number;
+  /** The row already on screen, shown at once (and kept if offline). */
+  initial?: Task;
   onClose: () => void;
   onChanged: (t: Task) => void;
   onDeleted: (id: number) => void;
 }
 
-export function TaskPanel({ taskId, onClose, onChanged, onDeleted }: Props) {
+export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Props) {
   const { boot, online, reloadKey } = useApp();
-  const [task, setTask] = useState<Task | null>(null);
-  const [title, setTitle] = useState("");
-  const [desc, setDesc] = useState("");
+  const [task, setTask] = useState<Task | null>(initial ?? null);
+  const [title, setTitle] = useState(initial?.title ?? "");
+  const [desc, setDesc] = useState(initial?.description ?? "");
 
   const load = () =>
     api
@@ -33,7 +35,8 @@ export function TaskPanel({ taskId, onClose, onChanged, onDeleted }: Props) {
         setTitle(t.title);
         setDesc(t.description ?? "");
       })
-      .catch((e) => message.error((e as Error).message));
+      // Offline: keep whatever is already shown.
+      .catch((e) => online && message.error((e as Error).message));
 
   useEffect(() => {
     load();

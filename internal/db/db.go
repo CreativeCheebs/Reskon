@@ -121,3 +121,10 @@ func placeholders(n int) string {
 	}
 	return strings.TrimSuffix(strings.Repeat("?,", n), ",")
 }
+
+// Backup writes a consistent copy of the database to dest using VACUUM
+// INTO. Safe while the server is running; dest must not exist.
+func (d *DB) Backup(ctx context.Context, dest string) error {
+	_, err := d.ExecContext(ctx, `VACUUM INTO ?`, dest)
+	return err
+}

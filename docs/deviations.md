@@ -10,7 +10,6 @@ Section 3 lists subtype seeds; section 12 ("Deferred, not open") says Phase 1 sh
 ### All five seeded statuses are builtin
 Section 3 marks the categories and priorities builtin but does not say which statuses are. All five seeded statuses (Backlog, To do, In progress, Done, Cancelled) are `is_builtin = 1` so the backlog overlay and the "move out of backlog" rule always have a target.
 
-## Needs review
 
 ### Creating an area also creates its board view
 Section 7 asks for "one view per area" on first run, but areas ship empty and are created by the user. So `POST /api/areas` creates a board view for the new area in the same transaction. Deleting the area does not delete the view.
@@ -31,7 +30,6 @@ Section 4 only says Completed returns to NULL when the task moves back out. Canc
 
 ### Points formula
 Section 10 lists `points` as a derived field but the spec never gives the formula. Implemented as `difficulty × priority weight` (unset priority = 1.0, no difficulty = no points). See Needs review.
-- **Points formula** (`taskPoints` in `internal/db/derive.go`): `difficulty × priority.weight`. Confirm or give the real formula.
 
 ### Filter additions: `open_only` and custom ranges
 The **Stuck** view needs "open items only", which the section 7 filter cannot express. Added `"open_only": true` (hides done- and cancelled-behaviour tasks). Custom filters accept a scalar (equality, as in the spec), `null` (key unset), or `{"gte": ..., "lte": ...}` for date/number ranges — "filter by a date field" is rarely an exact date. Unknown filter keys are rejected (400) so a typo cannot silently match everything.
@@ -77,3 +75,19 @@ Keys must match `^[a-z][a-z0-9_]{0,63}$` so they can be placed in a JSON path sa
 
 ### `GET /api/cycle-time?view=:id`
 The stacked cycle-time chart needs segments for every task in a view; deriving them client-side would break "one implementation, server-side". Added this endpoint. `GET /api/tasks/:id/transitions` returns `{transitions, segments}`.
+
+### Seeded Everything and Stuck show area and status
+Their card configuration turns on the Area and Status columns, since they span every area. Everything else uses the section 7 example defaults.
+
+## Needs review
+
+Gaps where the spec was silent and the most reversible option was taken. Each is small to change.
+
+- **Points formula** (`taskPoints` in `internal/db/derive.go`): `difficulty × priority.weight`. Confirm or give the real formula. Sessions have no points.
+- **Subtypes ship empty** (section 3 vs section 12). Flip by adding the section 3 list to a new migration's seeds.
+- **All seeded statuses are built-in.** Un-builtin any of them with `UPDATE status SET is_builtin = 0 WHERE ...`.
+- **Area deletion is refused while tasks remain** (409). Alternative: a reassign dialog like statuses.
+- **Sessions have no `updated_at`**, so their edits are last-write-wins. An additive migration can add the column.
+- **Capture with unknown intent** leaves Task/Session unselected rather than defaulting to one.
+- **Progress bar** is `logged hours / estimate`, capped at 100% (`progress_pct`). The spec names a progress bar without saying of what.
+- **Card "subtypes"** shows the distinct subtypes of sessions logged against the task (tasks have no subtypes of their own).
