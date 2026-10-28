@@ -150,3 +150,8 @@ func sortedKeys[V any](m map[string]V) []string {
 	sort.Strings(keys)
 	return keys
 }
+
+func rawString(s string) json.RawMessage {
+	b, _ := json.Marshal(s)
+	return b
+}
