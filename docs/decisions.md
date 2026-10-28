@@ -16,3 +16,12 @@ Append-only. One entry per non-obvious choice: date, what, why, what was rejecte
 **What:** `SetMaxOpenConns(1)` and `_txlock=immediate`.
 **Why:** Single user. Serialising all access makes key assignment race-free without retry loops, and a slow homelab disk is still far faster than one person clicks.
 **Rejected:** A connection pool with retry-on-busy.
+
+## 2026-10-29 — Key numbering from the highest key ever used
+**What:** The next key is `PREFIX-(max N + 1)` over every task whose key starts with `PREFIX-`, deleted tasks included, computed inside the inserting transaction.
+**Why:** Keys are permanent and never reused. Counting by key prefix (not `area_id`) means moving a task between areas never disturbs numbering.
+**Rejected:** A per-area counter column (needs a schema change) and `COUNT(*)` (reuses keys after deletes).
+
+## 2026-10-29 — PATCH bodies are partial; null clears
+**What:** A PATCH sends only the fields it changes. Absent = untouched, `null` = clear. `custom` is merged key by key, with `null` removing a key.
+**Why:** Sending a whole `custom` object would strip keys the client did not know about, which the spec forbids.

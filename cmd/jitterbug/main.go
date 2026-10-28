@@ -4,8 +4,10 @@ package main
 
 import (
 	"log"
+	"net/http"
 	"os"
 
+	"jitterbug/internal/api"
 	"jitterbug/internal/db"
 )
 
@@ -19,10 +21,15 @@ func env(name, def string) string {
 
 func main() {
 	dbPath := env("JITTERBUG_DB", "jitterbug.db")
+	addr := env("JITTERBUG_ADDR", ":8080")
+
 	d, err := db.Open(dbPath)
 	if err != nil {
 		log.Fatalf("open %s: %v", dbPath, err)
 	}
 	defer d.Close()
-	log.Printf("database %s ready", dbPath)
+
+	srv := api.New(d, nil)
+	log.Printf("jitterbug: database %s, listening on %s", dbPath, addr)
+	log.Fatal(http.ListenAndServe(addr, srv))
 }
