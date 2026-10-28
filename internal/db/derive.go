@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"math"
 	"time"
 )
 
@@ -21,6 +22,7 @@ type TaskDerived struct {
 	Stalled        bool     `json:"stalled"`          // time in status passed the status's alert_after_days
 	Points         *float64 `json:"points"`           // difficulty x priority weight
 	LoggedH        float64  `json:"logged_h"`         // sum of session hours against the task
+	ProgressPct    *float64 `json:"progress_pct"`     // logged_h / estimate_h x 100, capped at 100; nil without estimate
 	Subtypes       []string `json:"subtypes"`         // distinct subtypes from the task's sessions
 }
 
@@ -93,6 +95,15 @@ func taskPoints(difficulty *int64, weight *float64) *float64 {
 		w = *weight
 	}
 	p := float64(*difficulty) * w
+	return &p
+}
+
+// progressPct is logged hours as a percentage of the estimate, capped at 100.
+func progressPct(logged float64, estimate *float64) *float64 {
+	if estimate == nil || *estimate <= 0 {
+		return nil
+	}
+	p := math.Min(100, logged / *estimate * 100)
 	return &p
 }
 
@@ -195,6 +206,7 @@ func (d *DB) derive(ctx context.Context, tasks []*Task, now time.Time) error {
 		}
 		t.Points = taskPoints(t.Difficulty, w)
 		t.LoggedH = logged[t.ID]
+		t.ProgressPct = progressPct(t.LoggedH, t.EstimateH)
 		t.Subtypes = subtypes[t.ID]
 		if t.Subtypes == nil {
 			t.Subtypes = []string{}

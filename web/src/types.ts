@@ -1,0 +1,207 @@
+// Shapes returned by the API. Derived fields are computed server-side and
+// only ever displayed here, never recomputed.
+
+export type Behaviour = "todo" | "in_progress" | "done" | "cancelled";
+
+export interface StatusCategory {
+  id: number;
+  name: string;
+  behaviour: Behaviour;
+  is_builtin: boolean;
+}
+
+export interface Status {
+  id: number;
+  name: string;
+  category_id: number;
+  color: string | null;
+  on_board: boolean;
+  alert_after_days: number | null;
+  is_builtin: boolean;
+  position: number;
+}
+
+export interface Priority {
+  id: number;
+  name: string;
+  color: string | null;
+  weight: number;
+  position: number;
+  is_builtin: boolean;
+}
+
+export interface EnergyType {
+  id: number;
+  name: string;
+  direction: "spend" | "restore";
+  color: string | null;
+  position: number;
+}
+
+export interface Subtype {
+  id: number;
+  name: string;
+  energy_type_id: number;
+  position: number;
+}
+
+export interface Area {
+  id: number;
+  name: string;
+  key_prefix: string;
+  color: string | null;
+  default_energy_type_id: number | null;
+  position: number;
+}
+
+export interface ViewFilter {
+  areas: number[] | null;
+  statuses: number[] | null;
+  difficulty_min: number | null;
+  custom: Record<string, unknown> | null;
+  include_done_days: number | null;
+  open_only?: boolean;
+}
+
+export interface CardShow {
+  area: boolean;
+  status: boolean;
+  created_age: boolean;
+  started_age: boolean;
+  time_in_status: boolean;
+  difficulty: boolean;
+  priority: boolean;
+  energy_type: boolean;
+  subtypes: boolean;
+  estimate: boolean;
+  progress_bar: boolean;
+  due: boolean;
+  custom: string[];
+}
+
+export interface CardConfig {
+  show: CardShow;
+  density: "compact" | "comfortable";
+}
+
+export interface View {
+  id: number;
+  name: string;
+  layout: "board" | "table";
+  filter: Partial<ViewFilter>;
+  card_config: Partial<CardConfig>;
+  position: number;
+}
+
+export type FieldType = "text" | "int" | "real" | "date" | "bool" | "select";
+
+export interface CustomField {
+  id: number;
+  entity: "task" | "session";
+  key: string;
+  label: string;
+  type: FieldType;
+  options: string[] | null;
+  position: number;
+}
+
+export interface Bootstrap {
+  areas: Area[];
+  statuses: Status[];
+  status_categories: StatusCategory[];
+  priorities: Priority[];
+  energy_types: EnergyType[];
+  subtypes: Subtype[];
+  views: View[];
+  custom_fields: CustomField[];
+  settings: Record<string, unknown>;
+}
+
+export interface Task {
+  id: number;
+  key: string;
+  title: string;
+  description: string | null;
+  area_id: number;
+  status_id: number;
+  priority_id: number | null;
+  energy_type_id: number | null;
+  difficulty: number | null;
+  estimate_h: number | null;
+  due_at: string | null;
+  board_pos: number;
+  custom: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+  // derived
+  first_started_at: string | null;
+  last_started_at: string | null;
+  completed_at: string | null;
+  cancelled_at: string | null;
+  last_moved_at: string;
+  created_age_h: number;
+  started_age_h: number | null;
+  time_in_status_h: number;
+  stalled: boolean;
+  points: number | null;
+  logged_h: number;
+  progress_pct: number | null;
+  subtypes: string[];
+}
+
+export interface Transition {
+  id: number;
+  task_id: number;
+  from_status_id: number | null;
+  to_status_id: number;
+  reason: string;
+  at: string;
+}
+
+export interface Segment {
+  status_id: number;
+  from: string;
+  to: string;
+  hours: number;
+}
+
+export interface SessionSubtype {
+  subtype_id: number;
+  rank: number;
+  weight: number;
+  weighted_h: number;
+}
+
+export interface Session {
+  id: number;
+  task_id: number | null;
+  label: string | null;
+  area_id: number | null;
+  kind: "task" | "event";
+  energy_type_id: number;
+  hours: number;
+  difficulty: number | null;
+  started_at: string | null;
+  logged_for: string;
+  note: string | null;
+  custom: Record<string, unknown>;
+  created_at: string;
+  subtypes: SessionSubtype[];
+}
+
+export interface CaptureParse {
+  intent: "session" | "task" | null;
+  kind: "task" | "event" | null;
+  title: string | null;
+  energy_type: string | null;
+  hours: number | null;
+  difficulty: number | null;
+  subtypes: string[] | null;
+  area: string | null;
+  matched_task_key: string | null;
+  confidence: number | null;
+  fallback?: boolean;
+  fallback_reason?: string;
+}
+
+export const DIFFICULTIES = [1, 2, 4, 8, 16];

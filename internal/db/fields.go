@@ -15,14 +15,14 @@ type Fields map[string]json.RawMessage
 type fieldKind int
 
 const (
-	kText        fieldKind = iota // non-empty string, required if present
-	kTextNull                     // string or null
-	kInt                          // integer, not null
-	kIntNull                      // integer or null
-	kReal                         // number, not null
-	kRealNull                     // number or null
-	kBool                         // true/false, stored 0/1
-	kJSONObject                   // JSON object, stored as text
+	kText       fieldKind = iota // non-empty string, required if present
+	kTextNull                    // string or null
+	kInt                         // integer, not null
+	kIntNull                     // integer or null
+	kReal                        // number, not null
+	kRealNull                    // number or null
+	kBool                        // true/false, stored 0/1
+	kJSONObject                  // JSON object, stored as text
 )
 
 // columns maps column name to kind. Only columns listed can be written.

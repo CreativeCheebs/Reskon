@@ -9,6 +9,7 @@ import (
 
 	"jitterbug/internal/api"
 	"jitterbug/internal/db"
+	"jitterbug/web"
 )
 
 // env returns the environment variable name, or def when it is unset.
@@ -29,7 +30,7 @@ func main() {
 	}
 	defer d.Close()
 
-	srv := api.New(d, nil)
+	srv := api.New(d, web.Dist())
 	log.Printf("jitterbug: database %s, listening on %s", dbPath, addr)
 	log.Fatal(http.ListenAndServe(addr, srv))
 }

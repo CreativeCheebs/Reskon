@@ -1,0 +1,34 @@
+import React from "react";
+import ReactDOM from "react-dom/client";
+import { App as AntApp, ConfigProvider, Spin } from "antd";
+import { antTheme } from "./theme/antTheme";
+import { palette } from "./theme/palette";
+import { AppProvider } from "./store";
+import { startHealthCheck } from "./api";
+import { App } from "./App";
+
+document.body.style.margin = "0";
+document.body.style.background = palette.bg;
+document.body.style.color = palette.fg;
+document.body.style.fontFamily =
+  "Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
+
+startHealthCheck();
+
+ReactDOM.createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <ConfigProvider theme={antTheme}>
+      <AntApp>
+        <AppProvider
+          fallback={
+            <div style={{ display: "grid", placeItems: "center", height: "100vh" }}>
+              <Spin />
+            </div>
+          }
+        >
+          <App />
+        </AppProvider>
+      </AntApp>
+    </ConfigProvider>
+  </React.StrictMode>,
+);
