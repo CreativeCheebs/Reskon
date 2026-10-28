@@ -46,7 +46,19 @@ func (s *Server) taskTransitions(w http.ResponseWriter, r *http.Request) {
 	respond(w, map[string]any{"transitions": tr}, err)
 }
 
+// listTasks resolves the view's filter server-side; the client sends only
+// the view id. Without ?view= it returns every task.
 func (s *Server) listTasks(w http.ResponseWriter, r *http.Request) {
+	viewID, ok, err := queryID(r, "view")
+	if err != nil {
+		respond(w, nil, err)
+		return
+	}
+	if ok {
+		tasks, err := s.DB.ListTasksForView(r.Context(), viewID)
+		respond(w, tasks, err)
+		return
+	}
 	tasks, err := s.DB.ListTasks(r.Context())
 	respond(w, tasks, err)
 }

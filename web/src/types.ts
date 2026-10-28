@@ -134,6 +134,7 @@ export interface Task {
   created_at: string;
   updated_at: string;
   // derived
+  behaviour: Behaviour;
   first_started_at: string | null;
   last_started_at: string | null;
   completed_at: string | null;

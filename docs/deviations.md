@@ -32,3 +32,9 @@ Section 4 only says Completed returns to NULL when the task moves back out. Canc
 ### Points formula
 Section 10 lists `points` as a derived field but the spec never gives the formula. Implemented as `difficulty × priority weight` (unset priority = 1.0, no difficulty = no points). See Needs review.
 - **Points formula** (`taskPoints` in `internal/db/derive.go`): `difficulty × priority.weight`. Confirm or give the real formula.
+
+### Filter additions: `open_only` and custom ranges
+The **Stuck** view needs "open items only", which the section 7 filter cannot express. Added `"open_only": true` (hides done- and cancelled-behaviour tasks). Custom filters accept a scalar (equality, as in the spec), `null` (key unset), or `{"gte": ..., "lte": ...}` for date/number ranges — "filter by a date field" is rarely an exact date. Unknown filter keys are rejected (400) so a typo cannot silently match everything.
+
+### Table layout always sorts by time in status first
+Rows start in time-in-status-descending order even when the "time in status" column is toggled off.

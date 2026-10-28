@@ -214,8 +214,8 @@ INSERT INTO custom_field (entity, key, label, type, options, position) VALUES
      '["lighter than expected","as expected","heavier"]', 0);
 
 INSERT INTO view (name, layout, filter, card_config, position) VALUES
-  ('Everything', 'table', '{"areas":null,"statuses":null,"difficulty_min":null,"custom":null,"include_done_days":7}', '{}', 1000),
-  ('Stuck',      'table', '{"areas":null,"statuses":null,"difficulty_min":null,"custom":null,"include_done_days":0,"open_only":true}', '{}', 1001);
+  ('Everything', 'table', '{"areas":null,"statuses":null,"difficulty_min":null,"custom":null,"include_done_days":7}', '{"show":{"area":true,"status":true}}', 1000),
+  ('Stuck',      'table', '{"areas":null,"statuses":null,"difficulty_min":null,"custom":null,"include_done_days":0,"open_only":true}', '{"show":{"area":true,"status":true}}', 1001);
 
 INSERT INTO setting (key, value) VALUES
   ('subtype_weights', '[1.0, 0.5, 0.25, 0.25]'),

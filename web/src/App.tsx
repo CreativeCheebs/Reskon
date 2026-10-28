@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { Alert, Layout, Menu } from "antd";
+import { Alert, Layout, Menu, message } from "antd";
+import { api } from "./api";
+import { WriteButton } from "./offline";
 import { useApp } from "./store";
 import { palette } from "./theme/palette";
 import { ViewScreen } from "./views/ViewScreen";
@@ -22,7 +24,7 @@ function toHash(s: Screen) {
 }
 
 export function App() {
-  const { boot, online } = useApp();
+  const { boot, online, reloadBootstrap } = useApp();
   const [screen, setScreen] = useState<Screen | null>(parseHash);
 
   useEffect(() => {
@@ -53,6 +55,21 @@ export function App() {
     { key: "settings", label: "Settings" },
   ];
 
+  const newView = async () => {
+    try {
+      const v = await api.post<{ id: number }>("/views", {
+        name: "New view",
+        layout: "board",
+        filter: { areas: null, statuses: null, difficulty_min: null, custom: null, include_done_days: 7 },
+        position: views.length,
+      });
+      await reloadBootstrap();
+      go({ kind: "view", id: v.id });
+    } catch (e) {
+      message.error((e as Error).message);
+    }
+  };
+
   const selectedKey = current.kind === "view" ? `view-${current.id}` : current.kind;
 
   return (
@@ -69,6 +86,11 @@ export function App() {
             else go({ kind: key as "settings" | "sessions" | "cycle" });
           }}
         />
+        <div style={{ padding: "8px 16px" }}>
+          <WriteButton size="small" type="text" onClick={newView}>
+            + New view
+          </WriteButton>
+        </div>
       </Layout.Sider>
       <Layout>
         {!online && (
@@ -79,14 +101,7 @@ export function App() {
           />
         )}
         <Layout.Content style={{ padding: 14, overflow: "auto", display: "flex", flexDirection: "column" }}>
-          {view && (
-            <>
-              <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>{view.name}</div>
-              <div style={{ flex: 1, minHeight: 0 }}>
-                <ViewScreen key={view.id} view={view} />
-              </div>
-            </>
-          )}
+          {view && <ViewScreen key={view.id} view={view} />}
           {current.kind === "view" && !view && <Alert type="info" message="That view no longer exists." />}
         </Layout.Content>
       </Layout>

@@ -14,6 +14,12 @@ func (s *Server) lookupRoutes() {
 		delete: func(ctx context.Context, id int64, r *http.Request) error { return s.DB.DeleteArea(ctx, id) },
 		list:   func(ctx context.Context) (any, error) { return s.DB.ListAreas(ctx) },
 	})
+	s.crud("views", crudOps{
+		create: func(ctx context.Context, f db.Fields) (any, error) { return s.DB.CreateView(ctx, f) },
+		patch:  func(ctx context.Context, id int64, f db.Fields) (any, error) { return s.DB.PatchView(ctx, id, f) },
+		delete: func(ctx context.Context, id int64, r *http.Request) error { return s.DB.DeleteView(ctx, id) },
+		list:   func(ctx context.Context) (any, error) { return s.DB.ListViews(ctx) },
+	})
 }
 
 // crudOps are the four operations behind a lookup collection.

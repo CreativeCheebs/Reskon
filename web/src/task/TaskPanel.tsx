@@ -1,0 +1,212 @@
+import { useEffect, useState } from "react";
+import { DatePicker, Descriptions, Divider, Drawer, Input, InputNumber, Popconfirm, Select, Space, Spin, Typography, message } from "antd";
+import dayjs from "dayjs";
+import { api, patchWithRetry } from "../api";
+import { useApp } from "../store";
+import { WriteButton } from "../offline";
+import { formatAge, formatDateTime, formatHours } from "../format";
+import { palette } from "../theme/palette";
+import { DIFFICULTIES, type Task } from "../types";
+import { TaskExtras } from "./TaskExtras";
+
+// The task panel: the only place the task key is shown. Every edit is a
+// PATCH carrying the updated_at last seen; status changes go through /move.
+
+interface Props {
+  taskId: number;
+  onClose: () => void;
+  onChanged: (t: Task) => void;
+  onDeleted: (id: number) => void;
+}
+
+export function TaskPanel({ taskId, onClose, onChanged, onDeleted }: Props) {
+  const { boot, online, reloadKey } = useApp();
+  const [task, setTask] = useState<Task | null>(null);
+  const [title, setTitle] = useState("");
+  const [desc, setDesc] = useState("");
+
+  const load = () =>
+    api
+      .get<Task>(`/tasks/${taskId}`)
+      .then((t) => {
+        setTask(t);
+        setTitle(t.title);
+        setDesc(t.description ?? "");
+      })
+      .catch((e) => message.error((e as Error).message));
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [taskId, reloadKey]);
+
+  const apply = (t: Task) => {
+    setTask(t);
+    setTitle(t.title);
+    setDesc(t.description ?? "");
+    onChanged(t);
+  };
+
+  const patch = async (changes: Record<string, unknown>) => {
+    if (!task) return;
+    try {
+      apply(await patchWithRetry<Task>(`/tasks/${task.id}`, task.updated_at, changes));
+    } catch (e) {
+      message.error((e as Error).message);
+      load();
+    }
+  };
+
+  const move = async (status_id: number) => {
+    if (!task) return;
+    try {
+      apply(await api.post<Task>(`/tasks/${task.id}/move`, { status_id }));
+    } catch (e) {
+      message.error((e as Error).message);
+    }
+  };
+
+  const remove = async () => {
+    if (!task) return;
+    try {
+      await api.del(`/tasks/${task.id}`);
+      onDeleted(task.id);
+      onClose();
+    } catch (e) {
+      message.error((e as Error).message);
+    }
+  };
+
+  const ro = !online;
+  const opt = <T extends { id: number; name: string }>(rows: T[]) => rows.map((r) => ({ value: r.id, label: r.name }));
+
+  return (
+    <Drawer
+      open
+      width={520}
+      onClose={onClose}
+      title={task ? <span style={{ color: palette.muted, fontWeight: 500 }}>{task.key}</span> : null}
+      extra={
+        task && (
+          <Popconfirm title="Delete this task?" onConfirm={remove}>
+            <WriteButton danger size="small">
+              Delete
+            </WriteButton>
+          </Popconfirm>
+        )
+      }
+    >
+      {!task ? (
+        <Spin />
+      ) : (
+        <Space direction="vertical" style={{ width: "100%" }} size={10}>
+          <Input
+            variant="borderless"
+            style={{ fontSize: 17, fontWeight: 600, padding: 0 }}
+            value={title}
+            disabled={ro}
+            onChange={(e) => setTitle(e.target.value)}
+            onBlur={() => title.trim() && title !== task.title && patch({ title: title.trim() })}
+            onPressEnter={(e) => (e.target as HTMLInputElement).blur()}
+          />
+          <Descriptions column={2} size="small" colon={false} labelStyle={{ color: palette.muted, width: 90 }}>
+            <Descriptions.Item label="Status">
+              <Select size="small" style={{ width: 150 }} disabled={ro} value={task.status_id} onChange={move} options={opt(boot.statuses)} />
+            </Descriptions.Item>
+            <Descriptions.Item label="Area">
+              <Select size="small" style={{ width: 150 }} disabled={ro} value={task.area_id} onChange={(v) => patch({ area_id: v })} options={opt(boot.areas)} />
+            </Descriptions.Item>
+            <Descriptions.Item label="Priority">
+              <Select
+                size="small"
+                style={{ width: 150 }}
+                allowClear
+                disabled={ro}
+                value={task.priority_id ?? undefined}
+                onChange={(v) => patch({ priority_id: v ?? null })}
+                options={opt(boot.priorities)}
+              />
+            </Descriptions.Item>
+            <Descriptions.Item label="Energy type">
+              <Select
+                size="small"
+                style={{ width: 150 }}
+                allowClear
+                disabled={ro}
+                value={task.energy_type_id ?? undefined}
+                onChange={(v) => patch({ energy_type_id: v ?? null })}
+                options={opt(boot.energy_types)}
+              />
+            </Descriptions.Item>
+            <Descriptions.Item label="Difficulty">
+              <Select
+                size="small"
+                style={{ width: 150 }}
+                allowClear
+                disabled={ro}
+                value={task.difficulty ?? undefined}
+                onChange={(v) => patch({ difficulty: v ?? null })}
+                options={DIFFICULTIES.map((d) => ({ value: d, label: d }))}
+              />
+            </Descriptions.Item>
+            <Descriptions.Item label="Estimate (h)">
+              <InputNumber
+                size="small"
+                style={{ width: 150 }}
+                min={0}
+                step={0.5}
+                disabled={ro}
+                defaultValue={task.estimate_h ?? undefined}
+                key={task.updated_at}
+                onBlur={(e) => {
+                  const v = e.target.value === "" ? null : Number(e.target.value);
+                  if (v !== task.estimate_h) patch({ estimate_h: v });
+                }}
+              />
+            </Descriptions.Item>
+            <Descriptions.Item label="Due">
+              <DatePicker
+                size="small"
+                style={{ width: 150 }}
+                disabled={ro}
+                value={task.due_at ? dayjs(task.due_at) : null}
+                onChange={(d) => patch({ due_at: d ? d.format("YYYY-MM-DD") : null })}
+              />
+            </Descriptions.Item>
+          </Descriptions>
+          <Input.TextArea
+            placeholder="Description"
+            autoSize={{ minRows: 3, maxRows: 12 }}
+            disabled={ro}
+            value={desc}
+            onChange={(e) => setDesc(e.target.value)}
+            onBlur={() => desc !== (task.description ?? "") && patch({ description: desc })}
+          />
+
+          <TaskExtras task={task} patch={patch} onTaskChanged={load} />
+
+          <Divider plain orientation="left" style={{ margin: "4px 0" }}>
+            Dates
+          </Divider>
+          <Descriptions column={2} size="small" colon={false} labelStyle={{ color: palette.muted, width: 110 }}>
+            <Descriptions.Item label="Created">{formatDateTime(task.created_at)}</Descriptions.Item>
+            <Descriptions.Item label="Created age">{formatAge(task.created_age_h)}</Descriptions.Item>
+            <Descriptions.Item label="First started">{formatDateTime(task.first_started_at)}</Descriptions.Item>
+            <Descriptions.Item label="Started age">{formatAge(task.started_age_h)}</Descriptions.Item>
+            <Descriptions.Item label="Last started">{formatDateTime(task.last_started_at)}</Descriptions.Item>
+            <Descriptions.Item label="Time in status">
+              <span style={{ color: task.stalled ? palette.danger : undefined }}>{formatAge(task.time_in_status_h)}</span>
+            </Descriptions.Item>
+            <Descriptions.Item label="Completed">{formatDateTime(task.completed_at)}</Descriptions.Item>
+            <Descriptions.Item label="Cancelled">{formatDateTime(task.cancelled_at)}</Descriptions.Item>
+            <Descriptions.Item label="Points">{task.points ?? "–"}</Descriptions.Item>
+            <Descriptions.Item label="Logged">{formatHours(task.logged_h)}</Descriptions.Item>
+          </Descriptions>
+          <Typography.Text type="secondary" style={{ fontSize: 11 }}>
+            Updated {formatDateTime(task.updated_at)}
+          </Typography.Text>
+        </Space>
+      )}
+    </Drawer>
+  );
+}

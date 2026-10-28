@@ -11,6 +11,7 @@ import (
 // TaskDerived holds values computed on read. None of these are stored.
 // This file is their one implementation; the client never recomputes them.
 type TaskDerived struct {
+	Behaviour      string   `json:"behaviour"`        // behaviour of the current status's category
 	FirstStartedAt *string  `json:"first_started_at"` // earliest move into in_progress
 	LastStartedAt  *string  `json:"last_started_at"`  // latest move into in_progress
 	CompletedAt    *string  `json:"completed_at"`     // start of the current done run; nil if not done
@@ -195,6 +196,7 @@ func (d *DB) derive(ctx context.Context, tasks []*Task, now time.Time) error {
 
 	for _, t := range tasks {
 		t.TaskDerived = deriveDates(t.CreatedAt, steps[t.ID], now)
+		t.Behaviour = behaviour[t.StatusID]
 		if days := alertDays[t.StatusID]; days != nil {
 			t.Stalled = t.TimeInStatusH >= float64(*days)*24
 		}

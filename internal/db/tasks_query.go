@@ -3,15 +3,180 @@ package db
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
+	"fmt"
+	"regexp"
+	"strings"
 	"time"
 )
 
+// ViewFilter is a view's filter JSON. A nil field means "no constraint".
+type ViewFilter struct {
+	Areas           []int64                    `json:"areas"`
+	Statuses        []int64                    `json:"statuses"`
+	DifficultyMin   *int64                     `json:"difficulty_min"`
+	Custom          map[string]json.RawMessage `json:"custom"`
+	IncludeDoneDays *int64                     `json:"include_done_days"` // done tasks finished within N days only
+	OpenOnly        bool                       `json:"open_only"`         // hide done and cancelled
+}
+
+// customKeyRe limits custom field keys to identifiers, so they can be put
+// in a JSON path safely.
+var customKeyRe = regexp.MustCompile(`^[a-z][a-z0-9_]{0,63}$`)
+
+// parseFilter decodes and checks a filter. Unknown keys are rejected so a
+// typo does not silently match everything.
+func parseFilter(raw []byte) (*ViewFilter, error) {
+	var f ViewFilter
+	dec := json.NewDecoder(strings.NewReader(string(raw)))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&f); err != nil {
+		return nil, invalid("filter: %v", err)
+	}
+	for k, v := range f.Custom {
+		if !customKeyRe.MatchString(k) {
+			return nil, invalid("filter: custom key %q is not a valid field key", k)
+		}
+		if _, _, err := customCondition(k, v); err != nil {
+			return nil, err
+		}
+	}
+	return &f, nil
+}
+
+// customCondition turns one custom filter entry into SQL. A scalar means
+// equality; an object may carry "gte" and/or "lte" bounds (for dates and
+// numbers); null means the key is unset.
+func customCondition(key string, raw json.RawMessage) (string, []any, error) {
+	path := fmt.Sprintf(`$."%s"`, key)
+	if isNull(raw) {
+		return `json_extract(custom, ?) IS NULL`, []any{path}, nil
+	}
+	var bounds map[string]json.RawMessage
+	if json.Unmarshal(raw, &bounds) == nil {
+		var conds []string
+		var args []any
+		for _, op := range sortedKeys(bounds) {
+			sqlOp := map[string]string{"gte": ">=", "lte": "<="}[op]
+			if sqlOp == "" {
+				return "", nil, invalid("filter: custom %s: unknown operator %q", key, op)
+			}
+			v, err := jsonScalar(bounds[op])
+			if err != nil {
+				return "", nil, invalid("filter: custom %s: %v", key, err)
+			}
+			conds = append(conds, `json_extract(custom, ?) `+sqlOp+` ?`)
+			args = append(args, path, v)
+		}
+		if len(conds) == 0 {
+			return "1", nil, nil // an empty range constrains nothing
+		}
+		return strings.Join(conds, " AND "), args, nil
+	}
+	v, err := jsonScalar(raw)
+	if err != nil {
+		return "", nil, invalid("filter: custom %s: %v", key, err)
+	}
+	return `json_extract(custom, ?) = ?`, []any{path, v}, nil
+}
+
+// jsonScalar converts a JSON scalar to the value json_extract would return:
+// true/false become 1/0.
+func jsonScalar(raw json.RawMessage) (any, error) {
+	var v any
+	if err := json.Unmarshal(raw, &v); err != nil {
+		return nil, err
+	}
+	switch x := v.(type) {
+	case bool:
+		if x {
+			return 1, nil
+		}
+		return 0, nil
+	case string, float64:
+		return x, nil
+	}
+	return nil, fmt.Errorf("value must be a string, number or boolean")
+}
+
 // ListTasks returns every non-deleted task with derived values.
 func (d *DB) ListTasks(ctx context.Context) ([]*Task, error) {
-	tasks, err := collect(ctx, d, `SELECT `+taskCols+` FROM task WHERE deleted_at IS NULL ORDER BY status_id, board_pos`,
-		func(r *sql.Rows) (*Task, error) { return scanTask(r) })
+	return d.queryTasks(ctx, &ViewFilter{}, time.Now())
+}
+
+// ListTasksForView resolves a view's filter server-side.
+func (d *DB) ListTasksForView(ctx context.Context, viewID int64) ([]*Task, error) {
+	v, err := d.GetView(ctx, viewID)
 	if err != nil {
 		return nil, err
 	}
-	return tasks, d.derive(ctx, tasks, time.Now())
+	f, err := parseFilter(v.Filter)
+	if err != nil {
+		return nil, err
+	}
+	return d.queryTasks(ctx, f, time.Now())
+}
+
+func (d *DB) queryTasks(ctx context.Context, f *ViewFilter, now time.Time) ([]*Task, error) {
+	where := []string{"deleted_at IS NULL"}
+	var args []any
+	if f.Areas != nil {
+		where = append(where, inList("area_id", f.Areas, &args))
+	}
+	if f.Statuses != nil {
+		where = append(where, inList("status_id", f.Statuses, &args))
+	}
+	if f.DifficultyMin != nil {
+		where = append(where, "difficulty >= ?")
+		args = append(args, *f.DifficultyMin)
+	}
+	for _, k := range sortedKeys(f.Custom) {
+		cond, a, err := customCondition(k, f.Custom[k])
+		if err != nil {
+			return nil, err
+		}
+		where = append(where, cond)
+		args = append(args, a...)
+	}
+	q := `SELECT ` + taskCols + ` FROM task WHERE ` + strings.Join(where, " AND ") + ` ORDER BY status_id, board_pos`
+	tasks, err := collect(ctx, d, q, func(r *sql.Rows) (*Task, error) { return scanTask(r) }, args...)
+	if err != nil {
+		return nil, err
+	}
+	if err := d.derive(ctx, tasks, now); err != nil {
+		return nil, err
+	}
+
+	// Filters on derived values run after derivation.
+	out := tasks[:0]
+	for _, t := range tasks {
+		switch t.Behaviour {
+		case "done":
+			if f.OpenOnly {
+				continue
+			}
+			if f.IncludeDoneDays != nil && t.CompletedAt != nil &&
+				hoursSince(*t.CompletedAt, now) > float64(*f.IncludeDoneDays)*24 {
+				continue
+			}
+		case "cancelled":
+			if f.OpenOnly {
+				continue
+			}
+		}
+		out = append(out, t)
+	}
+	return out, nil
+}
+
+// inList returns "col IN (?,?)" and appends ids to args. An empty list
+// matches nothing ("IN ()" is a syntax error in SQLite).
+func inList(col string, ids []int64, args *[]any) string {
+	if len(ids) == 0 {
+		return "0"
+	}
+	for _, id := range ids {
+		*args = append(*args, id)
+	}
+	return fmt.Sprintf("%s IN (%s)", col, placeholders(len(ids)))
 }
