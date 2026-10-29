@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"os"
 	"path/filepath"
@@ -78,5 +79,46 @@ func TestDuplicateAndBadUsernames(t *testing.T) {
 	}
 	if _, err := s.CreateUser(ctx, "a b", "another password", false); err == nil {
 		t.Error("username with a space accepted")
+	}
+}
+
+// A backup must copy the data as it is, without migrating it.
+func TestBackupDoesNotMigrate(t *testing.T) {
+	dir := t.TempDir()
+	s, err := Open(dir, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	u, err := s.Setup(context.Background(), "alice", "right password")
+	if err != nil {
+		t.Fatal(err)
+	}
+	d, _ := s.DBFor(context.Background(), u.ID)
+	d.Exec(`PRAGMA user_version = 1`) // pretend it is an old database
+	s.Close()
+
+	dest := filepath.Join(dir, "bk")
+	written, err := Backup(dir, dest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(written) != 2 {
+		t.Fatalf("written = %v", written)
+	}
+	check := func(path string) int {
+		c, _ := sql.Open("sqlite", "file:"+path+"?mode=ro")
+		defer c.Close()
+		var v int
+		c.QueryRow(`PRAGMA user_version`).Scan(&v)
+		return v
+	}
+	if v := check(filepath.Join(dest, "alice.db")); v != 1 {
+		t.Errorf("backup has version %d, want the original 1", v)
+	}
+	if v := check(filepath.Join(dir, "users", u.dbFile[len("users/"):])); v != 1 {
+		t.Errorf("live database was migrated by the backup: version %d", v)
+	}
+	if _, err := Backup(dir, dest); err == nil {
+		t.Error("backup overwrote an existing backup")
 	}
 }

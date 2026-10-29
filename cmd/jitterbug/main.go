@@ -9,7 +9,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"jitterbug/internal/api"
@@ -34,20 +33,26 @@ func main() {
 	legacyDB := env("JITTERBUG_DB", "jitterbug.db")
 	addr := env("JITTERBUG_ADDR", ":8080")
 
+	// `jitterbug backup <dir>` writes a consistent copy of auth.db and every
+	// user's database into dir, then exits. Safe while a server is running.
+	// It runs before the store opens (opening migrates) and reads every file
+	// read-only, so a backup is always the data exactly as it was.
+	if len(os.Args) == 3 && os.Args[1] == "backup" {
+		written, err := auth.Backup(dataDir, os.Args[2])
+		for _, w := range written {
+			log.Printf("backed up %s", w)
+		}
+		if err != nil {
+			log.Fatalf("backup: %v", err)
+		}
+		return
+	}
+
 	store, err := auth.Open(dataDir, legacyDB)
 	if err != nil {
 		log.Fatalf("open data directory %s: %v", dataDir, err)
 	}
 	defer store.Close()
-
-	// `jitterbug backup <dir>` writes a consistent copy of auth.db and every
-	// user's database into dir, then exits. Safe while a server is running.
-	if len(os.Args) == 3 && os.Args[1] == "backup" {
-		if err := backup(store, os.Args[2]); err != nil {
-			log.Fatalf("backup: %v", err)
-		}
-		return
-	}
 
 	// `jitterbug import-jira <export.db> <username> [--dry-run] [--area label=Name ...]`
 	// loads a Jira export into that person's data. --dry-run does
@@ -122,27 +127,6 @@ func importJira(store *auth.Store, path, username string, dry bool, areas map[st
 		return nil
 	}
 	return fmt.Errorf("no user %q (create the account first)", username)
-}
-
-func backup(store *auth.Store, dir string) error {
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return err
-	}
-	files, err := store.DataFiles(context.Background())
-	if err != nil {
-		return err
-	}
-	for name, d := range files {
-		dest := filepath.Join(dir, name)
-		if _, err := os.Stat(dest); err == nil {
-			return fmt.Errorf("%s already exists", dest)
-		}
-		if _, err := d.Exec(`VACUUM INTO ?`, dest); err != nil {
-			return fmt.Errorf("%s: %w", name, err)
-		}
-		log.Printf("backed up %s", dest)
-	}
-	return nil
 }
 
 // captureConfig reads the signed-in user's LLM settings on every capture,

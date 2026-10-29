@@ -219,21 +219,75 @@ func (s *Store) DBFor(ctx context.Context, userID int64) (*db.DB, error) {
 	return d, nil
 }
 
-// DataFiles lists every database file (auth.db first), for backups.
-func (s *Store) DataFiles(ctx context.Context) (map[string]*sql.DB, error) {
-	out := map[string]*sql.DB{"auth.db": s.sql}
-	users, err := s.ListUsers(ctx)
+// Backup writes a consistent copy of auth.db and every user's database
+// into dest (one <username>.db each). It opens every file read-only and
+// directly, never through Open/DBFor, so it never runs migrations: a backup
+// taken with a newer binary is still a copy of the data as it was.
+func Backup(dataDir, dest string) ([]string, error) {
+	if err := os.MkdirAll(dest, 0o755); err != nil {
+		return nil, err
+	}
+	readOnly := func(path string) (*sql.DB, error) {
+		if _, err := os.Stat(path); err != nil {
+			return nil, err
+		}
+		return sql.Open("sqlite", "file:"+path+"?mode=ro&_pragma=busy_timeout(5000)")
+	}
+	copyTo := func(src *sql.DB, name string) (string, error) {
+		out := filepath.Join(dest, name)
+		if _, err := os.Stat(out); err == nil {
+			return "", fmt.Errorf("%s already exists", out)
+		}
+		if _, err := src.Exec(`VACUUM INTO ?`, out); err != nil {
+			return "", fmt.Errorf("%s: %w", name, err)
+		}
+		return out, nil
+	}
+
+	authDB, err := readOnly(filepath.Join(dataDir, "auth.db"))
+	if err != nil {
+		return nil, fmt.Errorf("auth.db: %w", err)
+	}
+	defer authDB.Close()
+	type entry struct{ name, file string }
+	var users []entry
+	rows, err := authDB.Query(`SELECT username, db_file FROM user ORDER BY id`)
 	if err != nil {
 		return nil, err
 	}
-	for _, u := range users {
-		d, err := s.DBFor(ctx, u.ID)
-		if err != nil {
+	for rows.Next() {
+		var e entry
+		if err := rows.Scan(&e.name, &e.file); err != nil {
+			rows.Close()
 			return nil, err
 		}
-		out[u.Username+".db"] = d.DB
+		users = append(users, e)
 	}
-	return out, nil
+	rows.Close()
+
+	written := []string{}
+	out, err := copyTo(authDB, "auth.db")
+	if err != nil {
+		return written, err
+	}
+	written = append(written, out)
+	for _, u := range users {
+		path := u.file
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(dataDir, u.file)
+		}
+		src, err := readOnly(path)
+		if err != nil {
+			return written, fmt.Errorf("%s: %w", u.name, err)
+		}
+		out, err := copyTo(src, u.name+".db")
+		src.Close()
+		if err != nil {
+			return written, err
+		}
+		written = append(written, out)
+	}
+	return written, nil
 }
 
 // relPath stores p relative to the data directory when it can.
