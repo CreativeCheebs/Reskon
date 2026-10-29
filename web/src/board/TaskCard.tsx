@@ -5,7 +5,7 @@ import { formatAge, formatHours } from "../format";
 import { palette } from "../theme/palette";
 import { Lozenge } from "../theme/Lozenge";
 import type { CardConfig, Task } from "../types";
-import { EPIC_COLOR, TypeIcon } from "../task/TypeIcon";
+import { TypeIcon } from "../task/TypeIcon";
 import { useEpics } from "../task/useEpics";
 
 // A board card. The task key is never shown here — only in the task panel.
@@ -25,7 +25,7 @@ export function TaskCard({ task, config, onOpen }: { task: Task; config: CardCon
   const meta: React.ReactNode[] = [];
   if (show.epic && epic)
     meta.push(
-      <Lozenge key="epic" color={EPIC_COLOR}>
+      <Lozenge key="epic" color={palette.epic}>
         {epic.title}
       </Lozenge>,
     );
@@ -76,7 +76,7 @@ export function TaskCard({ task, config, onOpen }: { task: Task; config: CardCon
         border: `1px solid ${task.stalled ? palette.danger : "transparent"}`,
         // Jira's raised-card shadow: lifts the card off the sunken column.
         boxShadow: "0 1px 1px #03040480, 0 0 1px #03040480",
-        borderLeft: task.type === "epic" ? `3px solid ${EPIC_COLOR}` : undefined,
+        borderLeft: task.type === "epic" ? `3px solid ${palette.epic}` : undefined,
         borderRadius: 6,
         padding: compact ? "6px 8px" : "10px 12px",
         cursor: "pointer",

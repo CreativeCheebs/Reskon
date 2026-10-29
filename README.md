@@ -53,6 +53,10 @@ Everything lives in the `/data` volume (`auth.db`, `users/`). An older `/data/ji
 cd web && npm run dev       # Vite on :5173, proxies /api to :8080
 ```
 
+## Themes
+
+**Settings → Appearance**: Default, Jira, Jira increased contrast, GitHub Dark, GitHub Dark Dimmed. Download any of them as a template (JSON, each colour explained), edit it, and upload it back. The choice is saved to your account.
+
 ## Import from Jira
 
 Create the account first, then (server may keep running):

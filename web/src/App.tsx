@@ -13,6 +13,7 @@ import { CaptureButton } from "./capture/CaptureButton";
 import { CycleTimeScreen } from "./chart/CycleTimeScreen";
 import { useAuth } from "./auth/AuthGate";
 import { EpicsProvider } from "./task/useEpics";
+import { ThemeSync } from "./theme/ThemeSync";
 
 // Screens are addressed by the URL hash (#/view/3, #/settings) so a reload
 // lands where you were. Overlays like the backlog are never routes.
@@ -143,6 +144,7 @@ export function App() {
       </Layout>
       {boot.areas.length === 0 && <FirstRun />}
       <CaptureButton />
+      <ThemeSync />
     </Layout>
     </EpicsProvider>
   );

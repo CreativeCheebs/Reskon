@@ -1,9 +1,10 @@
 import { theme, type ThemeConfig } from "antd";
 import { palette } from "./palette";
 
-// One token block for the whole app: dark (Jira-like surface levels),
-// dense, 6px radii, 24–30px controls, no button shadows.
-export const antTheme: ThemeConfig = {
+// One token block for the whole app: dark surface levels from the active
+// theme, dense, 6px radii, 24–30px controls, no button shadows. Built from
+// the palette each time the theme changes.
+export const makeAntTheme = (): ThemeConfig => ({
   algorithm: [theme.darkAlgorithm, theme.compactAlgorithm],
   token: {
     colorBgBase: palette.bg,
@@ -67,4 +68,4 @@ export const antTheme: ThemeConfig = {
     Tag: { defaultBg: palette.hover, defaultColor: palette.fg },
     Select: { optionSelectedBg: palette.selected },
   },
-};
+});

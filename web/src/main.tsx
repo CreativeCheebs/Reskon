@@ -1,57 +1,39 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { App as AntApp, ConfigProvider, Spin } from "antd";
-import { antTheme } from "./theme/antTheme";
-import { palette } from "./theme/palette";
+import { App as AntApp, Spin } from "antd";
 import { AppProvider } from "./store";
 import { startHealthCheck } from "./api";
 import { App } from "./App";
 import { AuthGate } from "./auth/AuthGate";
 import { FeedbackBridge } from "./theme/feedback";
+import { ThemeProvider } from "./theme/ThemeProvider";
 
 document.body.style.margin = "0";
-document.body.style.background = palette.bg;
-document.body.style.color = palette.fg;
-document.body.style.fontFamily =
-  "Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
-
-// Scrollbars and native controls follow the dark palette. `color-scheme`
-// covers browsers that ignore the rest (and form controls, date pickers).
-const globalStyle = document.createElement("style");
-globalStyle.textContent = `
-  :root { color-scheme: dark; }
-  * { scrollbar-width: thin; scrollbar-color: ${palette.borderStrong} transparent; }
-  ::-webkit-scrollbar { width: 10px; height: 10px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb {
-    background: ${palette.borderStrong};
-    border-radius: 6px;
-    border: 2px solid ${palette.bg};
-  }
-  ::-webkit-scrollbar-thumb:hover { background: ${palette.muted}; }
-  ::-webkit-scrollbar-corner { background: transparent; }
-`;
-document.head.appendChild(globalStyle);
+document.body.style.fontFamily = "Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
 
 startHealthCheck();
 
+// ThemeProvider sets the palette, Ant tokens, body colours and scrollbars,
+// and re-renders this whole tree when the theme changes.
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <ConfigProvider theme={antTheme}>
-      <AntApp>
-        <FeedbackBridge />
-        <AuthGate>
-          <AppProvider
-            fallback={
-              <div style={{ display: "grid", placeItems: "center", height: "100vh" }}>
-                <Spin />
-              </div>
-            }
-          >
-            <App />
-          </AppProvider>
-        </AuthGate>
-      </AntApp>
-    </ConfigProvider>
+    <ThemeProvider>
+      {() => (
+        <AntApp>
+          <FeedbackBridge />
+          <AuthGate>
+            <AppProvider
+              fallback={
+                <div style={{ display: "grid", placeItems: "center", height: "100vh" }}>
+                  <Spin />
+                </div>
+              }
+            >
+              <App />
+            </AppProvider>
+          </AuthGate>
+        </AntApp>
+      )}
+    </ThemeProvider>
   </React.StrictMode>,
 );

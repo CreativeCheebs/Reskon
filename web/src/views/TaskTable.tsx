@@ -5,7 +5,7 @@ import { formatAge, formatHours } from "../format";
 import { palette } from "../theme/palette";
 import { Lozenge } from "../theme/Lozenge";
 import type { CardConfig, GroupBy, Task } from "../types";
-import { EPIC_COLOR, TypeIcon } from "../task/TypeIcon";
+import { TypeIcon } from "../task/TypeIcon";
 import { useEpics } from "../task/useEpics";
 import { groupTasks } from "./grouping";
 
@@ -58,7 +58,7 @@ export function TaskTable({
       ellipsis: true,
       render: (_, t) => {
         const e = t.epic_id ? epics.get(t.epic_id) : undefined;
-        return e ? <span style={{ color: EPIC_COLOR }}>{e.title}</span> : null;
+        return e ? <span style={{ color: palette.epic }}>{e.title}</span> : null;
       },
       sorter: (a, b) => (epics.get(a.epic_id ?? 0)?.title ?? "~").localeCompare(epics.get(b.epic_id ?? 0)?.title ?? "~"),
     });

@@ -7,6 +7,7 @@ import { CustomFieldSettings } from "./CustomFieldSettings";
 import { AccountSettings } from "../auth/AccountSettings";
 import { UsersSettings } from "../auth/UsersSettings";
 import { useAuth } from "../auth/AuthGate";
+import { AppearanceSettings } from "../theme/AppearanceSettings";
 
 // Settings: every lookup is a row the user can edit.
 
@@ -157,6 +158,7 @@ export function Settings() {
     },
     { key: "custom", label: "Custom fields", children: <CustomFieldSettings /> },
     { key: "capture", label: "Capture & weights", children: <CaptureSettings /> },
+    { key: "appearance", label: "Appearance", children: <AppearanceSettings /> },
     { key: "account", label: "Account", children: <AccountSettings /> },
     ...(user.is_admin ? [{ key: "users", label: "People", children: <UsersSettings /> }] : []),
   ];
