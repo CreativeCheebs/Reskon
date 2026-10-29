@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Alert, Button, Layout, Menu } from "antd";
+import { lazy, Suspense, useEffect, useState } from "react";
+import { Alert, Button, Layout, Menu, Spin } from "antd";
 import { message } from "./theme/feedback";
 import { api } from "./api";
 import { WriteButton } from "./offline";
@@ -7,13 +7,16 @@ import { useApp } from "./store";
 import { palette } from "./theme/palette";
 import { ViewScreen } from "./views/ViewScreen";
 import { FirstRun } from "./admin/FirstRun";
-import { Settings } from "./admin/Settings";
-import { SessionsScreen } from "./sessions/SessionsScreen";
 import { CaptureButton } from "./capture/CaptureButton";
-import { CycleTimeScreen } from "./chart/CycleTimeScreen";
 import { useAuth } from "./auth/AuthGate";
 import { EpicsProvider } from "./task/useEpics";
 import { ThemeSync } from "./theme/ThemeSync";
+
+// Screens opened now and then load on first visit, keeping them out of the
+// bundle every page load parses.
+const Settings = lazy(() => import("./admin/Settings").then((m) => ({ default: m.Settings })));
+const SessionsScreen = lazy(() => import("./sessions/SessionsScreen").then((m) => ({ default: m.SessionsScreen })));
+const CycleTimeScreen = lazy(() => import("./chart/CycleTimeScreen").then((m) => ({ default: m.CycleTimeScreen })));
 
 // Screens are addressed by the URL hash (#/view/3, #/settings) so a reload
 // lands where you were. Overlays like the backlog are never routes.
@@ -137,9 +140,11 @@ export function App() {
         <Layout.Content style={{ padding: 14, overflow: "auto", display: "flex", flexDirection: "column" }}>
           {view && <ViewScreen key={view.id} view={view} />}
           {current.kind === "view" && !view && <Alert type="info" message="That view no longer exists." />}
-          {current.kind === "settings" && <Settings />}
-          {current.kind === "sessions" && <SessionsScreen />}
-          {current.kind === "cycle" && <CycleTimeScreen />}
+          <Suspense fallback={<Spin style={{ margin: 40 }} />}>
+            {current.kind === "settings" && <Settings />}
+            {current.kind === "sessions" && <SessionsScreen />}
+            {current.kind === "cycle" && <CycleTimeScreen />}
+          </Suspense>
         </Layout.Content>
       </Layout>
       {boot.areas.length === 0 && <FirstRun />}
