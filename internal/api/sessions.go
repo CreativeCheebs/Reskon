@@ -10,22 +10,59 @@ func (s *Server) sessionRoutes() {
 	m := s.mux
 	m.HandleFunc("GET /api/sessions", s.listSessions)
 	m.HandleFunc("POST /api/sessions", s.createSession)
+	m.HandleFunc("POST /api/sessions/bulk", s.bulkSessions)
 	m.HandleFunc("PATCH /api/sessions/{id}", s.patchSession)
 	m.HandleFunc("DELETE /api/sessions/{id}", s.deleteSession)
 	m.HandleFunc("GET /api/day/{date}", s.getDay)
 }
 
-// listSessions accepts ?from=YYYY-MM-DD&to=YYYY-MM-DD&task_id=N.
+// listSessions accepts ?from=&to= (YYYY-MM-DD), task_id, energy_type and
+// area (comma-separated ids), kind (task|event), has_task (true|false) and q.
 func (s *Server) listSessions(w http.ResponseWriter, r *http.Request) {
-	q := db.SessionQuery{From: r.URL.Query().Get("from"), To: r.URL.Query().Get("to")}
-	if id, ok, err := queryID(r, "task_id"); err != nil {
-		respond(w, nil, err)
-		return
+	v := r.URL.Query()
+	q := db.SessionQuery{From: v.Get("from"), To: v.Get("to"), Kind: v.Get("kind"), Search: v.Get("q")}
+	var err error
+	if id, ok, e := queryID(r, "task_id"); e != nil {
+		err = e
 	} else if ok {
 		q.TaskID = id
 	}
+	if err == nil {
+		q.EnergyTypes, err = idList(v.Get("energy_type"))
+	}
+	if err == nil {
+		q.Areas, err = idList(v.Get("area"))
+	}
+	switch v.Get("has_task") {
+	case "true":
+		t := true
+		q.HasTask = &t
+	case "false":
+		f := false
+		q.HasTask = &f
+	}
+	if err != nil {
+		respond(w, nil, err)
+		return
+	}
 	sessions, err := dbOf(r.Context()).ListSessions(r.Context(), q)
 	respond(w, sessions, err)
+}
+
+// bulkSessions: {"ids": [...], "set": {field: value, ...}} or
+// {"ids": [...], "delete": true}. All or nothing.
+func (s *Server) bulkSessions(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		IDs    []int64   `json:"ids"`
+		Set    db.Fields `json:"set"`
+		Delete bool      `json:"delete"`
+	}
+	if err := decodeBody(r, &body); err != nil {
+		respond(w, nil, err)
+		return
+	}
+	n, err := dbOf(r.Context()).BulkSessions(r.Context(), body.IDs, body.Set, body.Delete)
+	respond(w, map[string]int{"changed": n}, err)
 }
 
 func (s *Server) createSession(w http.ResponseWriter, r *http.Request) {

@@ -159,6 +159,22 @@ func pathID(r *http.Request) (int64, error) {
 	return id, nil
 }
 
+// idList reads "1,2,3" (empty means none).
+func idList(v string) ([]int64, error) {
+	var out []int64
+	for _, part := range strings.Split(v, ",") {
+		if part = strings.TrimSpace(part); part == "" {
+			continue
+		}
+		id, err := strconv.ParseInt(part, 10, 64)
+		if err != nil {
+			return nil, &db.InvalidError{Msg: "ids must be integers separated by commas"}
+		}
+		out = append(out, id)
+	}
+	return out, nil
+}
+
 // queryID reads an optional integer query parameter.
 func queryID(r *http.Request, name string) (int64, bool, error) {
 	v := r.URL.Query().Get(name)

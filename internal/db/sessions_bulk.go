@@ -1,0 +1,107 @@
+package db
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"strings"
+)
+
+// Fields a bulk change may set on many sessions at once. Hours, notes,
+// labels and subtypes stay per-session edits.
+var bulkSessionColumns = columns{
+	"energy_type_id": kInt,
+	"kind":           kText,
+	"area_id":        kIntNull,
+	"difficulty":     kIntNull,
+	"logged_for":     kText,
+	"task_id":        kIntNull,
+}
+
+// BulkSessions applies one change to many sessions in a single
+// transaction: either set fields on all of them, or delete them all. If any
+// id is missing (or already deleted), nothing changes. Returns how many
+// sessions were changed.
+//
+// Detaching from a task (task_id null) keeps the task's title as the
+// session's label when it has none, so the row never goes blank. Attaching
+// to a task takes the task's area unless area_id is also set.
+func (d *DB) BulkSessions(ctx context.Context, ids []int64, set Fields, del bool) (int, error) {
+	if len(ids) == 0 {
+		return 0, invalid("no sessions selected")
+	}
+	if del == (len(set) > 0) {
+		return 0, invalid("give either fields to set or delete, not both or neither")
+	}
+	seen := map[int64]bool{}
+	var uniq []int64
+	for _, id := range ids {
+		if !seen[id] {
+			seen[id] = true
+			uniq = append(uniq, id)
+		}
+	}
+	var args []any
+	in := inList("id", uniq, &args)
+
+	tx, err := d.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+
+	var found int
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM session WHERE deleted_at IS NULL AND `+in, args...).Scan(&found); err != nil {
+		return 0, err
+	}
+	if found != len(uniq) {
+		return 0, &ConflictError{Msg: fmt.Sprintf("%d of the %d selected sessions no longer exist; reload and try again", len(uniq)-found, len(uniq))}
+	}
+
+	if del {
+		if _, err := tx.ExecContext(ctx, `UPDATE session SET deleted_at = ? WHERE `+in, append([]any{Now()}, args...)...); err != nil {
+			return 0, err
+		}
+		return len(uniq), tx.Commit()
+	}
+
+	if err := validateSessionFields(set); err != nil {
+		return 0, err
+	}
+	var detach bool
+	if raw, ok := set["task_id"]; ok {
+		if isNull(raw) {
+			detach = true
+		} else {
+			var taskID int64
+			if json.Unmarshal(raw, &taskID) != nil {
+				return 0, invalid("task_id must be an integer")
+			}
+			var areaID int64
+			if err := tx.QueryRowContext(ctx, `SELECT area_id FROM task WHERE id = ? AND deleted_at IS NULL`, taskID).Scan(&areaID); err != nil {
+				return 0, invalid("task %d does not exist", taskID)
+			}
+			if _, has := set["area_id"]; !has {
+				set["area_id"], _ = json.Marshal(areaID)
+			}
+		}
+	}
+	cols, vals, err := set.decode(bulkSessionColumns)
+	if err != nil {
+		return 0, err
+	}
+	if detach {
+		if _, err := tx.ExecContext(ctx, `UPDATE session SET label = (SELECT title FROM task WHERE task.id = session.task_id)
+			WHERE (label IS NULL OR label = '') AND task_id IS NOT NULL AND `+in, args...); err != nil {
+			return 0, err
+		}
+	}
+	sets := make([]string, len(cols))
+	for i, c := range cols {
+		sets[i] = c + " = ?"
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE session SET `+strings.Join(sets, ", ")+` WHERE `+in, append(vals, args...)...); err != nil {
+		return 0, uniqueAsConflict(err, "conflict")
+	}
+	return len(uniq), tx.Commit()
+}
