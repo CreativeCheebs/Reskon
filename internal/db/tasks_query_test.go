@@ -87,3 +87,28 @@ func TestCardConfigIsPerView(t *testing.T) {
 		t.Errorf("view two card_config changed to %s", got.CardConfig)
 	}
 }
+
+func TestListTaskBriefs(t *testing.T) {
+	d := openTest(t)
+	ctx := context.Background()
+	a := mustArea(t, d, "Personal", "PER")
+	open := mustTask(t, d, a.ID, "still open")
+	done := mustTask(t, d, a.ID, "finished")
+	gone := mustTask(t, d, a.ID, "deleted")
+	if _, err := d.Move(ctx, done.ID, MoveRequest{StatusID: 4}); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.DeleteTask(ctx, gone.ID); err != nil {
+		t.Fatal(err)
+	}
+	got, err := d.ListTaskBriefs(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0].ID != done.ID || got[1].ID != open.ID {
+		t.Fatalf("got %+v, want finished then still open (newest first, deleted left out)", got)
+	}
+	if got[0].Behaviour != "done" || got[1].Behaviour == "done" || got[1].Key != open.Key || got[1].AreaID != a.ID {
+		t.Errorf("fields wrong: %+v %+v", got[0], got[1])
+	}
+}

@@ -4,7 +4,7 @@ import { message } from "../theme/feedback";
 import { api } from "../api";
 import { useApp } from "../store";
 import { OFFLINE_TIP } from "../offline";
-import type { Session, Task } from "../types";
+import type { Session, TaskBrief } from "../types";
 import { emptySession, sessionBody, SessionFields, type SessionDraft } from "./SessionForm";
 
 // The manual log form. Also used to edit an existing session.
@@ -39,11 +39,11 @@ export function SessionModal({
         })
       : emptySession(initial),
   );
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<TaskBrief[]>([]);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    api.get<Task[]>("/tasks").then(setTasks).catch(() => undefined);
+    api.get<TaskBrief[]>("/tasks?brief=1").then(setTasks).catch(() => undefined);
   }, []);
 
   const save = async () => {

@@ -243,3 +243,27 @@ func inList(col string, ids []int64, args *[]any) string {
 func likeEscape(s string) string {
 	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s)
 }
+
+// TaskBrief is what a task picker needs, without the derived values.
+type TaskBrief struct {
+	ID           int64  `json:"id"`
+	Key          string `json:"key"`
+	Title        string `json:"title"`
+	Type         string `json:"type"`
+	AreaID       int64  `json:"area_id"`
+	EnergyTypeID *int64 `json:"energy_type_id"`
+	Behaviour    string `json:"behaviour"`
+}
+
+// ListTaskBriefs returns every task, newest first, for pickers (Log time,
+// capture, bulk attach). A fraction of the size of the full list.
+func (d *DB) ListTaskBriefs(ctx context.Context) ([]*TaskBrief, error) {
+	return collect(ctx, d, `SELECT t.id, t.key, t.title, t.type, t.area_id, t.energy_type_id, c.behaviour FROM task t
+		JOIN status s ON s.id = t.status_id
+		JOIN status_category c ON c.id = s.category_id
+		WHERE t.deleted_at IS NULL ORDER BY t.id DESC`,
+		func(r *sql.Rows) (*TaskBrief, error) {
+			b := &TaskBrief{}
+			return b, r.Scan(&b.ID, &b.Key, &b.Title, &b.Type, &b.AreaID, &b.EnergyTypeID, &b.Behaviour)
+		})
+}

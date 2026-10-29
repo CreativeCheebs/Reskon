@@ -131,6 +131,17 @@ export interface Bootstrap {
   settings: Record<string, unknown>;
 }
 
+/** GET /api/tasks?brief=1: just enough for a task picker. */
+export interface TaskBrief {
+  id: number;
+  key: string;
+  title: string;
+  type: "task" | "epic";
+  area_id: number;
+  energy_type_id: number | null;
+  behaviour: Behaviour;
+}
+
 export interface Task {
   id: number;
   key: string;

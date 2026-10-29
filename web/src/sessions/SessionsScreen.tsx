@@ -80,7 +80,7 @@ export function SessionsScreen() {
   }, [load, reloadKey]);
   useEffect(() => {
     api
-      .get<{ id: number; title: string; key: string }[]>("/tasks")
+      .get<{ id: number; title: string; key: string }[]>("/tasks?brief=1")
       .then((t) => setTasks(t.map(({ id, title, key }) => ({ id, title, key }))))
       .catch(() => undefined);
   }, [reloadKey]);

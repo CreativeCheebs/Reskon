@@ -75,6 +75,11 @@ func (s *Server) listTasks(w http.ResponseWriter, r *http.Request) {
 		respond(w, tasks, err)
 		return
 	}
+	if r.URL.Query().Get("brief") == "1" {
+		tasks, err := dbOf(r.Context()).ListTaskBriefs(r.Context())
+		respond(w, tasks, err)
+		return
+	}
 	if t := r.URL.Query().Get("type"); t != "" {
 		tasks, err := dbOf(r.Context()).ListTasksOfType(r.Context(), t)
 		respond(w, tasks, err)

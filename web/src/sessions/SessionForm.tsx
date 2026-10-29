@@ -3,7 +3,7 @@ import { DatePicker, Form, Input, InputNumber, Radio, Select, TimePicker } from 
 import dayjs, { type Dayjs } from "dayjs";
 import { useApp } from "../store";
 import { today } from "../format";
-import type { Task } from "../types";
+import type { TaskBrief } from "../types";
 import { DifficultySlider } from "../task/DifficultySlider";
 import { RankedSubtypes } from "./RankedSubtypes";
 import { CustomFieldsEditor } from "../fields/CustomFieldsEditor";
@@ -72,7 +72,7 @@ export function SessionFields({
 }: {
   draft: SessionDraft;
   onChange: (d: SessionDraft) => void;
-  tasks: Task[];
+  tasks: TaskBrief[];
   disabled?: boolean;
 }) {
   const { boot } = useApp();

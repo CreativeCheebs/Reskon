@@ -4,7 +4,7 @@ import { message } from "../theme/feedback";
 import { api } from "../api";
 import { useApp } from "../store";
 import { local } from "../offline";
-import type { CaptureParse, Task } from "../types";
+import type { CaptureParse, Task, TaskBrief } from "../types";
 import { DifficultySlider } from "../task/DifficultySlider";
 import { emptySession, sessionBody, SessionFields, type SessionDraft } from "../sessions/SessionForm";
 
@@ -31,13 +31,13 @@ export function CaptureModal({ onClose, takeEarlyKeys }: { onClose: () => void; 
   const [intent, setIntent] = useState<Intent | null>(null);
   const [task, setTask] = useState<TaskDraft | null>(null);
   const [session, setSession] = useState<SessionDraft | null>(null);
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<TaskBrief[]>([]);
   const [busy, setBusy] = useState(false);
   const saveRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<InputRef>(null);
 
   useEffect(() => {
-    api.get<Task[]>("/tasks").then(setTasks).catch(() => undefined);
+    api.get<TaskBrief[]>("/tasks?brief=1").then(setTasks).catch(() => undefined);
   }, []);
   useEffect(() => {
     if (parse) setTimeout(() => saveRef.current?.focus(), 50);
