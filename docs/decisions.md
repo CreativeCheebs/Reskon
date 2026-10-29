@@ -85,3 +85,17 @@ Append-only. One entry per non-obvious choice: date, what, why, what was rejecte
 ## 2026-10-29 — Jira import runs in one transaction; dry run rolls it back
 **What:** The importer does every insert inside one transaction; `--dry-run` reports and rolls back.
 **Why:** A dry run then exercises exactly the code that will run for real, so a clean dry run means a clean import, and a failure half way leaves nothing behind.
+
+## 2026-10-29 — Palette checked against published design systems
+**What:** The dark palette (Atlassian's 2022–2024 dark tokens, from memory) was checked against the published packages `@atlaskit/tokens` 20.8.2 (themes `atlassian-dark`, `atlassian-dark-increased-contrast`) and `@primer/primitives` 11.10.0 (`dark`, `dark-dimmed`), and against Material Design's dark-theme guidance (dark grey not black; avoid pure white text; desaturated colours; WCAG AA 4.5:1 for text). Measured WCAG contrast on the card surface:
+
+| Palette | text | secondary | subtlest | link | card vs column |
+| --- | --- | --- | --- | --- | --- |
+| JitterBug now | 11.5 | 6.6 | 5.3 | 5.5 | 1.16 + shadow |
+| Atlassian current (`#1F1F21`, neutral grey) | 9.8 | 6.7 | 5.4 | 5.6 | 1.15 + shadow |
+| Atlassian increased contrast | 11.9 | 9.8 | 8.5 | 11.6 | 1.15 + shadow |
+| Primer dark dimmed | 9.7 | 4.8 | 4.8 | 4.1 | 1.23 |
+| Spec section 2 original | 17.6 | 7.2 | 7.2 | 7.2 | 1.04 |
+
+**Why kept:** All text passes AA and matches Atlassian's current theme within a point; the original's problem was surfaces (1.04, indistinguishable) and pure-white glare, not text. Atlassian's newer theme differs mainly in hue (neutral grey instead of blue-grey), which is a taste choice offered to the owner.
+**Fixed:** Status/priority lozenges failed for dark user-chosen colours (Backlog 2.6:1, Cancelled 1.8:1, grey To do/Low 4.4:1, epic 4.2:1). Lozenge text is now lightened toward white only as far as needed to reach 4.5:1 on its tint (`readable()` in `palette.ts`).

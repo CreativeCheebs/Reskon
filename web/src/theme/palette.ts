@@ -1,8 +1,12 @@
 // The whole palette. Every colour in the UI comes from here.
 //
-// Based on the Atlassian (Jira) dark theme tokens: distinct surface levels
-// so the page, board columns, cards and overlays read as layers, softer
-// text than pure white, and borders that are actually visible.
+// Surfaces and text follow Atlassian's (Jira's) 2022-2024 dark palette:
+// distinct surface levels so page, columns, cards and overlays read as
+// layers, softer text than pure white, borders that are visible. Checked on
+// 2026-10-29 against the published @atlaskit/tokens 20.8.2 (whose current
+// dark theme moved to neutral greys, page #1F1F21) and @primer/primitives
+// 11.10.0; every text colour here passes WCAG AA (4.5:1) on cards. See
+// docs/decisions.md for the measured comparison.
 export const palette = {
   bg: "#1D2125", // page (elevation.surface)
   panel: "#22272B", // cards, tables, raised things (surface.raised)
@@ -22,10 +26,41 @@ export const palette = {
   epic: "#9F8FEF", // the epic symbol and labels
 } as const;
 
-/** A hex colour (#rrggbb) at the given opacity, for tinted backgrounds. */
-export function tint(hex: string, alpha: number): string {
-  const a = Math.round(Math.min(1, Math.max(0, alpha)) * 255)
-    .toString(16)
-    .padStart(2, "0");
-  return /^#[0-9a-fA-F]{6}$/.test(hex) ? hex + a : hex;
+
+// ---------- contrast (WCAG 2.x) ----------
+
+function channels(hex: string): [number, number, number] {
+  return [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)) as [number, number, number];
+}
+
+function luminance(hex: string): number {
+  const [r, g, b] = channels(hex).map((v) => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/** WCAG contrast ratio between two #rrggbb colours (1 to 21). */
+export function contrast(a: string, b: string): number {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+/** fg blended over bg at alpha, as an opaque #rrggbb. */
+export function blend(fg: string, bg: string, alpha: number): string {
+  const f = channels(fg);
+  const b = channels(bg);
+  return "#" + f.map((v, i) => Math.round(v * alpha + b[i] * (1 - alpha)).toString(16).padStart(2, "0")).join("");
+}
+
+/** The colour, lightened toward white only as far as needed to reach
+ *  `min` contrast on bg (WCAG AA for text is 4.5). Dark user-chosen
+ *  colours such as Backlog grey stay recognisable but become readable. */
+export function readable(color: string, bg: string, min = 4.5): string {
+  for (let step = 0; step <= 20; step++) {
+    const c = blend("#ffffff", color, step / 20);
+    if (contrast(c, bg) >= min) return c;
+  }
+  return "#ffffff";
 }
