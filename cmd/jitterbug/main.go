@@ -48,10 +48,62 @@ func main() {
 		return
 	}
 
+	// `jitterbug import-jira <export.db> <username> [--dry-run]` loads a Jira
+	// export into that person's data. --dry-run does everything, reports,
+	// and rolls back.
+	if len(os.Args) >= 4 && os.Args[1] == "import-jira" {
+		dry := len(os.Args) == 5 && os.Args[4] == "--dry-run"
+		if err := importJira(store, os.Args[2], os.Args[3], dry); err != nil {
+			log.Fatalf("import-jira: %v", err)
+		}
+		return
+	}
+
 	parser := &capture.Parser{Config: captureConfig, Provider: capture.OpenAI{Client: &http.Client{}}}
 	srv := api.New(store, parser, web.Dist())
 	log.Printf("jitterbug: data %s, listening on %s", dataDir, addr)
 	log.Fatal(http.ListenAndServe(addr, srv))
+}
+
+func importJira(store *auth.Store, path, username string, dry bool) error {
+	ctx := context.Background()
+	users, err := store.ListUsers(ctx)
+	if err != nil {
+		return err
+	}
+	for _, u := range users {
+		if u.Username != username {
+			continue
+		}
+		d, err := store.DBFor(ctx, u.ID)
+		if err != nil {
+			return err
+		}
+		rep, err := d.ImportJira(ctx, path, dry)
+		if err != nil {
+			return err
+		}
+		verb := "Imported"
+		if dry {
+			verb = "Dry run (nothing written) would import"
+		}
+		fmt.Printf("%s into %s:\n  %d tasks (%d epics, %d tasks in epics)\n  %d status transitions\n  %d sessions, %.1f h\n  %d comments (appended to descriptions), %d links (Jira links field)\n",
+			verb, username, rep.Tasks, rep.Epics, rep.InEpics, rep.Transitions, rep.Sessions, rep.SessionH, rep.Comments, rep.Links)
+		if len(rep.Created) > 0 {
+			fmt.Println("Created:")
+			for _, c := range rep.Created {
+				fmt.Println("  - " + c)
+			}
+		}
+		if len(rep.Warnings) > 0 {
+			fmt.Println("Notes:")
+			for _, w := range rep.Warnings {
+				fmt.Println("  - " + w)
+			}
+		}
+		return nil
+	}
+	return fmt.Errorf("no user %q (create the account first)", username)
 }
 
 func backup(store *auth.Store, dir string) error {

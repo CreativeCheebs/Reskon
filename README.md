@@ -53,6 +53,17 @@ Everything lives in the `/data` volume (`auth.db`, `users/`). An older `/data/ji
 cd web && npm run dev       # Vite on :5173, proxies /api to :8080
 ```
 
+## Import from Jira
+
+Create the account first, then (server may keep running):
+
+```sh
+JITTERBUG_DATA=data ./jitterbug import-jira jira_old_data.db <username> --dry-run   # report only, writes nothing
+JITTERBUG_DATA=data ./jitterbug import-jira jira_old_data.db <username>
+```
+
+Keys, epics, areas (from labels), status history, worklogs and comments come across; see `docs/deviations.md` for the exact mapping. It refuses to import the same export twice.
+
 ## Back up
 
 The databases run in WAL mode, so copying files while the server runs can miss recent writes. Use the built-in backup, which is safe while the server is running and writes `auth.db` plus one `<username>.db` per person into a new directory:
