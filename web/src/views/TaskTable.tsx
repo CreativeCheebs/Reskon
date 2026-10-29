@@ -3,6 +3,7 @@ import type { ColumnsType } from "antd/es/table";
 import { useApp } from "../store";
 import { formatAge, formatHours } from "../format";
 import { palette } from "../theme/palette";
+import { Lozenge } from "../theme/Lozenge";
 import type { CardConfig, GroupBy, Task } from "../types";
 import { EPIC_COLOR, TypeIcon } from "../task/TypeIcon";
 import { useEpics } from "../task/useEpics";
@@ -74,7 +75,7 @@ export function TaskTable({
       width: 120,
       render: (_, t) => {
         const s = statusById.get(t.status_id);
-        return s && <Tag color={s.color ?? undefined}>{s.name}</Tag>;
+        return s && <Lozenge color={s.color} strong>{s.name}</Lozenge>;
       },
       sorter: (a, b) => (statusById.get(a.status_id)?.position ?? 0) - (statusById.get(b.status_id)?.position ?? 0),
     });
@@ -84,7 +85,7 @@ export function TaskTable({
       width: 90,
       render: (_, t) => {
         const p = byId(boot.priorities, t.priority_id);
-        return p && <Tag color={p.color ?? undefined}>{p.name}</Tag>;
+        return p && <Lozenge color={p.color}>{p.name}</Lozenge>;
       },
       sorter: (a, b) => (byId(boot.priorities, a.priority_id)?.weight ?? 1) - (byId(boot.priorities, b.priority_id)?.weight ?? 1),
     });

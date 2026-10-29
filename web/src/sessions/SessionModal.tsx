@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Modal, message } from "antd";
+import { Modal } from "antd";
+import { message } from "../theme/feedback";
 import { api } from "../api";
 import { useApp } from "../store";
 import { OFFLINE_TIP } from "../offline";

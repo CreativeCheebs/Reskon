@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { ColorPicker, Input, InputNumber, Popconfirm, Select, Switch, Table, Tag, message } from "antd";
+import { ColorPicker, Input, InputNumber, Popconfirm, Select, Switch, Table, Tag } from "antd";
+import { message } from "../theme/feedback";
 import type { ColumnsType } from "antd/es/table";
 import { api } from "../api";
 import { useApp } from "../store";

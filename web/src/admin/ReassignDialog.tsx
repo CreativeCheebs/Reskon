@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Modal, Radio, Select, Space, message } from "antd";
+import { Modal, Radio, Select, Space } from "antd";
+import { message } from "../theme/feedback";
 import { api, ApiError } from "../api";
 import { useApp } from "../store";
 

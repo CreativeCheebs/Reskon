@@ -1,4 +1,5 @@
-import { Modal, Table, message } from "antd";
+import { Modal, Table } from "antd";
+import { message } from "../theme/feedback";
 import { api } from "../api";
 import { firstBoardTodoStatus, useApp } from "../store";
 import { WriteButton } from "../offline";

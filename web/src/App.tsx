@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Alert, Button, Layout, Menu, message } from "antd";
+import { Alert, Button, Layout, Menu } from "antd";
+import { message } from "./theme/feedback";
 import { api } from "./api";
 import { WriteButton } from "./offline";
 import { useApp } from "./store";

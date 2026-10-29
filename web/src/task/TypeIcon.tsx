@@ -6,7 +6,7 @@ import type { TaskType } from "../types";
 // The one symbol for each task type, used on cards, tables, pickers and
 // filters so an epic always looks like an epic.
 
-export const EPIC_COLOR = "#a78bfa";
+export const EPIC_COLOR = palette.epic;
 
 export function TypeIcon({ type, size = 13 }: { type: TaskType; size?: number }) {
   return (

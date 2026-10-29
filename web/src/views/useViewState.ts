@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { message } from "antd";
+import { message } from "../theme/feedback";
 import { api } from "../api";
 import { useApp } from "../store";
 import type { BoardState, View } from "../types";

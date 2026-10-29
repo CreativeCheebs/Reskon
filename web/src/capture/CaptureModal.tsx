@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Alert, Button, Form, Input, Modal, Radio, Select, Space, Spin, Typography, message, type InputRef } from "antd";
+import { Alert, Button, Form, Input, Modal, Radio, Select, Space, Spin, Typography, type InputRef } from "antd";
+import { message } from "../theme/feedback";
 import { api } from "../api";
 import { useApp } from "../store";
 import { local } from "../offline";

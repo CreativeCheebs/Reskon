@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
-import { DatePicker, Popconfirm, Space, Table, Tag, Typography, message } from "antd";
+import { DatePicker, Popconfirm, Space, Table, Tag, Typography } from "antd";
+import { message } from "../theme/feedback";
 import dayjs from "dayjs";
 import { api } from "../api";
 import { useApp } from "../store";
 import { WriteButton } from "../offline";
 import { formatHours, today } from "../format";
 import { palette } from "../theme/palette";
+import { Lozenge } from "../theme/Lozenge";
 import type { Session } from "../types";
 import { SessionModal } from "./SessionModal";
 
@@ -82,9 +84,9 @@ export function SessionsScreen() {
                 <span style={{ color: palette.muted }}>
                   Spend:{" "}
                   {t.spend.map((x) => (
-                    <Tag key={x.energy_type_id} color={energy(x.energy_type_id)?.color ?? undefined}>
+                    <Lozenge key={x.energy_type_id} color={energy(x.energy_type_id)?.color}>
                       {x.name} {formatHours(x.hours)}
-                    </Tag>
+                    </Lozenge>
                   ))}
                 </span>
               )}
@@ -92,9 +94,9 @@ export function SessionsScreen() {
                 <span style={{ color: palette.muted }}>
                   Restore:{" "}
                   {t.restore.map((x) => (
-                    <Tag key={x.energy_type_id} color={energy(x.energy_type_id)?.color ?? undefined}>
+                    <Lozenge key={x.energy_type_id} color={energy(x.energy_type_id)?.color}>
                       {x.name} {formatHours(x.hours)}
-                    </Tag>
+                    </Lozenge>
                   ))}
                 </span>
               )}

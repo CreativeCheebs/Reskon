@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Button, Input, Select, Space, Tooltip, message } from "antd";
+import { Button, Input, Select, Space, Tooltip } from "antd";
+import { message } from "../theme/feedback";
 import { api } from "../api";
 import { useApp } from "../store";
 import { local, WriteButton } from "../offline";

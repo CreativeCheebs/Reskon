@@ -68,7 +68,10 @@ export function TaskExtras({
         dataSource={sessions}
         locale={{ emptyText: "Nothing logged yet" }}
         renderItem={(s) => (
-          <List.Item style={{ cursor: "pointer", padding: "4px 0" }} onClick={() => setLogging({ editing: s })}>
+          <List.Item
+            style={{ cursor: "pointer", padding: "4px 0", gap: 16, justifyContent: "flex-start" }}
+            onClick={() => setLogging({ editing: s })}
+          >
             <span>{s.logged_for}</span>
             <span>{boot.energy_types.find((e) => e.id === s.energy_type_id)?.name}</span>
             <span>

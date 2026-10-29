@@ -67,14 +67,15 @@ export function Column(props: Props) {
         display: "flex",
         flexDirection: "column",
         background: palette.panelDim,
-        border: `1px solid ${palette.border}`,
         borderRadius: 6,
         maxHeight: inLane ? undefined : "100%",
       }}
     >
       <div style={{ padding: "6px 6px 6px 10px", display: "flex", alignItems: "center", gap: 8 }}>
         {dot}
-        <span style={{ fontWeight: 600 }}>{status.name}</span>
+        <span style={{ fontWeight: 600, fontSize: 12, textTransform: "uppercase", letterSpacing: 0.3, color: palette.muted }}>
+          {status.name}
+        </span>
         <span style={{ color: palette.muted }}>{taskIds.length}</span>
         <span style={{ flex: 1 }} />
         <Tooltip title="Collapse column" mouseEnterDelay={0.5}>

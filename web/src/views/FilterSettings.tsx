@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Drawer, Form, InputNumber, Select, Space, Switch, message } from "antd";
+import { Drawer, Form, InputNumber, Select, Space, Switch } from "antd";
+import { message } from "../theme/feedback";
 import { api } from "../api";
 import { useApp } from "../store";
 import { WriteButton } from "../offline";

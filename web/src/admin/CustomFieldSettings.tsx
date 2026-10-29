@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Form, Input, Modal, Popconfirm, Select, Table, Tag, Typography, message } from "antd";
+import { Form, Input, Modal, Popconfirm, Select, Table, Tag, Typography } from "antd";
+import { message } from "../theme/feedback";
 import { api } from "../api";
 import { useApp } from "../store";
 import { WriteButton } from "../offline";

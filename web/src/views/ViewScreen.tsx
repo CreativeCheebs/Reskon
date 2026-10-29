@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { Alert, Badge, Button, Dropdown, Input, Modal, Segmented, Select, Spin, message } from "antd";
+import { Alert, Badge, Button, Dropdown, Input, Segmented, Select, Spin } from "antd";
+import { confirm, message } from "../theme/feedback";
 import { SearchOutlined } from "@ant-design/icons";
 import { api } from "../api";
 import { useApp } from "../store";
@@ -14,6 +15,7 @@ import { GROUP_OPTIONS } from "./grouping";
 import { useSaveView } from "./useViewState";
 import { cardConfigOf } from "./cardConfig";
 import type { GroupBy, Task, View } from "../types";
+import { palette } from "../theme/palette";
 
 // Loads a view's tasks (the server resolves the filter and the search) and
 // renders the board or the table, plus the overlays that hang off it.
@@ -60,7 +62,7 @@ export function ViewScreen({ view }: { view: View }) {
 
   const rename = () => {
     let name = view.name;
-    Modal.confirm({
+    confirm({
       title: "Rename view",
       icon: null,
       content: <Input defaultValue={view.name} autoFocus onChange={(e) => (name = e.target.value)} />,
@@ -68,7 +70,7 @@ export function ViewScreen({ view }: { view: View }) {
     });
   };
   const remove = () =>
-    Modal.confirm({
+    confirm({
       title: `Delete the view “${view.name}”?`,
       content: "Only the view is deleted; its tasks stay.",
       okButtonProps: { danger: true },
@@ -117,7 +119,7 @@ export function ViewScreen({ view }: { view: View }) {
           onChange={(v) => save({ board_state: { group_by: v } })}
           options={groupOptions.map((o) => ({ value: o.value, label: o.value === "none" ? o.label : `Group: ${o.label}` }))}
         />
-        <Badge count={filters} size="small" color="#60a5fa">
+        <Badge count={filters} size="small" color={palette.accent}>
           <Button size="small" onClick={() => setDrawer("filter")}>
             Filter
           </Button>

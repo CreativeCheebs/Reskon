@@ -1,4 +1,5 @@
-import { Form, Input, Typography, message } from "antd";
+import { Form, Input, Typography } from "antd";
+import { message } from "../theme/feedback";
 import { api } from "../api";
 import { WriteButton } from "../offline";
 import { useAuth } from "./AuthGate";

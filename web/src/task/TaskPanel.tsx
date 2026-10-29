@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { DatePicker, Descriptions, Divider, Drawer, Input, InputNumber, Popconfirm, Select, Space, Spin, Typography, message } from "antd";
+import { DatePicker, Descriptions, Divider, Drawer, Input, InputNumber, Popconfirm, Select, Space, Spin, Typography } from "antd";
+import { message } from "../theme/feedback";
 import dayjs from "dayjs";
 import { api, patchWithRetry } from "../api";
 import { useApp } from "../store";

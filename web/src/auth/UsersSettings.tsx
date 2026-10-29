@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
-import { Checkbox, Form, Input, Modal, Popconfirm, Switch, Table, Tag, Typography, message } from "antd";
+import { Checkbox, Form, Input, Modal, Popconfirm, Switch, Table, Tag, Typography } from "antd";
+import { message } from "../theme/feedback";
 import { api } from "../api";
 import { WriteButton } from "../offline";
 import { formatDateTime } from "../format";
 import { useAuth, type User } from "./AuthGate";
+import { palette } from "../theme/palette";
+import { Lozenge } from "../theme/Lozenge";
 
 // Admin only: add people, reset passwords, grant admin, disable accounts.
 // Disabling signs the person out and keeps their data file untouched.
@@ -56,7 +59,7 @@ export function UsersSettings() {
           {
             title: "Status",
             width: 110,
-            render: (_, u) => (u.disabled_at ? <Tag color="red">disabled</Tag> : <Tag color="green">active</Tag>),
+            render: (_, u) => (u.disabled_at ? <Lozenge color={palette.danger} strong>disabled</Lozenge> : <Lozenge color={palette.success} strong>active</Lozenge>),
           },
           { title: "Created", width: 170, render: (_, u) => formatDateTime(u.created_at) },
           {

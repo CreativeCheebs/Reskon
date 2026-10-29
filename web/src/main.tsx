@@ -7,6 +7,7 @@ import { AppProvider } from "./store";
 import { startHealthCheck } from "./api";
 import { App } from "./App";
 import { AuthGate } from "./auth/AuthGate";
+import { FeedbackBridge } from "./theme/feedback";
 
 document.body.style.margin = "0";
 document.body.style.background = palette.bg;
@@ -38,6 +39,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ConfigProvider theme={antTheme}>
       <AntApp>
+        <FeedbackBridge />
         <AuthGate>
           <AppProvider
             fallback={

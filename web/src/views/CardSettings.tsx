@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Checkbox, Drawer, Form, Radio, Select, message } from "antd";
+import { Checkbox, Drawer, Form, Radio, Select } from "antd";
+import { message } from "../theme/feedback";
 import { api } from "../api";
 import { useApp } from "../store";
 import { WriteButton } from "../offline";

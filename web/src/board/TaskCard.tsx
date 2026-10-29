@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { Progress, Tag, Tooltip } from "antd";
 import { useApp } from "../store";
 import { formatAge, formatHours } from "../format";
 import { palette } from "../theme/palette";
+import { Lozenge } from "../theme/Lozenge";
 import type { CardConfig, Task } from "../types";
 import { EPIC_COLOR, TypeIcon } from "../task/TypeIcon";
 import { useEpics } from "../task/useEpics";
@@ -10,6 +12,7 @@ import { useEpics } from "../task/useEpics";
 
 export function TaskCard({ task, config, onOpen }: { task: Task; config: CardConfig; onOpen?: () => void }) {
   const { boot, statusById } = useApp();
+  const [hover, setHover] = useState(false);
   const { byId: epicsById } = useEpics();
   const epic = task.epic_id ? epicsById.get(task.epic_id) : undefined;
   const show = config.show;
@@ -22,9 +25,9 @@ export function TaskCard({ task, config, onOpen }: { task: Task; config: CardCon
   const meta: React.ReactNode[] = [];
   if (show.epic && epic)
     meta.push(
-      <Tag key="epic" bordered={false} style={{ color: EPIC_COLOR, background: "rgba(167,139,250,0.12)", marginInlineEnd: 0 }}>
+      <Lozenge key="epic" color={EPIC_COLOR}>
         {epic.title}
-      </Tag>,
+      </Lozenge>,
     );
   if (task.type === "epic" && task.epic_tasks)
     meta.push(
@@ -32,10 +35,10 @@ export function TaskCard({ task, config, onOpen }: { task: Task; config: CardCon
         {task.epic_done}/{task.epic_tasks} done
       </span>,
     );
-  if (show.area && area) meta.push(<Tag key="area" color={area.color ?? undefined}>{area.name}</Tag>);
-  if (show.status && status) meta.push(<Tag key="status" color={status.color ?? undefined}>{status.name}</Tag>);
-  if (show.priority && priority) meta.push(<Tag key="prio" color={priority.color ?? undefined}>{priority.name}</Tag>);
-  if (show.energy_type && energy) meta.push(<Tag key="energy" color={energy.color ?? undefined}>{energy.name}</Tag>);
+  if (show.area && area) meta.push(<Lozenge key="area" color={area.color}>{area.name}</Lozenge>);
+  if (show.status && status) meta.push(<Lozenge key="status" color={status.color} strong>{status.name}</Lozenge>);
+  if (show.priority && priority) meta.push(<Lozenge key="prio" color={priority.color}>{priority.name}</Lozenge>);
+  if (show.energy_type && energy) meta.push(<Lozenge key="energy" color={energy.color}>{energy.name}</Lozenge>);
   if (show.difficulty && task.difficulty) meta.push(<span key="diff" title="Difficulty">◆{task.difficulty}</span>);
   if (show.estimate && task.estimate_h !== null) meta.push(<span key="est" title="Estimate">{formatHours(task.estimate_h)}</span>);
   if (show.created_age) meta.push(<span key="cage" title="Created age">c {formatAge(task.created_age_h)}</span>);
@@ -66,9 +69,13 @@ export function TaskCard({ task, config, onOpen }: { task: Task; config: CardCon
   return (
     <div
       onClick={onOpen}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
       style={{
-        background: palette.panel,
-        border: `1px solid ${task.stalled ? palette.danger : palette.border}`,
+        background: hover ? palette.hover : palette.panel,
+        border: `1px solid ${task.stalled ? palette.danger : "transparent"}`,
+        // Jira's raised-card shadow: lifts the card off the sunken column.
+        boxShadow: "0 1px 1px #03040480, 0 0 1px #03040480",
         borderLeft: task.type === "epic" ? `3px solid ${EPIC_COLOR}` : undefined,
         borderRadius: 6,
         padding: compact ? "6px 8px" : "10px 12px",

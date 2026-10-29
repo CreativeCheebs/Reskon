@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Empty, Radio, Select, Space, Spin, Typography, message } from "antd";
+import { Empty, Radio, Select, Space, Spin, Typography } from "antd";
+import { message } from "../theme/feedback";
 import { api } from "../api";
 import { useApp } from "../store";
 import { formatAge } from "../format";
