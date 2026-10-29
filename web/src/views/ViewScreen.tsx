@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Badge, Button, Dropdown, Input, Segmented, Select, Spin } from "antd";
 import { confirm, message } from "../theme/feedback";
 import { SearchOutlined } from "@ant-design/icons";
@@ -29,6 +29,7 @@ export function ViewScreen({ view }: { view: View }) {
   const [error, setError] = useState<string | null>(null);
   const [hiddenStatus, setHiddenStatus] = useState<number | null>(null);
   const [openTask, setOpenTask] = useState<number | null>(null);
+  const panelChanged = useRef(false); // refetch on close only if the open task changed
   const [drawer, setDrawer] = useState<"filter" | "card" | null>(null);
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState(""); // debounced search
@@ -50,9 +51,12 @@ export function ViewScreen({ view }: { view: View }) {
       .catch((e) => setError((e as Error).message));
   }, [view.id, query]);
 
+  // Saving layout or grouping hands back a new view object with an equal
+  // filter; only a real filter change needs the tasks again.
+  const filterKey = JSON.stringify(view.filter);
   useEffect(() => {
     refetch();
-  }, [reloadKey, view.filter, refetch]);
+  }, [reloadKey, filterKey, refetch]);
 
   const update = (fn: (prev: Task[]) => Task[]) => setTasks((prev) => fn(prev ?? []));
   const replace = (t: Task) => update((prev) => prev.map((x) => (x.id === t.id ? t : x)));
@@ -165,11 +169,22 @@ export function ViewScreen({ view }: { view: View }) {
           initial={tasks?.find((t) => t.id === openTask)}
           onClose={() => {
             setOpenTask(null);
-            refetch();
-            refreshEpics();
+            // An edit may have taken the task out of this view's filter, or
+            // changed an epic's progress.
+            if (panelChanged.current) {
+              panelChanged.current = false;
+              refetch();
+              refreshEpics();
+            }
           }}
-          onChanged={replace}
-          onDeleted={(id) => update((prev) => prev.filter((t) => t.id !== id))}
+          onChanged={(t) => {
+            panelChanged.current = true;
+            replace(t);
+          }}
+          onDeleted={(id) => {
+            panelChanged.current = true;
+            update((prev) => prev.filter((t) => t.id !== id));
+          }}
         />
       )}
       {drawer === "filter" && <FilterSettings view={view} onClose={() => setDrawer(null)} />}

@@ -82,25 +82,28 @@ func neighbourPos(ctx context.Context, tx *sql.Tx, id *int64, statusID int64) (*
 
 // dropPosition works out board_pos for a card landing between beforeID and
 // afterID in statusID, renormalising the column if the gap is too small.
-func dropPosition(ctx context.Context, tx *sql.Tx, taskID, statusID int64, beforeID, afterID *int64) (float64, error) {
+// renumbered reports whether the rest of the column moved too.
+func dropPosition(ctx context.Context, tx *sql.Tx, taskID, statusID int64, beforeID, afterID *int64) (pos float64, renumbered bool, err error) {
 	if beforeID == nil && afterID == nil {
-		return endOfColumn(ctx, tx, statusID)
+		pos, err = endOfColumn(ctx, tx, statusID)
+		return pos, false, err
 	}
 	for attempt := 0; attempt < 2; attempt++ {
 		before, err := neighbourPos(ctx, tx, beforeID, statusID)
 		if err != nil {
-			return 0, err
+			return 0, false, err
 		}
 		after, err := neighbourPos(ctx, tx, afterID, statusID)
 		if err != nil {
-			return 0, err
+			return 0, false, err
 		}
 		if pos, ok := midpoint(before, after); ok {
-			return pos, nil
+			return pos, renumbered, nil
 		}
 		if err := renormalise(ctx, tx, statusID, taskID); err != nil {
-			return 0, err
+			return 0, false, err
 		}
+		renumbered = true
 	}
-	return 0, invalid("before_id and after_id are not adjacent")
+	return 0, false, invalid("before_id and after_id are not adjacent")
 }

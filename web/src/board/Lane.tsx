@@ -143,10 +143,14 @@ export function Lane(props: Props) {
     const after_id = i < ids.length - 1 ? ids[i + 1] : null;
     if (task && task.status_id === to && before_id === prevNeighbour(task) && after_id === nextNeighbour(task)) return;
     try {
-      const updated = await api.post<Task>(`/tasks/${taskId}/move`, { status_id: to, before_id, after_id });
+      const { column_renumbered, ...updated } = await api.post<Task & { column_renumbered?: boolean }>(`/tasks/${taskId}/move`, {
+        status_id: to,
+        before_id,
+        after_id,
+      });
       setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
-      // Renormalisation may have renumbered neighbours; refetch quietly.
-      refetch();
+      // The server made room by renumbering the column: reload the others.
+      if (column_renumbered) refetch();
     } catch (err) {
       message.error(String((err as Error).message));
       refetch();

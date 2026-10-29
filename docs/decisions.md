@@ -103,3 +103,7 @@ Append-only. One entry per non-obvious choice: date, what, why, what was rejecte
 ## 2026-10-29 — Compression and caching
 **What:** The embedded frontend is read and gzipped once at startup (`internal/api/static.go`). Hashed files under `assets/` go out with `Cache-Control: immutable` for a year; `index.html` with `no-cache` and an ETag, so a reload is a 304 plus nothing else. API JSON is gzipped at `BestSpeed` for any client that sends `Accept-Encoding: gzip`.
 **Why:** The 1.5 MB bundle went uncompressed and uncached on every load (embedded files have no modtime, so `http.FileServer` sent no validators). Gzipped it is 0.48 MB, and after the first visit it is not fetched at all. On a 40 Mbit/s LAN, first load fell from 550 ms to 310 ms.
+
+## 2026-10-29 — Fewer reloads of the task list
+**What:** A view reloads its tasks only when its filter, search or the data actually change: not when layout, grouping or collapsed columns are saved (the saved view comes back as a new object with an equal filter), not when a task panel closes with nothing edited, and not after a drop unless `POST /api/tasks/:id/move` answers `column_renumbered: true` (the server had to renumber the column's `board_pos` to make room, so the other cards moved too). Logging time from the panel updates the card straight away.
+**Why:** Each reload re-renders the whole board; most of them changed nothing on screen.

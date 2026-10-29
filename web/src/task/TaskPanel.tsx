@@ -32,13 +32,16 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
   const [title, setTitle] = useState(initial?.title ?? "");
   const [desc, setDesc] = useState(initial?.description ?? "");
 
-  const load = () =>
+  // notify: the task changed underneath (a session was logged), so the
+  // board's copy needs the new derived values too.
+  const load = (notify = false) =>
     api
       .get<Task>(`/tasks/${taskId}`)
       .then((t) => {
         setTask(t);
         setTitle(t.title);
         setDesc(t.description ?? "");
+        if (notify) onChanged(t);
       })
       // Offline: keep whatever is already shown.
       .catch((e) => online && message.error((e as Error).message));
@@ -61,7 +64,7 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
       apply(await patchWithRetry<Task>(`/tasks/${task.id}`, task.updated_at, changes));
     } catch (e) {
       message.error((e as Error).message);
-      load();
+      load(true);
     }
   };
 
@@ -231,7 +234,7 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
             onBlur={() => desc !== (task.description ?? "") && patch({ description: desc })}
           />
 
-          <TaskExtras task={task} patch={patch} onTaskChanged={load} />
+          <TaskExtras task={task} patch={patch} onTaskChanged={() => load(true)} />
 
           <Divider plain orientation="left" style={{ margin: "4px 0" }}>
             Dates

@@ -47,25 +47,33 @@ type MoveRequest struct {
 // within a column does not bump updated_at, so it never makes an open task
 // panel's next edit conflict.
 func (d *DB) Move(ctx context.Context, taskID int64, req MoveRequest) (*Task, error) {
+	t, _, err := d.MoveReporting(ctx, taskID, req)
+	return t, err
+}
+
+// MoveReporting is Move, also saying whether the target column was
+// renumbered to make room. Only then do the other cards' board_pos change,
+// so only then does a board need to reload them.
+func (d *DB) MoveReporting(ctx context.Context, taskID int64, req MoveRequest) (*Task, bool, error) {
 	tx, err := d.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	defer tx.Rollback()
 
 	cur, err := d.getTask(ctx, tx, taskID)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	if err := statusExists(ctx, tx, req.StatusID); err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	if (req.BeforeID != nil && *req.BeforeID == taskID) || (req.AfterID != nil && *req.AfterID == taskID) {
-		return nil, invalid("a task cannot be its own neighbour")
+		return nil, false, invalid("a task cannot be its own neighbour")
 	}
-	pos, err := dropPosition(ctx, tx, taskID, req.StatusID, req.BeforeID, req.AfterID)
+	pos, renumbered, err := dropPosition(ctx, tx, taskID, req.StatusID, req.BeforeID, req.AfterID)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	if req.StatusID == cur.StatusID {
@@ -80,10 +88,11 @@ func (d *DB) Move(ctx context.Context, taskID int64, req MoveRequest) (*Task, er
 		}
 	}
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	if err := tx.Commit(); err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	return d.GetTask(ctx, taskID)
+	t, err := d.GetTask(ctx, taskID)
+	return t, renumbered, err
 }

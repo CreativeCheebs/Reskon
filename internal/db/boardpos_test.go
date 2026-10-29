@@ -61,3 +61,37 @@ func TestMoveRenormalisesWhenGapTooSmall(t *testing.T) {
 		t.Errorf("x should still be first")
 	}
 }
+
+func TestMoveReportsRenumbering(t *testing.T) {
+	d := openTest(t)
+	ctx := context.Background()
+	a := mustArea(t, d, "Personal", "PER")
+	x := mustTask(t, d, a.ID, "x")
+	y := mustTask(t, d, a.ID, "y")
+	z := mustTask(t, d, a.ID, "z")
+	const todo = 2
+	renumbered := 0
+	for i := 0; i < 30; i++ {
+		_, r1, err := d.MoveReporting(ctx, z.ID, MoveRequest{StatusID: todo, BeforeID: idp(x.ID), AfterID: idp(y.ID)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, r2, err := d.MoveReporting(ctx, y.ID, MoveRequest{StatusID: todo, BeforeID: idp(x.ID), AfterID: idp(z.ID)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if r1 {
+			renumbered++
+		}
+		if r2 {
+			renumbered++
+		}
+	}
+	// Each drop halves the gap; it collapses about every 20 drops.
+	if renumbered < 1 || renumbered > 4 {
+		t.Errorf("renumbered %d times in 60 drops, want a few", renumbered)
+	}
+	if _, r, _ := d.MoveReporting(ctx, x.ID, MoveRequest{StatusID: 3}); r {
+		t.Error("a move to the end of a column reported renumbering")
+	}
+}

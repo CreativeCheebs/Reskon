@@ -29,8 +29,17 @@ func (s *Server) moveTask(w http.ResponseWriter, r *http.Request) {
 		respond(w, nil, err)
 		return
 	}
-	t, err := dbOf(r.Context()).Move(r.Context(), id, req)
-	respond(w, t, err)
+	t, renumbered, err := dbOf(r.Context()).MoveReporting(r.Context(), id, req)
+	if err != nil {
+		respond(w, nil, err)
+		return
+	}
+	// The task, plus column_renumbered when the other cards in the column
+	// were given new positions and the board must reload them.
+	respond(w, struct {
+		*db.Task
+		ColumnRenumbered bool `json:"column_renumbered,omitempty"`
+	}{t, renumbered}, nil)
 }
 
 func (s *Server) taskTransitions(w http.ResponseWriter, r *http.Request) {
