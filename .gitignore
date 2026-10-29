@@ -1,11 +1,33 @@
-/jitterbug
-/jitterbug.db*
+# ---------- confidential: never commit ----------
+# Live data: accounts (auth.db), every person's database, the server log.
+/data/
+# Backups made by `jitterbug backup`.
+/backups/
+# Any SQLite database or its WAL/shared-memory files, anywhere in the tree
+# (Jira exports, copies, test leftovers). Test databases are created in
+# temp dirs, so no real one ever needs committing.
+*.db
 *.db-wal
 *.db-shm
+*.db-journal
+*.sqlite
+*.sqlite3
+# Jira or other exports, wherever they land.
+jira_*.db
+*export*.db
+/exports/
+# Secrets and local configuration.
+.env
+.env.*
+*.pem
+*.key
+*.crt
+# Logs (may contain usernames and request details).
+*.log
+
+# ---------- build output ----------
+/jitterbug
 web/node_modules/
 web/dist/*
 !web/dist/.gitkeep
 web/*.tsbuildinfo
-/data/
-jira_old_data.db
-/backups/
