@@ -9,7 +9,7 @@ import { useEpics } from "../task/useEpics";
 import { CustomFilterEditor } from "./CustomFilterEditor";
 import { filterOf } from "./cardConfig";
 import type { TaskType, View, ViewFilter } from "../types";
-import { DIFFICULTIES } from "../types";
+import { DifficultySlider } from "../task/DifficultySlider";
 
 // Which tasks this view shows. Applied on the server.
 
@@ -102,13 +102,7 @@ export function FilterSettings({ view, onClose }: { view: View; onClose: () => v
         </Form.Item>
         <Space wrap>
           <Form.Item label="Min difficulty">
-            <Select
-              allowClear
-              style={{ width: 110 }}
-              value={filter.difficulty_min ?? undefined}
-              onChange={(v) => set("difficulty_min", v ?? null)}
-              options={DIFFICULTIES.map((d) => ({ value: d, label: d }))}
-            />
+            <DifficultySlider value={filter.difficulty_min} width={220} onChange={(v) => set("difficulty_min", v)} />
           </Form.Item>
           <Form.Item label="Done within (days)">
             <InputNumber min={0} value={filter.include_done_days ?? undefined} onChange={(v) => set("include_done_days", v ?? null)} placeholder="all" />

@@ -4,7 +4,8 @@ import { message } from "../theme/feedback";
 import { api } from "../api";
 import { useApp } from "../store";
 import { local } from "../offline";
-import { DIFFICULTIES, type CaptureParse, type Task } from "../types";
+import type { CaptureParse, Task } from "../types";
+import { DifficultySlider } from "../task/DifficultySlider";
 import { emptySession, sessionBody, SessionFields, type SessionDraft } from "../sessions/SessionForm";
 
 // Quick capture: one line in, a filled form out, nothing written until the
@@ -219,12 +220,7 @@ function TaskFields({ draft, onChange }: { draft: TaskDraft; onChange: (d: TaskD
           <Select allowClear value={draft.energy_type_id ?? undefined} onChange={(v) => set({ energy_type_id: v ?? null })} options={opt(boot.energy_types)} />
         </Form.Item>
         <Form.Item label="Difficulty" style={{ marginBottom: 8 }}>
-          <Select
-            allowClear
-            value={draft.difficulty ?? undefined}
-            onChange={(v) => set({ difficulty: v ?? null })}
-            options={DIFFICULTIES.map((d) => ({ value: d, label: d }))}
-          />
+          <DifficultySlider value={draft.difficulty} width={230} onChange={(v) => set({ difficulty: v })} />
         </Form.Item>
         <Form.Item label="Priority" style={{ marginBottom: 8 }}>
           <Select allowClear value={draft.priority_id ?? undefined} onChange={(v) => set({ priority_id: v ?? null })} options={opt(boot.priorities)} />

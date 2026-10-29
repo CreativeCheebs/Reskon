@@ -100,7 +100,7 @@ func TestImportJira(t *testing.T) {
 	if task.CompletedAt == nil || *task.CompletedAt != "2026-01-05T03:30:00.000000000Z" {
 		t.Errorf("completed = %v", task.CompletedAt)
 	}
-	if task.Difficulty == nil || *task.Difficulty != 8 || task.EstimateH == nil || *task.EstimateH != 2 || task.LoggedH != 2.5 {
+	if task.Difficulty == nil || *task.Difficulty != 4 || task.EstimateH == nil || *task.EstimateH != 2 || task.LoggedH != 2.5 {
 		t.Errorf("fields: difficulty %v estimate %v logged %v", task.Difficulty, task.EstimateH, task.LoggedH)
 	}
 	if !strings.Contains(*task.Description, "worked first try") || !strings.Contains(string(task.Custom), `"jira_points":0.5`) ||

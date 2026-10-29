@@ -1,4 +1,4 @@
-import type { Bootstrap, GroupBy, Task } from "../types";
+import { DIFFICULTY_LABELS, type Bootstrap, type GroupBy, type Task } from "../types";
 
 // Splits a view's tasks into groups (board swimlanes / table sections).
 // Grouping only arranges server-provided rows; nothing is derived here.
@@ -67,7 +67,8 @@ export function groupTasks(tasks: Task[], by: GroupBy, boot: Bootstrap, epics: M
         break;
       }
       case "difficulty":
-        if (t.difficulty) add(`d${String(t.difficulty).padStart(2, "0")}`, `Difficulty ${t.difficulty}`, t, { difficulty: t.difficulty });
+        if (t.difficulty)
+          add(`d${t.difficulty}`, `Difficulty ${t.difficulty} · ${DIFFICULTY_LABELS[t.difficulty] ?? ""}`, t, { difficulty: t.difficulty });
         else add(none("No difficulty"), "No difficulty", t, {});
         break;
       case "type":

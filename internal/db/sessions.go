@@ -96,7 +96,7 @@ func validateSessionFields(f Fields) error {
 	if raw, ok := f["difficulty"]; ok && !isNull(raw) {
 		var n int64
 		if json.Unmarshal(raw, &n) != nil || !validDifficulty(n) {
-			return invalid("difficulty must be one of 1, 2, 4, 8, 16")
+			return invalid("difficulty must be a whole number from 1 to 5")
 		}
 	}
 	if s, ok, err := f.stringField("logged_for"); err != nil {

@@ -3,7 +3,8 @@ import { DatePicker, Form, Input, InputNumber, Radio, Select, TimePicker } from 
 import dayjs, { type Dayjs } from "dayjs";
 import { useApp } from "../store";
 import { today } from "../format";
-import { DIFFICULTIES, type Task } from "../types";
+import type { Task } from "../types";
+import { DifficultySlider } from "../task/DifficultySlider";
 import { RankedSubtypes } from "./RankedSubtypes";
 import { CustomFieldsEditor } from "../fields/CustomFieldsEditor";
 
@@ -144,12 +145,7 @@ export function SessionFields({
           <InputNumber style={{ width: "100%" }} min={0.05} max={24} step={0.25} value={draft.hours} onChange={(v) => set({ hours: v })} />
         </Form.Item>
         <Form.Item label="Difficulty" style={{ marginBottom: 8 }}>
-          <Select
-            allowClear
-            value={draft.difficulty ?? undefined}
-            onChange={(v) => set({ difficulty: v ?? null })}
-            options={DIFFICULTIES.map((d) => ({ value: d, label: d }))}
-          />
+          <DifficultySlider value={draft.difficulty} disabled={disabled} width={230} onChange={(v) => set({ difficulty: v })} />
         </Form.Item>
         <Form.Item label="Logged for" required style={{ marginBottom: 8 }}>
           <DatePicker

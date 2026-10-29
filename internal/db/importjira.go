@@ -164,4 +164,5 @@ func jiraPoints(s string) (float64, bool) {
 	return v, err == nil
 }
 
-var jiraDifficulty = map[string]int64{"easy": 1, "medium": 2, "hard": 4, "very hard": 8}
+// Jira's four levels on the 1-5 scale; 5 is left for "extreme".
+var jiraDifficulty = map[string]int64{"easy": 1, "medium": 2, "hard": 3, "very hard": 4}

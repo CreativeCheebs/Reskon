@@ -225,4 +225,5 @@ export interface CaptureParse {
   fallback_reason?: string;
 }
 
-export const DIFFICULTIES = [1, 2, 4, 8, 16];
+/** Difficulty is 1-5. Labels match the imported Jira levels. */
+export const DIFFICULTY_LABELS: Record<number, string> = { 1: "Easy", 2: "Medium", 3: "Hard", 4: "Very hard", 5: "Extreme" };

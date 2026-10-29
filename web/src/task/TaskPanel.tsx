@@ -7,7 +7,8 @@ import { useApp } from "../store";
 import { WriteButton } from "../offline";
 import { formatAge, formatDateTime, formatHours } from "../format";
 import { palette } from "../theme/palette";
-import { DIFFICULTIES, type Task } from "../types";
+import type { Task } from "../types";
+import { DifficultySlider } from "./DifficultySlider";
 import { TaskExtras } from "./TaskExtras";
 import { TypeIcon, TypeLabel } from "./TypeIcon";
 import { useEpics } from "./useEpics";
@@ -192,17 +193,7 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
                 options={opt(boot.energy_types)}
               />
             </Descriptions.Item>
-            <Descriptions.Item label="Difficulty">
-              <Select
-                size="small"
-                style={{ width: 150 }}
-                allowClear
-                disabled={ro}
-                value={task.difficulty ?? undefined}
-                onChange={(v) => patch({ difficulty: v ?? null })}
-                options={DIFFICULTIES.map((d) => ({ value: d, label: d }))}
-              />
-            </Descriptions.Item>
+
             <Descriptions.Item label="Estimate (h)">
               <InputNumber
                 size="small"
@@ -226,6 +217,9 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
                 value={task.due_at ? dayjs(task.due_at) : null}
                 onChange={(d) => patch({ due_at: d ? d.format("YYYY-MM-DD") : null })}
               />
+            </Descriptions.Item>
+            <Descriptions.Item label="Difficulty" span={2}>
+              <DifficultySlider value={task.difficulty} disabled={ro} width={340} onChange={(v) => patch({ difficulty: v })} />
             </Descriptions.Item>
           </Descriptions>
           <Input.TextArea

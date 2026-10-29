@@ -29,7 +29,7 @@ func Normalise(r Result, text string, l Lookups) Result {
 	}
 	if r.Difficulty != nil {
 		switch *r.Difficulty {
-		case 1, 2, 4, 8, 16:
+		case 1, 2, 3, 4, 5:
 			out.Difficulty = r.Difficulty
 		}
 	}

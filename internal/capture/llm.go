@@ -110,7 +110,7 @@ func truncate(s string, n int) string {
 func systemPrompt(l Lookups) string {
 	var b strings.Builder
 	b.WriteString(`You turn one line a person typed about their day into JSON. Reply with one JSON object and nothing else:
-{"intent": "session"|"task", "kind": "task"|"event", "title": string, "energy_type": string, "hours": number, "difficulty": 1|2|4|8|16, "subtypes": [string], "area": string, "matched_task_key": string, "confidence": number}
+{"intent": "session"|"task", "kind": "task"|"event", "title": string, "energy_type": string, "hours": number, "difficulty": 1-5 (1 easy, 5 hardest), "subtypes": [string], "area": string, "matched_task_key": string, "confidence": number}
 
 Rules:
 - Past tense (something that happened) -> intent "session". Future, intention or imperative ("need to", "should", "buy X") -> intent "task".

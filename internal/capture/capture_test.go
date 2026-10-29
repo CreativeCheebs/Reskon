@@ -139,7 +139,7 @@ func TestDownOrUnsetFallsBack(t *testing.T) {
 
 func TestNormaliseRejectsInventions(t *testing.T) {
 	str := func(v string) *string { return &v }
-	h, d := 30.0, 3
+	h, d := 30.0, 7
 	r := Normalise(Result{
 		Intent: str("maybe"), EnergyType: str("Cooking"), Area: str("Mars"),
 		Hours: &h, Difficulty: &d, MatchedTaskKey: str("PER-999"), Subtypes: []string{"coding", "flying"},

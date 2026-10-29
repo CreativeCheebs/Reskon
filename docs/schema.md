@@ -44,3 +44,7 @@ Seeds: the four status categories, five statuses (all built-in; Backlog and Canc
 | `task.type` (`'task'` / `'epic'`, default `'task'`) | Epics are tasks of type epic. |
 | `task.epic_id` → `task(id)` | The epic an ordinary task belongs to. Epics cannot belong to an epic. Deleting an epic clears this on its tasks. |
 | `view.board_state` (JSON, default `{}`) | UI state saved as you use a view: `collapsed` (status ids) and `group_by` (`none`, `epic`, `priority`, `area`, `energy_type`, `difficulty`, `type`, `status`). |
+
+### Migration 003
+
+No schema change. Remaps `task.difficulty` and `session.difficulty` from 1/2/4/8/16 to the 1-5 scale (4→3, 8→4, 16→5), and saved view filters' `difficulty_min` the same way.

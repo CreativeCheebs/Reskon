@@ -65,7 +65,7 @@ func validateTaskFields(f Fields) error {
 	if raw, ok := f["difficulty"]; ok && !isNull(raw) {
 		var n int64
 		if json.Unmarshal(raw, &n) != nil || !validDifficulty(n) {
-			return invalid("difficulty must be one of 1, 2, 4, 8, 16")
+			return invalid("difficulty must be a whole number from 1 to 5")
 		}
 	}
 	if raw, ok := f["estimate_h"]; ok && !isNull(raw) {
@@ -82,8 +82,9 @@ func validateTaskFields(f Fields) error {
 	return nil
 }
 
+// validDifficulty: difficulty is a 1-5 scale (1 easiest).
 func validDifficulty(n int64) bool {
-	return n == 1 || n == 2 || n == 4 || n == 8 || n == 16
+	return n >= 1 && n <= 5
 }
 
 func validDate(s string) bool {

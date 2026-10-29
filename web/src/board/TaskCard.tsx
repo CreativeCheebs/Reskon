@@ -4,7 +4,7 @@ import { useApp } from "../store";
 import { formatAge, formatHours } from "../format";
 import { palette } from "../theme/palette";
 import { Lozenge } from "../theme/Lozenge";
-import type { CardConfig, Task } from "../types";
+import { DIFFICULTY_LABELS, type CardConfig, type Task } from "../types";
 import { TypeIcon } from "../task/TypeIcon";
 import { useEpics } from "../task/useEpics";
 
@@ -39,7 +39,12 @@ export function TaskCard({ task, config, onOpen }: { task: Task; config: CardCon
   if (show.status && status) meta.push(<Lozenge key="status" color={status.color} strong>{status.name}</Lozenge>);
   if (show.priority && priority) meta.push(<Lozenge key="prio" color={priority.color}>{priority.name}</Lozenge>);
   if (show.energy_type && energy) meta.push(<Lozenge key="energy" color={energy.color}>{energy.name}</Lozenge>);
-  if (show.difficulty && task.difficulty) meta.push(<span key="diff" title="Difficulty">◆{task.difficulty}</span>);
+  if (show.difficulty && task.difficulty)
+    meta.push(
+      <span key="diff" title={`Difficulty ${task.difficulty} of 5 · ${DIFFICULTY_LABELS[task.difficulty] ?? ""}`}>
+        ◆{task.difficulty}
+      </span>,
+    );
   if (show.estimate && task.estimate_h !== null) meta.push(<span key="est" title="Estimate">{formatHours(task.estimate_h)}</span>);
   if (show.created_age) meta.push(<span key="cage" title="Created age">c {formatAge(task.created_age_h)}</span>);
   if (show.started_age && task.started_age_h !== null)

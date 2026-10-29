@@ -31,7 +31,7 @@ func TestViewFilters(t *testing.T) {
 	a := mustTask(t, d, per.ID, "a")
 	b := mustTask(t, d, om.ID, "b")
 	c := mustTask(t, d, per.ID, "c")
-	d.PatchTask(ctx, a.ID, fields(t, fmt.Sprintf(`{"difficulty":8,"updated_at":%q,"custom":{"escalated":true}}`, a.UpdatedAt)))
+	d.PatchTask(ctx, a.ID, fields(t, fmt.Sprintf(`{"difficulty":5,"updated_at":%q,"custom":{"escalated":true}}`, a.UpdatedAt)))
 	d.Move(ctx, c.ID, MoveRequest{StatusID: 4}) // done
 	_ = b
 
