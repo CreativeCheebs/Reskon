@@ -21,7 +21,7 @@ interface TaskDraft {
 type Intent = "task" | "session";
 const LAST_AREA = "jitterbug.lastAreaId";
 
-export function CaptureModal({ onClose }: { onClose: () => void }) {
+export function CaptureModal({ onClose, takeEarlyKeys }: { onClose: () => void; takeEarlyKeys: () => string }) {
   const { boot, online } = useApp();
   const [text, setText] = useState("");
   const [parsing, setParsing] = useState(false);
@@ -156,6 +156,7 @@ export function CaptureModal({ onClose }: { onClose: () => void }) {
           <Spin spinning={parsing} tip="Reading…">
             <Input
               ref={inputRef}
+              data-capture-input
               autoFocus
               size="large"
               placeholder="Worked on stm32 demo, 2 hours · Need to order a replacement NVR drive"
@@ -163,6 +164,10 @@ export function CaptureModal({ onClose }: { onClose: () => void }) {
               disabled={!online}
               onChange={(e) => setText(e.target.value)}
               onPressEnter={runParse}
+              onFocus={() => {
+                const typed = takeEarlyKeys();
+                if (typed) setText((t) => typed + t);
+              }}
             />
             <Typography.Text type="secondary" style={{ fontSize: 11 }}>
               Enter to read it · Esc to close · past tense logs a session, future or imperative makes a task
