@@ -99,3 +99,7 @@ Append-only. One entry per non-obvious choice: date, what, why, what was rejecte
 
 **Why kept:** All text passes AA and matches Atlassian's current theme within a point; the original's problem was surfaces (1.04, indistinguishable) and pure-white glare, not text. Atlassian's newer theme differs mainly in hue (neutral grey instead of blue-grey), which is a taste choice offered to the owner.
 **Fixed:** Status/priority lozenges failed for dark user-chosen colours (Backlog 2.6:1, Cancelled 1.8:1, grey To do/Low 4.4:1, epic 4.2:1). Lozenge text is now lightened toward white only as far as needed to reach 4.5:1 on its tint (`readable()` in `palette.ts`).
+
+## 2026-10-29 — Compression and caching
+**What:** The embedded frontend is read and gzipped once at startup (`internal/api/static.go`). Hashed files under `assets/` go out with `Cache-Control: immutable` for a year; `index.html` with `no-cache` and an ETag, so a reload is a 304 plus nothing else. API JSON is gzipped at `BestSpeed` for any client that sends `Accept-Encoding: gzip`.
+**Why:** The 1.5 MB bundle went uncompressed and uncached on every load (embedded files have no modtime, so `http.FileServer` sent no validators). Gzipped it is 0.48 MB, and after the first visit it is not fetched at all. On a 40 Mbit/s LAN, first load fell from 550 ms to 310 ms.

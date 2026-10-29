@@ -57,6 +57,11 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ctx := db.WithDB(context.WithValue(r.Context(), userKey{}, u), d)
 		r = r.WithContext(ctx)
 	}
+	if strings.HasPrefix(r.URL.Path, "/api/") && acceptsGzip(r) {
+		g := &gzipJSON{ResponseWriter: w}
+		defer g.close()
+		w = g
+	}
 	s.mux.ServeHTTP(w, r)
 }
 
@@ -186,20 +191,4 @@ func queryID(r *http.Request, name string) (int64, bool, error) {
 		return 0, false, &db.InvalidError{Msg: name + " must be an integer"}
 	}
 	return id, true, nil
-}
-
-// spa serves the embedded frontend, falling back to index.html for any path
-// that is not a file, so client-side navigation survives a reload.
-func spa(web fs.FS) http.Handler {
-	files := http.FileServer(http.FS(web))
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		p := strings.TrimPrefix(r.URL.Path, "/")
-		if p == "" {
-			p = "index.html"
-		}
-		if _, err := fs.Stat(web, p); err != nil {
-			r.URL.Path = "/"
-		}
-		files.ServeHTTP(w, r)
-	})
 }
