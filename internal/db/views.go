@@ -10,6 +10,7 @@ var viewColumns = columns{
 	"layout":      kText,
 	"filter":      kJSONObject,
 	"card_config": kJSONObject,
+	"board_state": kJSONObject,
 	"position":    kInt,
 }
 

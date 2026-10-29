@@ -3,11 +3,15 @@ import { useApp } from "../store";
 import { formatAge, formatHours } from "../format";
 import { palette } from "../theme/palette";
 import type { CardConfig, Task } from "../types";
+import { EPIC_COLOR, TypeIcon } from "../task/TypeIcon";
+import { useEpics } from "../task/useEpics";
 
 // A board card. The task key is never shown here — only in the task panel.
 
 export function TaskCard({ task, config, onOpen }: { task: Task; config: CardConfig; onOpen?: () => void }) {
   const { boot, statusById } = useApp();
+  const { byId: epicsById } = useEpics();
+  const epic = task.epic_id ? epicsById.get(task.epic_id) : undefined;
   const show = config.show;
   const area = boot.areas.find((a) => a.id === task.area_id);
   const priority = boot.priorities.find((p) => p.id === task.priority_id);
@@ -16,6 +20,18 @@ export function TaskCard({ task, config, onOpen }: { task: Task; config: CardCon
   const compact = config.density === "compact";
 
   const meta: React.ReactNode[] = [];
+  if (show.epic && epic)
+    meta.push(
+      <Tag key="epic" bordered={false} style={{ color: EPIC_COLOR, background: "rgba(167,139,250,0.12)", marginInlineEnd: 0 }}>
+        {epic.title}
+      </Tag>,
+    );
+  if (task.type === "epic" && task.epic_tasks)
+    meta.push(
+      <span key="epicprog" title="Tasks done in this epic">
+        {task.epic_done}/{task.epic_tasks} done
+      </span>,
+    );
   if (show.area && area) meta.push(<Tag key="area" color={area.color ?? undefined}>{area.name}</Tag>);
   if (show.status && status) meta.push(<Tag key="status" color={status.color ?? undefined}>{status.name}</Tag>);
   if (show.priority && priority) meta.push(<Tag key="prio" color={priority.color ?? undefined}>{priority.name}</Tag>);
@@ -53,13 +69,19 @@ export function TaskCard({ task, config, onOpen }: { task: Task; config: CardCon
       style={{
         background: palette.panel,
         border: `1px solid ${task.stalled ? palette.danger : palette.border}`,
+        borderLeft: task.type === "epic" ? `3px solid ${EPIC_COLOR}` : undefined,
         borderRadius: 6,
         padding: compact ? "6px 8px" : "10px 12px",
         cursor: "pointer",
         userSelect: "none",
       }}
     >
-      <div style={{ lineHeight: 1.35, wordBreak: "break-word" }}>{task.title}</div>
+      <div style={{ lineHeight: 1.35, wordBreak: "break-word", display: "flex", gap: 6 }}>
+        <span style={{ flex: "none", paddingTop: 1 }}>
+          <TypeIcon type={task.type} />
+        </span>
+        <span>{task.title}</span>
+      </div>
       {meta.length > 0 && (
         <div
           style={{

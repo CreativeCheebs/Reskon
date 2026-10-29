@@ -67,7 +67,7 @@ func TestCustomFieldsEndToEnd(t *testing.T) {
 	}
 
 	// Filter by it.
-	tasks, err := d.ListTasksForView(ctx, viewWith(t, d, `{"custom":{"ship_by":{"gte":"2026-11-01","lte":"2026-11-30"}}}`))
+	tasks, err := d.ListTasksForView(ctx, viewWith(t, d, `{"custom":{"ship_by":{"gte":"2026-11-01","lte":"2026-11-30"}}}`), "")
 	if err != nil {
 		t.Fatal(err)
 	}

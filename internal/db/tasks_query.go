@@ -18,6 +18,8 @@ type ViewFilter struct {
 	Custom          map[string]json.RawMessage `json:"custom"`
 	IncludeDoneDays *int64                     `json:"include_done_days"` // done tasks finished within N days only
 	OpenOnly        bool                       `json:"open_only"`         // hide done and cancelled
+	Types           []string                   `json:"types"`             // "task", "epic"
+	Epics           []int64                    `json:"epics"`             // tasks in these epics; 0 means "no epic"
 }
 
 // customKeyRe limits custom field keys to identifiers, so they can be put
@@ -32,6 +34,11 @@ func parseFilter(raw []byte) (*ViewFilter, error) {
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&f); err != nil {
 		return nil, invalid("filter: %v", err)
+	}
+	for _, t := range f.Types {
+		if t != "task" && t != "epic" {
+			return nil, invalid("filter: types may only contain task and epic")
+		}
 	}
 	for k, v := range f.Custom {
 		if !customKeyRe.MatchString(k) {
@@ -101,11 +108,20 @@ func jsonScalar(raw json.RawMessage) (any, error) {
 
 // ListTasks returns every non-deleted task with derived values.
 func (d *DB) ListTasks(ctx context.Context) ([]*Task, error) {
-	return d.queryTasks(ctx, &ViewFilter{}, time.Now())
+	return d.queryTasks(ctx, &ViewFilter{}, "", time.Now())
 }
 
-// ListTasksForView resolves a view's filter server-side.
-func (d *DB) ListTasksForView(ctx context.Context, viewID int64) ([]*Task, error) {
+// ListTasksOfType returns every task of one type ("task" or "epic").
+func (d *DB) ListTasksOfType(ctx context.Context, typ string) ([]*Task, error) {
+	if typ != "task" && typ != "epic" {
+		return nil, invalid("type must be task or epic")
+	}
+	return d.queryTasks(ctx, &ViewFilter{Types: []string{typ}}, "", time.Now())
+}
+
+// ListTasksForView resolves a view's filter server-side, narrowed by an
+// optional search over title, key and description.
+func (d *DB) ListTasksForView(ctx context.Context, viewID int64, search string) ([]*Task, error) {
 	v, err := d.GetView(ctx, viewID)
 	if err != nil {
 		return nil, err
@@ -114,10 +130,10 @@ func (d *DB) ListTasksForView(ctx context.Context, viewID int64) ([]*Task, error
 	if err != nil {
 		return nil, err
 	}
-	return d.queryTasks(ctx, f, time.Now())
+	return d.queryTasks(ctx, f, search, time.Now())
 }
 
-func (d *DB) queryTasks(ctx context.Context, f *ViewFilter, now time.Time) ([]*Task, error) {
+func (d *DB) queryTasks(ctx context.Context, f *ViewFilter, search string, now time.Time) ([]*Task, error) {
 	where := []string{"deleted_at IS NULL"}
 	var args []any
 	if f.Areas != nil {
@@ -125,6 +141,48 @@ func (d *DB) queryTasks(ctx context.Context, f *ViewFilter, now time.Time) ([]*T
 	}
 	if f.Statuses != nil {
 		where = append(where, inList("status_id", f.Statuses, &args))
+	}
+	if f.Types != nil {
+		ph := make([]string, len(f.Types))
+		for i, t := range f.Types {
+			ph[i] = "?"
+			args = append(args, t)
+		}
+		if len(f.Types) == 0 {
+			where = append(where, "0")
+		} else {
+			where = append(where, "type IN ("+strings.Join(ph, ",")+")")
+		}
+	}
+	if f.Epics != nil {
+		var ids []int64
+		none := false
+		for _, e := range f.Epics {
+			if e == 0 {
+				none = true
+			} else {
+				ids = append(ids, e)
+			}
+		}
+		var conds []string
+		if len(ids) > 0 {
+			conds = append(conds, inList("epic_id", ids, &args))
+		}
+		if none {
+			conds = append(conds, "epic_id IS NULL")
+		}
+		if len(conds) == 0 {
+			conds = []string{"0"}
+		}
+		where = append(where, "("+strings.Join(conds, " OR ")+")")
+	}
+	if words := strings.Fields(search); len(words) > 0 {
+		// Every word must appear in the title, key or description.
+		for _, w := range words {
+			like := "%" + likeEscape(w) + "%"
+			where = append(where, `(title LIKE ? ESCAPE '\' OR key LIKE ? ESCAPE '\' OR COALESCE(description, '') LIKE ? ESCAPE '\')`)
+			args = append(args, like, like, like)
+		}
 	}
 	if f.DifficultyMin != nil {
 		where = append(where, "difficulty >= ?")
@@ -179,4 +237,9 @@ func inList(col string, ids []int64, args *[]any) string {
 		*args = append(*args, id)
 	}
 	return fmt.Sprintf("%s IN (%s)", col, placeholders(len(ids)))
+}
+
+// likeEscape makes s match literally inside a LIKE pattern.
+func likeEscape(s string) string {
+	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s)
 }

@@ -61,6 +61,18 @@ export interface ViewFilter {
   custom: Record<string, unknown> | null;
   include_done_days: number | null;
   open_only?: boolean;
+  types?: TaskType[] | null;
+  epics?: number[] | null; // 0 = tasks with no epic
+}
+
+export type TaskType = "task" | "epic";
+
+export type GroupBy = "none" | "epic" | "priority" | "area" | "energy_type" | "difficulty" | "type" | "status";
+
+/** UI state saved on the view as you use it. */
+export interface BoardState {
+  collapsed?: number[]; // status ids
+  group_by?: GroupBy;
 }
 
 export interface CardShow {
@@ -76,6 +88,7 @@ export interface CardShow {
   estimate: boolean;
   progress_bar: boolean;
   due: boolean;
+  epic: boolean;
   custom: string[];
 }
 
@@ -90,6 +103,7 @@ export interface View {
   layout: "board" | "table";
   filter: Partial<ViewFilter>;
   card_config: Partial<CardConfig>;
+  board_state: BoardState;
   position: number;
 }
 
@@ -129,6 +143,8 @@ export interface Task {
   difficulty: number | null;
   estimate_h: number | null;
   due_at: string | null;
+  type: TaskType;
+  epic_id: number | null;
   board_pos: number;
   custom: Record<string, unknown>;
   created_at: string;
@@ -148,6 +164,8 @@ export interface Task {
   logged_h: number;
   progress_pct: number | null;
   subtypes: string[];
+  epic_tasks: number | null; // epics only
+  epic_done: number | null;
 }
 
 export interface Transition {

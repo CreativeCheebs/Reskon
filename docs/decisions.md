@@ -77,3 +77,11 @@ Append-only. One entry per non-obvious choice: date, what, why, what was rejecte
 ## 2026-10-29 — Existing single-user database adopted by the first admin
 **What:** If `JITTERBUG_DB` (default `jitterbug.db`) exists when the admin account is created, the admin's `db_file` points at it. It is not moved or copied.
 **Why:** Upgrading never orphans data and never rewrites the old file.
+
+## 2026-10-29 — Swimlanes are separate drag contexts
+**What:** Grouped boards render one dnd-kit context per lane; cards move between status columns within a lane, not between lanes.
+**Why:** Dragging across lanes would silently change the grouped field (epic, priority...), which is easy to do by accident; changing it is one click in the task panel. `board_pos` is per status column, so moving within a lane between two cards still orders correctly against cards in other lanes.
+
+## 2026-10-29 — Jira import runs in one transaction; dry run rolls it back
+**What:** The importer does every insert inside one transaction; `--dry-run` reports and rolls back.
+**Why:** A dry run then exercises exactly the code that will run for real, so a clean dry run means a clean import, and a failure half way leaves nothing behind.

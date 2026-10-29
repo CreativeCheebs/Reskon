@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { Input, Select, Space, message } from "antd";
+import { Button, Input, Select, Space, Tooltip, message } from "antd";
 import { api } from "../api";
 import { useApp } from "../store";
 import { local, WriteButton } from "../offline";
 import { filterOf } from "../views/cardConfig";
-import type { Task, View } from "../types";
+import type { Task, TaskType, View } from "../types";
+import { TypeIcon } from "../task/TypeIcon";
+import { useEpics } from "../task/useEpics";
 
 const LAST_AREA = "jitterbug.lastAreaId";
 
@@ -20,8 +22,21 @@ export function useAreaChoice(view: View | undefined) {
 }
 
 /** Inline "add task" at the bottom of a board column. */
-export function Composer({ statusId, view, onCreated }: { statusId: number; view: View; onCreated: (t: Task) => void }) {
+export function Composer({
+  statusId,
+  view,
+  defaults = {},
+  onCreated,
+}: {
+  statusId: number;
+  view: View;
+  /** From the swimlane it sits in, e.g. {epic_id} or {priority_id}. */
+  defaults?: Record<string, unknown>;
+  onCreated: (t: Task) => void;
+}) {
   const { online } = useApp();
+  const { refresh: refreshEpics } = useEpics();
+  const [type, setType] = useState<TaskType>((defaults.type as TaskType) ?? "task");
   const { areas, preselect, remember } = useAreaChoice(view);
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -36,12 +51,15 @@ export function Composer({ statusId, view, onCreated }: { statusId: number; view
     );
 
   const submit = async () => {
-    const area = areas.length === 1 ? areas[0].id : areaId;
+    const area = (defaults.area_id as number | undefined) ?? (areas.length === 1 ? areas[0].id : areaId);
     if (!title.trim() || !area) return;
     setBusy(true);
     try {
-      const t = await api.post<Task>("/tasks", { title: title.trim(), area_id: area, status_id: statusId });
+      const body: Record<string, unknown> = { ...defaults, title: title.trim(), area_id: area, status_id: statusId, type };
+      if (type === "epic") delete body.epic_id; // an epic cannot sit in an epic
+      const t = await api.post<Task>("/tasks", body);
       remember(area);
+      if (type === "epic") refreshEpics();
       onCreated(t);
       setTitle("");
     } catch (e) {
@@ -56,6 +74,19 @@ export function Composer({ statusId, view, onCreated }: { statusId: number; view
       <Input
         autoFocus
         size="small"
+        prefix={
+          <Tooltip title={type === "epic" ? "Creating an epic (click for task)" : "Creating a task (click for epic)"}>
+            <Button
+              type="text"
+              size="small"
+              style={{ padding: 0, height: 18, width: 18, minWidth: 18 }}
+              onClick={() => setType(type === "epic" ? "task" : "epic")}
+              aria-label="Toggle task or epic"
+            >
+              <TypeIcon type={type} />
+            </Button>
+          </Tooltip>
+        }
         placeholder="Title, Enter to add, Esc to close"
         value={title}
         disabled={!online || busy}
@@ -63,7 +94,7 @@ export function Composer({ statusId, view, onCreated }: { statusId: number; view
         onPressEnter={submit}
         onKeyDown={(e) => e.key === "Escape" && setOpen(false)}
       />
-      {areas.length > 1 && (
+      {areas.length > 1 && defaults.area_id === undefined && (
         <Select
           size="small"
           style={{ width: "100%" }}

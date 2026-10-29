@@ -15,6 +15,7 @@ export const DEFAULT_SHOW: CardShow = {
   estimate: true,
   progress_bar: true,
   due: false,
+  epic: true,
   custom: [],
 };
 
@@ -31,6 +32,7 @@ export const SHOW_LABELS: Record<Exclude<keyof CardShow, "custom">, string> = {
   estimate: "Estimate",
   progress_bar: "Progress bar",
   due: "Due",
+  epic: "Epic",
 };
 
 export function cardConfigOf(view: View): CardConfig {
@@ -50,5 +52,7 @@ export function filterOf(view: View): ViewFilter {
     custom: f.custom ?? null,
     include_done_days: f.include_done_days ?? null,
     open_only: f.open_only ?? false,
+    types: f.types ?? null,
+    epics: f.epics ?? null,
   };
 }

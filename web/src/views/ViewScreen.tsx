@@ -1,95 +1,177 @@
 import { useCallback, useEffect, useState } from "react";
-import { Alert, Button, Spin } from "antd";
+import { Alert, Badge, Button, Dropdown, Input, Modal, Segmented, Select, Spin, message } from "antd";
+import { SearchOutlined } from "@ant-design/icons";
 import { api } from "../api";
 import { useApp } from "../store";
 import { Board } from "../board/Board";
 import { HiddenStatusOverlay } from "../board/HiddenStatusOverlay";
 import { TaskPanel } from "../task/TaskPanel";
+import { useEpics } from "../task/useEpics";
 import { TaskTable } from "./TaskTable";
-import { ViewSettings } from "./ViewSettings";
+import { FilterSettings, activeFilterCount } from "./FilterSettings";
+import { CardSettings } from "./CardSettings";
+import { GROUP_OPTIONS } from "./grouping";
+import { useSaveView } from "./useViewState";
 import { cardConfigOf } from "./cardConfig";
-import type { Task, View } from "../types";
+import type { GroupBy, Task, View } from "../types";
 
-// Loads a view's tasks (the server resolves the filter) and renders the
-// board or the table, plus the overlays that hang off it.
+// Loads a view's tasks (the server resolves the filter and the search) and
+// renders the board or the table, plus the overlays that hang off it.
+// Layout and grouping save themselves the moment they change.
 
 export function ViewScreen({ view }: { view: View }) {
-  const { reloadKey } = useApp();
+  const { reloadKey, online, reloadBootstrap } = useApp();
+  const { refresh: refreshEpics } = useEpics();
+  const save = useSaveView(view);
   const [tasks, setTasks] = useState<Task[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hiddenStatus, setHiddenStatus] = useState<number | null>(null);
   const [openTask, setOpenTask] = useState<number | null>(null);
-  const [settings, setSettings] = useState(false);
+  const [drawer, setDrawer] = useState<"filter" | "card" | null>(null);
+  const [search, setSearch] = useState("");
+  const [query, setQuery] = useState(""); // debounced search
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setQuery(search.trim()), 250);
+    return () => window.clearTimeout(t);
+  }, [search]);
 
   const refetch = useCallback(() => {
+    const q = query ? `&q=${encodeURIComponent(query)}` : "";
     api
-      .get<Task[]>(`/tasks?view=${view.id}`)
+      .get<Task[]>(`/tasks?view=${view.id}${q}`)
       .then((t) => {
         setTasks(t);
         setError(null);
       })
       // Offline: keep showing the last loaded data.
       .catch((e) => setError((e as Error).message));
-  }, [view.id]);
+  }, [view.id, query]);
 
-  useEffect(() => {
-    setTasks(null);
-    refetch();
-  }, [refetch]);
   useEffect(() => {
     refetch();
   }, [reloadKey, view.filter, refetch]);
 
-  if (!tasks) return error ? <Alert type="error" message={error} /> : <Spin />;
-
   const update = (fn: (prev: Task[]) => Task[]) => setTasks((prev) => fn(prev ?? []));
   const replace = (t: Task) => update((prev) => prev.map((x) => (x.id === t.id ? t : x)));
+  const groupBy: GroupBy = view.board_state?.group_by ?? "none";
+  const groupOptions = GROUP_OPTIONS.filter((o) => !(view.layout === "board" && o.tableOnly));
+  const filters = activeFilterCount(view);
+
+  const rename = () => {
+    let name = view.name;
+    Modal.confirm({
+      title: "Rename view",
+      icon: null,
+      content: <Input defaultValue={view.name} autoFocus onChange={(e) => (name = e.target.value)} />,
+      onOk: () => name.trim() && save({ name: name.trim() }),
+    });
+  };
+  const remove = () =>
+    Modal.confirm({
+      title: `Delete the view “${view.name}”?`,
+      content: "Only the view is deleted; its tasks stay.",
+      okButtonProps: { danger: true },
+      okText: "Delete",
+      onOk: async () => {
+        try {
+          await api.del(`/views/${view.id}`);
+          window.location.hash = "";
+          await reloadBootstrap();
+        } catch (e) {
+          message.error((e as Error).message);
+        }
+      },
+    });
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-        <div style={{ fontSize: 16, fontWeight: 600 }}>{view.name}</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
+        <div style={{ fontSize: 16, fontWeight: 600, marginRight: 4 }}>{view.name}</div>
+        <Input
+          size="small"
+          allowClear
+          prefix={<SearchOutlined />}
+          placeholder="Search title, key, description"
+          style={{ width: 240 }}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          onKeyDown={(e) => e.key === "Escape" && setSearch("")}
+        />
         <div style={{ flex: 1 }} />
-        <Button size="small" onClick={() => setSettings(true)}>
-          View settings
+        <Segmented
+          size="small"
+          value={view.layout}
+          disabled={!online}
+          onChange={(v) => save({ layout: v as View["layout"] })}
+          options={[
+            { value: "board", label: "Board" },
+            { value: "table", label: "Table" },
+          ]}
+        />
+        <Select<GroupBy>
+          size="small"
+          style={{ width: 160 }}
+          disabled={!online}
+          value={groupOptions.some((o) => o.value === groupBy) ? groupBy : "none"}
+          onChange={(v) => save({ board_state: { group_by: v } })}
+          options={groupOptions.map((o) => ({ value: o.value, label: o.value === "none" ? o.label : `Group: ${o.label}` }))}
+        />
+        <Badge count={filters} size="small" color="#60a5fa">
+          <Button size="small" onClick={() => setDrawer("filter")}>
+            Filter
+          </Button>
+        </Badge>
+        <Button size="small" onClick={() => setDrawer("card")}>
+          {view.layout === "board" ? "Card" : "Columns"}
         </Button>
+        <Dropdown
+          trigger={["click"]}
+          disabled={!online}
+          menu={{
+            items: [
+              { key: "rename", label: "Rename view" },
+              { key: "delete", label: "Delete view", danger: true },
+            ],
+            onClick: ({ key }) => (key === "rename" ? rename() : remove()),
+          }}
+        >
+          <Button size="small" aria-label="View menu">
+            ⋯
+          </Button>
+        </Dropdown>
       </div>
       <div style={{ flex: 1, minHeight: 0 }}>
-        {view.layout === "board" ? (
-          <Board
-            view={view}
-            tasks={tasks}
-            setTasks={update}
-            refetch={refetch}
-            onOpenTask={setOpenTask}
-            onOpenHidden={setHiddenStatus}
-          />
+        {!tasks ? (
+          error ? (
+            <Alert type="error" message={error} />
+          ) : (
+            <Spin />
+          )
+        ) : view.layout === "board" ? (
+          <Board view={view} tasks={tasks} setTasks={update} refetch={refetch} onOpenTask={setOpenTask} onOpenHidden={setHiddenStatus} />
         ) : (
-          <TaskTable tasks={tasks} config={cardConfigOf(view)} onOpenTask={setOpenTask} />
+          <TaskTable tasks={tasks} config={cardConfigOf(view)} groupBy={groupBy} onOpenTask={setOpenTask} />
         )}
       </div>
-      {hiddenStatus !== null && (
-        <HiddenStatusOverlay
-          statusId={hiddenStatus}
-          tasks={tasks}
-          onClose={() => setHiddenStatus(null)}
-          onMoved={replace}
-          onOpenTask={setOpenTask}
-        />
+      {tasks && hiddenStatus !== null && (
+        <HiddenStatusOverlay statusId={hiddenStatus} tasks={tasks} onClose={() => setHiddenStatus(null)} onMoved={replace} onOpenTask={setOpenTask} />
       )}
       {openTask !== null && (
         <TaskPanel
           taskId={openTask}
-          initial={tasks.find((t) => t.id === openTask)}
+          initial={tasks?.find((t) => t.id === openTask)}
           onClose={() => {
             setOpenTask(null);
             refetch();
+            refreshEpics();
           }}
           onChanged={replace}
           onDeleted={(id) => update((prev) => prev.filter((t) => t.id !== id))}
         />
       )}
-      {settings && <ViewSettings view={view} sample={tasks[0]} onClose={() => setSettings(false)} />}
+      {drawer === "filter" && <FilterSettings view={view} onClose={() => setDrawer(null)} />}
+      {drawer === "card" && <CardSettings view={view} sample={tasks?.find((t) => t.type === "task")} onClose={() => setDrawer(null)} />}
     </div>
   );
 }

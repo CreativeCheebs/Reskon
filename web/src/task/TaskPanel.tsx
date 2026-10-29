@@ -8,6 +8,8 @@ import { formatAge, formatDateTime, formatHours } from "../format";
 import { palette } from "../theme/palette";
 import { DIFFICULTIES, type Task } from "../types";
 import { TaskExtras } from "./TaskExtras";
+import { TypeIcon, TypeLabel } from "./TypeIcon";
+import { useEpics } from "./useEpics";
 
 // The task panel: the only place the task key is shown. Every edit is a
 // PATCH carrying the updated_at last seen; status changes go through /move.
@@ -23,6 +25,7 @@ interface Props {
 
 export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Props) {
   const { boot, online, reloadKey } = useApp();
+  const { epics, refresh: refreshEpics } = useEpics();
   const [task, setTask] = useState<Task | null>(initial ?? null);
   const [title, setTitle] = useState(initial?.title ?? "");
   const [desc, setDesc] = useState(initial?.description ?? "");
@@ -88,7 +91,13 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
       open
       width={520}
       onClose={onClose}
-      title={task ? <span style={{ color: palette.muted, fontWeight: 500 }}>{task.key}</span> : null}
+      title={
+        task ? (
+          <span style={{ color: palette.muted, fontWeight: 500, display: "inline-flex", gap: 6, alignItems: "center" }}>
+            <TypeIcon type={task.type} /> {task.key}
+          </span>
+        ) : null
+      }
       extra={
         task && (
           <Popconfirm title="Delete this task?" onConfirm={remove}>
@@ -113,6 +122,47 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
             onPressEnter={(e) => (e.target as HTMLInputElement).blur()}
           />
           <Descriptions column={2} size="small" colon={false} labelStyle={{ color: palette.muted, width: 90 }}>
+            <Descriptions.Item label="Type">
+              <Select
+                size="small"
+                style={{ width: 150 }}
+                disabled={ro}
+                value={task.type}
+                onChange={async (v) => {
+                  await patch({ type: v });
+                  refreshEpics();
+                }}
+                options={(["task", "epic"] as const).map((t) => ({ value: t, label: <TypeLabel type={t} /> }))}
+              />
+            </Descriptions.Item>
+            <Descriptions.Item label="Epic">
+              {task.type === "epic" ? (
+                <span style={{ color: palette.muted }}>
+                  {task.epic_tasks ? `${task.epic_done}/${task.epic_tasks} tasks done` : "No tasks yet"}
+                </span>
+              ) : (
+                <Select
+                  size="small"
+                  style={{ width: 150 }}
+                  allowClear
+                  showSearch
+                  optionFilterProp="search"
+                  placeholder="No epic"
+                  disabled={ro}
+                  value={task.epic_id ?? undefined}
+                  onChange={(v) => patch({ epic_id: v ?? null })}
+                  options={epics.map((e) => ({
+                    value: e.id,
+                    search: e.title.toLowerCase(),
+                    label: (
+                      <span>
+                        <TypeIcon type="epic" /> {e.title}
+                      </span>
+                    ),
+                  }))}
+                />
+              )}
+            </Descriptions.Item>
             <Descriptions.Item label="Status">
               <Select size="small" style={{ width: 150 }} disabled={ro} value={task.status_id} onChange={move} options={opt(boot.statuses)} />
             </Descriptions.Item>

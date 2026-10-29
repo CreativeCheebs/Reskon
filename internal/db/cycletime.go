@@ -61,7 +61,7 @@ func (d *DB) TaskCycle(ctx context.Context, taskID int64) ([]Transition, []Segme
 
 // CycleTimeForView builds the chart for every task in a view.
 func (d *DB) CycleTimeForView(ctx context.Context, viewID int64) (*CycleTime, error) {
-	tasks, err := d.ListTasksForView(ctx, viewID)
+	tasks, err := d.ListTasksForView(ctx, viewID, "")
 	if err != nil {
 		return nil, err
 	}

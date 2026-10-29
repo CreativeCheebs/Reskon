@@ -36,3 +36,11 @@ Applied migration version is kept in `PRAGMA user_version` (no bookkeeping table
 | `setting` | Key → JSON value. `subtype_weights` (rank → weight list), `llm_endpoint`, `llm_model`, `llm_api_key` (write-only via the API). |
 
 Seeds: the four status categories, five statuses (all built-in; Backlog and Cancelled hidden from the board), three priorities, five energy types, three custom field presets, the Everything and Stuck views, and default settings. Areas and subtypes ship empty.
+
+### Migration 002
+
+| Change | Purpose |
+| --- | --- |
+| `task.type` (`'task'` / `'epic'`, default `'task'`) | Epics are tasks of type epic. |
+| `task.epic_id` → `task(id)` | The epic an ordinary task belongs to. Epics cannot belong to an epic. Deleting an epic clears this on its tasks. |
+| `view.board_state` (JSON, default `{}`) | UI state saved as you use a view: `collapsed` (status ids) and `group_by` (`none`, `epic`, `priority`, `area`, `energy_type`, `difficulty`, `type`, `status`). |

@@ -66,6 +66,7 @@ type View struct {
 	Layout     string          `json:"layout"`
 	Filter     json.RawMessage `json:"filter"`
 	CardConfig json.RawMessage `json:"card_config"`
+	BoardState json.RawMessage `json:"board_state"` // collapsed columns, grouping; saved as you use the view
 	Position   int64           `json:"position"`
 }
 
@@ -217,12 +218,12 @@ func (d *DB) GetArea(ctx context.Context, id int64) (*Area, error) {
 	return &a, err
 }
 
-const viewCols = `id, name, layout, filter, card_config, position`
+const viewCols = `id, name, layout, filter, card_config, position, board_state`
 
 func scanView(r interface{ Scan(...any) error }) (v View, err error) {
-	var filter, card string
-	err = r.Scan(&v.ID, &v.Name, &v.Layout, &filter, &card, &v.Position)
-	v.Filter, v.CardConfig = json.RawMessage(filter), json.RawMessage(card)
+	var filter, card, board string
+	err = r.Scan(&v.ID, &v.Name, &v.Layout, &filter, &card, &v.Position, &board)
+	v.Filter, v.CardConfig, v.BoardState = json.RawMessage(filter), json.RawMessage(card), json.RawMessage(board)
 	return
 }
 

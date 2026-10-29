@@ -11,6 +11,7 @@ import { SessionsScreen } from "./sessions/SessionsScreen";
 import { CaptureButton } from "./capture/CaptureButton";
 import { CycleTimeScreen } from "./chart/CycleTimeScreen";
 import { useAuth } from "./auth/AuthGate";
+import { EpicsProvider } from "./task/useEpics";
 
 // Screens are addressed by the URL hash (#/view/3, #/settings) so a reload
 // lands where you were. Overlays like the backlog are never routes.
@@ -79,6 +80,7 @@ export function App() {
   const selectedKey = current.kind === "view" ? `view-${current.id}` : current.kind;
 
   return (
+    <EpicsProvider>
     <Layout style={{ height: "100vh" }}>
       <Layout.Sider
         width={200}
@@ -141,5 +143,6 @@ export function App() {
       {boot.areas.length === 0 && <FirstRun />}
       <CaptureButton />
     </Layout>
+    </EpicsProvider>
   );
 }

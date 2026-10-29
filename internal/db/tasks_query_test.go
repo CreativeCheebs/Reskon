@@ -49,7 +49,7 @@ func TestViewFilters(t *testing.T) {
 		{`{"include_done_days":0}`, []string{"a", "b"}},
 	}
 	for _, tc := range cases {
-		got, err := d.ListTasksForView(ctx, viewWith(t, d, tc.filter))
+		got, err := d.ListTasksForView(ctx, viewWith(t, d, tc.filter), "")
 		if err != nil {
 			t.Fatalf("%s: %v", tc.filter, err)
 		}

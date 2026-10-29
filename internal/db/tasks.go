@@ -23,6 +23,8 @@ type Task struct {
 	Difficulty   *int64          `json:"difficulty"`
 	EstimateH    *float64        `json:"estimate_h"`
 	DueAt        *string         `json:"due_at"`
+	Type         string          `json:"type"`    // "task" or "epic"
+	EpicID       *int64          `json:"epic_id"` // the epic this task belongs to
 	BoardPos     float64         `json:"board_pos"`
 	Custom       json.RawMessage `json:"custom"`
 	CreatedAt    string          `json:"created_at"`
@@ -31,13 +33,14 @@ type Task struct {
 }
 
 const taskCols = `id, key, title, description, area_id, status_id, priority_id, energy_type_id,
-	difficulty, estimate_h, due_at, board_pos, custom, created_at, updated_at`
+	difficulty, estimate_h, due_at, board_pos, custom, created_at, updated_at, type, epic_id`
 
 func scanTask(r interface{ Scan(...any) error }) (*Task, error) {
 	var t Task
 	var custom string
 	err := r.Scan(&t.ID, &t.Key, &t.Title, &t.Description, &t.AreaID, &t.StatusID, &t.PriorityID,
-		&t.EnergyTypeID, &t.Difficulty, &t.EstimateH, &t.DueAt, &t.BoardPos, &custom, &t.CreatedAt, &t.UpdatedAt)
+		&t.EnergyTypeID, &t.Difficulty, &t.EstimateH, &t.DueAt, &t.BoardPos, &custom, &t.CreatedAt, &t.UpdatedAt,
+		&t.Type, &t.EpicID)
 	t.Custom = json.RawMessage(custom)
 	return &t, err
 }
@@ -53,6 +56,8 @@ var taskColumns = columns{
 	"difficulty":     kIntNull,
 	"estimate_h":     kRealNull,
 	"due_at":         kTextNull,
+	"type":           kText,
+	"epic_id":        kIntNull,
 }
 
 // validateTaskFields checks the rules that column types alone cannot express.
@@ -159,6 +164,9 @@ func (d *DB) CreateTask(ctx context.Context, f Fields) (*Task, error) {
 		return nil, err
 	}
 
+	if err := checkEpicFields(ctx, tx, 0, "task", nil, f); err != nil {
+		return nil, err
+	}
 	custom := "{}"
 	if hasCustom {
 		if custom, err = d.mergeCustom(ctx, tx, "task", "{}", customPatch); err != nil {
@@ -273,6 +281,9 @@ func (d *DB) PatchTask(ctx context.Context, id int64, f Fields) (*Task, error) {
 		}
 		return nil, &ConflictError{Msg: "task changed since you loaded it", Current: current}
 	}
+	if err := checkEpicFields(ctx, tx, id, cur.Type, cur.EpicID, f); err != nil {
+		return nil, err
+	}
 	if hasCustom {
 		merged, err := d.mergeCustom(ctx, tx, "task", string(cur.Custom), customPatch)
 		if err != nil {
@@ -295,16 +306,21 @@ func (d *DB) PatchTask(ctx context.Context, id int64, f Fields) (*Task, error) {
 	return d.GetTask(ctx, id)
 }
 
-// DeleteTask soft-deletes a task. Its key stays reserved.
+// DeleteTask soft-deletes a task. Its key stays reserved. If it is an
+// epic, its tasks stay and simply lose the epic.
 func (d *DB) DeleteTask(ctx context.Context, id int64) error {
 	now := Now()
-	res, err := d.ExecContext(ctx, `UPDATE task SET deleted_at = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL`,
-		now, now, id)
-	if err != nil {
+	return d.inTx(ctx, func(tx *sql.Tx) error {
+		res, err := tx.ExecContext(ctx, `UPDATE task SET deleted_at = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL`,
+			now, now, id)
+		if err != nil {
+			return err
+		}
+		if n, _ := res.RowsAffected(); n == 0 {
+			return ErrNotFound
+		}
+		// Deleting an epic leaves its tasks in place, without an epic.
+		_, err = tx.ExecContext(ctx, `UPDATE task SET epic_id = NULL, updated_at = ? WHERE epic_id = ? AND deleted_at IS NULL`, now, id)
 		return err
-	}
-	if n, _ := res.RowsAffected(); n == 0 {
-		return ErrNotFound
-	}
-	return nil
+	})
 }

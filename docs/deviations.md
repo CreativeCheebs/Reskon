@@ -10,7 +10,22 @@ The spec is single-user with "no auth in Phase 1". The owner asked for a login p
 - `jitterbug backup <dir>` now writes every database into a directory.
 - Users are disabled, never deleted; their file stays on disk.
 
-## Implemented differently
+## Epics, search, grouping, collapsible columns (owner request, 2026-10-29)
+- **Epics** are `task.type = 'epic'`, a fixed two-value column rather than a lookup table: code branches on it (an epic has tasks, a task has an epic), which is exactly what rule 7 keeps out of user-editable rows. Derived `epic_tasks` / `epic_done` (cancelled excluded) come back on epics.
+- **Filter** gains `types` and `epics` (`0` = no epic). **Search** is `GET /api/tasks?view=:id&q=...`, server-side; every word must appear in the title, key or description, and the view's filter still applies. `GET /api/tasks?type=epic` lists epics for pickers.
+- **View settings are split**: Filter (which tasks) and Card/Columns (what they show). Layout, grouping and collapsed columns are changed from the view header and **save immediately** into `view.board_state` / `view.layout`.
+- **Grouping** on the board makes swimlanes; cards move between columns within their lane, and a task created in a lane gets that lane's value (e.g. its epic). Grouping by epic puts each epic at the top of its own lane. Table grouping adds Status.
+- Collapsed columns are shared by every lane of a view and still accept drops.
+
+## Jira import (owner request, 2026-10-29)
+`jitterbug import-jira <export.db> <username> [--dry-run]`, one transaction, refuses if any key already exists. Mapping, all reused by name when they already exist:
+- Keys kept (`OM2-N`). Labels MainJob/Personal/Freelance → areas Main job (prefix **OM2**, so new keys continue the sequence) / Personal (PER) / Freelance (FRL); an unlabelled issue takes its parent's label.
+- Statuses To Do / In Progress / Done / Cancelled → the seeded ones; **Planned** and **Paused** are created (todo behaviour, on the board), following Jira's own categories.
+- Priorities Low/Medium/High → Low/Normal/High; **Highest** (2.0) and **Lowest** (0.5) created. Difficulty Easy/Medium/Hard/Very Hard → 1/2/4/8.
+- Status changelog → `status_transition` rows (so completed/started dates and cycle time are Jira's real history). Worklogs → `task` sessions with the area's default energy type (Main job/Freelance: Engineering, Personal: Admin — **review**, change per area before importing if you want otherwise). 0-hour worklogs are skipped.
+- Kept without a column: story points → custom field *Jira points*; start date → *Start date*; issue links and sub-task parents → *Jira links*; comments appended to the description; Jira id/type/status/resolution under `custom._jira`.
+- Not carried: history of fields other than status (priority, labels, due date edits), assignee/reporter (all empty or you), attachments (none in the export).
+
 
 ### Subtypes ship empty
 Section 3 lists subtype seeds; section 12 ("Deferred, not open") says Phase 1 ships the table empty and the user adds their own on first run. Followed section 12 as the later decision. The section 3 list can be added from Settings → Subtypes in a minute.
