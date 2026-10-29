@@ -3,7 +3,8 @@ import { palette } from "./palette";
 
 // One token block for the whole app: dark surface levels from the active
 // theme, dense, 6px radii, 24–30px controls, no button shadows. Built from
-// the palette each time the theme changes.
+// the palette each time the theme changes. Motion is about a third of
+// Ant's default (0.1/0.2/0.3s), so panels and menus open without a wait.
 export const makeAntTheme = (): ThemeConfig => ({
   algorithm: [theme.darkAlgorithm, theme.compactAlgorithm],
   token: {
@@ -36,6 +37,9 @@ export const makeAntTheme = (): ThemeConfig => ({
     controlHeightSM: 24,
     controlHeightLG: 30,
     fontSize: 13,
+    motionDurationFast: "0.05s",
+    motionDurationMid: "0.08s",
+    motionDurationSlow: "0.12s",
     boxShadow: "none",
     boxShadowSecondary: "0 8px 12px #091E4226, 0 0 1px #091E424F",
   },

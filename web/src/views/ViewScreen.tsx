@@ -35,7 +35,7 @@ export function ViewScreen({ view }: { view: View }) {
   const [query, setQuery] = useState(""); // debounced search
 
   useEffect(() => {
-    const t = window.setTimeout(() => setQuery(search.trim()), 250);
+    const t = window.setTimeout(() => setQuery(search.trim()), 150);
     return () => window.clearTimeout(t);
   }, [search]);
 
