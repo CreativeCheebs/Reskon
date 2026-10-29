@@ -63,7 +63,7 @@ func TestImportJira(t *testing.T) {
 	path := fakeJiraExport(t)
 
 	// Dry run writes nothing.
-	rep, err := d.ImportJira(ctx, path, true)
+	rep, err := d.ImportJira(ctx, path, true, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +71,7 @@ func TestImportJira(t *testing.T) {
 		t.Fatalf("dry run: report %d tasks, table has %d", rep.Tasks, count(t, d, "task"))
 	}
 
-	rep, err = d.ImportJira(ctx, path, false)
+	rep, err = d.ImportJira(ctx, path, false, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,7 +121,7 @@ func TestImportJira(t *testing.T) {
 		t.Errorf("next key = %s, want OM2-13", next.Key)
 	}
 	// Importing again is refused.
-	if _, err := d.ImportJira(ctx, path, false); err == nil {
+	if _, err := d.ImportJira(ctx, path, false, nil); err == nil {
 		t.Error("second import accepted")
 	}
 }
@@ -138,5 +138,43 @@ func TestJiraValueParsing(t *testing.T) {
 	}
 	if s, err := jiraTime("2026-01-14T18:41:44.578+0530"); err != nil || s != "2026-01-14T13:11:44.578000000Z" {
 		t.Errorf("time = %s %v", s, err)
+	}
+}
+
+func TestImportJiraIntoExistingAreas(t *testing.T) {
+	d := openTest(t)
+	ctx := context.Background()
+	job := mustArea(t, d, "Day Job", "JOB")
+	// An existing area with no default energy type must not lose worklogs.
+	if _, err := d.CreateArea(ctx, fields(t, `{"name":"Personal","key_prefix":"PER"}`)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.ImportJira(ctx, fakeJiraExport(t), false, map[string]string{"mainjob": "Nope"}); err == nil {
+		t.Error("mapping onto a missing area accepted")
+	}
+	rep, err := d.ImportJira(ctx, fakeJiraExport(t), false, map[string]string{"MainJob": "Day Job"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rep.Sessions != 1 {
+		t.Errorf("sessions = %d, want 1", rep.Sessions)
+	}
+	for _, c := range rep.Created {
+		if strings.HasPrefix(c, "area Main job") {
+			t.Errorf("created %q despite mapping to Day Job", c)
+		}
+	}
+	tasks, _ := d.ListTasks(ctx)
+	for _, tk := range tasks {
+		if tk.Key == "OM2-10" && tk.AreaID != job.ID {
+			t.Errorf("epic in area %d, want Day Job %d", tk.AreaID, job.ID)
+		}
+		if tk.Key == "OM2-12" && tk.EnergyTypeID == nil {
+			t.Error("task in Personal (no default) got no energy type")
+		}
+	}
+	// New Day Job tasks keep Day Job's own prefix.
+	if k := mustTask(t, d, job.ID, "x").Key; k != "JOB-1" {
+		t.Errorf("next Day Job key = %s", k)
 	}
 }

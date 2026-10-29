@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"jitterbug/internal/api"
 	"jitterbug/internal/auth"
@@ -48,12 +49,29 @@ func main() {
 		return
 	}
 
-	// `jitterbug import-jira <export.db> <username> [--dry-run]` loads a Jira
-	// export into that person's data. --dry-run does everything, reports,
-	// and rolls back.
+	// `jitterbug import-jira <export.db> <username> [--dry-run] [--area label=Name ...]`
+	// loads a Jira export into that person's data. --dry-run does
+	// everything, reports, and rolls back. --area puts issues with a Jira
+	// label into an existing area, e.g. --area MainJob="Day Job".
 	if len(os.Args) >= 4 && os.Args[1] == "import-jira" {
-		dry := len(os.Args) == 5 && os.Args[4] == "--dry-run"
-		if err := importJira(store, os.Args[2], os.Args[3], dry); err != nil {
+		dry := false
+		areas := map[string]string{}
+		for i := 4; i < len(os.Args); i++ {
+			switch a := os.Args[i]; {
+			case a == "--dry-run":
+				dry = true
+			case a == "--area" && i+1 < len(os.Args):
+				i++
+				label, name, ok := strings.Cut(os.Args[i], "=")
+				if !ok {
+					log.Fatalf("import-jira: --area wants label=Area name, got %q", os.Args[i])
+				}
+				areas[label] = name
+			default:
+				log.Fatalf("import-jira: unknown argument %q", a)
+			}
+		}
+		if err := importJira(store, os.Args[2], os.Args[3], dry, areas); err != nil {
 			log.Fatalf("import-jira: %v", err)
 		}
 		return
@@ -65,7 +83,7 @@ func main() {
 	log.Fatal(http.ListenAndServe(addr, srv))
 }
 
-func importJira(store *auth.Store, path, username string, dry bool) error {
+func importJira(store *auth.Store, path, username string, dry bool, areas map[string]string) error {
 	ctx := context.Background()
 	users, err := store.ListUsers(ctx)
 	if err != nil {
@@ -79,7 +97,7 @@ func importJira(store *auth.Store, path, username string, dry bool) error {
 		if err != nil {
 			return err
 		}
-		rep, err := d.ImportJira(ctx, path, dry)
+		rep, err := d.ImportJira(ctx, path, dry, areas)
 		if err != nil {
 			return err
 		}

@@ -22,6 +22,7 @@ The spec is single-user with "no auth in Phase 1". The owner asked for a login p
 - Keys kept (`OM2-N`). Labels MainJob/Personal/Freelance → areas Main job (prefix **OM2**, so new keys continue the sequence) / Personal (PER) / Freelance (FRL); an unlabelled issue takes its parent's label.
 - Statuses To Do / In Progress / Done / Cancelled → the seeded ones; **Planned** and **Paused** are created (todo behaviour, on the board), following Jira's own categories.
 - Priorities Low/Medium/High → Low/Normal/High; **Highest** (2.0) and **Lowest** (0.5) created. Difficulty Easy/Medium/Hard/Very Hard → 1/2/4/8.
+- `--area label=Name` puts a label's issues into an existing area instead. An existing area with no default energy type gets the mapped energy type on imported rows only (reported), so no worklog is dropped.
 - Status changelog → `status_transition` rows (so completed/started dates and cycle time are Jira's real history). Worklogs → `task` sessions with the area's default energy type (Main job/Freelance: Engineering, Personal: Admin — **review**, change per area before importing if you want otherwise). 0-hour worklogs are skipped.
 - Kept without a column: story points → custom field *Jira points*; start date → *Start date*; issue links and sub-task parents → *Jira links*; comments appended to the description; Jira id/type/status/resolution under `custom._jira`.
 - Not carried: history of fields other than status (priority, labels, due date edits), assignee/reporter (all empty or you), attachments (none in the export).

@@ -60,7 +60,10 @@ var (
 // their original keys, the status history as transitions, and worklogs as
 // sessions. A dry run does all of it and then rolls back. It refuses to
 // run if any imported key already exists, so it cannot double-import.
-func (d *DB) ImportJira(ctx context.Context, path string, dryRun bool) (*ImportReport, error) {
+//
+// areaNames maps a Jira label (lower case, e.g. "mainjob") to the name of an
+// existing area to use instead of the default mapping; it may be nil.
+func (d *DB) ImportJira(ctx context.Context, path string, dryRun bool, areaNames map[string]string) (*ImportReport, error) {
 	ex, err := readJiraExport(ctx, path)
 	if err != nil {
 		return nil, err
@@ -71,7 +74,15 @@ func (d *DB) ImportJira(ctx context.Context, path string, dryRun bool) (*ImportR
 		return nil, err
 	}
 	defer tx.Rollback()
-	im := &importer{ctx: ctx, tx: tx, rep: rep, ids: map[string]int64{}, energyOf: map[int64]*int64{}, areaOf: map[int64]int64{}}
+	im := &importer{ctx: ctx, tx: tx, rep: rep, ids: map[string]int64{}, energyOf: map[int64]*int64{}, areaOf: map[int64]int64{},
+		areaNames: map[string]string{}, areaCache: map[string]cachedArea{}}
+	for label, name := range areaNames {
+		var one int
+		if err := tx.QueryRowContext(ctx, `SELECT 1 FROM area WHERE lower(name) = lower(?) AND deleted_at IS NULL`, name).Scan(&one); err != nil {
+			return nil, invalid("no area named %q to map %s onto", name, label)
+		}
+		im.areaNames[strings.ToLower(label)] = name
+	}
 
 	keys := make([]any, len(ex.Issues))
 	for i, is := range ex.Issues {
@@ -129,6 +140,14 @@ type importer struct {
 	ids      map[string]int64 // Jira key -> task id
 	energyOf map[int64]*int64 // task id -> energy type
 	areaOf   map[int64]int64  // task id -> area
+
+	areaNames map[string]string // Jira label -> existing area name chosen by the person
+	areaCache map[string]cachedArea
+}
+
+type cachedArea struct {
+	id     int64
+	energy *int64
 }
 
 func (im *importer) issue(is jiraIssue, byKey map[string]jiraIssue, ex *jiraExport, pos float64) error {

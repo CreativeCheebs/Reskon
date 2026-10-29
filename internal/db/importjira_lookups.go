@@ -10,27 +10,41 @@ import (
 // name when they exist and created when they don't.
 
 func (im *importer) area(label string) (int64, *int64, error) {
+	if c, ok := im.areaCache[label]; ok {
+		return c.id, c.energy, nil
+	}
 	m, ok := jiraAreas[label]
 	if !ok {
 		name := strings.ToUpper(label[:1]) + label[1:]
 		m = struct{ Name, Prefix, Energy string }{name, strings.ToUpper(firstN(label, 3)), "Admin"}
 	}
+	if name, ok := im.areaNames[label]; ok {
+		m.Name = name // the person chose an existing area for this label
+	}
+	var eid int64
+	if err := im.tx.QueryRowContext(im.ctx, `SELECT id FROM energy_type WHERE name = ? AND deleted_at IS NULL`, m.Energy).Scan(&eid); err != nil {
+		return 0, nil, fmt.Errorf("energy type %s missing", m.Energy)
+	}
+	remember := func(id int64, energy *int64) (int64, *int64, error) {
+		im.areaCache[label] = cachedArea{id, energy}
+		return id, energy, nil
+	}
+
 	var id int64
 	var energy sql.NullInt64
 	err := im.tx.QueryRowContext(im.ctx, `SELECT id, default_energy_type_id FROM area WHERE lower(name) = lower(?) AND deleted_at IS NULL`,
 		m.Name).Scan(&id, &energy)
 	if err == nil {
 		if energy.Valid {
-			return id, &energy.Int64, nil
+			return remember(id, &energy.Int64)
 		}
-		return id, nil, nil
+		// Tasks and their worklogs need an energy type; the area has no
+		// default, so use the mapped one for imported rows only.
+		im.warn("area %s has no default energy type; its imported tasks and sessions use %s", m.Name, m.Energy)
+		return remember(id, &eid)
 	}
 	if err != sql.ErrNoRows {
 		return 0, nil, err
-	}
-	var eid int64
-	if err := im.tx.QueryRowContext(im.ctx, `SELECT id FROM energy_type WHERE name = ? AND deleted_at IS NULL`, m.Energy).Scan(&eid); err != nil {
-		return 0, nil, fmt.Errorf("energy type %s missing", m.Energy)
 	}
 	res, err := im.tx.ExecContext(im.ctx, `INSERT INTO area (name, key_prefix, default_energy_type_id) VALUES (?, ?, ?)`, m.Name, m.Prefix, eid)
 	if err != nil {
@@ -43,7 +57,7 @@ func (im *importer) area(label string) (int64, *int64, error) {
 		return 0, nil, err
 	}
 	im.created("area %s (key prefix %s, default energy type %s) and its board view", m.Name, m.Prefix, m.Energy)
-	return id, &eid, nil
+	return remember(id, &eid)
 }
 
 func (im *importer) status(jiraName string) (int64, error) {

@@ -64,6 +64,8 @@ JITTERBUG_DATA=data ./jitterbug import-jira jira_old_data.db <username>
 
 Keys, epics, areas (from labels), status history, worklogs and comments come across; see `docs/deviations.md` for the exact mapping. It refuses to import the same export twice.
 
+Jira labels map to areas named Main job / Personal / Freelance (created if missing). To use an area you already have, map the label: `--area MainJob="Day Job"` (repeatable).
+
 ## Back up
 
 The databases run in WAL mode, so copying files while the server runs can miss recent writes. Use the built-in backup, which is safe while the server is running and writes `auth.db` plus one `<username>.db` per person into a new directory:
