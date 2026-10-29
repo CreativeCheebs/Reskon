@@ -17,7 +17,8 @@ func (s *Server) sessionRoutes() {
 }
 
 // listSessions accepts ?from=&to= (YYYY-MM-DD), task_id, energy_type and
-// area (comma-separated ids), kind (task|event), has_task (true|false) and q.
+// area (comma-separated ids), kind (task|event), q, and has_task,
+// has_difficulty, has_subtypes (true|false).
 func (s *Server) listSessions(w http.ResponseWriter, r *http.Request) {
 	v := r.URL.Query()
 	q := db.SessionQuery{From: v.Get("from"), To: v.Get("to"), Kind: v.Get("kind"), Search: v.Get("q")}
@@ -33,14 +34,9 @@ func (s *Server) listSessions(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		q.Areas, err = idList(v.Get("area"))
 	}
-	switch v.Get("has_task") {
-	case "true":
-		t := true
-		q.HasTask = &t
-	case "false":
-		f := false
-		q.HasTask = &f
-	}
+	q.HasTask = optBool(v.Get("has_task"))
+	q.HasDiff = optBool(v.Get("has_difficulty"))
+	q.HasSubtypes = optBool(v.Get("has_subtypes"))
 	if err != nil {
 		respond(w, nil, err)
 		return
@@ -102,4 +98,17 @@ func (s *Server) deleteSession(w http.ResponseWriter, r *http.Request) {
 func (s *Server) getDay(w http.ResponseWriter, r *http.Request) {
 	v, err := dbOf(r.Context()).GetDay(r.Context(), r.PathValue("date"))
 	respond(w, v, err)
+}
+
+// optBool reads "true"/"false"; anything else means no constraint.
+func optBool(v string) *bool {
+	switch v {
+	case "true":
+		t := true
+		return &t
+	case "false":
+		f := false
+		return &f
+	}
+	return nil
 }

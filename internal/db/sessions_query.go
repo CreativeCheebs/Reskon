@@ -14,6 +14,8 @@ type SessionQuery struct {
 	Areas       []int64 // any of these
 	Kind        string  // "task" or "event"
 	HasTask     *bool   // true: attached to a task; false: not attached
+	HasDiff     *bool   // true: difficulty set; false: not set
+	HasSubtypes *bool   // true: at least one subtype; false: none
 	Search      string  // every word in label, note or task title
 }
 
@@ -46,6 +48,21 @@ func (d *DB) ListSessions(ctx context.Context, q SessionQuery) ([]*Session, erro
 			where = append(where, "s.task_id IS NOT NULL")
 		} else {
 			where = append(where, "s.task_id IS NULL")
+		}
+	}
+	if q.HasDiff != nil {
+		if *q.HasDiff {
+			where = append(where, "s.difficulty IS NOT NULL")
+		} else {
+			where = append(where, "s.difficulty IS NULL")
+		}
+	}
+	if q.HasSubtypes != nil {
+		exists := "EXISTS (SELECT 1 FROM session_subtype ss WHERE ss.session_id = s.id)"
+		if *q.HasSubtypes {
+			where = append(where, exists)
+		} else {
+			where = append(where, "NOT "+exists)
 		}
 	}
 	for _, w := range strings.Fields(q.Search) {

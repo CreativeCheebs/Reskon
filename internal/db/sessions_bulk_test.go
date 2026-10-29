@@ -15,22 +15,29 @@ func TestSessionFilters(t *testing.T) {
 	d.CreateSession(ctx, fields(t, fmt.Sprintf(`{"task_id":%d,"hours":1,"logged_for":"2026-10-01","note":"flashed"}`, tk.ID)))
 	d.CreateSession(ctx, fields(t, `{"kind":"event","label":"Gaming","hours":2,"logged_for":"2026-10-02","energy_type_id":5}`))
 	d.CreateSession(ctx, fields(t, `{"label":"Paperwork","hours":1,"logged_for":"2026-10-03","energy_type_id":3}`))
+	st, _ := d.CreateSubtype(ctx, fields(t, `{"name":"paperwork","energy_type_id":3}`))
+	d.CreateSession(ctx, fields(t, fmt.Sprintf(`{"label":"Tax","hours":1,"logged_for":"2026-10-04","energy_type_id":3,"difficulty":3,"subtypes":[%d]}`, st.ID)))
 	yes, no := true, false
 	cases := []struct {
 		q    SessionQuery
 		want int
 	}{
-		{SessionQuery{}, 3},
+		{SessionQuery{}, 4},
 		{SessionQuery{Kind: "event"}, 1},
-		{SessionQuery{EnergyTypes: []int64{3, 5}}, 2},
+		{SessionQuery{EnergyTypes: []int64{3, 5}}, 3},
 		{SessionQuery{Areas: []int64{a.ID}}, 1},
 		{SessionQuery{HasTask: &yes}, 1},
-		{SessionQuery{HasTask: &no}, 2},
+		{SessionQuery{HasTask: &no}, 3},
 		{SessionQuery{Search: "nvr"}, 1},      // task title
 		{SessionQuery{Search: "flashed"}, 1},  // note
 		{SessionQuery{Search: "gam"}, 1},      // label
 		{SessionQuery{Search: "PER-1"}, 1},    // task key
-		{SessionQuery{From: "2026-10-02"}, 2}, // date range still works
+		{SessionQuery{From: "2026-10-02"}, 3}, // date range still works
+		{SessionQuery{HasDiff: &yes}, 1},
+		{SessionQuery{HasDiff: &no}, 3},
+		{SessionQuery{HasSubtypes: &yes}, 1},
+		{SessionQuery{HasSubtypes: &no}, 3},
+		{SessionQuery{Kind: "event", HasDiff: &no}, 1}, // combines with kind
 	}
 	for _, c := range cases {
 		got, err := d.ListSessions(ctx, c.q)

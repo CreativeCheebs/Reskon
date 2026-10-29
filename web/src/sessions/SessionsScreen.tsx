@@ -29,10 +29,12 @@ interface Filters {
   areas: number[];
   kind: "" | "task" | "event";
   hasTask: "" | "true" | "false";
+  hasDiff: "" | "true" | "false";
+  hasSubtypes: "" | "true" | "false";
   q: string;
 }
 
-const NO_FILTERS: Filters = { energy: [], areas: [], kind: "", hasTask: "", q: "" };
+const NO_FILTERS: Filters = { energy: [], areas: [], kind: "", hasTask: "", hasDiff: "", hasSubtypes: "", q: "" };
 
 export function SessionsScreen() {
   const { boot, reloadKey } = useApp();
@@ -56,6 +58,8 @@ export function SessionsScreen() {
     if (filters.areas.length) p.set("area", filters.areas.join(","));
     if (filters.kind) p.set("kind", filters.kind);
     if (filters.hasTask) p.set("has_task", filters.hasTask);
+    if (filters.hasDiff) p.set("has_difficulty", filters.hasDiff);
+    if (filters.hasSubtypes) p.set("has_subtypes", filters.hasSubtypes);
     if (filters.q) p.set("q", filters.q);
     try {
       const s = await api.get<Session[]>(`/sessions?${p}`);
@@ -175,6 +179,28 @@ export function SessionsScreen() {
             { value: "", label: "With or without task" },
             { value: "true", label: "Attached to a task" },
             { value: "false", label: "Not attached" },
+          ]}
+        />
+        <Select
+          size="small"
+          style={{ width: 160 }}
+          value={filters.hasDiff}
+          onChange={(v) => setF("hasDiff", v)}
+          options={[
+            { value: "", label: "Any difficulty" },
+            { value: "true", label: "Difficulty set" },
+            { value: "false", label: "Difficulty not set" },
+          ]}
+        />
+        <Select
+          size="small"
+          style={{ width: 160 }}
+          value={filters.hasSubtypes}
+          onChange={(v) => setF("hasSubtypes", v)}
+          options={[
+            { value: "", label: "Any subtypes" },
+            { value: "true", label: "Subtypes set" },
+            { value: "false", label: "No subtypes" },
           ]}
         />
         {filtered && (
