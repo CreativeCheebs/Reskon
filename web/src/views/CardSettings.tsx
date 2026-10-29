@@ -83,5 +83,5 @@ const SAMPLE: Task = {
   board_pos: 0, custom: {}, created_at: "", updated_at: "", behaviour: "in_progress", first_started_at: null,
   last_started_at: null, completed_at: null, cancelled_at: null, last_moved_at: "", created_age_h: 72,
   started_age_h: 30, time_in_status_h: 20, stalled: false, points: 4, logged_h: 1.5, progress_pct: 50,
-  subtypes: ["coding"], epic_tasks: null, epic_done: null,
+  subtypes: ["coding"], epic_tasks: null, epic_done: null, epic_estimate_h: null, epic_logged_h: null,
 };

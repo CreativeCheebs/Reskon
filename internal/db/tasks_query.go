@@ -119,6 +119,11 @@ func (d *DB) ListTasksOfType(ctx context.Context, typ string) ([]*Task, error) {
 	return d.queryTasks(ctx, &ViewFilter{Types: []string{typ}}, "", time.Now())
 }
 
+// ListEpicTasks returns the tasks that belong to one epic.
+func (d *DB) ListEpicTasks(ctx context.Context, epicID int64) ([]*Task, error) {
+	return d.queryTasks(ctx, &ViewFilter{Epics: []int64{epicID}}, "", time.Now())
+}
+
 // ListTasksForView resolves a view's filter server-side, narrowed by an
 // optional search over title, key and description.
 func (d *DB) ListTasksForView(ctx context.Context, viewID int64, search string) ([]*Task, error) {

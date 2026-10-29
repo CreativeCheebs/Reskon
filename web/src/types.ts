@@ -89,6 +89,7 @@ export interface CardShow {
   progress_bar: boolean;
   due: boolean;
   epic: boolean;
+  logged: boolean;
   custom: string[];
 }
 
@@ -177,6 +178,8 @@ export interface Task {
   subtypes: string[];
   epic_tasks: number | null; // epics only
   epic_done: number | null;
+  epic_estimate_h: number | null; // summed estimates of its tasks
+  epic_logged_h: number | null; // hours logged against its tasks
 }
 
 export interface Transition {

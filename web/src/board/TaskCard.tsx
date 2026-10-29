@@ -46,6 +46,7 @@ export function TaskCard({ task, config, onOpen }: { task: Task; config: CardCon
       </span>,
     );
   if (show.estimate && task.estimate_h !== null) meta.push(<span key="est" title="Estimate">{formatHours(task.estimate_h)}</span>);
+  if (show.logged && task.logged_h > 0) meta.push(<span key="logged" title="Logged">⏱ {formatHours(task.logged_h)}</span>);
   if (show.created_age) meta.push(<span key="cage" title="Created age">c {formatAge(task.created_age_h)}</span>);
   if (show.started_age && task.started_age_h !== null)
     meta.push(<span key="sage" title="Started age">s {formatAge(task.started_age_h)}</span>);

@@ -29,6 +29,8 @@ export function TaskTable({
   const show = config.show;
   const byId = <T extends { id: number }>(rows: T[], id: number | null) => rows.find((r) => r.id === id);
   const num = (a: number | null, b: number | null) => (a ?? -Infinity) - (b ?? -Infinity);
+  // An epic's row shows the time logged against its tasks.
+  const loggedOf = (t: Task) => (t.type === "epic" ? t.epic_logged_h ?? 0 : t.logged_h);
 
   const cols: ColumnsType<Task> = [
     {
@@ -99,6 +101,13 @@ export function TaskTable({
       width: 70,
       render: (_, t) => formatHours(t.estimate_h),
       sorter: (a, b) => num(a.estimate_h, b.estimate_h),
+    });
+  if (show.logged)
+    cols.push({
+      title: "Logged",
+      width: 80,
+      render: (_, t) => formatHours(loggedOf(t)),
+      sorter: (a, b) => loggedOf(a) - loggedOf(b),
     });
   if (show.progress_bar)
     cols.push({

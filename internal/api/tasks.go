@@ -72,7 +72,8 @@ func (s *Server) cycleTime(w http.ResponseWriter, r *http.Request) {
 
 // listTasks resolves the view's filter server-side; the client sends only
 // the view id, plus an optional ?q= search. Without ?view= it returns every
-// task, or with ?type=epic every epic (for pickers).
+// task, with ?type=epic every epic (for pickers), or with ?epic=:id the
+// tasks in one epic (for its panel).
 func (s *Server) listTasks(w http.ResponseWriter, r *http.Request) {
 	viewID, ok, err := queryID(r, "view")
 	if err != nil {
@@ -81,6 +82,16 @@ func (s *Server) listTasks(w http.ResponseWriter, r *http.Request) {
 	}
 	if ok {
 		tasks, err := dbOf(r.Context()).ListTasksForView(r.Context(), viewID, r.URL.Query().Get("q"))
+		respond(w, tasks, err)
+		return
+	}
+	epicID, ok, err := queryID(r, "epic")
+	if err != nil {
+		respond(w, nil, err)
+		return
+	}
+	if ok {
+		tasks, err := dbOf(r.Context()).ListEpicTasks(r.Context(), epicID)
 		respond(w, tasks, err)
 		return
 	}

@@ -74,19 +74,49 @@ func checkEpicFields(ctx context.Context, q querier, id int64, curType string, c
 	return nil
 }
 
-// epicCounts returns, for each epic among ids, how many non-deleted tasks
-// belong to it and how many of those are in a done-behaviour status.
-func (d *DB) epicCounts(ctx context.Context, ids []any, in string) (map[int64][2]int, error) {
-	out := map[int64][2]int{}
-	err := scanInto(ctx, d, `SELECT t.epic_id, COUNT(*), SUM(c.behaviour = 'done') FROM task t
+// epicTotals is what an epic adds up from its tasks, on read.
+type epicTotals struct {
+	tasks, done int
+	estimateH   float64
+	loggedH     float64
+}
+
+// epicTotalsOf returns, for each epic among ids: how many non-deleted tasks
+// belong to it and how many of those are done (cancelled ones left out of
+// both), their summed estimates (also without cancelled), and every hour
+// logged against them. Cancelled tasks' hours still count: the time was spent.
+func (d *DB) epicTotalsOf(ctx context.Context, ids []any, in string) (map[int64]*epicTotals, error) {
+	out := map[int64]*epicTotals{}
+	of := func(id int64) *epicTotals {
+		if out[id] == nil {
+			out[id] = &epicTotals{}
+		}
+		return out[id]
+	}
+	err := scanInto(ctx, d, `SELECT t.epic_id, COUNT(*), SUM(c.behaviour = 'done'), COALESCE(SUM(t.estimate_h), 0) FROM task t
 		JOIN status s ON s.id = t.status_id
 		JOIN status_category c ON c.id = s.category_id
 		WHERE t.deleted_at IS NULL AND c.behaviour <> 'cancelled' AND t.epic_id IN (`+in+`)
 		GROUP BY t.epic_id`, func(r *sql.Rows) error {
 		var id int64
 		var total, done int
-		err := r.Scan(&id, &total, &done)
-		out[id] = [2]int{total, done}
+		var est float64
+		err := r.Scan(&id, &total, &done, &est)
+		e := of(id)
+		e.tasks, e.done, e.estimateH = total, done, est
+		return err
+	}, ids...)
+	if err != nil {
+		return nil, err
+	}
+	err = scanInto(ctx, d, `SELECT t.epic_id, SUM(s.hours) FROM session s
+		JOIN task t ON t.id = s.task_id
+		WHERE s.deleted_at IS NULL AND t.deleted_at IS NULL AND t.epic_id IN (`+in+`)
+		GROUP BY t.epic_id`, func(r *sql.Rows) error {
+		var id int64
+		var h float64
+		err := r.Scan(&id, &h)
+		of(id).loggedH = h
 		return err
 	}, ids...)
 	return out, err

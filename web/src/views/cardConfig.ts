@@ -16,6 +16,7 @@ export const DEFAULT_SHOW: CardShow = {
   progress_bar: true,
   due: false,
   epic: true,
+  logged: false,
   custom: [],
 };
 
@@ -33,6 +34,7 @@ export const SHOW_LABELS: Record<Exclude<keyof CardShow, "custom">, string> = {
   progress_bar: "Progress bar",
   due: "Due",
   epic: "Epic",
+  logged: "Logged time",
 };
 
 export function cardConfigOf(view: View): CardConfig {

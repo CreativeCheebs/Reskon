@@ -13,6 +13,8 @@ interface AppState {
   reloadBootstrap: () => Promise<void>;
   /** Replace one view in the bootstrap without refetching anything. */
   updateView: (v: View) => void;
+  /** Save one setting and keep the bootstrap's copy in step. */
+  saveSetting: (key: string, value: unknown) => Promise<void>;
   behaviourOf: (statusId: number) => Behaviour | undefined;
   statusById: Map<number, Status>;
 }
@@ -52,6 +54,11 @@ export function AppProvider({ children, fallback }: { children: ReactNode; fallb
     setBoot((b) => (b ? { ...b, views: b.views.map((x) => (x.id === v.id ? v : x)) } : b));
   }, []);
 
+  const saveSetting = useCallback(async (key: string, value: unknown) => {
+    await api.put(`/settings/${key}`, value);
+    setBoot((b) => (b ? { ...b, settings: { ...b.settings, [key]: value } } : b));
+  }, []);
+
   const value = useMemo<AppState | null>(() => {
     if (!boot) return null;
     const statusById = new Map(boot.statuses.map((s) => [s.id, s]));
@@ -62,13 +69,14 @@ export function AppProvider({ children, fallback }: { children: ReactNode; fallb
       reloadKey,
       reloadBootstrap,
       updateView,
+      saveSetting,
       statusById,
       behaviourOf: (id) => {
         const s = statusById.get(id);
         return s ? catById.get(s.category_id)?.behaviour : undefined;
       },
     };
-  }, [boot, online, reloadKey, reloadBootstrap, updateView]);
+  }, [boot, online, reloadKey, reloadBootstrap, updateView, saveSetting]);
 
   if (!value) return <>{fallback}</>;
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

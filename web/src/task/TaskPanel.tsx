@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { DatePicker, Descriptions, Divider, Drawer, Input, InputNumber, Popconfirm, Select, Space, Spin, Typography } from "antd";
 import { message } from "../theme/feedback";
 import dayjs from "dayjs";
@@ -9,6 +9,7 @@ import { formatAge, formatDateTime, formatHours } from "../format";
 import { palette } from "../theme/palette";
 import type { Task } from "../types";
 import { DifficultySlider } from "./DifficultySlider";
+import { EpicTasks } from "./EpicTasks";
 import { TaskExtras } from "./TaskExtras";
 import { TypeIcon, TypeLabel } from "./TypeIcon";
 import { useEpics } from "./useEpics";
@@ -54,6 +55,10 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
   // The fields come up first; sessions, cycle time and dates follow a frame
   // later, so the panel appears without waiting for all of it.
   const [rest, setRest] = useState(false);
+  // An epic's task opened from its table, on top of this panel.
+  const [child, setChild] = useState<number | null>(null);
+  const [childVersion, setChildVersion] = useState(0);
+  const childChanged = useRef(false);
   useEffect(() => {
     const t = window.setTimeout(() => setRest(true), 0);
     return () => window.clearTimeout(t);
@@ -102,7 +107,7 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
   return (
     <Drawer
       open
-      width={520}
+      width={task?.type === "epic" ? 860 : 520}
       onClose={onClose}
       title={
         task ? (
@@ -151,7 +156,7 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
             <Descriptions.Item label="Epic">
               {task.type === "epic" ? (
                 <span style={{ color: palette.muted }}>
-                  {task.epic_tasks ? `${task.epic_done}/${task.epic_tasks} tasks done` : "No tasks yet"}
+                  {task.epic_tasks ? `${task.epic_done}/${task.epic_tasks} done · ${formatHours(task.epic_logged_h)} logged` : "No tasks yet"}
                 </span>
               ) : (
                 <Select
@@ -242,6 +247,7 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
             onBlur={() => desc !== (task.description ?? "") && patch({ description: desc })}
           />
 
+          {rest && task.type === "epic" && <EpicTasks epic={task} version={childVersion} onOpenTask={setChild} />}
           {rest && (
             <>
               <TaskExtras task={task} patch={patch} onTaskChanged={() => load(true)} />
@@ -268,6 +274,22 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
             </>
           )}
         </Space>
+      )}
+      {child !== null && (
+        <TaskPanel
+          taskId={child}
+          onClose={() => {
+            setChild(null);
+            // A task's time or status feeds the epic's totals.
+            if (childChanged.current) {
+              childChanged.current = false;
+              setChildVersion((v) => v + 1);
+              load(true);
+            }
+          }}
+          onChanged={() => (childChanged.current = true)}
+          onDeleted={() => (childChanged.current = true)}
+        />
       )}
     </Drawer>
   );

@@ -90,3 +90,33 @@ func TestSearch(t *testing.T) {
 		}
 	}
 }
+
+func TestEpicTotals(t *testing.T) {
+	d := openTest(t)
+	ctx := context.Background()
+	a := mustArea(t, d, "Main job", "OM2")
+	epic, _ := d.CreateTask(ctx, fields(t, fmt.Sprintf(`{"title":"E","area_id":%d,"type":"epic"}`, a.ID)))
+	one, _ := d.CreateTask(ctx, fields(t, fmt.Sprintf(`{"title":"one","area_id":%d,"epic_id":%d,"estimate_h":2}`, a.ID, epic.ID)))
+	two, _ := d.CreateTask(ctx, fields(t, fmt.Sprintf(`{"title":"two","area_id":%d,"epic_id":%d,"estimate_h":3}`, a.ID, epic.ID)))
+	outside := mustTask(t, d, a.ID, "outside")
+	for _, s := range []struct {
+		task int64
+		h    float64
+	}{{one.ID, 1.5}, {two.ID, 2}, {outside.ID, 4}, {epic.ID, 0.5}} {
+		if _, err := d.CreateSession(ctx, fields(t, fmt.Sprintf(`{"task_id":%d,"hours":%g,"logged_for":"2026-10-01"}`, s.task, s.h))); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	got, _ := d.GetTask(ctx, epic.ID)
+	if *got.EpicLoggedH != 3.5 || *got.EpicEstimateH != 5 {
+		t.Errorf("epic logged %v est %v, want 3.5 and 5", *got.EpicLoggedH, *got.EpicEstimateH)
+	}
+	if got.LoggedH != 0.5 {
+		t.Errorf("epic's own logged = %v, want 0.5", got.LoggedH)
+	}
+	tasks, err := d.ListEpicTasks(ctx, epic.ID)
+	if err != nil || len(tasks) != 2 {
+		t.Fatalf("epic tasks = %d %v, want 2", len(tasks), err)
+	}
+}
