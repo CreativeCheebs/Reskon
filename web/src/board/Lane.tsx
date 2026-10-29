@@ -58,7 +58,7 @@ interface Props {
 export function Lane(props: Props) {
   const { view, tasks, boardStatuses, collapsed, onToggleCollapse, inLane, createDefaults, setTasks, refetch, onOpenTask } = props;
   const { online } = useApp();
-  const config = cardConfigOf(view);
+  const config = useMemo(() => cardConfigOf(view), [view]);
 
   const byId = useMemo(() => new Map(tasks.map((t) => [t.id, t])), [tasks]);
 

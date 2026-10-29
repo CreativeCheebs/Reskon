@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -89,7 +90,7 @@ export function Column(props: Props) {
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {taskIds.map((id) => {
               const t = byId.get(id);
-              return t ? <SortableCard key={id} task={t} config={config} disabled={disabled} onOpen={() => onOpenTask(id)} /> : null;
+              return t ? <SortableCard key={id} task={t} config={config} disabled={disabled} onOpenTask={onOpenTask} /> : null;
             })}
           </div>
         </SortableContext>
@@ -103,7 +104,19 @@ export function Column(props: Props) {
   );
 }
 
-function SortableCard({ task, config, disabled, onOpen }: { task: Task; config: CardConfig; disabled: boolean; onOpen: () => void }) {
+// Memoised: a card re-renders only when its own task (or the card settings)
+// changes, not whenever anything else on the board does.
+const SortableCard = memo(function SortableCard({
+  task,
+  config,
+  disabled,
+  onOpenTask,
+}: {
+  task: Task;
+  config: CardConfig;
+  disabled: boolean;
+  onOpenTask: (id: number) => void;
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id, disabled });
   return (
     <div
@@ -112,7 +125,7 @@ function SortableCard({ task, config, disabled, onOpen }: { task: Task; config: 
       {...attributes}
       {...listeners}
     >
-      <TaskCard task={task} config={config} onOpen={onOpen} />
+      <TaskCard task={task} config={config} onOpen={() => onOpenTask(task.id)} />
     </div>
   );
-}
+});

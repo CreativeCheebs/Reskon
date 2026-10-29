@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import { Button, Typography } from "antd";
 import { useApp } from "../store";
 import { palette } from "../theme/palette";
@@ -24,7 +24,7 @@ interface Props {
   onOpenHidden: (statusId: number) => void;
 }
 
-export function Board({ view, tasks, setTasks, refetch, onOpenTask, onOpenHidden }: Props) {
+export const Board = memo(function Board({ view, tasks, setTasks, refetch, onOpenTask, onOpenHidden }: Props) {
   const { boot } = useApp();
   const { byId: epics } = useEpics();
   const save = useSaveView(view);
@@ -108,4 +108,4 @@ export function Board({ view, tasks, setTasks, refetch, onOpenTask, onOpenHidden
       )}
     </div>
   );
-}
+});

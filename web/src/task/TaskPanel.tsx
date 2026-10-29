@@ -51,6 +51,14 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskId, reloadKey]);
 
+  // The fields come up first; sessions, cycle time and dates follow a frame
+  // later, so the panel appears without waiting for all of it.
+  const [rest, setRest] = useState(false);
+  useEffect(() => {
+    const t = window.setTimeout(() => setRest(true), 0);
+    return () => window.clearTimeout(t);
+  }, []);
+
   const apply = (t: Task) => {
     setTask(t);
     setTitle(t.title);
@@ -234,28 +242,31 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
             onBlur={() => desc !== (task.description ?? "") && patch({ description: desc })}
           />
 
-          <TaskExtras task={task} patch={patch} onTaskChanged={() => load(true)} />
-
-          <Divider plain orientation="left" style={{ margin: "4px 0" }}>
-            Dates
-          </Divider>
-          <Descriptions column={2} size="small" colon={false} labelStyle={{ color: palette.muted, width: 110 }}>
-            <Descriptions.Item label="Created">{formatDateTime(task.created_at)}</Descriptions.Item>
-            <Descriptions.Item label="Created age">{formatAge(task.created_age_h)}</Descriptions.Item>
-            <Descriptions.Item label="First started">{formatDateTime(task.first_started_at)}</Descriptions.Item>
-            <Descriptions.Item label="Started age">{formatAge(task.started_age_h)}</Descriptions.Item>
-            <Descriptions.Item label="Last started">{formatDateTime(task.last_started_at)}</Descriptions.Item>
-            <Descriptions.Item label="Time in status">
-              <span style={{ color: task.stalled ? palette.danger : undefined }}>{formatAge(task.time_in_status_h)}</span>
-            </Descriptions.Item>
-            <Descriptions.Item label="Completed">{formatDateTime(task.completed_at)}</Descriptions.Item>
-            <Descriptions.Item label="Cancelled">{formatDateTime(task.cancelled_at)}</Descriptions.Item>
-            <Descriptions.Item label="Points">{task.points ?? "–"}</Descriptions.Item>
-            <Descriptions.Item label="Logged">{formatHours(task.logged_h)}</Descriptions.Item>
-          </Descriptions>
-          <Typography.Text type="secondary" style={{ fontSize: 11 }}>
-            Updated {formatDateTime(task.updated_at)}
-          </Typography.Text>
+          {rest && (
+            <>
+              <TaskExtras task={task} patch={patch} onTaskChanged={() => load(true)} />
+              <Divider plain orientation="left" style={{ margin: "4px 0" }}>
+                Dates
+              </Divider>
+              <Descriptions column={2} size="small" colon={false} labelStyle={{ color: palette.muted, width: 110 }}>
+                <Descriptions.Item label="Created">{formatDateTime(task.created_at)}</Descriptions.Item>
+                <Descriptions.Item label="Created age">{formatAge(task.created_age_h)}</Descriptions.Item>
+                <Descriptions.Item label="First started">{formatDateTime(task.first_started_at)}</Descriptions.Item>
+                <Descriptions.Item label="Started age">{formatAge(task.started_age_h)}</Descriptions.Item>
+                <Descriptions.Item label="Last started">{formatDateTime(task.last_started_at)}</Descriptions.Item>
+                <Descriptions.Item label="Time in status">
+                  <span style={{ color: task.stalled ? palette.danger : undefined }}>{formatAge(task.time_in_status_h)}</span>
+                </Descriptions.Item>
+                <Descriptions.Item label="Completed">{formatDateTime(task.completed_at)}</Descriptions.Item>
+                <Descriptions.Item label="Cancelled">{formatDateTime(task.cancelled_at)}</Descriptions.Item>
+                <Descriptions.Item label="Points">{task.points ?? "–"}</Descriptions.Item>
+                <Descriptions.Item label="Logged">{formatHours(task.logged_h)}</Descriptions.Item>
+              </Descriptions>
+              <Typography.Text type="secondary" style={{ fontSize: 11 }}>
+                Updated {formatDateTime(task.updated_at)}
+              </Typography.Text>
+            </>
+          )}
         </Space>
       )}
     </Drawer>

@@ -58,8 +58,10 @@ export function ViewScreen({ view }: { view: View }) {
     refetch();
   }, [reloadKey, filterKey, refetch]);
 
-  const update = (fn: (prev: Task[]) => Task[]) => setTasks((prev) => fn(prev ?? []));
-  const replace = (t: Task) => update((prev) => prev.map((x) => (x.id === t.id ? t : x)));
+  // Stable, so the memoised board skips re-rendering when only a panel or
+  // drawer opens.
+  const update = useCallback((fn: (prev: Task[]) => Task[]) => setTasks((prev) => fn(prev ?? [])), []);
+  const replace = useCallback((t: Task) => update((prev) => prev.map((x) => (x.id === t.id ? t : x))), [update]);
   const groupBy: GroupBy = view.board_state?.group_by ?? "none";
   const groupOptions = GROUP_OPTIONS.filter((o) => !(view.layout === "board" && o.tableOnly));
   const filters = activeFilterCount(view);
