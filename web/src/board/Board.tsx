@@ -5,11 +5,13 @@ import {
   PointerSensor,
   KeyboardSensor,
   closestCorners,
+  pointerWithin,
   useSensor,
   useSensors,
   type DragEndEvent,
   type DragOverEvent,
   type DragStartEvent,
+  type CollisionDetection,
 } from "@dnd-kit/core";
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { Button, message } from "antd";
@@ -25,6 +27,19 @@ import { TaskCard } from "./TaskCard";
 // anything with on_board = 0) are reached by header buttons.
 
 type Columns = Record<number, number[]>; // status id -> task ids in order
+
+// Whatever is under the pointer wins, a card over the column it sits in.
+// Plain closestCorners misfires on an empty column: its drop zone spans the
+// whole column height, so its far corners make the dragged card's own
+// starting slot look closer and the drop silently does nothing.
+const collision: CollisionDetection = (args) => {
+  const within = pointerWithin(args);
+  if (within.length > 0) {
+    const card = within.find((c) => !String(c.id).startsWith("col-"));
+    return card ? [card] : within;
+  }
+  return closestCorners(args);
+};
 
 interface Props {
   view: View;
@@ -87,12 +102,26 @@ export function Board({ view, tasks, setTasks, refetch, onOpenTask, onOpenHidden
     if (!over) return;
     const from = containerOf(active.id);
     const to = containerOf(over.id);
-    if (from === undefined || to === undefined || from === to) return;
+    if (from === undefined || to === undefined) return;
+    // Pointer in a column's empty space below its cards: preview at the end.
+    if (from === to) {
+      if (String(over.id).startsWith("col-")) {
+        setColumns((prev) => {
+          const ids = prev[to].filter((id) => id !== Number(active.id));
+          if (prev[to][prev[to].length - 1] === Number(active.id)) return prev;
+          return { ...prev, [to]: [...ids, Number(active.id)] };
+        });
+      }
+      return;
+    }
     setColumns((prev) => {
       const fromIds = prev[from].filter((id) => id !== Number(active.id));
       const toIds = [...prev[to]];
       const overIndex = toIds.indexOf(Number(over.id));
-      toIds.splice(overIndex >= 0 ? overIndex : toIds.length, 0, Number(active.id));
+      // Over the lower half of a card: land below it, not above.
+      const dragged = active.rect.current.translated;
+      const below = dragged !== null && dragged.top > over.rect.top + over.rect.height / 2;
+      toIds.splice(overIndex >= 0 ? overIndex + (below ? 1 : 0) : toIds.length, 0, Number(active.id));
       return { ...prev, [from]: fromIds, [to]: toIds };
     });
   };
@@ -156,7 +185,7 @@ export function Board({ view, tasks, setTasks, refetch, onOpenTask, onOpenHidden
       </div>
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCorners}
+        collisionDetection={collision}
         onDragStart={onDragStart}
         onDragOver={onDragOver}
         onDragEnd={onDragEnd}
