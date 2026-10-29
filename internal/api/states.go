@@ -18,13 +18,13 @@ func (s *Server) stateRoutes() {
 		return time.Now().Format("2006-01-02")
 	}
 	s.crud("states", crudOps{
-		list: func(ctx context.Context, r *http.Request) (any, error) { return s.DB.ListStates(ctx, on(r)) },
+		list: func(ctx context.Context, r *http.Request) (any, error) { return dbOf(ctx).ListStates(ctx, on(r)) },
 		create: func(ctx context.Context, f db.Fields) (any, error) {
-			return s.DB.CreateState(ctx, f, time.Now().Format("2006-01-02"))
+			return dbOf(ctx).CreateState(ctx, f, time.Now().Format("2006-01-02"))
 		},
 		patch: func(ctx context.Context, id int64, f db.Fields) (any, error) {
-			return s.DB.PatchState(ctx, id, f, time.Now().Format("2006-01-02"))
+			return dbOf(ctx).PatchState(ctx, id, f, time.Now().Format("2006-01-02"))
 		},
-		delete: func(ctx context.Context, id int64, r *http.Request) error { return s.DB.DeleteState(ctx, id) },
+		delete: func(ctx context.Context, id int64, r *http.Request) error { return dbOf(ctx).DeleteState(ctx, id) },
 	})
 }

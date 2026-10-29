@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Alert, Layout, Menu, message } from "antd";
+import { Alert, Button, Layout, Menu, message } from "antd";
 import { api } from "./api";
 import { WriteButton } from "./offline";
 import { useApp } from "./store";
@@ -10,6 +10,7 @@ import { Settings } from "./admin/Settings";
 import { SessionsScreen } from "./sessions/SessionsScreen";
 import { CaptureButton } from "./capture/CaptureButton";
 import { CycleTimeScreen } from "./chart/CycleTimeScreen";
+import { useAuth } from "./auth/AuthGate";
 
 // Screens are addressed by the URL hash (#/view/3, #/settings) so a reload
 // lands where you were. Overlays like the backlog are never routes.
@@ -29,6 +30,7 @@ function toHash(s: Screen) {
 
 export function App() {
   const { boot, online, reloadBootstrap } = useApp();
+  const { user, logout } = useAuth();
   const [screen, setScreen] = useState<Screen | null>(parseHash);
 
   useEffect(() => {
@@ -78,7 +80,10 @@ export function App() {
 
   return (
     <Layout style={{ height: "100vh" }}>
-      <Layout.Sider width={200} style={{ borderRight: `1px solid ${palette.border}` }}>
+      <Layout.Sider
+        width={200}
+        style={{ borderRight: `1px solid ${palette.border}`, position: "relative" }}
+      >
         <div style={{ padding: "12px 16px", fontWeight: 700, letterSpacing: 0.3 }}>JitterBug</div>
         <Menu
           theme="dark"
@@ -94,6 +99,27 @@ export function App() {
           <WriteButton size="small" type="text" onClick={newView}>
             + New view
           </WriteButton>
+        </div>
+        <div
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            padding: "10px 16px",
+            borderTop: `1px solid ${palette.border}`,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            fontSize: 12,
+          }}
+        >
+          <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", color: palette.muted }} title={user.username}>
+            {user.username}
+          </span>
+          <Button size="small" type="text" onClick={logout}>
+            Sign out
+          </Button>
         </div>
       </Layout.Sider>
       <Layout>

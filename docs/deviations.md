@@ -2,6 +2,14 @@
 
 Where the code differs from `build_spec_phase_1.md`, and why.
 
+## Multiple users and sign-in (owner request, 2026-10-29)
+The spec is single-user with "no auth in Phase 1". The owner asked for a login page and several users on one server, each with separate data, with the first person to open the app becoming admin. Implemented as one SQLite file per person plus `auth.db` (see decisions.md). Consequences:
+- `JITTERBUG_DB` is now only the legacy single-user file; the data directory is `JITTERBUG_DATA`.
+- New endpoints: `GET /api/auth/status`, `POST /api/auth/setup|login|logout|password`, admin-only `GET|POST /api/users`, `PATCH /api/users/:id`. Everything else under `/api` returns 401 without a session.
+- Settings (LLM endpoint, subtype weights) are per person, since they live in each person's database. The `JITTERBUG_LLM_*` env vars remain the server-wide fallback.
+- `jitterbug backup <dir>` now writes every database into a directory.
+- Users are disabled, never deleted; their file stays on disk.
+
 ## Implemented differently
 
 ### Subtypes ship empty

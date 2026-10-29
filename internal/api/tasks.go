@@ -29,7 +29,7 @@ func (s *Server) moveTask(w http.ResponseWriter, r *http.Request) {
 		respond(w, nil, err)
 		return
 	}
-	t, err := s.DB.Move(r.Context(), id, req)
+	t, err := dbOf(r.Context()).Move(r.Context(), id, req)
 	respond(w, t, err)
 }
 
@@ -39,11 +39,11 @@ func (s *Server) taskTransitions(w http.ResponseWriter, r *http.Request) {
 		respond(w, nil, err)
 		return
 	}
-	if _, err := s.DB.GetTask(r.Context(), id); err != nil {
+	if _, err := dbOf(r.Context()).GetTask(r.Context(), id); err != nil {
 		respond(w, nil, err)
 		return
 	}
-	tr, segs, err := s.DB.TaskCycle(r.Context(), id)
+	tr, segs, err := dbOf(r.Context()).TaskCycle(r.Context(), id)
 	respond(w, map[string]any{"transitions": tr, "segments": segs}, err)
 }
 
@@ -57,7 +57,7 @@ func (s *Server) cycleTime(w http.ResponseWriter, r *http.Request) {
 		respond(w, nil, err)
 		return
 	}
-	ct, err := s.DB.CycleTimeForView(r.Context(), viewID)
+	ct, err := dbOf(r.Context()).CycleTimeForView(r.Context(), viewID)
 	respond(w, ct, err)
 }
 
@@ -70,11 +70,11 @@ func (s *Server) listTasks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if ok {
-		tasks, err := s.DB.ListTasksForView(r.Context(), viewID)
+		tasks, err := dbOf(r.Context()).ListTasksForView(r.Context(), viewID)
 		respond(w, tasks, err)
 		return
 	}
-	tasks, err := s.DB.ListTasks(r.Context())
+	tasks, err := dbOf(r.Context()).ListTasks(r.Context())
 	respond(w, tasks, err)
 }
 
@@ -84,7 +84,7 @@ func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 		respond(w, nil, err)
 		return
 	}
-	t, err := s.DB.CreateTask(r.Context(), f)
+	t, err := dbOf(r.Context()).CreateTask(r.Context(), f)
 	respond(w, t, err)
 }
 
@@ -94,7 +94,7 @@ func (s *Server) getTask(w http.ResponseWriter, r *http.Request) {
 		respond(w, nil, err)
 		return
 	}
-	t, err := s.DB.GetTask(r.Context(), id)
+	t, err := dbOf(r.Context()).GetTask(r.Context(), id)
 	respond(w, t, err)
 }
 
@@ -109,7 +109,7 @@ func (s *Server) patchTask(w http.ResponseWriter, r *http.Request) {
 		respond(w, nil, err)
 		return
 	}
-	t, err := s.DB.PatchTask(r.Context(), id, f)
+	t, err := dbOf(r.Context()).PatchTask(r.Context(), id, f)
 	respond(w, t, err)
 }
 
@@ -119,5 +119,5 @@ func (s *Server) deleteTask(w http.ResponseWriter, r *http.Request) {
 		respond(w, nil, err)
 		return
 	}
-	respond(w, map[string]bool{"ok": true}, s.DB.DeleteTask(r.Context(), id))
+	respond(w, map[string]bool{"ok": true}, dbOf(r.Context()).DeleteTask(r.Context(), id))
 }

@@ -1,9 +1,21 @@
 # Schema
 
-Every table, one line on what it is for. Source: `internal/db/migrations/`.
+Every table, one line on what it is for. There are two kinds of database file:
+
+- `<data>/auth.db` — accounts. Source: `internal/auth/migrations/`.
+- `<data>/users/*.db` — one per person, the JitterBug schema below. Source: `internal/db/migrations/`.
+
+## auth.db, migration 001
+
+| Table | Purpose |
+| --- | --- |
+| `user` | An account: lower-case `username`, bcrypt `password_hash`, `is_admin`, `db_file` (that person's database, relative to the data directory), `disabled_at` (cannot sign in; data kept). |
+| `login_session` | One row per signed-in browser. Stores the sha256 of the cookie token, never the token. `expires_at` slides forward while used. |
+
+## User database
 Applied migration version is kept in `PRAGMA user_version` (no bookkeeping table).
 
-## Migration 001
+### Migration 001
 
 | Table | Purpose |
 | --- | --- |

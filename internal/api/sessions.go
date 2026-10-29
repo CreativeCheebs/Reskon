@@ -24,7 +24,7 @@ func (s *Server) listSessions(w http.ResponseWriter, r *http.Request) {
 	} else if ok {
 		q.TaskID = id
 	}
-	sessions, err := s.DB.ListSessions(r.Context(), q)
+	sessions, err := dbOf(r.Context()).ListSessions(r.Context(), q)
 	respond(w, sessions, err)
 }
 
@@ -34,7 +34,7 @@ func (s *Server) createSession(w http.ResponseWriter, r *http.Request) {
 		respond(w, nil, err)
 		return
 	}
-	v, err := s.DB.CreateSession(r.Context(), f)
+	v, err := dbOf(r.Context()).CreateSession(r.Context(), f)
 	respond(w, v, err)
 }
 
@@ -49,7 +49,7 @@ func (s *Server) patchSession(w http.ResponseWriter, r *http.Request) {
 		respond(w, nil, err)
 		return
 	}
-	v, err := s.DB.PatchSession(r.Context(), id, f)
+	v, err := dbOf(r.Context()).PatchSession(r.Context(), id, f)
 	respond(w, v, err)
 }
 
@@ -59,10 +59,10 @@ func (s *Server) deleteSession(w http.ResponseWriter, r *http.Request) {
 		respond(w, nil, err)
 		return
 	}
-	respond(w, map[string]bool{"ok": true}, s.DB.DeleteSession(r.Context(), id))
+	respond(w, map[string]bool{"ok": true}, dbOf(r.Context()).DeleteSession(r.Context(), id))
 }
 
 func (s *Server) getDay(w http.ResponseWriter, r *http.Request) {
-	v, err := s.DB.GetDay(r.Context(), r.PathValue("date"))
+	v, err := dbOf(r.Context()).GetDay(r.Context(), r.PathValue("date"))
 	respond(w, v, err)
 }

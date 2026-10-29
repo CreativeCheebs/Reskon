@@ -25,7 +25,7 @@ func (s *Server) capture(w http.ResponseWriter, r *http.Request) {
 		respond(w, nil, &db.InvalidError{Msg: "text is required"})
 		return
 	}
-	lookups, err := s.DB.CaptureLookups(r.Context(), text, 8)
+	lookups, err := dbOf(r.Context()).CaptureLookups(r.Context(), text, 8)
 	if err != nil {
 		respond(w, nil, err)
 		return

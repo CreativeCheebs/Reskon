@@ -60,3 +60,20 @@ Append-only. One entry per non-obvious choice: date, what, why, what was rejecte
 ## 2026-10-29 — Candidate matching by shared words
 **What:** Open tasks (todo/in-progress behaviour) are scored by how many distinct words (3+ letters, not stopwords) of the capture text appear in the title; the top 8 go into the prompt.
 **Why:** Plain SQL `instr`, no FTS table to keep in sync (FTS5 would need a schema addition).
+
+## 2026-10-29 — Accounts: one database file per person
+**What:** The owner asked for a login page and multiple users with separate data. `auth.db` holds accounts and login sessions; each person gets their own SQLite file with the unchanged JitterBug schema. Middleware resolves the session cookie to that person's `*db.DB` and puts it on the request context.
+**Why:** Isolation is structural: no query can forget a `WHERE user_id = ?`, all single-user code and tests stay valid, and one person's data can be backed up, restored or handed over as one file.
+**Rejected:** A `user_id` column on every table (touches every query; one missed filter leaks data); a shared board (not what was asked).
+
+## 2026-10-29 — First person to open the app becomes admin; no open sign-up
+**What:** `POST /api/auth/setup` works only while no accounts exist. After that, only admins create accounts. The last active admin cannot be demoted or disabled.
+**Why:** Owner's choice. Setup refusing once an account exists means a stranger cannot take over a running server.
+
+## 2026-10-29 — Session cookies, bcrypt, lockout, origin check
+**What:** Random 256-bit token in an HttpOnly, SameSite=Lax cookie; only its sha256 is stored. 30-day sliding expiry. bcrypt (default cost) passwords, 8-72 characters; unknown usernames still run a bcrypt compare so timing doesn't reveal which usernames exist. 5 failures lock a username for 15 minutes (in memory). State-changing requests with an `Origin` header from another host get 403. Changing your password signs out your other sessions; an admin reset or disable signs the person out everywhere.
+**Rejected:** JWTs (can't be revoked without a table anyway); argon2 (bcrypt is in x/crypto and ample here).
+
+## 2026-10-29 — Existing single-user database adopted by the first admin
+**What:** If `JITTERBUG_DB` (default `jitterbug.db`) exists when the admin account is created, the admin's `db_file` points at it. It is not moved or copied.
+**Why:** Upgrading never orphans data and never rewrites the old file.

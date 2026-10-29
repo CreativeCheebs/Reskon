@@ -20,7 +20,8 @@ FROM alpine:3.22
 RUN apk add --no-cache tzdata && adduser -D -u 10001 jitterbug && mkdir /data && chown jitterbug /data
 COPY --from=build /jitterbug /usr/local/bin/jitterbug
 USER jitterbug
-ENV JITTERBUG_DB=/data/jitterbug.db \
+ENV JITTERBUG_DATA=/data \
+    JITTERBUG_DB=/data/jitterbug.db \
     JITTERBUG_ADDR=:8080
 VOLUME /data
 EXPOSE 8080

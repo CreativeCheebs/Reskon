@@ -6,6 +6,7 @@ import { palette } from "./theme/palette";
 import { AppProvider } from "./store";
 import { startHealthCheck } from "./api";
 import { App } from "./App";
+import { AuthGate } from "./auth/AuthGate";
 
 document.body.style.margin = "0";
 document.body.style.background = palette.bg;
@@ -19,15 +20,17 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ConfigProvider theme={antTheme}>
       <AntApp>
-        <AppProvider
-          fallback={
-            <div style={{ display: "grid", placeItems: "center", height: "100vh" }}>
-              <Spin />
-            </div>
-          }
-        >
-          <App />
-        </AppProvider>
+        <AuthGate>
+          <AppProvider
+            fallback={
+              <div style={{ display: "grid", placeItems: "center", height: "100vh" }}>
+                <Spin />
+              </div>
+            }
+          >
+            <App />
+          </AppProvider>
+        </AuthGate>
       </AntApp>
     </ConfigProvider>
   </React.StrictMode>,

@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
+	"io/fs"
 	"sort"
 	"strings"
 	"time"
@@ -17,14 +18,24 @@ import (
 //go:embed migrations/*.sql
 var migrationFS embed.FS
 
-// DB wraps the connection pool. Every query lives on a method of DB.
+// DB is one user's database. Every query lives on a method of DB.
 type DB struct {
 	*sql.DB
 }
 
-// Open opens (creating if needed) the SQLite file at path, enables WAL and
+// Open opens (creating if needed) one user's SQLite file, enables WAL and
 // foreign keys, and applies any pending migrations.
 func Open(path string) (*DB, error) {
+	sqldb, err := OpenMigrated(path, migrationFS, "migrations")
+	if err != nil {
+		return nil, err
+	}
+	return &DB{sqldb}, nil
+}
+
+// OpenMigrated opens any JitterBug SQLite file and applies the numbered
+// migrations NNN_*.sql found in dir of fsys. The auth database uses it too.
+func OpenMigrated(path string, fsys fs.FS, dir string) (*sql.DB, error) {
 	// _txlock=immediate makes every transaction take the write lock up front,
 	// so two concurrent "read max key, insert next" transactions serialise
 	// instead of deadlocking or racing.
@@ -37,21 +48,20 @@ func Open(path string) (*DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Single user, single file: one writer connection keeps things obvious.
+	// One writer connection per file keeps things obvious.
 	sqldb.SetMaxOpenConns(1)
-	d := &DB{sqldb}
-	if err := d.migrate(context.Background()); err != nil {
+	if err := migrate(context.Background(), sqldb, fsys, dir); err != nil {
 		sqldb.Close()
-		return nil, fmt.Errorf("migrate: %w", err)
+		return nil, fmt.Errorf("migrate %s: %w", path, err)
 	}
-	return d, nil
+	return sqldb, nil
 }
 
-// migrate applies migrations/NNN_*.sql in order. The applied version is kept
-// in PRAGMA user_version, so no bookkeeping table is needed. Running it again
+// migrate applies dir/NNN_*.sql in order. The applied version is kept in
+// PRAGMA user_version, so no bookkeeping table is needed. Running it again
 // on an up-to-date database does nothing.
-func (d *DB) migrate(ctx context.Context) error {
-	entries, err := migrationFS.ReadDir("migrations")
+func migrate(ctx context.Context, d *sql.DB, fsys fs.FS, dir string) error {
+	entries, err := fs.ReadDir(fsys, dir)
 	if err != nil {
 		return err
 	}
@@ -73,7 +83,7 @@ func (d *DB) migrate(ctx context.Context) error {
 		if version <= current {
 			continue
 		}
-		body, err := migrationFS.ReadFile("migrations/" + name)
+		body, err := fs.ReadFile(fsys, dir+"/"+name)
 		if err != nil {
 			return err
 		}
@@ -122,9 +132,15 @@ func placeholders(n int) string {
 	return strings.TrimSuffix(strings.Repeat("?,", n), ",")
 }
 
-// Backup writes a consistent copy of the database to dest using VACUUM
-// INTO. Safe while the server is running; dest must not exist.
-func (d *DB) Backup(ctx context.Context, dest string) error {
-	_, err := d.ExecContext(ctx, `VACUUM INTO ?`, dest)
-	return err
+type ctxKey struct{}
+
+// WithDB returns ctx carrying the signed-in user's database.
+func WithDB(ctx context.Context, d *DB) context.Context {
+	return context.WithValue(ctx, ctxKey{}, d)
+}
+
+// FromContext returns the database put there by WithDB, or nil.
+func FromContext(ctx context.Context) *DB {
+	d, _ := ctx.Value(ctxKey{}).(*DB)
+	return d
 }

@@ -3,6 +3,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -12,20 +13,22 @@ import (
 	"strconv"
 	"strings"
 
+	"jitterbug/internal/auth"
 	"jitterbug/internal/capture"
 	"jitterbug/internal/db"
 )
 
-// Server holds what handlers need.
+// Server holds what handlers need. Each request works on the signed-in
+// user's own database, which the auth middleware puts on the context.
 type Server struct {
-	DB      *db.DB
+	Auth    *auth.Store
 	Capture *capture.Parser
 	mux     *http.ServeMux
 }
 
 // New wires every route. web is the built frontend (may be nil in tests).
-func New(d *db.DB, p *capture.Parser, web fs.FS) *Server {
-	s := &Server{DB: d, Capture: p, mux: http.NewServeMux()}
+func New(a *auth.Store, p *capture.Parser, web fs.FS) *Server {
+	s := &Server{Auth: a, Capture: p, mux: http.NewServeMux()}
 	s.routes()
 	// Unknown API paths are a JSON 404, never the SPA's index.html.
 	s.mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
@@ -37,15 +40,35 @@ func New(d *db.DB, p *capture.Parser, web fs.FS) *Server {
 	return s
 }
 
+// ServeHTTP checks the request's origin and sign-in before routing. Only
+// /api/health and the sign-in endpoints are reachable signed out; the web
+// app itself is public so it can show the login page.
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if !sameOrigin(r) {
+		writeError(w, http.StatusForbidden, "forbidden", "cross-origin request refused")
+		return
+	}
+	if strings.HasPrefix(r.URL.Path, "/api/") && !publicPaths[r.URL.Path] {
+		u, d, err := s.signedIn(r)
+		if err != nil {
+			writeError(w, http.StatusUnauthorized, "unauthenticated", "sign in first")
+			return
+		}
+		ctx := db.WithDB(context.WithValue(r.Context(), userKey{}, u), d)
+		r = r.WithContext(ctx)
+	}
 	s.mux.ServeHTTP(w, r)
 }
+
+// dbOf is the signed-in user's database for this request.
+func dbOf(ctx context.Context) *db.DB { return db.FromContext(ctx) }
 
 func (s *Server) routes() {
 	m := s.mux
 	m.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 	})
+	s.authRoutes()
 	m.HandleFunc("GET /api/bootstrap", s.bootstrap)
 	m.HandleFunc("PUT /api/settings/{key}", s.putSetting)
 
@@ -57,7 +80,7 @@ func (s *Server) routes() {
 }
 
 func (s *Server) bootstrap(w http.ResponseWriter, r *http.Request) {
-	b, err := s.DB.Bootstrap(r.Context())
+	b, err := dbOf(r.Context()).Bootstrap(r.Context())
 	respond(w, b, err)
 }
 
@@ -67,7 +90,7 @@ func (s *Server) putSetting(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "bad body", err.Error())
 		return
 	}
-	err = s.DB.PutSetting(r.Context(), r.PathValue("key"), body)
+	err = dbOf(r.Context()).PutSetting(r.Context(), r.PathValue("key"), body)
 	respond(w, map[string]bool{"ok": true}, err)
 }
 

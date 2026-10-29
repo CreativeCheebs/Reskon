@@ -9,37 +9,43 @@ import (
 
 func (s *Server) lookupRoutes() {
 	s.crud("areas", crudOps{
-		create: func(ctx context.Context, f db.Fields) (any, error) { return s.DB.CreateArea(ctx, f) },
-		patch:  func(ctx context.Context, id int64, f db.Fields) (any, error) { return s.DB.PatchArea(ctx, id, f) },
-		delete: func(ctx context.Context, id int64, r *http.Request) error { return s.DB.DeleteArea(ctx, id) },
-		list:   func(ctx context.Context, r *http.Request) (any, error) { return s.DB.ListAreas(ctx) },
+		create: func(ctx context.Context, f db.Fields) (any, error) { return dbOf(ctx).CreateArea(ctx, f) },
+		patch:  func(ctx context.Context, id int64, f db.Fields) (any, error) { return dbOf(ctx).PatchArea(ctx, id, f) },
+		delete: func(ctx context.Context, id int64, r *http.Request) error { return dbOf(ctx).DeleteArea(ctx, id) },
+		list:   func(ctx context.Context, r *http.Request) (any, error) { return dbOf(ctx).ListAreas(ctx) },
 	})
 	s.crud("statuses", crudOps{
-		create: func(ctx context.Context, f db.Fields) (any, error) { return s.DB.CreateStatus(ctx, f) },
-		patch:  func(ctx context.Context, id int64, f db.Fields) (any, error) { return s.DB.PatchStatus(ctx, id, f) },
+		create: func(ctx context.Context, f db.Fields) (any, error) { return dbOf(ctx).CreateStatus(ctx, f) },
+		patch: func(ctx context.Context, id int64, f db.Fields) (any, error) {
+			return dbOf(ctx).PatchStatus(ctx, id, f)
+		},
 		delete: func(ctx context.Context, id int64, r *http.Request) error {
 			to, ok, err := queryID(r, "reassign_to")
 			if err != nil {
 				return err
 			}
 			if !ok {
-				return s.DB.DeleteStatus(ctx, id, nil)
+				return dbOf(ctx).DeleteStatus(ctx, id, nil)
 			}
-			return s.DB.DeleteStatus(ctx, id, &to)
+			return dbOf(ctx).DeleteStatus(ctx, id, &to)
 		},
-		list: func(ctx context.Context, r *http.Request) (any, error) { return s.DB.ListStatuses(ctx) },
+		list: func(ctx context.Context, r *http.Request) (any, error) { return dbOf(ctx).ListStatuses(ctx) },
 	})
 	s.crud("status-categories", crudOps{
-		create: func(ctx context.Context, f db.Fields) (any, error) { return s.DB.CreateStatusCategory(ctx, f) },
+		create: func(ctx context.Context, f db.Fields) (any, error) { return dbOf(ctx).CreateStatusCategory(ctx, f) },
 		patch: func(ctx context.Context, id int64, f db.Fields) (any, error) {
-			return s.DB.PatchStatusCategory(ctx, id, f)
+			return dbOf(ctx).PatchStatusCategory(ctx, id, f)
 		},
-		delete: func(ctx context.Context, id int64, r *http.Request) error { return s.DB.DeleteStatusCategory(ctx, id) },
-		list:   func(ctx context.Context, r *http.Request) (any, error) { return s.DB.ListStatusCategories(ctx) },
+		delete: func(ctx context.Context, id int64, r *http.Request) error {
+			return dbOf(ctx).DeleteStatusCategory(ctx, id)
+		},
+		list: func(ctx context.Context, r *http.Request) (any, error) { return dbOf(ctx).ListStatusCategories(ctx) },
 	})
 	s.crud("priorities", crudOps{
-		create: func(ctx context.Context, f db.Fields) (any, error) { return s.DB.CreatePriority(ctx, f) },
-		patch:  func(ctx context.Context, id int64, f db.Fields) (any, error) { return s.DB.PatchPriority(ctx, id, f) },
+		create: func(ctx context.Context, f db.Fields) (any, error) { return dbOf(ctx).CreatePriority(ctx, f) },
+		patch: func(ctx context.Context, id int64, f db.Fields) (any, error) {
+			return dbOf(ctx).PatchPriority(ctx, id, f)
+		},
 		delete: func(ctx context.Context, id int64, r *http.Request) error {
 			to, ok, err := queryID(r, "reassign_to")
 			if err != nil {
@@ -47,37 +53,43 @@ func (s *Server) lookupRoutes() {
 			}
 			clear := r.URL.Query().Get("clear") == "true"
 			if !ok {
-				return s.DB.DeletePriority(ctx, id, nil, clear)
+				return dbOf(ctx).DeletePriority(ctx, id, nil, clear)
 			}
-			return s.DB.DeletePriority(ctx, id, &to, clear)
+			return dbOf(ctx).DeletePriority(ctx, id, &to, clear)
 		},
-		list: func(ctx context.Context, r *http.Request) (any, error) { return s.DB.ListPriorities(ctx) },
+		list: func(ctx context.Context, r *http.Request) (any, error) { return dbOf(ctx).ListPriorities(ctx) },
 	})
 	s.crud("energy-types", crudOps{
-		create: func(ctx context.Context, f db.Fields) (any, error) { return s.DB.CreateEnergyType(ctx, f) },
-		patch:  func(ctx context.Context, id int64, f db.Fields) (any, error) { return s.DB.PatchEnergyType(ctx, id, f) },
-		delete: func(ctx context.Context, id int64, r *http.Request) error { return s.DB.DeleteEnergyType(ctx, id) },
-		list:   func(ctx context.Context, r *http.Request) (any, error) { return s.DB.ListEnergyTypes(ctx) },
+		create: func(ctx context.Context, f db.Fields) (any, error) { return dbOf(ctx).CreateEnergyType(ctx, f) },
+		patch: func(ctx context.Context, id int64, f db.Fields) (any, error) {
+			return dbOf(ctx).PatchEnergyType(ctx, id, f)
+		},
+		delete: func(ctx context.Context, id int64, r *http.Request) error { return dbOf(ctx).DeleteEnergyType(ctx, id) },
+		list:   func(ctx context.Context, r *http.Request) (any, error) { return dbOf(ctx).ListEnergyTypes(ctx) },
 	})
 	s.crud("subtypes", crudOps{
-		create: func(ctx context.Context, f db.Fields) (any, error) { return s.DB.CreateSubtype(ctx, f) },
-		patch:  func(ctx context.Context, id int64, f db.Fields) (any, error) { return s.DB.PatchSubtype(ctx, id, f) },
-		delete: func(ctx context.Context, id int64, r *http.Request) error { return s.DB.DeleteSubtype(ctx, id) },
-		list:   func(ctx context.Context, r *http.Request) (any, error) { return s.DB.ListSubtypes(ctx) },
+		create: func(ctx context.Context, f db.Fields) (any, error) { return dbOf(ctx).CreateSubtype(ctx, f) },
+		patch: func(ctx context.Context, id int64, f db.Fields) (any, error) {
+			return dbOf(ctx).PatchSubtype(ctx, id, f)
+		},
+		delete: func(ctx context.Context, id int64, r *http.Request) error { return dbOf(ctx).DeleteSubtype(ctx, id) },
+		list:   func(ctx context.Context, r *http.Request) (any, error) { return dbOf(ctx).ListSubtypes(ctx) },
 	})
 	s.crud("custom-fields", crudOps{
-		create: func(ctx context.Context, f db.Fields) (any, error) { return s.DB.CreateCustomField(ctx, f) },
+		create: func(ctx context.Context, f db.Fields) (any, error) { return dbOf(ctx).CreateCustomField(ctx, f) },
 		patch: func(ctx context.Context, id int64, f db.Fields) (any, error) {
-			return s.DB.PatchCustomField(ctx, id, f)
+			return dbOf(ctx).PatchCustomField(ctx, id, f)
 		},
-		delete: func(ctx context.Context, id int64, r *http.Request) error { return s.DB.DeleteCustomField(ctx, id) },
-		list:   func(ctx context.Context, r *http.Request) (any, error) { return s.DB.ListCustomFields(ctx) },
+		delete: func(ctx context.Context, id int64, r *http.Request) error {
+			return dbOf(ctx).DeleteCustomField(ctx, id)
+		},
+		list: func(ctx context.Context, r *http.Request) (any, error) { return dbOf(ctx).ListCustomFields(ctx) },
 	})
 	s.crud("views", crudOps{
-		create: func(ctx context.Context, f db.Fields) (any, error) { return s.DB.CreateView(ctx, f) },
-		patch:  func(ctx context.Context, id int64, f db.Fields) (any, error) { return s.DB.PatchView(ctx, id, f) },
-		delete: func(ctx context.Context, id int64, r *http.Request) error { return s.DB.DeleteView(ctx, id) },
-		list:   func(ctx context.Context, r *http.Request) (any, error) { return s.DB.ListViews(ctx) },
+		create: func(ctx context.Context, f db.Fields) (any, error) { return dbOf(ctx).CreateView(ctx, f) },
+		patch:  func(ctx context.Context, id int64, f db.Fields) (any, error) { return dbOf(ctx).PatchView(ctx, id, f) },
+		delete: func(ctx context.Context, id int64, r *http.Request) error { return dbOf(ctx).DeleteView(ctx, id) },
+		list:   func(ctx context.Context, r *http.Request) (any, error) { return dbOf(ctx).ListViews(ctx) },
 	})
 }
 

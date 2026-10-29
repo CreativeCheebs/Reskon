@@ -1,6 +1,6 @@
 # JitterBug
 
-Self-hosted, single-user task board and time log. One Go binary, one SQLite file.
+Self-hosted task board and time log. One Go binary. Several people can share a server; each person's data lives in their own SQLite file.
 The build contract is [`build_spec_phase_1.md`](build_spec_phase_1.md); where the code differs, see [`docs/deviations.md`](docs/deviations.md).
 
 ## Build
@@ -18,21 +18,24 @@ The frontend in `web/dist` is embedded at `go build` time, so build the web app 
 ## Run
 
 ```sh
-./jitterbug                                  # http://localhost:8080, database ./jitterbug.db
-JITTERBUG_DB=/srv/jb/jitterbug.db JITTERBUG_ADDR=:9000 ./jitterbug
+./jitterbug                                  # http://localhost:8080, data in ./data
+JITTERBUG_DATA=/srv/jb JITTERBUG_ADDR=:9000 ./jitterbug
 ```
+
+The first time you open it, it asks you to create the **admin** account. After that there is no open sign-up: the admin adds people under **Settings → People**, and can reset passwords, grant admin, or disable an account (that signs the person out; their data is kept). Everyone changes their own password under **Settings → Account**.
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `JITTERBUG_DB` | `jitterbug.db` | SQLite file (created and migrated on start) |
+| `JITTERBUG_DATA` | `data` | Data directory: `auth.db` (accounts, login sessions) and `users/<name>-<id>.db` (one database per person) |
+| `JITTERBUG_DB` | `jitterbug.db` | A single-user database from before accounts existed. If this file exists when the admin account is created, it becomes the admin's data, untouched. |
 | `JITTERBUG_ADDR` | `:8080` | Listen address |
 | `JITTERBUG_LLM_ENDPOINT` | — | OpenAI-compatible base URL for quick capture, e.g. `http://ollama:11434/v1` |
 | `JITTERBUG_LLM_MODEL` | — | Model name |
 | `JITTERBUG_LLM_API_KEY` | — | Bearer token, if the endpoint needs one |
 
-The LLM values can also be set in **Settings → Capture & weights**, which take precedence. Without them, capture uses the manual form. The app never needs the LLM to start.
+The LLM values can also be set per person in **Settings → Capture & weights**, which take precedence. Without them, capture uses the manual form. The app never needs the LLM to start.
 
-There is no authentication. Bind it to your home network only; add auth before it ever faces the internet.
+Sign-in uses a session cookie (HttpOnly, SameSite=Lax, 30 days, renewed while used; Secure when served over HTTPS or behind a proxy sending `X-Forwarded-Proto: https`). Passwords are bcrypt-hashed; five wrong passwords lock that username for 15 minutes. If it will face the internet, put it behind HTTPS (e.g. Caddy or nginx).
 
 ### Container
 
@@ -41,7 +44,7 @@ docker build -t jitterbug .
 docker run -d --name jitterbug -p 8080:8080 -v jitterbug-data:/data -e TZ=Europe/London jitterbug
 ```
 
-The database lives at `/data/jitterbug.db` in the volume. Set `TZ` so "today" matches your local day.
+Everything lives in the `/data` volume (`auth.db`, `users/`). An older `/data/jitterbug.db` is adopted by the first admin. Set `TZ` so "today" matches your local day.
 
 ### Development
 
@@ -52,33 +55,29 @@ cd web && npm run dev       # Vite on :5173, proxies /api to :8080
 
 ## Back up
 
-The database runs in WAL mode, so copying the `.db` file alone while the server runs can miss recent writes. Use the built-in backup, which is safe while the server is running:
+The databases run in WAL mode, so copying files while the server runs can miss recent writes. Use the built-in backup, which is safe while the server is running and writes `auth.db` plus one `<username>.db` per person into a new directory:
 
 ```sh
-./jitterbug backup /backups/jitterbug-$(date +%F).db
+JITTERBUG_DATA=/srv/jb ./jitterbug backup /backups/jitterbug-$(date +%F)
 # container:
-docker exec jitterbug jitterbug backup /data/backup-$(date +%F).db
+docker exec jitterbug jitterbug backup /data/backup-$(date +%F)
 ```
 
-(`JITTERBUG_DB` must point at the live database, as it does inside the container.) `sqlite3 jitterbug.db ".backup out.db"` works too.
+Point `JITTERBUG_DATA` at the live data directory (inside the container it already is).
 
 ## Restore
 
 1. Stop the server.
-2. Replace the database file with the backup, and delete any `jitterbug.db-wal` and `jitterbug.db-shm` next to it.
-3. Start the server. Migrations run automatically if the backup is older than the binary.
+2. Copy `auth.db` from the backup into the data directory, and each `<username>.db` over that person's file in `users/` (the file name for each person is in `auth.db`: `sqlite3 auth.db "SELECT username, db_file FROM user"`). Delete any `-wal` and `-shm` files next to the ones you replaced.
+3. Start the server. Migrations run automatically if a backup is older than the binary.
 
-```sh
-systemctl stop jitterbug        # or: docker stop jitterbug
-cp /backups/jitterbug-2026-10-29.db /srv/jb/jitterbug.db
-rm -f /srv/jb/jitterbug.db-wal /srv/jb/jitterbug.db-shm
-systemctl start jitterbug
-```
+To restore one person only, replace just their file in `users/`.
 
 ## Layout
 
 ```
 cmd/jitterbug/      main: env config, backup subcommand, server start
+internal/auth/      accounts, passwords, login sessions (auth.db), per-user database pool
 internal/db/        migrations (embedded), every SQL query, all derived values
 internal/api/       HTTP handlers: decode, call db, encode
 internal/capture/   quick-capture parsing: provider interface, OpenAI-compatible client, validation

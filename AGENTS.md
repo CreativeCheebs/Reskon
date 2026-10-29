@@ -1,12 +1,13 @@
 # AGENTS.md — read first
 
-**What this is:** JitterBug, a self-hosted single-user task board and time log.
+**What this is:** JitterBug, a self-hosted task board and time log. Several people can sign in to one server; each has a completely separate database.
 **The spec:** [`build_spec_phase_1.md`](build_spec_phase_1.md) is authoritative on *what* and *why*. You cannot edit it. Where the code differs, append to [`docs/deviations.md`](docs/deviations.md) and say so in your handoff.
 
 ## Stack
 
 - Go (`net/http`, stdlib mux), `modernc.org/sqlite` — pure Go, **no cgo**. Do not swap in `mattn/go-sqlite3`.
-- One SQLite file, WAL mode. Migrations are embedded SQL in `internal/db/migrations/`, version tracked in `PRAGMA user_version`.
+- SQLite, WAL mode: `<data>/auth.db` for accounts and login sessions (`internal/auth/migrations/`), plus one database per user with the JitterBug schema (`internal/db/migrations/`). Migration version tracked in `PRAGMA user_version`.
+- Every `/api` call except health and `/api/auth/*` sign-in routes needs the session cookie; the middleware in `internal/api/server.go` puts the user's own `*db.DB` on the request context (`dbOf(ctx)`). Handlers never reach another user's database.
 - React 18 + TypeScript + Vite, Ant Design 5 (one token block in `web/src/theme/antTheme.ts`, palette in `web/src/theme/palette.ts`), dnd-kit.
 - The built frontend (`web/dist`) is embedded with `go:embed` — one binary.
 
@@ -15,7 +16,7 @@
 ```sh
 make build    # frontend then binary
 make test     # go vet + go test + tsc
-./jitterbug   # :8080, ./jitterbug.db  (env: JITTERBUG_DB, JITTERBUG_ADDR, JITTERBUG_LLM_*)
+./jitterbug   # :8080, ./data  (env: JITTERBUG_DATA, JITTERBUG_DB (legacy), JITTERBUG_ADDR, JITTERBUG_LLM_*)
 docker build -t jitterbug .
 ```
 
@@ -52,3 +53,4 @@ When the spec is silent: stop and ask. If working unattended and blocked, take t
 | Sessions, day totals | `internal/db/sessions.go`, `day.go` | `web/src/sessions/` |
 | Custom fields | `internal/db/customfields.go` | `web/src/fields/`, `web/src/admin/CustomFieldSettings.tsx` |
 | Quick capture | `internal/capture/`, `internal/db/capture.go` | `web/src/capture/` |
+| Accounts, sign-in | `internal/auth/`, `internal/api/auth.go` | `web/src/auth/` |

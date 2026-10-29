@@ -47,6 +47,10 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   }
   setOnline(true);
   const data = await res.json().catch(() => ({}));
+  // Session ended (signed out elsewhere, expired, account disabled).
+  if (res.status === 401 && !path.startsWith("/auth/")) {
+    window.dispatchEvent(new Event("jitterbug:signed-out"));
+  }
   if (!res.ok) {
     throw new ApiError(res.status, data.error ?? "error", data.detail ?? "", data.current);
   }

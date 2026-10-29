@@ -4,11 +4,15 @@ import { LookupEditor } from "./LookupEditor";
 import { useReassignDelete } from "./ReassignDialog";
 import { CaptureSettings } from "./CaptureSettings";
 import { CustomFieldSettings } from "./CustomFieldSettings";
+import { AccountSettings } from "../auth/AccountSettings";
+import { UsersSettings } from "../auth/UsersSettings";
+import { useAuth } from "../auth/AuthGate";
 
 // Settings: every lookup is a row the user can edit.
 
 export function Settings() {
   const { boot } = useApp();
+  const { user } = useAuth();
   const statusDelete = useReassignDelete("statuses", false);
   const priorityDelete = useReassignDelete("priorities", true);
   const energyOptions = boot.energy_types.map((e) => ({ value: e.id, label: e.name }));
@@ -153,6 +157,8 @@ export function Settings() {
     },
     { key: "custom", label: "Custom fields", children: <CustomFieldSettings /> },
     { key: "capture", label: "Capture & weights", children: <CaptureSettings /> },
+    { key: "account", label: "Account", children: <AccountSettings /> },
+    ...(user.is_admin ? [{ key: "users", label: "People", children: <UsersSettings /> }] : []),
   ];
 
   return (
