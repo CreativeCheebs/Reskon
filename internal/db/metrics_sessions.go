@@ -120,6 +120,21 @@ func (r *metricRun) energyCandidates() (map[int64]bool, error) {
 	return out, nil
 }
 
+// guardDirection is the no-netting rule as validation: one query may not
+// mix directions. If the filters leave both spend and restore energy types
+// in play (with or without a split by energy type), the query is refused.
+// To see both, use two widgets; they are never summed, netted or divided.
+func (r *metricRun) guardDirection(energy map[int64]bool) error {
+	seen := map[string]bool{}
+	for id := range energy {
+		seen[r.energy[id].direction] = true
+	}
+	if seen["spend"] && seen["restore"] {
+		return invalid("%s would mix spend and restore; filter by direction or energy type, and use two widgets to see both", r.def.Name)
+	}
+	return nil
+}
+
 // directionOf is the one direction a set of energy types shares, or "".
 func (r *metricRun) directionOf(energy map[int64]bool) string {
 	dir := ""
@@ -263,6 +278,9 @@ func (d *DB) sessionMetric(ctx context.Context, r *metricRun, value func(*sessio
 		return err
 	}
 	if r.def.Direction == "from_energy_type" {
+		if err := r.guardDirection(energy); err != nil {
+			return err
+		}
 		r.direction = r.directionOf(energy)
 	}
 	needSubtypes := r.q.Group == "subtype" || r.q.Split == "subtype"

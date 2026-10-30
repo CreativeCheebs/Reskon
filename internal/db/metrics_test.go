@@ -184,3 +184,39 @@ func TestWeekGroupingFollowsWeekStart(t *testing.T) {
 		sameTotals(t, fmt.Sprintf("week_start %d", ws), pointMap(res), want)
 	}
 }
+
+// The direction guard rejects every query that would mix spend and
+// restore, and allows each direction on its own.
+func TestDirectionGuard(t *testing.T) {
+	f := newMetricFixture(t)
+	gym := fmt.Sprint(f.gym.ID)
+	mixed := []MetricQuery{
+		{Metric: "session_hours"},
+		{Metric: "session_hours", Split: "energy_type"},
+		{Metric: "session_hours", Group: "energy_type"},
+		{Metric: "session_hours", Filters: map[string][]string{"area": {"Personal"}}},
+		{Metric: "session_hours", Filters: map[string][]string{"direction": {"spend", "restore"}}},
+		{Metric: "session_hours", Filters: map[string][]string{"energy_type": {"Engineering", "Rest"}}},
+		{Metric: "session_hours", Filters: map[string][]string{"energy_type": {"2", "5"}}, Split: "energy_type"},
+		{Metric: "session_hours", Filters: map[string][]string{"kind": {"event"}}},
+		{Metric: "session_hours", Filters: map[string][]string{"task_id": {"1"}}},
+	}
+	for _, q := range mixed {
+		_, err := f.d.Metric(f.ctx, q, metricNow)
+		if _, ok := err.(*InvalidError); !ok {
+			t.Errorf("%+v: err = %v, want a 400", q, err)
+		}
+	}
+	allowed := []MetricQuery{
+		{Metric: "session_hours", Filters: map[string][]string{"direction": {"restore"}}, Split: "energy_type"},
+		{Metric: "session_hours", Filters: map[string][]string{"energy_type": {"Engineering", "Admin"}}, Split: "energy_type"},
+		{Metric: "session_hours", Filters: map[string][]string{"subtype": {gym}}},
+		{Metric: "session_hours", Filters: map[string][]string{"subtype": {gym}, "energy_type": {"Rest"}}}, // matches nothing
+		{Metric: "work_points", Split: "energy_type"}, // spend only by definition
+	}
+	for _, q := range allowed {
+		if _, err := f.d.Metric(f.ctx, q, metricNow); err != nil {
+			t.Errorf("%+v: %v", q, err)
+		}
+	}
+}
