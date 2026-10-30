@@ -2,6 +2,7 @@ import { Tabs, Typography } from "antd";
 import { useApp } from "../store";
 import { LookupEditor } from "./LookupEditor";
 import { useReassignDelete } from "./ReassignDialog";
+import { ReflectionSettings } from "./ReflectionSettings";
 import { CaptureSettings } from "./CaptureSettings";
 import { CustomFieldSettings } from "./CustomFieldSettings";
 import { AccountSettings } from "../auth/AccountSettings";
@@ -158,6 +159,7 @@ export function Settings() {
     },
     { key: "custom", label: "Custom fields", children: <CustomFieldSettings /> },
     { key: "capture", label: "Capture & weights", children: <CaptureSettings /> },
+    { key: "reflection", label: "Reflection", children: <ReflectionSettings /> },
     { key: "appearance", label: "Appearance", children: <AppearanceSettings /> },
     { key: "account", label: "Account", children: <AccountSettings /> },
     ...(user.is_admin ? [{ key: "users", label: "People", children: <UsersSettings /> }] : []),
