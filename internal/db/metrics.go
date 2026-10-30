@@ -91,7 +91,7 @@ type metricDef struct {
 	Filters     []string `json:"filters"`
 	Reduce      string   `json:"reduce"` // default reduction
 	Ranged      bool     `json:"ranged"` // false: the range is ignored (current state)
-	run         func(context.Context, *DB, *metricRun) error
+	run         func(*DB, context.Context, *metricRun) error
 }
 
 var timeGroups = map[string]bool{"day": true, "week": true, "month": true}
@@ -203,7 +203,7 @@ func (d *DB) Metric(ctx context.Context, q MetricQuery, now time.Time) (*MetricR
 	if err != nil {
 		return nil, err
 	}
-	if err := m.run(ctx, d, run); err != nil {
+	if err := m.run(d, ctx, run); err != nil {
 		return nil, err
 	}
 	return run.finish(), nil

@@ -18,7 +18,7 @@ func init() {
 		Groups:      []string{"day", "week", "month", "area", "subtype", "energy_type", "session"},
 		Splits:      []string{"area", "subtype", "energy_type"},
 		Filters:     sessionFilters, Reduce: "sum", Ranged: true,
-		run: func(ctx context.Context, d *DB, r *metricRun) error {
+		run: func(d *DB, ctx context.Context, r *metricRun) error {
 			return d.sessionMetric(ctx, r, func(s *sessionRow) float64 { return s.hours }, true)
 		},
 	})
@@ -28,7 +28,7 @@ func init() {
 		Groups:      []string{"day", "week", "month", "area", "subtype"},
 		Splits:      []string{"area", "subtype", "energy_type"},
 		Filters:     sessionFilters, Reduce: "sum", Ranged: true,
-		run: func(ctx context.Context, d *DB, r *metricRun) error {
+		run: func(d *DB, ctx context.Context, r *metricRun) error {
 			return d.sessionMetric(ctx, r, func(s *sessionRow) float64 { return s.points }, true)
 		},
 	})
@@ -38,7 +38,7 @@ func init() {
 		Groups:      []string{"day", "week", "area", "subtype"},
 		Splits:      []string{"area", "subtype", "kind"},
 		Filters:     sessionFilters, Reduce: "sum", Ranged: true,
-		run: func(ctx context.Context, d *DB, r *metricRun) error {
+		run: func(d *DB, ctx context.Context, r *metricRun) error {
 			return d.sessionMetric(ctx, r, func(*sessionRow) float64 { return 1 }, false)
 		},
 	})
