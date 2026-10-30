@@ -111,3 +111,11 @@ Append-only. One entry per non-obvious choice: date, what, why, what was rejecte
 ## 2026-10-29 — Epic totals are derived, the epic panel's columns are one setting
 **What:** An epic's panel lists its tasks in a table (the view table, without the epic column) with the epic's logged hours, summed estimates and done count above it. `epic_logged_h` and `epic_estimate_h` are computed on read with the other epic counts, never stored. Which columns show is the `epic_columns` setting, shared by every epic. Cancelled tasks stay in the list and their hours count towards logged (the time was spent) but not towards done or estimate. Hours logged on the epic itself are its own `logged_h`, kept separate. Views gain an optional "Logged time" column and card field.
 **Why:** Stored totals would go stale with every session edit; the sum is one grouped query over rows already being read. Per-epic column choices would be a setting nobody remembers making.
+
+## 2026-10-30 — Phase 2 libraries: react-grid-layout 1.5.4, Recharts 2.15.4
+**What:** The dashboard grid is react-grid-layout **1.5.4** (not 2.x, whose API was rewritten in December 2025), charts are Recharts **2.15.4**. Both, with their dependencies, build into a separate `charts` chunk that loads only with the dashboard screen.
+**Why:** 1.5.0-1.5.3 ship a stray `ip_fetcher` binary and its C source in the npm package (react-grid-layout issue #2269); 1.5.4 is the same code without them. Recharts 2.x supports React 18 and is what the spec names; 3.x can come later. Keeping ~475 kB of chart code out of the main bundle keeps the board's first load as it was.
+
+## 2026-10-30 — Metrics are computed in Go over plain SELECTs
+**What:** Each metric selects its rows with plain SQL (filters in the WHERE clause) and groups them in Go, rather than one dynamic GROUP BY per combination of grouping, split, week start and subtype weighting. Task metrics reuse the board's derivations (`queryTasks`, `segments`).
+**Why:** Week keys depend on a setting, subtype groupings carry rank weights, and task dates come from the transition log; doing those in SQL would duplicate `derive.go`. At tens of thousands of rows it is instant; tests check every metric against hand-written SQL.

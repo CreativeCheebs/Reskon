@@ -95,7 +95,7 @@ To restore one person only, replace just their file in `users/`.
 ```
 cmd/jitterbug/      main: env config, backup subcommand, server start
 internal/auth/      accounts, passwords, login sessions (auth.db), per-user database pool
-internal/db/        migrations (embedded), every SQL query, all derived values
+internal/db/        migrations (embedded), every SQL query, all derived values, the metrics registry
 internal/api/       HTTP handlers: decode, call db, encode
 internal/capture/   quick-capture parsing: provider interface, OpenAI-compatible client, validation
 web/                React + Vite app; web/dist is embedded into the binary

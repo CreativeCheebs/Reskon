@@ -1,7 +1,7 @@
 # AGENTS.md — read first
 
 **What this is:** JitterBug, a self-hosted task board and time log. Several people can sign in to one server; each has a completely separate database.
-**The spec:** [`build_spec_phase_1.md`](build_spec_phase_1.md) is authoritative on *what* and *why*. You cannot edit it. Where the code differs, append to [`docs/deviations.md`](docs/deviations.md) and say so in your handoff.
+**The spec:** [`build_spec_phase_1.md`](build_spec_phase_1.md) and [`build_spec_phase_2.md`](build_spec_phase_2.md) are authoritative on *what* and *why*. You cannot edit it. Where the code differs, append to [`docs/deviations.md`](docs/deviations.md) and say so in your handoff.
 
 ## Stack
 
@@ -28,7 +28,9 @@ Before calling a step done: run its acceptance check for real, `make test` passe
 - **Derived values** (ages, first started, completed, time in status, points, progress, segments, weighted subtype hours, effective severity) are computed on read in `internal/db` (mostly `derive.go`), returned by the API, and **never** stored or recomputed in the client.
 - **Status changes** only through `db.Move` / `POST /api/tasks/:id/move` (or status deletion), which writes the `status_transition` row in the same transaction. The log is append-only.
 - **Code branches on `status_category.behaviour`** and `energy_type.direction`, never on a status or type name.
-- **Nothing nets rest against work.** No ratio, balance or combined total of spend and restore, anywhere.
+- **Nothing nets rest against work.** No ratio, balance or combined total of spend and restore, anywhere. A metric query that would mix them is a 400 (`guardDirection`); never add a `balance`-type metric.
+- **Metrics are a registry, not free SQL.** A new measure is one `register(...)` in `internal/db/metrics_*.go`; a new chart is one renderer in `web/src/dashboard/viz/`. Totals and running sums come from the server.
+- **Session points are stored at log time** (hours × difficulty) and never recalculated by an edit.
 - **Filters resolve on the server** (`GET /api/tasks?view=:id`). The client sends a view id, not a query.
 - **The task key is never shown on cards or in tables**, only in the task panel.
 - **Capture never writes** and never fails because the LLM is down: `capture.Parser.Parse` always returns a usable form.
@@ -54,3 +56,7 @@ When the spec is silent: stop and ask. If working unattended and blocked, take t
 | Custom fields | `internal/db/customfields.go` | `web/src/fields/`, `web/src/admin/CustomFieldSettings.tsx` |
 | Quick capture | `internal/capture/`, `internal/db/capture.go` | `web/src/capture/` |
 | Accounts, sign-in | `internal/auth/`, `internal/api/auth.go` | `web/src/auth/` |
+| Metrics API (registry, guard) | `internal/db/metrics*.go` | `web/src/dashboard/viz/` |
+| Dashboards, widgets, layout | `internal/db/dashboards.go` | `web/src/dashboard/` |
+| Day plan, readout, suggestions | `internal/db/day.go`, `dayplan.go` | `web/src/day/` |
+| Buffs and debuffs | `internal/db/states.go` | `web/src/states/` |

@@ -130,11 +130,41 @@ The spec stores a session's points at log time but gives no formula. Owner chose
 ### `day_plan.ceiling_feedback` column
 Section 8 says no other schema changes are needed, but `day_plan` has nowhere to keep the evening "was today's ceiling about right?" answer, which section 6 needs to persist. Added one nullable column in migration 005. `day_plan.locked_at` stays unused: days are never locked.
 
+### Metrics API details
+- **Ranges** add `today` and `month` (this calendar month) to the spec's `7d / 30d / 90d / 1y / all`. The default dashboards need "today" and "this month", and a saved widget cannot hold relative `from`/`to` dates.
+- **Spend and restore never share a query.** `session_hours` is refused (400) whenever its filters still match energy types of both directions, split or not, so every such widget names a direction or energy types. The widget editor asks for spend or restore. `work_points` is spend by definition; no other metric reads hours by direction.
+- **Extra groupings**: `session_hours` by `session` (one row per session, for the Today dashboard's "today's work" table); `drift` is an 11th metric (group `now`) for the Drift widget, since section 5 gives it no metric.
+- **Extra filter** `direction` (`spend`/`restore`) on session metrics, for "Rest hours per day: direction=restore".
+- **Filters per metric**, not "everywhere": each metric lists the filters that mean something for it (a status filter on session hours does not); others are a 400. The catalog says which.
+- **Filter values** are ids or names (matched without regard to case); the editor saves ids so renames do not break widgets.
+- **By subtype**, hours and points carry the subtype's rank weight (the existing weighted subtype hours); sessions without a subtype are left out of subtype groupings. Counts count a session once per subtype.
+- **Epics are left out of task metrics.** Time in status and cycle time leave out statuses with behaviour done/cancelled; time in status also leaves out statuses off the board (Backlog) unless filtered for, so "Stuck work" is not the backlog.
+- **Cycle time** is hours in open statuses *within the range*, segments clipped to its local-day edges.
+- **Reductions and running totals are server-side** (`reduce`: sum, nonzero, max, last, count; `cumulative=1`, set automatically for a `cumulative` widget), so the client never adds numbers up. Each response carries `total`.
+- **An empty range returns `points: []`**; a range with any data returns every day/week/month in it, zeros included. `days_over_plan` and `ceiling_vs_actual` by day list only days with a saved plan.
+- **Widgets fetch by id**: `GET /api/metrics?widget=:id` runs the saved query, as views do. The full query string is for the editor's preview.
+- **Local days for timestamps** (task completions, transitions) use the server's time zone (`TZ`; the container ships tzdata).
+
+### Default dashboards
+As section 5, with these substitutions: **Today**'s "today's sessions" is "Today's work", spend sessions only (one query cannot mix directions); "active states" is "In force". **This month**'s "counts" are four number widgets: tasks closed, sessions logged, rest hours, days with something in the way (gym sessions need a subtype the app does not ship). **The year**'s "rest days per month" is **rest hours per month**, since the day label (rest/normal/heavy) is deferred.
+
+### Ceiling suggestion
+The suggestion is the last saved ceiling for each spend energy type, carried forward. After "too high" it is 80% of that day's ceiling for three days, then eases back over four (85, 90, 95, 100%), rounded to quarter hours. A later answer of any kind ends the hold. Nothing is saved until the user taps **Keep this plan** or changes something, so an untouched day has no plan (and no over-plan warning). States in force are listed, never entered, on the plan.
+
+### Dashboard layout
+`position` (the phone order) is rewritten from the grid's reading order on every layout save, since phones have no editing to set it otherwise. Under 768px the sidebar folds away behind a tab, for every screen.
+
+### Buffs and debuffs
+Clear sets `cleared_on`: for a state past its duration, the day the duration ran out; otherwise today. Either can be changed in its form. Delete (only offered once cleared) removes the row; clearing is the normal way to end one. `GET /api/states` items gain `in_force`, `days_running` and `ended`, and sort in force first, then by days running. `GET /api/states/shapes` samples each decay curve for the picker's sketches.
+
+### Settings
+`week_start` (1 = Monday … 7 = Sunday) and `drift_low_hours` (Settings → Reflection).
+
 ## Needs review
 
 Gaps where the spec was silent and the most reversible option was taken. Each is small to change.
 
-- **Points formula** (`taskPoints` in `internal/db/derive.go`): `difficulty × priority.weight`. Confirm or give the real formula. Sessions have no points.
+- **Points formula** (`taskPoints` in `internal/db/derive.go`): `difficulty × priority.weight`. Confirm or give the real formula. (Session points are stored per session from Phase 2: hours × difficulty.)
 - **Subtypes ship empty** (section 3 vs section 12). Flip by adding the section 3 list to a new migration's seeds.
 - **All seeded statuses are built-in.** Un-builtin any of them with `UPDATE status SET is_builtin = 0 WHERE ...`.
 - **Area deletion is refused while tasks remain** (409). Alternative: a reassign dialog like statuses.
@@ -142,3 +172,7 @@ Gaps where the spec was silent and the most reversible option was taken. Each is
 - **Capture with unknown intent** leaves Task/Session unselected rather than defaulting to one.
 - **Progress bar** is `logged hours / estimate`, capped at 100% (`progress_pct`). The spec names a progress bar without saying of what.
 - **Card "subtypes"** shows the distinct subtypes of sessions logged against the task (tasks have no subtypes of their own).
+- **"Too low"** only ends a "too high" hold; it does not raise the next suggestion. The spec gives behaviour for "too high" only.
+- **Drift**: a low-work day is one with less than `drift_low_hours` (default 1h) of spend; a planned break day is one whose saved plan's spend ceilings add up to less than that. The run counts back from today, today included.
+- **Stuck work** leaves out off-board statuses (Backlog). Filter by status to include them.
+- **Band colours**: debuffs use the epic purple, buffs green, modifiers the accent blue. Red was avoided on purpose (no red-means-bad).
