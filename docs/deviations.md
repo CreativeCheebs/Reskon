@@ -180,6 +180,8 @@ As Change 001 section 6. Today's "today's sessions" is a table of every session 
 ### Small multiples
 Each type's mini chart shows its y-axis labels and its own total in the header. The totals are per series and come from the server (`series[].total`), so the widget never adds types together, including the narrow fallback, where each type becomes its own number. Picking small multiples in the editor splits by energy type when no split is set.
 
+### Session difficulty defaults to the task's
+Picking a task in the session form fills in the task's difficulty unless one was set by hand. Opening an existing session leaves it as saved until its task is changed. (The server already used the task's difficulty for points when the session has none.) `GET /api/tasks?brief=1` items gain `difficulty`.
 
 ## Needs review
 

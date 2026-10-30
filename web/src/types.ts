@@ -159,6 +159,7 @@ export interface TaskBrief {
   type: "task" | "epic";
   area_id: number;
   energy_type_id: number | null;
+  difficulty: number | null;
   behaviour: Behaviour;
 }
 

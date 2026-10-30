@@ -257,18 +257,19 @@ type TaskBrief struct {
 	Type         string `json:"type"`
 	AreaID       int64  `json:"area_id"`
 	EnergyTypeID *int64 `json:"energy_type_id"`
+	Difficulty   *int64 `json:"difficulty"`
 	Behaviour    string `json:"behaviour"`
 }
 
 // ListTaskBriefs returns every task, newest first, for pickers (Log time,
 // capture, bulk attach). A fraction of the size of the full list.
 func (d *DB) ListTaskBriefs(ctx context.Context) ([]*TaskBrief, error) {
-	return collect(ctx, d, `SELECT t.id, t.key, t.title, t.type, t.area_id, t.energy_type_id, c.behaviour FROM task t
+	return collect(ctx, d, `SELECT t.id, t.key, t.title, t.type, t.area_id, t.energy_type_id, t.difficulty, c.behaviour FROM task t
 		JOIN status s ON s.id = t.status_id
 		JOIN status_category c ON c.id = s.category_id
 		WHERE t.deleted_at IS NULL ORDER BY t.id DESC`,
 		func(r *sql.Rows) (*TaskBrief, error) {
 			b := &TaskBrief{}
-			return b, r.Scan(&b.ID, &b.Key, &b.Title, &b.Type, &b.AreaID, &b.EnergyTypeID, &b.Behaviour)
+			return b, r.Scan(&b.ID, &b.Key, &b.Title, &b.Type, &b.AreaID, &b.EnergyTypeID, &b.Difficulty, &b.Behaviour)
 		})
 }

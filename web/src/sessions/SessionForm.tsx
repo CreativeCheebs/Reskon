@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { DatePicker, Form, Input, InputNumber, Radio, Select, TimePicker } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
 import { useApp } from "../store";
@@ -10,8 +10,9 @@ import { CustomFieldsEditor } from "../fields/CustomFieldsEditor";
 
 // The fields of a session, shared by the manual log form and quick capture.
 // Energy type follows the spec's chain only for what is preselected:
-// task's energy type, else the area default, else blank. The user can
-// always change it.
+// task's energy type, else the area default, else blank. Difficulty
+// defaults to the task's when a task is picked and no difficulty was set
+// by hand. The user can always change either.
 
 export interface SessionDraft {
   task_id: number | null;
@@ -97,6 +98,19 @@ export function SessionFields({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft.task_id, draft.area_id, tasks]);
 
+  // Difficulty: a new session takes its task's difficulty unless one was
+  // set by hand. Opening an existing session leaves it as saved until its
+  // task is changed.
+  const [touchedDifficulty, setTouchedDifficulty] = useState(draft.difficulty !== null);
+  const openedWithTask = useRef(draft.points !== undefined ? draft.task_id : undefined);
+  useEffect(() => {
+    if (touchedDifficulty || openedWithTask.current === draft.task_id) return;
+    openedWithTask.current = undefined;
+    const want = tasks.find((t) => t.id === draft.task_id)?.difficulty ?? null;
+    if (want !== draft.difficulty) set({ difficulty: want });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft.task_id, tasks]);
+
   const startedAt: Dayjs | null = draft.started_at ? dayjs(draft.started_at) : null;
 
   return (
@@ -149,7 +163,11 @@ export function SessionFields({
           <InputNumber style={{ width: "100%" }} min={0.05} max={24} step={0.25} value={draft.hours} onChange={(v) => set({ hours: v })} />
         </Form.Item>
         <Form.Item label="Difficulty" style={{ marginBottom: 8 }}>
-          <DifficultySlider value={draft.difficulty} disabled={disabled} width={230} onChange={(v) => set({ difficulty: v })} />
+          <DifficultySlider value={draft.difficulty} disabled={disabled} width={230} onChange={(v) => {
+              setTouchedDifficulty(true);
+              set({ difficulty: v });
+            }}
+          />
         </Form.Item>
         {draft.points !== undefined && (
           <Form.Item label="Points" tooltip="Stored when the session was logged. Editing hours or difficulty leaves them as they are." style={{ marginBottom: 8 }}>
