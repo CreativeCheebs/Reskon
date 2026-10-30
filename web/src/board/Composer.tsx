@@ -8,6 +8,7 @@ import { filterOf } from "../views/cardConfig";
 import type { Task, TaskType, View } from "../types";
 import { TypeIcon } from "../task/TypeIcon";
 import { useEpics } from "../task/useEpics";
+import { palette } from "../theme/palette";
 
 const LAST_AREA = "jitterbug.lastAreaId";
 
@@ -46,7 +47,7 @@ export function Composer({
 
   if (!open)
     return (
-      <WriteButton type="text" size="small" block onClick={() => setOpen(true)} style={{ justifyContent: "flex-start" }}>
+      <WriteButton type="text" size="small" block onClick={() => setOpen(true)} style={{ justifyContent: "flex-start", color: palette.muted }}>
         + Add task
       </WriteButton>
     );

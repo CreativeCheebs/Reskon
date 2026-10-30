@@ -166,7 +166,7 @@ function ThemeCard({
         </div>
         <div style={{ flex: 1, background: c.panelDim, borderRadius: 4, padding: 6, display: "flex", flexDirection: "column", gap: 5 }}>
           <div style={{ fontSize: 9, fontWeight: 700, color: c.muted, letterSpacing: 0.3 }}>IN PROGRESS</div>
-          <div style={{ background: c.panel, borderRadius: 4, padding: "5px 6px", boxShadow: "0 1px 1px #03040480" }}>
+          <div style={{ background: c.panel, borderRadius: 4, padding: "5px 6px", boxShadow: `0 1px 1px ${c.shadow}80` }}>
             <div style={{ fontSize: 11, color: c.fg, marginBottom: 4 }}>Port STM32 changes</div>
             <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
               {chip(c.epic, "Epic")}

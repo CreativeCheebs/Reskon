@@ -17,6 +17,19 @@ The spec is single-user with "no auth in Phase 1". The owner asked for a login p
 - **Grouping** on the board makes swimlanes; cards move between columns within their lane, and a task created in a lane gets that lane's value (e.g. its epic). Grouping by epic puts each epic at the top of its own lane. Table grouping adds Status.
 - Collapsed columns are shared by every lane of a view and still accept drops.
 
+## Board layout pass (owner request, 2026-10-29)
+- **Quick capture button** is a round "+" in the sidebar header, not bottom right (section 8). Bottom right sat over the last column, its cards and the board's scrollbar. It is still on every screen, and Ctrl/⌘+K is unchanged.
+- **Board cards never show the status**; the column already says it. The Status option is left out of a board view's Card settings and still applies to the table layout.
+- **Backlog / Cancelled** (any status with `on_board = 0`) open from quiet links beside the search box instead of a row of buttons above the board.
+
+## View icons, backgrounds, colour picker, column widths (owner request, 2026-10-29)
+- **Views have an icon, a colour and a background** (migration 004: `view.icon`, `view.color`, `view.background`, table `image`). Icons are emoji or SVGs from Microsoft's Fluent UI System Icons (24px regular and filled) and PrimeIcons, both MIT, picked with a search box. The data is generated from the `@iconify-json/fluent`, `@iconify-json/prime` and `unicode-emoji-json` packages by `web/scripts/icons.mjs` at build time and fetched only when the picker opens. The chosen SVG is stored on the view and drawn as a CSS mask, never inserted as markup.
+- **Background images** are uploaded to `POST /api/images` (PNG, JPEG, GIF or WebP, at most 8 MB, type sniffed from the bytes, no SVG) and stored in the person's own database. A view sets fit (crop, fit, stretch), image opacity, blur, and how transparent its columns or table are. Cards stay solid.
+- **One colour picker everywhere**, with tabs: a free picker, PrimeReact (its Aura palette, identical to Tailwind CSS v3's) and Material Design (2014 palette). The swatches live in `web/src/theme/swatches.ts`.
+- **Table column widths** can be dragged and are kept in this browser only (localStorage, per view, plus the sessions, epic and hidden-status tables), since screen sizes differ between machines.
+- **Cards show priority and difficulty as symbols**: priority as Jira-style chevrons in the priority's colour, picked by its rank by weight (never its name); difficulty 1-5 as a ring holding a circle, triangle, square, pentagon or hexagon in blue, green, yellow, orange, red. Tables, the task panel and capture show the same symbols next to the name or number. The purple stripe on epic cards is gone; the epic symbol is enough.
+- **Theme files gain `shadow` and `difficulty1`-`difficulty5`.** Older theme files without them still load; the missing colours come from the default theme, with a note.
+
 ## Jira import (owner request, 2026-10-29)
 `jitterbug import-jira <export.db> <username> [--dry-run]`, one transaction, refuses if any key already exists. Mapping, all reused by name when they already exist:
 - Keys kept (`OM2-N`). Labels MainJob/Personal/Freelance → areas Main job (prefix **OM2**, so new keys continue the sequence) / Personal (PER) / Freelance (FRL); an unlabelled issue takes its parent's label.

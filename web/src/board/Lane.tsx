@@ -21,6 +21,7 @@ import { cardConfigOf } from "../views/cardConfig";
 import type { Status, Task, View } from "../types";
 import { Column } from "./Column";
 import { TaskCard } from "./TaskCard";
+import { COL_GAP } from "./useBoardFit";
 
 // One row of status columns with drag and drop. Without grouping the board
 // is a single lane; grouped, each group (epic, priority ...) is a lane, and
@@ -184,7 +185,7 @@ export function Lane(props: Props) {
           setColumns(buildColumns());
         }}
       >
-      <div style={{ display: "flex", gap: 10, flex: inLane ? undefined : 1, minHeight: 0, alignItems: inLane ? "flex-start" : undefined }}>
+      <div style={{ display: "flex", gap: COL_GAP, flex: inLane ? undefined : "none", minHeight: 0, alignItems: inLane ? "flex-start" : undefined }}>
         {boardStatuses.map((s) => (
           <Column
             key={s.id}

@@ -1,5 +1,5 @@
-import { memo, useMemo } from "react";
-import { Button, Typography } from "antd";
+import { memo, useMemo, type CSSProperties } from "react";
+import { Typography } from "antd";
 import { useApp } from "../store";
 import { palette } from "../theme/palette";
 import { filterOf } from "../views/cardConfig";
@@ -9,9 +9,11 @@ import { useEpics } from "../task/useEpics";
 import { TypeIcon } from "../task/TypeIcon";
 import type { Task, View } from "../types";
 import { Lane } from "./Lane";
+import { COL_GAP, useBoardFit } from "./useBoardFit";
+import { useSurfaceOpacity, withAlpha } from "../views/ViewBackdrop";
 
 // Columns are on_board statuses only. Hidden statuses (Backlog, Cancelled,
-// anything with on_board = 0) are reached by header buttons. Grouping turns
+// anything with on_board = 0) are reached from the view toolbar. Grouping turns
 // the board into swimlanes; collapsed columns and grouping are saved on the
 // view as soon as they change.
 
@@ -21,10 +23,9 @@ interface Props {
   setTasks: (fn: (prev: Task[]) => Task[]) => void;
   refetch: () => void;
   onOpenTask: (id: number) => void;
-  onOpenHidden: (statusId: number) => void;
 }
 
-export const Board = memo(function Board({ view, tasks, setTasks, refetch, onOpenTask, onOpenHidden }: Props) {
+export const Board = memo(function Board({ view, tasks, setTasks, refetch, onOpenTask }: Props) {
   const { boot } = useApp();
   const { byId: epics } = useEpics();
   const save = useSaveView(view);
@@ -39,8 +40,10 @@ export const Board = memo(function Board({ view, tasks, setTasks, refetch, onOpe
         .sort((a, b) => a.position - b.position),
     [boot.statuses, filter.statuses],
   );
-  const hiddenStatuses = boot.statuses.filter((s) => !s.on_board).sort((a, b) => a.position - b.position);
   const groups = useMemo(() => groupTasks(tasks, groupBy, boot, epics), [tasks, groupBy, boot, epics]);
+
+  const collapsedCount = boardStatuses.filter((s) => collapsed.has(s.id)).length;
+  const fit = useBoardFit(boardStatuses.length - collapsedCount, collapsedCount);
 
   const toggleCollapse = (statusId: number) => {
     const next = new Set(collapsed);
@@ -64,21 +67,23 @@ export const Board = memo(function Board({ view, tasks, setTasks, refetch, onOpe
     />
   );
 
+  // Columns read their width from --col-w. The bottom padding keeps the
+  // horizontal scrollbar clear of the columns' "Add task" rows.
+  const scroller: CSSProperties = {
+    height: "100%",
+    paddingBottom: 6,
+    boxSizing: "border-box",
+    ["--col-w" as string]: `${fit.width}px`,
+  };
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      {hiddenStatuses.length > 0 && (
-        <div style={{ display: "flex", gap: 8, padding: "0 0 10px", justifyContent: "flex-end" }}>
-          {hiddenStatuses.map((s) => (
-            <Button key={s.id} size="small" onClick={() => onOpenHidden(s.id)}>
-              {s.name} <span style={{ color: palette.muted }}>{tasks.filter((t) => t.status_id === s.id).length}</span>
-            </Button>
-          ))}
-        </div>
-      )}
+    <div style={{ position: "relative", height: "100%" }}>
       {groupBy === "none" ? (
-        <div style={{ flex: 1, minHeight: 0, overflowX: "auto", display: "flex" }}>{lane(groups[0], false)}</div>
+        <div ref={fit.ref} style={{ ...scroller, overflowX: "auto", overflowY: "hidden", display: "flex" }}>
+          {lane(groups[0], false)}
+        </div>
       ) : (
-        <div style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
+        <div ref={fit.ref} style={{ ...scroller, overflow: "auto" }}>
           {groups.map((g) => {
             const onBoard = g.tasks.filter((t) => boardStatuses.some((s) => s.id === t.status_id)).length;
             return (
@@ -106,6 +111,26 @@ export const Board = memo(function Board({ view, tasks, setTasks, refetch, onOpe
           {groups.length === 0 && <Typography.Text type="secondary">Nothing matches.</Typography.Text>}
         </div>
       )}
+      {fit.more.left && <EdgeFade side="left" />}
+      {fit.more.right && <EdgeFade side="right" />}
     </div>
   );
 });
+
+/** A soft shade over the board's edge while more columns lie past it. */
+function EdgeFade({ side }: { side: "left" | "right" }) {
+  const surface = useSurfaceOpacity();
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: 0,
+        bottom: 16,
+        [side]: 0,
+        width: COL_GAP * 3,
+        pointerEvents: "none",
+        background: `linear-gradient(to ${side}, transparent, ${withAlpha(palette.bg, surface)})`,
+      }}
+    />
+  );
+}

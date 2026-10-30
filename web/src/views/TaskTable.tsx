@@ -1,4 +1,4 @@
-import { Progress, Table, Tag, Typography } from "antd";
+import { ConfigProvider, Progress, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useApp } from "../store";
 import { formatAge, formatHours } from "../format";
@@ -6,8 +6,11 @@ import { palette } from "../theme/palette";
 import { Lozenge } from "../theme/Lozenge";
 import type { CardConfig, GroupBy, Task } from "../types";
 import { TypeIcon } from "../task/TypeIcon";
+import { DifficultyIcon, PriorityIcon } from "../task/LevelIcons";
 import { useEpics } from "../task/useEpics";
 import { groupTasks } from "./grouping";
+import { useColumnWidths } from "./useColumnWidths";
+import { useSurfaceOpacity, withAlpha } from "./ViewBackdrop";
 
 // Table layout: same filter, columns from the same `show` config as cards.
 // Default sort is time in status, descending — the aging list.
@@ -17,11 +20,14 @@ export function TaskTable({
   tasks,
   config,
   groupBy = "none",
+  widthsKey,
   onOpenTask,
 }: {
   tasks: Task[];
   config: CardConfig;
   groupBy?: GroupBy;
+  /** Names this table for its saved column widths, e.g. "view:3". */
+  widthsKey: string;
   onOpenTask: (id: number) => void;
 }) {
   const { boot, statusById } = useApp();
@@ -34,12 +40,14 @@ export function TaskTable({
 
   const cols: ColumnsType<Task> = [
     {
+      key: "type",
       title: "",
       width: 34,
       render: (_, t) => <TypeIcon type={t.type} />,
       sorter: (a, b) => a.type.localeCompare(b.type),
     },
     {
+      key: "title",
       title: "Title",
       dataIndex: "title",
       sorter: (a, b) => a.title.localeCompare(b.title),
@@ -55,6 +63,7 @@ export function TaskTable({
   ];
   if (show.epic && groupBy !== "epic")
     cols.push({
+      key: "epic",
       title: "Epic",
       width: 180,
       ellipsis: true,
@@ -66,6 +75,7 @@ export function TaskTable({
     });
   if (show.area)
     cols.push({
+      key: "area",
       title: "Area",
       width: 120,
       render: (_, t) => byId(boot.areas, t.area_id)?.name,
@@ -73,6 +83,7 @@ export function TaskTable({
     });
   if (show.status)
     cols.push({
+      key: "status",
       title: "Status",
       width: 120,
       render: (_, t) => {
@@ -83,20 +94,39 @@ export function TaskTable({
     });
   if (show.priority)
     cols.push({
+      key: "priority",
       title: "Priority",
       width: 90,
       render: (_, t) => {
         const p = byId(boot.priorities, t.priority_id);
-        return p && <Lozenge color={p.color}>{p.name}</Lozenge>;
+        return (
+          p && (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <PriorityIcon priority={p} all={boot.priorities} tip={false} /> {p.name}
+            </span>
+          )
+        );
       },
       sorter: (a, b) => (byId(boot.priorities, a.priority_id)?.weight ?? 1) - (byId(boot.priorities, b.priority_id)?.weight ?? 1),
     });
   if (show.energy_type)
-    cols.push({ title: "Energy", width: 110, render: (_, t) => byId(boot.energy_types, t.energy_type_id)?.name });
+    cols.push({ key: "energy", title: "Energy", width: 110, render: (_, t) => byId(boot.energy_types, t.energy_type_id)?.name });
   if (show.difficulty)
-    cols.push({ title: "Diff", width: 60, dataIndex: "difficulty", sorter: (a, b) => num(a.difficulty, b.difficulty) });
+    cols.push({
+      key: "diff",
+      title: "Diff",
+      width: 60,
+      render: (_, t) =>
+        t.difficulty && (
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <DifficultyIcon level={t.difficulty} /> {t.difficulty}
+          </span>
+        ),
+      sorter: (a, b) => num(a.difficulty, b.difficulty),
+    });
   if (show.estimate)
     cols.push({
+      key: "est",
       title: "Est",
       width: 70,
       render: (_, t) => formatHours(t.estimate_h),
@@ -104,6 +134,7 @@ export function TaskTable({
     });
   if (show.logged)
     cols.push({
+      key: "logged",
       title: "Logged",
       width: 80,
       render: (_, t) => formatHours(loggedOf(t)),
@@ -111,17 +142,19 @@ export function TaskTable({
     });
   if (show.progress_bar)
     cols.push({
+      key: "progress",
       title: "Progress",
       width: 110,
       render: (_, t) =>
         t.progress_pct !== null && <Progress percent={Math.round(t.progress_pct)} size="small" />,
     });
   if (show.subtypes)
-    cols.push({ title: "Subtypes", render: (_, t) => t.subtypes.map((s) => <Tag key={s}>{s}</Tag>) });
+    cols.push({ key: "subtypes", title: "Subtypes", width: 160, render: (_, t) => t.subtypes.map((s) => <Tag key={s}>{s}</Tag>) });
   if (show.due)
-    cols.push({ title: "Due", width: 100, dataIndex: "due_at", sorter: (a, b) => (a.due_at ?? "").localeCompare(b.due_at ?? "") });
+    cols.push({ key: "due", title: "Due", width: 100, dataIndex: "due_at", sorter: (a, b) => (a.due_at ?? "").localeCompare(b.due_at ?? "") });
   if (show.created_age)
     cols.push({
+      key: "created",
       title: "Created",
       width: 80,
       render: (_, t) => formatAge(t.created_age_h),
@@ -129,6 +162,7 @@ export function TaskTable({
     });
   if (show.started_age)
     cols.push({
+      key: "started",
       title: "Started",
       width: 80,
       render: (_, t) => formatAge(t.started_age_h),
@@ -138,6 +172,7 @@ export function TaskTable({
     const field = boot.custom_fields.find((f) => f.entity === "task" && f.key === key);
     if (!field) continue;
     cols.push({
+      key: "cf-" + key,
       title: field.label,
       width: 120,
       render: (_, t) => {
@@ -149,6 +184,7 @@ export function TaskTable({
   }
   if (show.time_in_status)
     cols.push({
+      key: "tis",
       title: "In status",
       width: 90,
       defaultSortOrder: "descend",
@@ -157,6 +193,8 @@ export function TaskTable({
         <span style={{ color: t.stalled ? palette.danger : undefined }}>{formatAge(t.time_in_status_h)}</span>
       ),
     });
+  const sized = useColumnWidths<Task>(widthsKey, cols);
+  const surface = useSurfaceOpacity();
   // Rows start in aging order even when the column is hidden.
   const rows = [...tasks].sort((a, b) => b.time_in_status_h - a.time_in_status_h);
 
@@ -165,16 +203,37 @@ export function TaskTable({
       size="small"
       rowKey="id"
       dataSource={data}
-      columns={cols}
+      columns={sized.columns}
+      components={sized.components}
       pagination={false}
       sticky={sticky}
-      tableLayout={groupBy === "none" ? undefined : "fixed"}
+      tableLayout="fixed"
       onRow={(t) => ({ onClick: () => onOpenTask(t.id), style: { cursor: "pointer" } })}
     />
   );
 
-  if (groupBy === "none") return table(rows, true);
-  return (
+  // Over a view's background image the table lets it show through.
+  const seeThrough = (node: React.ReactNode) =>
+    surface >= 1 ? (
+      node
+    ) : (
+      <ConfigProvider
+        theme={{
+          components: {
+            Table: {
+              colorBgContainer: withAlpha(palette.panel, surface),
+              headerBg: withAlpha(palette.panel, Math.min(1, surface + 0.1)),
+              rowHoverBg: withAlpha(palette.hover, Math.min(1, surface + 0.1)),
+            },
+          },
+        }}
+      >
+        {node}
+      </ConfigProvider>
+    );
+
+  if (groupBy === "none") return seeThrough(table(rows, true));
+  return seeThrough(
     <div style={{ height: "100%", overflow: "auto" }}>
       {groupTasks(rows, groupBy, boot, epics).map((g) => (
         <section key={g.key} style={{ marginBottom: 16 }}>
@@ -186,6 +245,6 @@ export function TaskTable({
           {table(g.tasks, false)}
         </section>
       ))}
-    </div>
+    </div>,
   );
 }

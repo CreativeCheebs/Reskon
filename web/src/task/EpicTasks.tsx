@@ -71,7 +71,7 @@ export function EpicTasks({ epic, version, onOpenTask }: Props) {
       ) : tasks.length === 0 ? (
         <Typography.Text type="secondary">No tasks yet. Pick this epic on a task to add it here.</Typography.Text>
       ) : (
-        <TaskTable tasks={tasks} config={config} onOpenTask={onOpenTask} />
+        <TaskTable tasks={tasks} config={config} widthsKey="epic" onOpenTask={onOpenTask} />
       )}
     </>
   );

@@ -12,6 +12,8 @@ import { Lozenge } from "../theme/Lozenge";
 import type { Session } from "../types";
 import { SessionModal } from "./SessionModal";
 import { BulkBar } from "./BulkBar";
+import { useColumnWidths } from "../views/useColumnWidths";
+import { DifficultyIcon } from "../task/LevelIcons";
 
 // Sessions by day, with filters (applied on the server) and selection for
 // bulk changes: tick rows, tick a day to take all of it, or select
@@ -102,6 +104,49 @@ export function SessionsScreen() {
     }
   };
   const setF = <K extends keyof Filters>(k: K, v: Filters[K]) => setFilters((f) => ({ ...f, [k]: v }));
+
+  // One set of columns for every day's table; widths are kept in this browser.
+  const sessionCols = useColumnWidths<Session>("sessions", [
+    {
+      key: "what",
+      title: "What",
+      render: (_, s) => (s.task_id ? titleOf.get(s.task_id) ?? `task #${s.task_id}` : s.label ?? "–"),
+    },
+    { key: "kind", title: "Kind", width: 70, render: (_, s) => (s.kind === "event" ? <Tag>event</Tag> : "work") },
+    { key: "energy", title: "Energy", width: 120, render: (_, s) => energy(s.energy_type_id)?.name },
+    { key: "area", title: "Area", width: 100, render: (_, s) => boot.areas.find((a) => a.id === s.area_id)?.name ?? "" },
+    { key: "hours", title: "Hours", width: 70, render: (_, s) => formatHours(s.hours) },
+    {
+      key: "diff",
+      title: "Diff",
+      width: 50,
+      render: (_, s) => s.difficulty && <DifficultyIcon level={s.difficulty} />,
+    },
+    {
+      key: "subtypes",
+      title: "Subtypes",
+      render: (_, s) =>
+        s.subtypes.map((st) => (
+          <Tag key={st.rank} bordered={false}>
+            {subtype(st.subtype_id)} {formatHours(st.weighted_h)}
+          </Tag>
+        )),
+    },
+    { key: "note", title: "Note", dataIndex: "note", ellipsis: true },
+    {
+      title: "",
+      width: 70,
+      render: (_, s) => (
+        <span onClick={(e) => e.stopPropagation()}>
+          <Popconfirm title="Delete this session?" onConfirm={() => remove(s.id)}>
+            <WriteButton size="small" type="text" danger>
+              Delete
+            </WriteButton>
+          </Popconfirm>
+        </span>
+      ),
+    },
+  ]);
 
   return (
     <div style={{ maxWidth: 1200 }}>
@@ -280,40 +325,9 @@ export function SessionsScreen() {
                   }),
               }}
               onRow={(s) => ({ onClick: () => setModal({ editing: s }), style: { cursor: "pointer" } })}
-              columns={[
-                {
-                  title: "What",
-                  render: (_, s) => (s.task_id ? titleOf.get(s.task_id) ?? `task #${s.task_id}` : s.label ?? "–"),
-                },
-                { title: "Kind", width: 70, render: (_, s) => (s.kind === "event" ? <Tag>event</Tag> : "work") },
-                { title: "Energy", width: 120, render: (_, s) => energy(s.energy_type_id)?.name },
-                { title: "Area", width: 100, render: (_, s) => boot.areas.find((a) => a.id === s.area_id)?.name ?? "" },
-                { title: "Hours", width: 70, render: (_, s) => formatHours(s.hours) },
-                { title: "Diff", width: 50, dataIndex: "difficulty" },
-                {
-                  title: "Subtypes",
-                  render: (_, s) =>
-                    s.subtypes.map((st) => (
-                      <Tag key={st.rank} bordered={false}>
-                        {subtype(st.subtype_id)} {formatHours(st.weighted_h)}
-                      </Tag>
-                    )),
-                },
-                { title: "Note", dataIndex: "note", ellipsis: true },
-                {
-                  title: "",
-                  width: 70,
-                  render: (_, s) => (
-                    <span onClick={(e) => e.stopPropagation()}>
-                      <Popconfirm title="Delete this session?" onConfirm={() => remove(s.id)}>
-                        <WriteButton size="small" type="text" danger>
-                          Delete
-                        </WriteButton>
-                      </Popconfirm>
-                    </span>
-                  ),
-                },
-              ]}
+              tableLayout="fixed"
+              columns={sessionCols.columns}
+              components={sessionCols.components}
             />
           </div>
         );

@@ -13,6 +13,7 @@ import { EpicTasks } from "./EpicTasks";
 import { TaskExtras } from "./TaskExtras";
 import { TypeIcon, TypeLabel } from "./TypeIcon";
 import { useEpics } from "./useEpics";
+import { priorityOptions } from "./LevelIcons";
 
 // The task panel: the only place the task key is shown. Every edit is a
 // PATCH carrying the updated_at last seen; status changes go through /move.
@@ -195,7 +196,7 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
                 disabled={ro}
                 value={task.priority_id ?? undefined}
                 onChange={(v) => patch({ priority_id: v ?? null })}
-                options={opt(boot.priorities)}
+                options={priorityOptions(boot.priorities)}
               />
             </Descriptions.Item>
             <Descriptions.Item label="Energy type">

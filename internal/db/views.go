@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"encoding/json"
+	"regexp"
 )
 
 var viewColumns = columns{
@@ -12,7 +13,12 @@ var viewColumns = columns{
 	"card_config": kJSONObject,
 	"board_state": kJSONObject,
 	"position":    kInt,
+	"icon":        kJSONObject,
+	"color":       kTextNull,
+	"background":  kJSONObject,
 }
+
+var hexColor = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
 
 func checkViewFields(f Fields) error {
 	if raw, ok := f["filter"]; ok {
@@ -24,6 +30,15 @@ func checkViewFields(f Fields) error {
 		return err
 	} else if ok && s != "board" && s != "table" {
 		return invalid("layout must be board or table")
+	}
+	if raw, ok := f["color"]; ok && !isNull(raw) {
+		var c string
+		if json.Unmarshal(raw, &c) != nil || (c != "" && !hexColor.MatchString(c)) {
+			return invalid("color must be #rrggbb")
+		}
+	}
+	if raw, ok := f["icon"]; ok && len(raw) > 16<<10 {
+		return invalid("icon is too large")
 	}
 	return nil
 }
@@ -51,9 +66,17 @@ func (d *DB) PatchView(ctx context.Context, id int64, f Fields) (*View, error) {
 	if err := d.patchRow(ctx, "view", id, f, viewColumns); err != nil {
 		return nil, err
 	}
+	if _, ok := f["background"]; ok {
+		if err := d.pruneImages(ctx); err != nil {
+			return nil, err
+		}
+	}
 	return d.GetView(ctx, id)
 }
 
 func (d *DB) DeleteView(ctx context.Context, id int64) error {
-	return d.softDelete(ctx, "view", id)
+	if err := d.softDelete(ctx, "view", id); err != nil {
+		return err
+	}
+	return d.pruneImages(ctx)
 }

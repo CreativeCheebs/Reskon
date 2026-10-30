@@ -1,6 +1,6 @@
-import { contrast, DEFAULT_COLORS, PALETTE_KEYS, type Palette, type PaletteKey } from "./palette";
+import { contrast, DEFAULT_COLORS, LATER_KEYS, PALETTE_KEYS, type Palette, type PaletteKey } from "./palette";
 
-// Themes: a name plus the 16 palette colours. Built-in values for Jira and
+// Themes: a name plus the palette colours. Built-in values for Jira and
 // GitHub are taken from the published design-token packages
 // (@atlaskit/tokens 20.8.2, @primer/primitives 11.10.0), not hand-picked.
 // Translucent tokens were flattened onto the card surface.
@@ -31,6 +31,7 @@ export const BUILTIN_THEMES: Theme[] = [
       bg: "#1F1F21", panel: "#242528", panelDim: "#18191A", overlay: "#2B2C2F", hover: "#2B2C2F", selected: "#1C2B42",
       border: "#3B3C41", borderStrong: "#7E8188", fg: "#CECFD2", muted: "#A9ABAF", subtle: "#96999E", accent: "#669DF1",
       success: "#B3DF72", warn: "#FBC828", danger: "#FD9891", epic: "#D8A0F7",
+      shadow: "#030404", difficulty1: "#42A5F5", difficulty2: "#66BB6A", difficulty3: "#FFEE58", difficulty4: "#FFA726", difficulty5: "#EF5350",
     },
   },
   {
@@ -42,6 +43,7 @@ export const BUILTIN_THEMES: Theme[] = [
       bg: "#1F1F21", panel: "#242528", panelDim: "#18191A", overlay: "#2B2C2F", hover: "#2B2C2F", selected: "#1C2B42",
       border: "#6B6E74", borderStrong: "#A9ABAF", fg: "#E2E3E4", muted: "#CECFD2", subtle: "#BFC1C4", accent: "#CFE1FD",
       success: "#BAF3DB", warn: "#FCE4A6", danger: "#FFD5D2", epic: "#EED7FC",
+      shadow: "#030404", difficulty1: "#42A5F5", difficulty2: "#66BB6A", difficulty3: "#FFEE58", difficulty4: "#FFA726", difficulty5: "#EF5350",
     },
   },
   {
@@ -53,6 +55,8 @@ export const BUILTIN_THEMES: Theme[] = [
       bg: "#0D1117", panel: "#151B23", panelDim: "#010409", overlay: "#151B23", hover: "#262C36", selected: "#192639",
       border: "#3D444D", borderStrong: "#656C76", fg: "#F0F6FC", muted: "#9198A1", subtle: "#9198A1", accent: "#4493F8",
       success: "#3FB950", warn: "#D29922", danger: "#F85149", epic: "#AB7DF8",
+      // Difficulty from Primer's own scales: blue, green, attention, severe, danger.
+      shadow: "#010409", difficulty1: "#4493F8", difficulty2: "#3FB950", difficulty3: "#D29922", difficulty4: "#DB6D28", difficulty5: "#F85149",
     },
   },
   {
@@ -64,6 +68,7 @@ export const BUILTIN_THEMES: Theme[] = [
       bg: "#212830", panel: "#262C36", panelDim: "#151B23", overlay: "#2A313C", hover: "#2F3742", selected: "#293548",
       border: "#3D444D", borderStrong: "#656C76", fg: "#D1D7E0", muted: "#9198A1", subtle: "#9198A1", accent: "#478BE6",
       success: "#57AB5A", warn: "#C69026", danger: "#E5534B", epic: "#986EE2",
+      shadow: "#151B23", difficulty1: "#478BE6", difficulty2: "#57AB5A", difficulty3: "#C69026", difficulty4: "#CC6B2C", difficulty5: "#E5534B",
     },
   },
 ];
@@ -86,6 +91,12 @@ export const TOKEN_HELP: Record<PaletteKey, string> = {
   warn: "Warnings",
   danger: "Errors, stalled tasks, delete buttons",
   epic: "The epic symbol and epic labels",
+  shadow: "Shadows under cards and menus (drawn semi-transparent, so usually near black)",
+  difficulty1: "Difficulty 1 (trivial): circle inside a circle",
+  difficulty2: "Difficulty 2: triangle inside a circle",
+  difficulty3: "Difficulty 3: square inside a circle",
+  difficulty4: "Difficulty 4: pentagon inside a circle",
+  difficulty5: "Difficulty 5 (hardest): hexagon inside a circle",
 };
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
@@ -113,14 +124,20 @@ export function parseTheme(text: string): ThemeCheck {
     return { errors, warnings: [] };
   }
   const colors = {} as Palette;
+  const filled: string[] = [];
   for (const k of PALETTE_KEYS) {
     const v = obj.colors[k];
-    if (typeof v !== "string" || !HEX.test(v)) errors.push(`colors.${k} must be a colour like "#1D2125" (got ${JSON.stringify(v)}).`);
+    if (v === undefined && LATER_KEYS.includes(k)) {
+      colors[k] = DEFAULT_COLORS[k];
+      filled.push(k);
+    } else if (typeof v !== "string" || !HEX.test(v)) errors.push(`colors.${k} must be a colour like "#1D2125" (got ${JSON.stringify(v)}).`);
     else colors[k] = v.toUpperCase();
   }
   if (errors.length) return { errors, warnings: [] };
   const theme: Theme = { id: "custom-" + slug(name), name, colors, source: "Uploaded" };
-  return { theme, errors, warnings: checkContrast(colors) };
+  const warnings = checkContrast(colors);
+  if (filled.length) warnings.push(`Not in the file, taken from the default theme: ${filled.join(", ")}.`);
+  return { theme, errors, warnings };
 }
 
 /** Readability warnings (WCAG AA) for a set of colours. */

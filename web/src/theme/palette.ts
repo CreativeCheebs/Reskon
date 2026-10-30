@@ -24,7 +24,17 @@ export const PALETTE_KEYS = [
   "warn",
   "danger",
   "epic",
+  "shadow",
+  "difficulty1",
+  "difficulty2",
+  "difficulty3",
+  "difficulty4",
+  "difficulty5",
 ] as const;
+
+/** Keys added after themes could be uploaded. A theme file without them
+ *  still loads; the missing ones come from the default theme. */
+export const LATER_KEYS: readonly PaletteKey[] = ["shadow", "difficulty1", "difficulty2", "difficulty3", "difficulty4", "difficulty5"];
 
 export type PaletteKey = (typeof PALETTE_KEYS)[number];
 export type Palette = Record<PaletteKey, string>;
@@ -47,6 +57,13 @@ export const DEFAULT_COLORS: Palette = {
   warn: "#F5CD47",
   danger: "#F87168",
   epic: "#9F8FEF", // the epic symbol and labels
+  shadow: "#030404", // card and menu shadows (drawn semi-transparent)
+  // Difficulty 1-5: Material Design 400 blue, green, yellow, orange, red.
+  difficulty1: "#42A5F5",
+  difficulty2: "#66BB6A",
+  difficulty3: "#FFEE58",
+  difficulty4: "#FFA726",
+  difficulty5: "#EF5350",
 };
 
 /** The active colours. Components read this at render time; the theme

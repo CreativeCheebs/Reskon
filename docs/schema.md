@@ -48,3 +48,12 @@ Seeds: the four status categories, five statuses (all built-in; Backlog and Canc
 ### Migration 003
 
 No schema change. Remaps `task.difficulty` and `session.difficulty` from 1/2/4/8/16 to the 1-5 scale (4→3, 8→4, 16→5), and saved view filters' `difficulty_min` the same way.
+
+### Migration 004
+
+| Change | Purpose |
+| --- | --- |
+| `view.icon` (JSON, default `{}`) | `{"emoji": "🚀"}` or `{"set": "fluent-regular" \| "fluent-filled" \| "prime", "name": ..., "svg": "<path .../>"}`. The SVG body is kept on the view so the sidebar needs no icon library; it is drawn as a CSS mask, never inserted as markup. |
+| `view.color` (`#rrggbb` or NULL) | Tints the view's icon. NULL = theme text colour. |
+| `view.background` (JSON, default `{}`) | `image_id`, `fit` (`cover` = crop, `contain` = fit, `stretch`), `opacity` (0-1, of the image), `blur` (px), `surface_opacity` (0-1, how solid columns and tables are over the image). |
+| `image` (`id`, `mime`, `data` BLOB, `created_at`) | Uploaded background images: PNG, JPEG, GIF or WebP, at most 8 MB. Images no live view uses are deleted when a view's background changes or a view is deleted, once they are an hour old. Served by `GET /api/images/:id`; uploaded by `POST /api/images` with the raw file as the body. |

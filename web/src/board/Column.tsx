@@ -4,10 +4,18 @@ import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-
 import { CSS } from "@dnd-kit/utilities";
 import { Button, Tooltip } from "antd";
 import { useApp } from "../store";
-import { palette } from "../theme/palette";
+import { blend, palette } from "../theme/palette";
 import type { CardConfig, Status, Task, View } from "../types";
 import { TaskCard } from "./TaskCard";
 import { Composer } from "./Composer";
+import { COLLAPSED_W, COL_MIN } from "./useBoardFit";
+import { useSurfaceOpacity, withAlpha } from "../views/ViewBackdrop";
+
+// Columns sit half way between the page and the sunken well, with a faint
+// outline, so a mostly empty column reads as space rather than a dark slab.
+// Over a view's background image they let it show through (see ViewBackdrop).
+const columnBg = (surface: number) => withAlpha(blend(palette.panelDim, palette.bg, 0.5), surface);
+const columnBorder = (surface: number) => withAlpha(blend(palette.border, palette.bg, 0.6), Math.max(surface, 0.5));
 
 interface Props {
   status: Status;
@@ -30,6 +38,7 @@ export function Column(props: Props) {
     props;
   const { setNodeRef, isOver } = useDroppable({ id: "col-" + status.id, disabled });
   const { behaviourOf } = useApp();
+  const surface = useSurfaceOpacity();
   const dot = <span style={{ width: 8, height: 8, borderRadius: 4, background: status.color ?? palette.muted, flex: "none" }} />;
 
   // Collapsed: a narrow strip that still accepts drops (they land at the end).
@@ -38,10 +47,11 @@ export function Column(props: Props) {
       <div
         ref={setNodeRef}
         style={{
-          width: 36,
-          minWidth: 36,
-          background: isOver ? palette.border : palette.panelDim,
-          border: `1px solid ${palette.border}`,
+          width: COLLAPSED_W,
+          flex: "none",
+          boxSizing: "border-box",
+          background: isOver ? palette.border : columnBg(surface),
+          border: `1px solid ${columnBorder(surface)}`,
           borderRadius: 6,
           display: "flex",
           flexDirection: "column",
@@ -63,21 +73,35 @@ export function Column(props: Props) {
   return (
     <div
       style={{
-        width: 280,
-        minWidth: 280,
+        width: `var(--col-w, ${COL_MIN}px)`,
+        flex: "none",
+        boxSizing: "border-box",
         display: "flex",
         flexDirection: "column",
-        background: palette.panelDim,
+        background: columnBg(surface),
+        border: `1px solid ${columnBorder(surface)}`,
         borderRadius: 6,
         maxHeight: inLane ? undefined : "100%",
       }}
     >
-      <div style={{ padding: "6px 6px 6px 10px", display: "flex", alignItems: "center", gap: 8 }}>
+      <div style={{ padding: "6px 6px 6px 10px", display: "flex", alignItems: "center", gap: 8, minHeight: 36, boxSizing: "border-box" }}>
         {dot}
-        <span style={{ fontWeight: 600, fontSize: 12, textTransform: "uppercase", letterSpacing: 0.3, color: palette.muted }}>
+        <span
+          style={{
+            fontWeight: 600,
+            fontSize: 12,
+            textTransform: "uppercase",
+            letterSpacing: 0.3,
+            color: palette.muted,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+          title={status.name}
+        >
           {status.name}
         </span>
-        <span style={{ color: palette.muted }}>{taskIds.length}</span>
+        <span style={{ color: palette.subtle, fontSize: 12 }}>{taskIds.length}</span>
         <span style={{ flex: 1 }} />
         <Tooltip title="Collapse column" mouseEnterDelay={0.5}>
           <Button size="small" type="text" onClick={onToggleCollapse} aria-label={`Collapse ${status.name}`} style={{ color: palette.muted }}>
@@ -87,7 +111,7 @@ export function Column(props: Props) {
       </div>
       <div ref={setNodeRef} style={{ flex: 1, overflowY: inLane ? undefined : "auto", padding: "0 8px 8px", minHeight: 40 }}>
         <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {taskIds.map((id) => {
               const t = byId.get(id);
               return t ? <SortableCard key={id} task={t} config={config} disabled={disabled} onOpenTask={onOpenTask} /> : null;
@@ -96,7 +120,7 @@ export function Column(props: Props) {
         </SortableContext>
       </div>
       {behaviourOf(status.id) !== "done" && behaviourOf(status.id) !== "cancelled" && (
-        <div style={{ padding: "0 8px 8px" }}>
+        <div style={{ padding: "4px 8px 8px", borderTop: `1px solid ${columnBorder(surface)}` }}>
           <Composer statusId={status.id} view={view} defaults={createDefaults} onCreated={onCreated} />
         </div>
       )}

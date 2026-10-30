@@ -68,6 +68,9 @@ type View struct {
 	CardConfig json.RawMessage `json:"card_config"`
 	BoardState json.RawMessage `json:"board_state"` // collapsed columns, grouping; saved as you use the view
 	Position   int64           `json:"position"`
+	Icon       json.RawMessage `json:"icon"`
+	Color      *string         `json:"color"`
+	Background json.RawMessage `json:"background"`
 }
 
 type CustomField struct {
@@ -218,12 +221,13 @@ func (d *DB) GetArea(ctx context.Context, id int64) (*Area, error) {
 	return &a, err
 }
 
-const viewCols = `id, name, layout, filter, card_config, position, board_state`
+const viewCols = `id, name, layout, filter, card_config, position, board_state, icon, color, background`
 
 func scanView(r interface{ Scan(...any) error }) (v View, err error) {
-	var filter, card, board string
-	err = r.Scan(&v.ID, &v.Name, &v.Layout, &filter, &card, &v.Position, &board)
+	var filter, card, board, icon, bg string
+	err = r.Scan(&v.ID, &v.Name, &v.Layout, &filter, &card, &v.Position, &board, &icon, &v.Color, &bg)
 	v.Filter, v.CardConfig, v.BoardState = json.RawMessage(filter), json.RawMessage(card), json.RawMessage(board)
+	v.Icon, v.Background = json.RawMessage(icon), json.RawMessage(bg)
 	return
 }
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Button, Slider, Tooltip } from "antd";
 import { palette } from "../theme/palette";
 import { DIFFICULTY_LABELS } from "../types";
+import { DifficultyIcon } from "./LevelIcons";
 
 // Difficulty is a 1-5 scale, optional. The slider reports a value only when
 // you let go (onChange), so dragging doesn't save five times.
@@ -36,7 +37,8 @@ export function DifficultySlider({
         onChangeComplete={(v) => v !== value && onChange(v)}
         aria-label="Difficulty"
       />
-      <span style={{ fontSize: 11, color: unset ? palette.subtle : palette.fg, minWidth: 54, whiteSpace: "nowrap" }}>
+      <span style={{ fontSize: 11, color: unset ? palette.subtle : palette.fg, minWidth: 70, whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: 5 }}>
+        {!unset && <DifficultyIcon level={draft} tip={false} />}
         {unset ? "Not set" : `${draft} · ${DIFFICULTY_LABELS[draft]}`}
       </span>
       {!unset && !disabled && (

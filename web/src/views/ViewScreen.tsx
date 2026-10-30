@@ -16,13 +16,16 @@ import { useSaveView } from "./useViewState";
 import { cardConfigOf } from "./cardConfig";
 import type { GroupBy, Task, View } from "../types";
 import { palette } from "../theme/palette";
+import { ViewIconMark } from "../icons/ViewIconMark";
+import { SurfaceOpacityProvider, surfaceOpacityOf, ViewBackdrop, withAlpha } from "./ViewBackdrop";
+import { lookOf, ViewLookSettings, type ViewLook } from "./ViewLookSettings";
 
 // Loads a view's tasks (the server resolves the filter and the search) and
 // renders the board or the table, plus the overlays that hang off it.
 // Layout and grouping save themselves the moment they change.
 
 export function ViewScreen({ view }: { view: View }) {
-  const { reloadKey, online, reloadBootstrap } = useApp();
+  const { boot, reloadKey, online, reloadBootstrap } = useApp();
   const { refresh: refreshEpics } = useEpics();
   const save = useSaveView(view);
   const [tasks, setTasks] = useState<Task[] | null>(null);
@@ -30,7 +33,10 @@ export function ViewScreen({ view }: { view: View }) {
   const [hiddenStatus, setHiddenStatus] = useState<number | null>(null);
   const [openTask, setOpenTask] = useState<number | null>(null);
   const panelChanged = useRef(false); // refetch on close only if the open task changed
-  const [drawer, setDrawer] = useState<"filter" | "card" | null>(null);
+  const [drawer, setDrawer] = useState<"filter" | "card" | "look" | null>(null);
+  const [preview, setPreview] = useState<ViewLook | null>(null); // while the look drawer is open
+  const look = preview ?? lookOf(view);
+  const surface = surfaceOpacityOf(look.background);
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState(""); // debounced search
 
@@ -65,6 +71,8 @@ export function ViewScreen({ view }: { view: View }) {
   const groupBy: GroupBy = view.board_state?.group_by ?? "none";
   const groupOptions = GROUP_OPTIONS.filter((o) => !(view.layout === "board" && o.tableOnly));
   const filters = activeFilterCount(view);
+  // Statuses kept off the board (Backlog, Cancelled ...), opened as overlays.
+  const hiddenStatuses = boot.statuses.filter((s) => !s.on_board).sort((a, b) => a.position - b.position);
 
   const rename = () => {
     let name = view.name;
@@ -93,63 +101,108 @@ export function ViewScreen({ view }: { view: View }) {
     });
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
-        <div style={{ fontSize: 16, fontWeight: 600, marginRight: 4 }}>{view.name}</div>
-        <Input
-          size="small"
-          allowClear
-          prefix={<SearchOutlined />}
-          placeholder="Search title, key, description"
-          style={{ width: 240 }}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          onKeyDown={(e) => e.key === "Escape" && setSearch("")}
-        />
-        <div style={{ flex: 1 }} />
-        <Segmented
-          size="small"
-          value={view.layout}
-          disabled={!online}
-          onChange={(v) => save({ layout: v as View["layout"] })}
-          options={[
-            { value: "board", label: "Board" },
-            { value: "table", label: "Table" },
-          ]}
-        />
-        <Select<GroupBy>
-          size="small"
-          style={{ width: 160 }}
-          disabled={!online}
-          value={groupOptions.some((o) => o.value === groupBy) ? groupBy : "none"}
-          onChange={(v) => save({ board_state: { group_by: v } })}
-          options={groupOptions.map((o) => ({ value: o.value, label: o.value === "none" ? o.label : `Group: ${o.label}` }))}
-        />
-        <Badge count={filters} size="small" color={palette.accent}>
-          <Button size="small" onClick={() => setDrawer("filter")}>
-            Filter
-          </Button>
-        </Badge>
-        <Button size="small" onClick={() => setDrawer("card")}>
-          {view.layout === "board" ? "Card" : "Columns"}
-        </Button>
-        <Dropdown
-          trigger={["click"]}
-          disabled={!online}
-          menu={{
-            items: [
-              { key: "rename", label: "Rename view" },
-              { key: "delete", label: "Delete view", danger: true },
-            ],
-            onClick: ({ key }) => (key === "rename" ? rename() : remove()),
-          }}
-        >
-          <Button size="small" aria-label="View menu">
-            ⋯
-          </Button>
-        </Dropdown>
+    <SurfaceOpacityProvider value={surface}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
+      <ViewBackdrop bg={look.background} />
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "8px 20px",
+          marginBottom: 12,
+          flexWrap: "wrap",
+          position: "relative",
+          // Over an image the toolbar gets a backing so its text stays readable.
+          ...(surface < 1 ? { background: withAlpha(palette.bg, Math.max(surface, 0.6)), borderRadius: 6, padding: "4px 6px", margin: "-4px -6px 8px" } : {}),
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flex: "1 1 360px", minWidth: 0 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              fontSize: 16,
+              lineHeight: "24px",
+              fontWeight: 600,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              flex: "none",
+              maxWidth: 240,
+            }}
+            title={view.name}
+          >
+            <ViewIconMark icon={look.icon} color={look.color} size={18} />
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{view.name}</span>
+          </div>
+          <Input
+            size="small"
+            allowClear
+            prefix={<SearchOutlined />}
+            placeholder="Search title, key, description"
+            style={{ flex: "0 1 260px", minWidth: 140 }}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => e.key === "Escape" && setSearch("")}
+          />
+          {view.layout === "board" && tasks && (
+            <div style={{ display: "flex", alignItems: "center", gap: 2, flex: "none" }}>
+              {hiddenStatuses.map((s) => (
+                <Button key={s.id} size="small" type="text" style={{ color: palette.muted }} onClick={() => setHiddenStatus(s.id)}>
+                  {s.name} <span style={{ color: palette.subtle, marginLeft: 4 }}>{tasks.filter((t) => t.status_id === s.id).length}</span>
+                </Button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", rowGap: 8, marginLeft: "auto" }}>
+          <Segmented
+            size="small"
+            value={view.layout}
+            disabled={!online}
+            onChange={(v) => save({ layout: v as View["layout"] })}
+            options={[
+              { value: "board", label: "Board" },
+              { value: "table", label: "Table" },
+            ]}
+          />
+          <Select<GroupBy>
+            size="small"
+            style={{ width: 160 }}
+            disabled={!online}
+            value={groupOptions.some((o) => o.value === groupBy) ? groupBy : "none"}
+            onChange={(v) => save({ board_state: { group_by: v } })}
+            options={groupOptions.map((o) => ({ value: o.value, label: o.value === "none" ? o.label : `Group: ${o.label}` }))}
+          />
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <Badge count={filters} size="small" color={palette.accent}>
+              <Button size="small" onClick={() => setDrawer("filter")}>
+                Filter
+              </Button>
+            </Badge>
+            <Button size="small" onClick={() => setDrawer("card")}>
+              {view.layout === "board" ? "Card" : "Columns"}
+            </Button>
+            <Dropdown
+              trigger={["click"]}
+              disabled={!online}
+              menu={{
+                items: [
+                  { key: "rename", label: "Rename view" },
+                  { key: "look", label: "Icon and background…" },
+                  { key: "delete", label: "Delete view", danger: true },
+                ],
+                onClick: ({ key }) => (key === "rename" ? rename() : key === "look" ? setDrawer("look") : remove()),
+              }}
+            >
+              <Button size="small" aria-label="View menu">
+                ⋯
+              </Button>
+            </Dropdown>
+          </div>
+        </div>
       </div>
-      <div style={{ flex: 1, minHeight: 0 }}>
+      <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
         {!tasks ? (
           error ? (
             <Alert type="error" message={error} />
@@ -157,9 +210,9 @@ export function ViewScreen({ view }: { view: View }) {
             <Spin />
           )
         ) : view.layout === "board" ? (
-          <Board view={view} tasks={tasks} setTasks={update} refetch={refetch} onOpenTask={setOpenTask} onOpenHidden={setHiddenStatus} />
+          <Board view={view} tasks={tasks} setTasks={update} refetch={refetch} onOpenTask={setOpenTask} />
         ) : (
-          <TaskTable tasks={tasks} config={cardConfigOf(view)} groupBy={groupBy} onOpenTask={setOpenTask} />
+          <TaskTable tasks={tasks} config={cardConfigOf(view)} groupBy={groupBy} widthsKey={`view:${view.id}`} onOpenTask={setOpenTask} />
         )}
       </div>
       {tasks && hiddenStatus !== null && (
@@ -191,6 +244,8 @@ export function ViewScreen({ view }: { view: View }) {
       )}
       {drawer === "filter" && <FilterSettings view={view} onClose={() => setDrawer(null)} />}
       {drawer === "card" && <CardSettings view={view} sample={tasks?.find((t) => t.type === "task")} onClose={() => setDrawer(null)} />}
+      {drawer === "look" && <ViewLookSettings view={view} onPreview={setPreview} onClose={() => setDrawer(null)} />}
     </div>
+    </SurfaceOpacityProvider>
   );
 }

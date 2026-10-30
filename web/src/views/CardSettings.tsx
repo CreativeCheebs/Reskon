@@ -50,11 +50,14 @@ export function CardSettings({ view, sample, onClose }: { view: View; sample?: T
           </Radio.Group>
         </Form.Item>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 12px", marginBottom: 12 }}>
-          {(Object.keys(SHOW_LABELS) as (keyof typeof SHOW_LABELS)[]).map((k) => (
-            <Checkbox key={k} checked={card.show[k]} onChange={(e) => setShow(k, e.target.checked)}>
-              {SHOW_LABELS[k]}
-            </Checkbox>
-          ))}
+          {(Object.keys(SHOW_LABELS) as (keyof typeof SHOW_LABELS)[])
+            // A board's columns are its statuses; cards never repeat them.
+            .filter((k) => !(k === "status" && view.layout === "board"))
+            .map((k) => (
+              <Checkbox key={k} checked={card.show[k]} onChange={(e) => setShow(k, e.target.checked)}>
+                {SHOW_LABELS[k]}
+              </Checkbox>
+            ))}
         </div>
         {taskFields.length > 0 && (
           <Form.Item label="Custom fields">

@@ -4,6 +4,7 @@ import { api } from "../api";
 import { firstBoardTodoStatus, useApp } from "../store";
 import { WriteButton } from "../offline";
 import { formatAge } from "../format";
+import { useColumnWidths } from "../views/useColumnWidths";
 import type { Task } from "../types";
 
 // Overlay for a hidden (on_board = 0) status such as Backlog. Escape closes
@@ -33,6 +34,35 @@ export function HiddenStatusOverlay({ statusId, tasks, onClose, onMoved, onOpenT
     }
   };
 
+  const sized = useColumnWidths<Task>("hidden-status", [
+    { key: "title", title: "Title", dataIndex: "title" },
+    { key: "area", title: "Area", width: 120, render: (_, t) => areaName(t.area_id) },
+    {
+      key: "time",
+      title: "Time here",
+      width: 100,
+      sorter: (a, b) => a.time_in_status_h - b.time_in_status_h,
+      defaultSortOrder: "descend",
+      render: (_, t) => formatAge(t.time_in_status_h),
+    },
+    {
+      title: "",
+      width: 130,
+      render: (_, t) => (
+        <WriteButton
+          size="small"
+          disabled={!target}
+          onClick={(e) => {
+            e.stopPropagation();
+            moveToBoard(t);
+          }}
+        >
+          To {target?.name ?? "board"}
+        </WriteButton>
+      ),
+    },
+  ]);
+
   return (
     <Modal open title={`${status?.name ?? "Hidden"} · ${rows.length}`} onCancel={onClose} footer={null} width={760} keyboard>
       <Table<Task>
@@ -42,33 +72,9 @@ export function HiddenStatusOverlay({ statusId, tasks, onClose, onMoved, onOpenT
         pagination={false}
         scroll={{ y: 480 }}
         onRow={(t) => ({ onClick: () => onOpenTask(t.id), style: { cursor: "pointer" } })}
-        columns={[
-          { title: "Title", dataIndex: "title" },
-          { title: "Area", width: 120, render: (_, t) => areaName(t.area_id) },
-          {
-            title: "Time here",
-            width: 100,
-            sorter: (a, b) => a.time_in_status_h - b.time_in_status_h,
-            defaultSortOrder: "descend",
-            render: (_, t) => formatAge(t.time_in_status_h),
-          },
-          {
-            title: "",
-            width: 130,
-            render: (_, t) => (
-              <WriteButton
-                size="small"
-                disabled={!target}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  moveToBoard(t);
-                }}
-              >
-                To {target?.name ?? "board"}
-              </WriteButton>
-            ),
-          },
-        ]}
+        columns={sized.columns}
+        components={sized.components}
+        tableLayout="fixed"
       />
     </Modal>
   );

@@ -1,5 +1,5 @@
 import { theme, type ThemeConfig } from "antd";
-import { palette } from "./palette";
+import { blend, palette } from "./palette";
 
 // One token block for the whole app: dark surface levels from the active
 // theme, dense, 6px radii, 24–30px controls, no button shadows. Built from
@@ -41,7 +41,7 @@ export const makeAntTheme = (): ThemeConfig => ({
     motionDurationMid: "0.08s",
     motionDurationSlow: "0.12s",
     boxShadow: "none",
-    boxShadowSecondary: "0 8px 12px #091E4226, 0 0 1px #091E424F",
+    boxShadowSecondary: `0 8px 12px ${palette.shadow}40, 0 0 1px ${palette.shadow}80`,
   },
   components: {
     Button: { primaryShadow: "none", defaultShadow: "none", dangerShadow: "none", primaryColor: palette.bg },
@@ -60,10 +60,13 @@ export const makeAntTheme = (): ThemeConfig => ({
       darkItemColor: palette.muted,
       darkItemHoverColor: palette.fg,
       darkItemHoverBg: palette.hover,
-      darkItemSelectedBg: palette.selected,
+      // Softer than a full selected fill; the accent text still marks it.
+      darkItemSelectedBg: blend(palette.selected, palette.bg, 0.65),
       darkItemSelectedColor: palette.accent,
       darkGroupTitleColor: palette.subtle,
       itemHeight: 30,
+      itemMarginInline: 8,
+      itemMarginBlock: 2,
     },
     Drawer: { colorBgElevated: palette.overlay },
     Modal: { contentBg: palette.overlay, headerBg: palette.overlay, footerBg: palette.overlay },

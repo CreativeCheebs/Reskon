@@ -38,8 +38,9 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   try {
     res = await fetch("/api" + path, {
       method,
-      headers: body === undefined ? undefined : { "Content-Type": "application/json" },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      // A Blob (an uploaded file) goes as it is; anything else as JSON.
+      headers: body === undefined || body instanceof Blob ? undefined : { "Content-Type": "application/json" },
+      body: body === undefined ? undefined : body instanceof Blob ? body : JSON.stringify(body),
     });
   } catch (e) {
     setOnline(false);

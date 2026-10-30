@@ -106,6 +106,25 @@ export interface View {
   card_config: Partial<CardConfig>;
   board_state: BoardState;
   position: number;
+  icon: ViewIcon;
+  color: string | null;
+  background: ViewBackground;
+}
+
+/** An emoji, or an SVG icon from a bundled set (its body kept inline). */
+export type ViewIcon = { emoji?: string; set?: string; name?: string; svg?: string };
+
+export type ImageFit = "cover" | "contain" | "stretch";
+
+export interface ViewBackground {
+  image_id?: number;
+  fit?: ImageFit;
+  /** Of the image, 0-1. */
+  opacity?: number;
+  /** px */
+  blur?: number;
+  /** How solid columns and tables are over the image, 0-1. */
+  surface_opacity?: number;
 }
 
 export type FieldType = "text" | "int" | "real" | "date" | "bool" | "select";

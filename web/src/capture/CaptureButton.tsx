@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { FloatButton, Tooltip } from "antd";
+import { Button, Tooltip } from "antd";
 import { useApp } from "../store";
 import { OFFLINE_TIP } from "../offline";
 import { CaptureModal } from "./CaptureModal";
 
-// Round button, bottom right, on every screen, plus Ctrl/⌘+K anywhere.
+// Round button in the sidebar header, on every screen, plus Ctrl/⌘+K
+// anywhere. It sits outside the content area so it never covers a column,
+// a card or a scrollbar (see docs/deviations.md).
 
 export function CaptureButton() {
   const { online } = useApp();
@@ -44,12 +46,13 @@ export function CaptureButton() {
 
   return (
     <>
-      <Tooltip title={online ? "Quick capture (Ctrl/⌘+K)" : OFFLINE_TIP} placement="left">
-        <FloatButton
+      <Tooltip title={online ? "Quick capture (Ctrl/⌘+K)" : OFFLINE_TIP} placement="right">
+        <Button
           type="primary"
           shape="circle"
-          icon={<span style={{ fontSize: 20, lineHeight: "20px" }}>+</span>}
-          style={{ right: 24, bottom: 24, width: 48, height: 48, opacity: online ? 1 : 0.5 }}
+          aria-label="Quick capture"
+          icon={<span style={{ fontSize: 18, lineHeight: "18px" }}>+</span>}
+          style={{ width: 28, height: 28, minWidth: 28, opacity: online ? 1 : 0.5 }}
           onClick={() => {
             if (!online) return;
             early.current = "";

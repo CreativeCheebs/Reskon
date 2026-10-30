@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { ColorPicker, Input, InputNumber, Popconfirm, Select, Switch, Table, Tag } from "antd";
+import { Input, InputNumber, Popconfirm, Select, Switch, Table, Tag } from "antd";
 import { message } from "../theme/feedback";
 import type { ColumnsType } from "antd/es/table";
 import { api } from "../api";
 import { useApp } from "../store";
 import { WriteButton } from "../offline";
+import { ColorField } from "../theme/ColorField";
 
 // A small editable table for one lookup collection. Each cell saves on its
 // own (PATCH /api/<collection>/<id>) when it changes or loses focus.
@@ -124,12 +125,7 @@ function Cell({ spec, value, disabled, onSave }: { spec: FieldSpec; value: unkno
       return <Switch size="small" disabled={disabled} checked={!!value} onChange={(v) => onSave(v)} />;
     case "color":
       return (
-        <ColorPicker
-          size="small"
-          disabled={disabled}
-          value={(value as string) ?? undefined}
-          onChangeComplete={(c) => onSave(c.toHexString())}
-        />
+        <ColorField disabled={disabled} value={value as string | null} onChange={(hex) => hex && onSave(hex)} />
       );
     case "select":
       return (

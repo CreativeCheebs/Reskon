@@ -7,6 +7,7 @@ import { local } from "../offline";
 import type { CaptureParse, Task, TaskBrief } from "../types";
 import { DifficultySlider } from "../task/DifficultySlider";
 import { emptySession, sessionBody, SessionFields, type SessionDraft } from "../sessions/SessionForm";
+import { priorityOptions } from "../task/LevelIcons";
 
 // Quick capture: one line in, a filled form out, nothing written until the
 // user confirms. Enter saves, Escape cancels. If the parser is off or slow
@@ -223,7 +224,7 @@ function TaskFields({ draft, onChange }: { draft: TaskDraft; onChange: (d: TaskD
           <DifficultySlider value={draft.difficulty} width={230} onChange={(v) => set({ difficulty: v })} />
         </Form.Item>
         <Form.Item label="Priority" style={{ marginBottom: 8 }}>
-          <Select allowClear value={draft.priority_id ?? undefined} onChange={(v) => set({ priority_id: v ?? null })} options={opt(boot.priorities)} />
+          <Select allowClear value={draft.priority_id ?? undefined} onChange={(v) => set({ priority_id: v ?? null })} options={priorityOptions(boot.priorities)} />
         </Form.Item>
       </div>
     </Form>
