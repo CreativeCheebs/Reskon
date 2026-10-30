@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Button, Popconfirm, Switch, Table, Tag } from "antd";
+import { Button, Popconfirm, Switch, Table, Tag, Tooltip } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { message } from "../theme/feedback";
@@ -8,6 +8,7 @@ import { useApp } from "../store";
 import { WriteButton } from "../offline";
 import { palette } from "../theme/palette";
 import { severityText, type StateRow } from "../day/types";
+import { severityBand } from "./severity";
 import { DecaySketch } from "./DecaySketch";
 import { StateForm } from "./StateForm";
 
@@ -89,7 +90,19 @@ export function StatesScreen() {
             width: 90,
             render: (_, s) => <Tag bordered={false} style={{ color: KIND_COLOR[s.kind](), background: `${KIND_COLOR[s.kind]()}22` }}>{s.kind}</Tag>,
           },
-          { key: "sev", title: "Severity now", width: 120, render: (_, s) => severityText(s) },
+          {
+            key: "sev",
+            title: "Severity now",
+            width: 150,
+            render: (_, s) => {
+              const band = severityBand(s.effective_severity, s.kind);
+              return (
+                <Tooltip title={band.hint}>
+                  {severityText(s)} <span style={{ color: palette.muted }}>· {band.name.toLowerCase()}</span>
+                </Tooltip>
+              );
+            },
+          },
           { key: "started", title: "Started", width: 110, render: (_, s) => dayjs(s.started_on).format("D MMM YYYY") },
           {
             key: "days",

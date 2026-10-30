@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { DatePicker, Form, Input, InputNumber, Modal, Radio, Segmented } from "antd";
+import { DatePicker, Form, Input, InputNumber, Modal, Radio, Segmented, Slider } from "antd";
 import dayjs from "dayjs";
 import { message } from "../theme/feedback";
 import { api } from "../api";
@@ -8,9 +8,12 @@ import { palette } from "../theme/palette";
 import { today } from "../format";
 import type { StateRow } from "../day/types";
 import { DecaySketch } from "./DecaySketch";
+import { SEVERITY_MAX, severityBand } from "./severity";
 
 // Add or edit a buff, debuff or modifier. Decay defaults to static (holds
-// until cleared); there is no auto-clear.
+// until cleared); there is no auto-clear. Severity is a slider from 0 to 5
+// with words for what a value roughly means; a larger value saved before
+// stretches the slider to fit.
 
 const SHAPES: { value: StateRow["decay"]; label: string; hint: string }[] = [
   { value: "static", label: "Static", hint: "Holds until cleared" },
@@ -67,13 +70,10 @@ export function StateForm({
         <Form.Item label="Name" {...item}>
           <Input autoFocus value={v.name} onChange={(e) => set({ name: e.target.value })} placeholder="In your own words" />
         </Form.Item>
+        <Form.Item label="Kind" {...item}>
+          <Segmented value={v.kind} onChange={(kind) => set({ kind: kind as StateRow["kind"] })} options={["debuff", "buff", "modifier"]} />
+        </Form.Item>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 12px" }}>
-          <Form.Item label="Kind" {...item}>
-            <Segmented value={v.kind} onChange={(kind) => set({ kind: kind as StateRow["kind"] })} options={["debuff", "buff", "modifier"]} />
-          </Form.Item>
-          <Form.Item label="Severity" {...item}>
-            <InputNumber min={0} step={0.5} value={v.severity} onChange={(n) => set({ severity: n ?? 0 })} style={{ width: "100%" }} />
-          </Form.Item>
           <Form.Item label="Started" {...item}>
             <DatePicker allowClear={false} value={dayjs(v.started_on)} onChange={(d) => d && set({ started_on: d.format("YYYY-MM-DD") })} style={{ width: "100%" }} />
           </Form.Item>
@@ -81,6 +81,7 @@ export function StateForm({
             <InputNumber min={1} addonAfter="days" value={v.duration_days} onChange={(n) => set({ duration_days: n ?? null })} style={{ width: "100%" }} />
           </Form.Item>
         </div>
+        <SeverityField kind={v.kind} value={v.severity} onChange={(severity) => set({ severity })} />
         <Form.Item label="Decay" {...item}>
           <Radio.Group value={v.decay} onChange={(e) => set({ decay: e.target.value })} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
             {SHAPES.map((s) => (
@@ -106,5 +107,31 @@ export function StateForm({
         </Form.Item>
       </Form>
     </Modal>
+  );
+}
+
+function SeverityField({ kind, value, onChange }: { kind: StateRow["kind"]; value: number; onChange: (n: number) => void }) {
+  const max = Math.max(SEVERITY_MAX, Math.ceil(value));
+  const band = severityBand(value, kind);
+  const mark = (n: number) => ({ label: <span style={{ fontSize: 11, color: palette.muted }}>{severityBand(n, kind).name}</span> });
+  return (
+    <Form.Item label="Severity" style={{ marginBottom: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        <Slider
+          min={0}
+          max={max}
+          step={0.5}
+          value={value}
+          onChange={onChange}
+          marks={{ 0: " ", 1: mark(1), 3: mark(3), 5: mark(5) }}
+          tooltip={{ formatter: (n) => `${n} · ${severityBand(n ?? 0, kind).name}` }}
+          style={{ flex: 1, margin: "6px 6px 18px" }}
+        />
+        <InputNumber min={0} step={0.5} value={value} onChange={(n) => onChange(n ?? 0)} style={{ width: 70 }} />
+      </div>
+      <div style={{ fontSize: 12, color: palette.muted }}>
+        <span style={{ fontWeight: 600, color: palette.fg }}>{band.name}</span> · {band.hint}
+      </div>
+    </Form.Item>
   );
 }
