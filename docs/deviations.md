@@ -199,6 +199,31 @@ Severity stays a plain number on the server. The form offers a slider from 0 to 
 
 Each state has a symbol: a ring in its kind's colour, filled clockwise by severity now out of 5. The states in force show as chips (symbol, name, step) along the top of every screen; tapping one opens Buffs & debuffs. The bar is hidden when nothing is in force.
 
+### Difficulty is called Intensity
+Everywhere you see it, difficulty is now called **intensity**, so it also fits a game, a workout or a hard conversation. The steps are Light, Moderate, Intense, Very intense and Extreme. Only the words changed: the column, the API field and the points formula still use `difficulty`, and nothing was recalculated.
+
+### Quick capture: titles and areas
+- A session's free-text name is labelled **Title** (it was "Label"). An event doesn't show the Task picker; a work session shows it as "Task (optional)".
+- A captured session gets only the area the model read from the text, never the last-used or first area, which had put gaming under Day Job. A task still falls back to the last area used, because a task needs one.
+- The model may name an area when the text makes it clear (gaming, hobbies, family, chores and health go to a personal area). The spec said not to guess the area.
+- The seeded "Energy drain felt" session field is retired (migration 008).
+- The model writes a short title ("Video game - Quantum Break", not the whole sentence). For a session, the line as typed goes into the note, so nothing is lost.
+- The model sets intensity when the text says how it felt ("it was intense" -> 3, "exhausting" -> 4), and always picks the closest energy type for the activity.
+- Some models wrap the answer in another object (`{"name": ..., "value": {...}}`); capture unwraps it. Before this, gpt-oss answers looked empty.
+- **One line, several entries.** The section 8 contract is one object per line. The model may now reply with `{"entries": [...]}`, up to 6, when a line describes separate activities ("6 hours at hospital, work was only 1 hour, grandfather's diagnosis took the rest" -> work 1 h + diagnosis 5 h). Each entry is checked like a single one. `POST /api/capture` returns the first entry's fields at the top level, as before, plus `entries` (always at least one). The form shows one card per entry with Task/Session, remove, and "Add entry"; Save writes them one by one, and after a failure only the unsaved ones stay. Every session keeps the typed line as its note.
+- `JITTERBUG_LLM_REASONING_EFFORT` (env only, sent only when set) keeps reasoning models such as gpt-oss inside the spec's 5-second timeout, which stays as it is.
+
+### Several energy types in one session
+A session can have up to four energy types (migration 009). Each takes a share of the session's hours, in whole percents, and the shares must add up to 100%, so an hour is never counted twice and a day can't pass 24 hours. Each type has its own intensity and earns hours × share × its rate × its intensity, stored when logged and recalculated when an edit changes them (Change 002).
+- By energy type, hours and points split the session. Every other total (by day, area, task) is still the whole session. A session counts as its share under each type.
+- Filtering sessions by energy type matches any of a session's types.
+- Setting one energy type for many sessions at once (bulk) makes them one-type sessions again. A bulk intensity applies to every part.
+- Subtypes stay on the session, not on each part. With several types, any of their subtypes can be picked.
+- Quick capture may give one activity several types with shares ("studied rust with friends" -> Learning 70%, Leisure 30%). Separate activities are still separate entries.
+
+### Points follow edits (Change 002)
+See [`docs/changes/002-points-follow-edits.md`](changes/002-points-follow-edits.md). The edit form shows points read-only. Saving an edit that changes hours, intensity, energy types or shares, or task stores fresh points at today's rates; the bulk bar does the same for energy type, intensity and task. When only a rate has changed, the form says what the session would earn today (`points_now`, derived on read) and offers **Recalculate**; the bulk bar has **Recalculate points**. An edit that sends the same values back recalculates nothing. `PATCH` still takes `points`, which wins over a recalculation.
+
 ## Needs review
 
 Gaps where the spec was silent and the most reversible option was taken. Each is small to change.

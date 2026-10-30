@@ -154,3 +154,76 @@ func TestNormaliseRejectsInventions(t *testing.T) {
 		t.Errorf("empty title should fall back to raw text")
 	}
 }
+
+// Some models wrap the contract in another object; the reader unwraps it.
+func TestDecodeUnwrapsWrappedReply(t *testing.T) {
+	reply := `{"name": "response", "type": "json_object", "value": {"intent": "session", "kind": "event", "title": "Video game - Quantum Break", "energy_type": "Leisure", "hours": 3, "difficulty": 3, "area": "Personal"}}`
+	r, err := decodeContent(reply)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.EnergyType == nil || *r.EnergyType != "Leisure" || r.Hours == nil || *r.Hours != 3 || r.Difficulty == nil || *r.Difficulty != 3 {
+		t.Fatalf("wrapped reply decoded as %+v", r)
+	}
+	if _, err := decodeContent(`{"foo": 1}`); err == nil {
+		t.Error("a reply with no contract fields should be an error, so capture falls back")
+	}
+}
+
+// One line can be several entries; each is checked like a single one, and
+// a single-object reply still comes back as one entry.
+func TestSeveralEntries(t *testing.T) {
+	line := "6 hours at hospital, work was only 1 hour, grandfather diagnosis took the rest"
+	answers := map[string]string{
+		line: `{"entries":[
+			{"intent":"session","kind":"task","title":"Work","energy_type":"Engineering","hours":1,"area":"Main job","matched_task_key":"OM2-114"},
+			{"intent":"session","kind":"event","title":"Grandfather's diagnosis","energy_type":"Nonsense","hours":5,"area":"Personal","matched_task_key":"OM2-114"}]}`,
+		"Cleaned my devices": `{"intent":"session","kind":"task","title":"Cleaned my devices","energy_type":"Admin"}`,
+	}
+	srv := fakeModel(t, answers, 0)
+	defer srv.Close()
+	p := parser(srv.URL)
+
+	r := p.Parse(context.Background(), line, lookups)
+	if r.Fallback || len(r.Entries) != 2 {
+		t.Fatalf("entries = %d, fallback %v (%s)", len(r.Entries), r.Fallback, r.FallbackReason)
+	}
+	work, hosp := r.Entries[0], r.Entries[1]
+	if s(work.Title) != "Work" || work.Hours == nil || *work.Hours != 1 || work.MatchedTaskID == nil || *work.MatchedTaskID != 7 {
+		t.Errorf("work entry: %+v", work)
+	}
+	if s(hosp.Kind) != "event" || hosp.Hours == nil || *hosp.Hours != 5 || hosp.EnergyType != nil || hosp.MatchedTaskKey != nil {
+		t.Errorf("hospital entry: %+v (unknown type and event task match must be dropped)", hosp)
+	}
+	if s(r.Title) != "Work" || r.Entries[0].Entries != nil {
+		t.Errorf("top level should be the first entry, without nesting")
+	}
+
+	r = p.Parse(context.Background(), "Cleaned my devices", lookups)
+	if len(r.Entries) != 1 || s(r.Entries[0].Title) != "Cleaned my devices" {
+		t.Errorf("single reply: %+v", r.Entries)
+	}
+	if fb := Fallback("x", "off"); len(fb.Entries) != 1 {
+		t.Errorf("fallback entries = %d", len(fb.Entries))
+	}
+}
+
+// Several energy types in one activity: unknown ones are dropped, shares
+// are rescaled to whole percents adding up to 100, and the first becomes
+// the entry's energy type.
+func TestNormaliseEnergies(t *testing.T) {
+	three := 3
+	r := Normalise(Result{Energies: []EnergyShare{
+		{EnergyType: "learning", Share: 60}, {EnergyType: "Nonsense", Share: 20}, {EnergyType: "Leisure", Share: 20, Difficulty: &three},
+	}}, "x", Lookups{EnergyTypes: []string{"Learning", "Leisure"}})
+	if len(r.Energies) != 2 || r.Energies[0].EnergyType != "Learning" || r.Energies[0].Share != 75 || r.Energies[1].Share != 25 {
+		t.Fatalf("energies = %+v", r.Energies)
+	}
+	if s(r.EnergyType) != "Learning" || r.Energies[1].Difficulty == nil {
+		t.Errorf("first part should be the energy type: %s", s(r.EnergyType))
+	}
+	r = Normalise(Result{Energies: []EnergyShare{{EnergyType: "Leisure", Share: 100}}}, "x", Lookups{EnergyTypes: []string{"Leisure"}})
+	if r.Energies != nil {
+		t.Errorf("one type should not come back as energies: %+v", r.Energies)
+	}
+}

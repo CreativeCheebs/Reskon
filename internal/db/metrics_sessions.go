@@ -9,6 +9,11 @@ import (
 
 // Session metrics: hours, stored points and counts of logged sessions,
 // grouped by local day (logged_for), area, energy type or subtype.
+//
+// A session with several energy types is read as one row per type, each
+// with its share of the hours, its own stored points and its share of the
+// count, so by-type figures split the session and every other total adds
+// back up to the whole session.
 
 func init() {
 	sessionFilters := []string{"area", "energy_type", "subtype", "kind", "task_id"}
@@ -24,7 +29,7 @@ func init() {
 	})
 	register(&metricDef{
 		Name: "points", Label: "Points", Unit: "points",
-		Description: "Points stored on sessions when they were logged (hours × the type's rate × difficulty), every energy type. By subtype, weighted by rank.",
+		Description: "Points stored on sessions when they were logged (hours × the type's rate × intensity), every energy type. By subtype, weighted by rank.",
 		Groups:      []string{"day", "week", "month", "area", "energy_type", "subtype"},
 		Splits:      []string{"area", "subtype", "energy_type"},
 		Filters:     sessionFilters, Reduce: "sum", Ranged: true,
@@ -34,12 +39,12 @@ func init() {
 	})
 	register(&metricDef{
 		Name: "session_count", Label: "Sessions", Unit: "count",
-		Description: "Number of sessions logged. By subtype, a session counts once for each subtype it has.",
+		Description: "Number of sessions logged. By subtype, a session counts once for each subtype it has. A session with several energy types counts its share under each.",
 		Groups:      []string{"day", "week", "area", "subtype"},
 		Splits:      []string{"area", "subtype", "kind"},
 		Filters:     sessionFilters, Reduce: "sum", Ranged: true,
 		run: func(d *DB, ctx context.Context, r *metricRun) error {
-			return d.sessionMetric(ctx, r, func(*sessionRow) float64 { return 1 }, false)
+			return d.sessionMetric(ctx, r, func(s *sessionRow) float64 { return s.share }, false)
 		},
 	})
 }
@@ -50,8 +55,9 @@ type sessionRow struct {
 	area     int64 // 0 = none
 	energy   int64
 	kind     string
-	hours    float64
-	points   float64 // 0 when none stored
+	hours    float64 // this energy type's share of the session's hours
+	points   float64 // this part's stored points, 0 when none
+	share    float64 // this part's share of the session, 1 for one type
 	title    string
 	subtypes []sessionSub
 }
@@ -101,7 +107,8 @@ func (r *metricRun) energyCandidates() (map[int64]bool, error) {
 	return out, nil
 }
 
-// loadSessions reads the sessions in range that pass the query's filters.
+// loadSessions reads the sessions in range that pass the query's filters,
+// one row per energy type of each session.
 func (d *DB) loadSessions(ctx context.Context, r *metricRun, energy map[int64]bool, needSubtypes bool) ([]*sessionRow, error) {
 	if len(energy) == 0 {
 		return nil, nil
@@ -112,7 +119,7 @@ func (d *DB) loadSessions(ctx context.Context, r *metricRun, energy map[int64]bo
 	for id := range energy {
 		ids = append(ids, id)
 	}
-	where = append(where, inList("s.energy_type_id", ids, &args))
+	where = append(where, inList(partEnergy, ids, &args))
 	if v := r.q.Filters["area"]; len(v) > 0 {
 		areas, err := resolveIDs("area", v, r.areas)
 		if err != nil {
@@ -149,17 +156,17 @@ func (d *DB) loadSessions(ctx context.Context, r *metricRun, energy map[int64]bo
 		args = append(args, subArgs...)
 	}
 	var out []*sessionRow
-	byID := map[int64]*sessionRow{}
-	err := scanInto(ctx, d, `SELECT s.id, s.logged_for, COALESCE(s.area_id, 0), s.energy_type_id, s.kind, s.hours,
-		COALESCE(s.points, 0), COALESCE(t.title, s.label, '')
-		FROM session s LEFT JOIN task t ON t.id = s.task_id
-		WHERE `+strings.Join(where, " AND ")+` ORDER BY s.logged_for, s.id`, func(rows *sql.Rows) error {
+	byID := map[int64][]*sessionRow{}
+	err := scanInto(ctx, d, `SELECT s.id, s.logged_for, COALESCE(s.area_id, 0), `+partEnergy+`, s.kind, s.hours * `+partShare+`,
+		`+partPointsCol+`, `+partShare+`, COALESCE(t.title, s.label, '')
+		FROM session s `+sessionPartsJoin+` LEFT JOIN task t ON t.id = s.task_id
+		WHERE `+strings.Join(where, " AND ")+` ORDER BY s.logged_for, s.id, p.position`, func(rows *sql.Rows) error {
 		s := &sessionRow{}
-		if err := rows.Scan(&s.id, &s.day, &s.area, &s.energy, &s.kind, &s.hours, &s.points, &s.title); err != nil {
+		if err := rows.Scan(&s.id, &s.day, &s.area, &s.energy, &s.kind, &s.hours, &s.points, &s.share, &s.title); err != nil {
 			return err
 		}
 		out = append(out, s)
-		byID[s.id] = s
+		byID[s.id] = append(byID[s.id], s)
 		return nil
 	}, args...)
 	if err != nil || !needSubtypes || len(out) == 0 {
@@ -175,7 +182,7 @@ func (d *DB) loadSessions(ctx context.Context, r *metricRun, energy map[int64]bo
 		if err := rows.Scan(&sid, &sub, &rank); err != nil {
 			return err
 		}
-		if s := byID[sid]; s != nil {
+		for _, s := range byID[sid] {
 			s.subtypes = append(s.subtypes, sessionSub{id: sub, weight: rankWeight(weights, rank)})
 		}
 		return nil

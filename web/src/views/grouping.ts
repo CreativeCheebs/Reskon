@@ -9,7 +9,7 @@ export const GROUP_OPTIONS: { value: GroupBy; label: string; boardOnly?: boolean
   { value: "priority", label: "Priority" },
   { value: "area", label: "Area" },
   { value: "energy_type", label: "Energy type" },
-  { value: "difficulty", label: "Difficulty" },
+  { value: "difficulty", label: "Intensity" },
   { value: "type", label: "Type" },
   { value: "status", label: "Status", tableOnly: true },
 ];
@@ -68,8 +68,8 @@ export function groupTasks(tasks: Task[], by: GroupBy, boot: Bootstrap, epics: M
       }
       case "difficulty":
         if (t.difficulty)
-          add(`d${t.difficulty}`, `Difficulty ${t.difficulty} · ${DIFFICULTY_LABELS[t.difficulty] ?? ""}`, t, { difficulty: t.difficulty });
-        else add(none("No difficulty"), "No difficulty", t, {});
+          add(`d${t.difficulty}`, `Intensity ${t.difficulty} · ${DIFFICULTY_LABELS[t.difficulty] ?? ""}`, t, { difficulty: t.difficulty });
+        else add(none("No intensity"), "No intensity", t, {});
         break;
       case "type":
         add(t.type === "epic" ? "0epic" : "1task", t.type === "epic" ? "Epics" : "Tasks", t, { type: t.type });

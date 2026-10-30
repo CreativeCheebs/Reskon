@@ -111,13 +111,21 @@ export function SessionsScreen() {
       render: (_, s) => (s.task_id ? titleOf.get(s.task_id) ?? `task #${s.task_id}` : s.label ?? "–"),
     },
     { key: "kind", title: "Kind", width: 70, render: (_, s) => (s.kind === "event" ? <Tag>event</Tag> : "work") },
-    { key: "energy", title: "Energy", width: 120, render: (_, s) => energy(s.energy_type_id)?.name },
+    {
+      key: "energy",
+      title: "Energy",
+      width: 120,
+      render: (_, s) =>
+        s.energies?.length > 1
+          ? s.energies.map((e) => `${energy(e.energy_type_id)?.name ?? "?"} ${Math.round(e.share * 100)}%`).join(" · ")
+          : energy(s.energy_type_id)?.name,
+    },
     { key: "area", title: "Area", width: 100, render: (_, s) => boot.areas.find((a) => a.id === s.area_id)?.name ?? "" },
     { key: "hours", title: "Hours", width: 70, render: (_, s) => formatHours(s.hours) },
     { key: "points", title: "Points", width: 64, render: (_, s) => (s.points === null ? "" : Number(s.points.toFixed(2))) },
     {
       key: "diff",
-      title: "Diff",
+      title: "Int.",
       width: 50,
       render: (_, s) => s.difficulty && <DifficultyIcon level={s.difficulty} />,
     },
@@ -231,9 +239,9 @@ export function SessionsScreen() {
           value={filters.hasDiff}
           onChange={(v) => setF("hasDiff", v)}
           options={[
-            { value: "", label: "Any difficulty" },
-            { value: "true", label: "Difficulty set" },
-            { value: "false", label: "Difficulty not set" },
+            { value: "", label: "Any intensity" },
+            { value: "true", label: "Intensity set" },
+            { value: "false", label: "Intensity not set" },
           ]}
         />
         <Select

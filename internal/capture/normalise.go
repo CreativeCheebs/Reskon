@@ -33,6 +33,12 @@ func Normalise(r Result, text string, l Lookups) Result {
 			out.Difficulty = r.Difficulty
 		}
 	}
+	out.Energies = normaliseEnergies(r.Energies, l.EnergyTypes)
+	if len(out.Energies) > 0 {
+		et := out.Energies[0].EnergyType
+		out.EnergyType = &et
+		out.Difficulty = out.Energies[0].Difficulty
+	}
 	if r.Confidence != nil {
 		c := *r.Confidence
 		if c < 0 {
@@ -52,8 +58,9 @@ func Normalise(r Result, text string, l Lookups) Result {
 			if strings.EqualFold(c.Key, strings.TrimSpace(*r.MatchedTaskKey)) {
 				key, id := c.Key, c.ID
 				out.MatchedTaskKey, out.MatchedTaskID = &key, &id
-				// The task's energy type wins over whatever was parsed.
-				if c.EnergyType != "" {
+				// The task's energy type wins over whatever was parsed,
+				// unless the line names several.
+				if c.EnergyType != "" && len(out.Energies) == 0 {
 					et := c.EnergyType
 					out.EnergyType = &et
 				}
@@ -94,4 +101,44 @@ func pick(v *string, options []string) *string {
 		}
 	}
 	return nil
+}
+
+// normaliseEnergies keeps the known, distinct energy types with a share,
+// at most four, and rescales their shares to whole percents adding up to
+// 100. Fewer than two left means one type, which the plain fields carry.
+func normaliseEnergies(in []EnergyShare, types []string) []EnergyShare {
+	var out []EnergyShare
+	seen := map[string]bool{}
+	total := 0
+	for _, e := range in {
+		name := pick(&e.EnergyType, types)
+		if name == nil || seen[*name] || e.Share <= 0 || len(out) == 4 {
+			continue
+		}
+		seen[*name] = true
+		if e.Difficulty != nil && (*e.Difficulty < 1 || *e.Difficulty > 5) {
+			e.Difficulty = nil
+		}
+		out = append(out, EnergyShare{EnergyType: *name, Share: e.Share, Difficulty: e.Difficulty})
+		total += e.Share
+	}
+	if len(out) < 2 {
+		return nil
+	}
+	left := 100
+	for i := range out {
+		if i == len(out)-1 {
+			out[i].Share = left
+			break
+		}
+		out[i].Share = out[i].Share * 100 / total
+		if out[i].Share < 1 {
+			out[i].Share = 1
+		}
+		left -= out[i].Share
+	}
+	if out[len(out)-1].Share < 1 {
+		return nil
+	}
+	return out
 }

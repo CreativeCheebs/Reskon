@@ -235,7 +235,7 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
                 onChange={(d) => patch({ due_at: d ? d.format("YYYY-MM-DD") : null })}
               />
             </Descriptions.Item>
-            <Descriptions.Item label="Difficulty" span={2}>
+            <Descriptions.Item label="Intensity" span={2}>
               <DifficultySlider value={task.difficulty} disabled={ro} width={340} onChange={(v) => patch({ difficulty: v })} />
             </Descriptions.Item>
           </Descriptions>

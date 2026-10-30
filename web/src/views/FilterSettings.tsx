@@ -101,7 +101,7 @@ export function FilterSettings({ view, onClose }: { view: View; onClose: () => v
           />
         </Form.Item>
         <Space wrap>
-          <Form.Item label="Min difficulty">
+          <Form.Item label="Min intensity">
             <DifficultySlider value={filter.difficulty_min} width={220} onChange={(v) => set("difficulty_min", v)} />
           </Form.Item>
           <Form.Item label="Done within (days)">

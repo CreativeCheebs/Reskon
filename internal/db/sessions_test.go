@@ -82,8 +82,9 @@ func TestDayTotalsEveryTypeInOneList(t *testing.T) {
 	}
 }
 
-// Points are stored when a session is logged and never recalculated by an
-// edit; a rate or formula change applies only from then on.
+// Points are stored when a session is logged. An edit to what they depend
+// on recalculates them (Change 002); a rate change applies only from then
+// on, unless a recalculation is asked for.
 func TestSessionPointsStoredAtLogTime(t *testing.T) {
 	d := openTest(t)
 	ctx := context.Background()
@@ -104,17 +105,21 @@ func TestSessionPointsStoredAtLogTime(t *testing.T) {
 		}
 	}
 
-	// Editing hours or difficulty leaves the stored points alone.
+	// Editing hours or intensity recalculates: 3h x 5.
 	edited, err := d.PatchSession(ctx, own.ID, fields(t, `{"hours":3,"difficulty":5}`))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if *edited.Points != 8 {
-		t.Errorf("points after edit = %v, want 8 (unchanged)", *edited.Points)
+	if *edited.Points != 15 {
+		t.Errorf("points after edit = %v, want 15", *edited.Points)
 	}
-	// Points can be set by hand.
-	if edited, _ = d.PatchSession(ctx, own.ID, fields(t, `{"points":15}`)); *edited.Points != 15 {
-		t.Errorf("points set by hand = %v, want 15", *edited.Points)
+	// Sending the same values again changes nothing.
+	if again, _ := d.PatchSession(ctx, own.ID, fields(t, `{"hours":3,"difficulty":5,"energy_type_id":1,"note":"x"}`)); *again.Points != 15 {
+		t.Errorf("unchanged edit moved points to %v", *again.Points)
+	}
+	// Points can still be set through the API.
+	if edited, _ = d.PatchSession(ctx, own.ID, fields(t, `{"points":12}`)); *edited.Points != 12 {
+		t.Errorf("points set by hand = %v, want 12", *edited.Points)
 	}
 	if _, err := d.PatchSession(ctx, own.ID, fields(t, `{"points":-1}`)); err == nil {
 		t.Error("negative points accepted")
@@ -136,10 +141,31 @@ func TestSessionPointsStoredAtLogTime(t *testing.T) {
 	if *sleep.Points != 8 {
 		t.Errorf("rate 0.5 x 8h x difficulty 2 = %v, want 8", *sleep.Points)
 	}
-	if again, _ := d.GetSession(ctx, rest.ID); *again.Points != 7 {
-		t.Errorf("old Rest session changed with the rate: %v", *again.Points)
+	again, _ := d.GetSession(ctx, rest.ID)
+	if *again.Points != 7 || *again.PointsNow != 3.5 {
+		t.Errorf("old Rest session after the rate change: points %v (want 7, kept), now %v (want 3.5)", *again.Points, *again.PointsNow)
+	}
+	// Asked for, a recalculation takes today's rate: one session, then in bulk.
+	if again, _ = d.PatchSession(ctx, rest.ID, fields(t, `{"recalculate":true}`)); *again.Points != 3.5 {
+		t.Errorf("recalculated = %v, want 3.5", *again.Points)
+	}
+	d.PatchEnergyType(ctx, 4, fields(t, `{"points_per_hour":2}`))
+	if n, err := d.BulkSessions(ctx, []int64{rest.ID, sleep.ID}, fields(t, `{"recalculate":true}`), false); err != nil || n != 2 {
+		t.Fatalf("bulk recalculate: %d, %v", n, err)
+	}
+	if a, b := deref(mustGet(t, d, rest.ID).Points), deref(mustGet(t, d, sleep.ID).Points); a != 14.0 || b != 32.0 {
+		t.Errorf("bulk recalculated = %v, %v, want 14, 32", a, b)
 	}
 	if _, err := d.PatchEnergyType(ctx, 4, fields(t, `{"points_per_hour":-1}`)); err == nil {
 		t.Error("negative rate accepted")
 	}
+}
+
+func mustGet(t *testing.T, d *DB, id int64) *Session {
+	t.Helper()
+	s, err := d.GetSession(context.Background(), id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return s
 }

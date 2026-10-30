@@ -18,7 +18,8 @@ type Session struct {
 	Kind         string           `json:"kind"`
 	EnergyTypeID int64            `json:"energy_type_id"`
 	Hours        float64          `json:"hours"`
-	Points       *float64         `json:"points"` // stored when logged (hours x rate x difficulty)
+	Points       *float64         `json:"points"`     // stored when logged or last edited (hours x rate x difficulty)
+	PointsNow    *float64         `json:"points_now"` // derived: what it would earn at today's rates
 	Difficulty   *int64           `json:"difficulty"`
 	StartedAt    *string          `json:"started_at"`
 	LoggedFor    string           `json:"logged_for"`
@@ -26,6 +27,7 @@ type Session struct {
 	Custom       json.RawMessage  `json:"custom"`
 	CreatedAt    string           `json:"created_at"`
 	Subtypes     []SessionSubtype `json:"subtypes"`
+	Energies     []SessionEnergy  `json:"energies"` // at least one; see sessions_energy.go
 }
 
 // SessionSubtype is one ranked subtype with its derived weight and hours.
@@ -214,6 +216,10 @@ func (d *DB) CreateSession(ctx context.Context, f Fields) (*Session, error) {
 	if err != nil {
 		return nil, err
 	}
+	energies, _, err := parseEnergies(f)
+	if err != nil {
+		return nil, err
+	}
 	customPatch, hasCustom := f["custom"]
 	delete(f, "custom")
 	if _, ok := f["kind"]; !ok {
@@ -236,7 +242,23 @@ func (d *DB) CreateSession(ctx context.Context, f Fields) (*Session, error) {
 	if err := resolveSessionDefaults(ctx, tx, f); err != nil {
 		return nil, err
 	}
-	if _, set := f["points"]; !set {
+	var energyPoints []float64
+	if len(energies) >= 2 {
+		var hours float64
+		json.Unmarshal(f["hours"], &hours)
+		taskID, total, err := taskAndPoints(f)
+		if err != nil {
+			return nil, err
+		}
+		if energyPoints, err = partPoints(ctx, tx, energies, hours, taskID, total); err != nil {
+			return nil, err
+		}
+		sum := 0.0
+		for _, v := range energyPoints {
+			sum += v
+		}
+		f["points"], _ = json.Marshal(sum)
+	} else if _, set := f["points"]; !set {
 		if err := fillPoints(ctx, tx, f); err != nil {
 			return nil, err
 		}
@@ -260,6 +282,9 @@ func (d *DB) CreateSession(ctx context.Context, f Fields) (*Session, error) {
 	}
 	id, _ := res.LastInsertId()
 	if err := writeSubtypes(ctx, tx, id, subtypes); err != nil {
+		return nil, err
+	}
+	if err := writeEnergies(ctx, tx, id, energies, energyPoints); err != nil {
 		return nil, err
 	}
 	if err := tx.Commit(); err != nil {
@@ -305,6 +330,23 @@ func storedPoints(ctx context.Context, q querier, energyTypeID int64, hours floa
 	return sessionPoints(rate, hours, difficulty, taskDiff), nil
 }
 
+// taskAndPoints reads task_id and an explicit points value from f.
+func taskAndPoints(f Fields) (taskID *int64, points *float64, err error) {
+	if n, ok, err := f.int64Field("task_id"); err != nil {
+		return nil, nil, err
+	} else if ok {
+		taskID = &n
+	}
+	if raw, ok := f["points"]; ok && !isNull(raw) {
+		var p float64
+		if err := json.Unmarshal(raw, &p); err != nil {
+			return nil, nil, invalid("points must be a number")
+		}
+		points = &p
+	}
+	return taskID, points, nil
+}
+
 // fillPoints sets f["points"] for a new session from its other fields.
 func fillPoints(ctx context.Context, q querier, f Fields) error {
 	energy, _, err := f.int64Field("energy_type_id")
@@ -333,14 +375,24 @@ func fillPoints(ctx context.Context, q querier, f Fields) error {
 }
 
 // PatchSession updates a session. The session table has no updated_at, so
-// edits are last-write-wins (see docs/deviations.md). Points are never
-// recalculated here: they were stored when the session was logged and
-// change only when sent explicitly.
+// edits are last-write-wins (see docs/deviations.md). Points are worked out
+// again, at today's rates, when an edit changes what they depend on: hours,
+// intensity, energy types or shares, or task (Change 002). Otherwise they
+// stay as stored, even if a rate has changed since, unless the patch says
+// "recalculate": true. Points sent explicitly are stored as sent.
 func (d *DB) PatchSession(ctx context.Context, id int64, f Fields) (*Session, error) {
 	subtypes, hasSubtypes, err := parseSubtypes(f)
 	if err != nil {
 		return nil, err
 	}
+	energies, hasEnergies, err := parseEnergies(f)
+	if err != nil {
+		return nil, err
+	}
+	recalcAsked := takeRecalculate(f)
+	_, typeSet := f["energy_type_id"]
+	_, diffSet := f["difficulty"]
+	_, pointsSet := f["points"]
 	customPatch, hasCustom := f["custom"]
 	delete(f, "custom")
 	delete(f, "updated_at") // tolerated from clients that send it everywhere
@@ -363,6 +415,9 @@ func (d *DB) PatchSession(ctx context.Context, id int64, f Fields) (*Session, er
 	if err != nil {
 		return nil, err
 	}
+	if err := loadEnergies(ctx, tx, []*Session{cur}); err != nil {
+		return nil, err
+	}
 	if hasCustom {
 		merged, err := d.mergeCustom(ctx, tx, "session", string(cur.Custom), customPatch)
 		if err != nil {
@@ -370,6 +425,16 @@ func (d *DB) PatchSession(ctx context.Context, id int64, f Fields) (*Session, er
 		}
 		cols, vals = append(cols, "custom"), append(vals, merged)
 	}
+
+	// What the energy parts become, and whether anything points depend on
+	// changed.
+	next := energies
+	if !hasEnergies {
+		next = nextParts(cur, f, typeSet, diffSet)
+	}
+	energyChanged := partsDiffer(cur.Energies, next)
+	changed := energyChanged || hoursChanged(cur, f) || taskChanged(cur, f)
+
 	if len(cols) > 0 {
 		sets := make([]string, len(cols))
 		for i, c := range cols {
@@ -382,6 +447,23 @@ func (d *DB) PatchSession(ctx context.Context, id int64, f Fields) (*Session, er
 	}
 	if hasSubtypes {
 		if err := writeSubtypes(ctx, tx, id, subtypes); err != nil {
+			return nil, err
+		}
+	}
+	if energyChanged {
+		if err := writeEnergies(ctx, tx, id, next, nil); err != nil {
+			return nil, err
+		}
+	}
+	switch {
+	case pointsSet:
+		var total *float64
+		tx.QueryRowContext(ctx, `SELECT points FROM session WHERE id = ?`, id).Scan(&total)
+		if err := rescaleEnergyPoints(ctx, tx, id, total); err != nil {
+			return nil, err
+		}
+	case changed || recalcAsked:
+		if err := recalcPoints(ctx, tx, id); err != nil {
 			return nil, err
 		}
 	}
@@ -401,6 +483,9 @@ func (d *DB) GetSession(ctx context.Context, id int64) (*Session, error) {
 		return nil, ErrNotFound
 	}
 	if err != nil {
+		return nil, err
+	}
+	if err := d.attachEnergies(ctx, []*Session{s}); err != nil {
 		return nil, err
 	}
 	return s, d.attachSubtypes(ctx, []*Session{s})

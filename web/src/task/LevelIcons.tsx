@@ -15,14 +15,14 @@ export function DifficultyIcon({ level, size = 14, tip = true }: { level: number
   const color = palette[`difficulty${i}` as "difficulty1"];
   const sides = DIFFICULTY_SIDES[i - 1];
   const icon = (
-    <svg width={size} height={size} viewBox="0 0 16 16" aria-label={`Difficulty ${i}`} style={{ flex: "none", display: "block" }}>
+    <svg width={size} height={size} viewBox="0 0 16 16" aria-label={`Intensity ${i}`} style={{ flex: "none", display: "block" }}>
       <circle cx="8" cy="8" r="7" fill="none" stroke={color} strokeWidth="1.5" />
       {sides === 0 ? <circle cx="8" cy="8" r="3" fill={color} /> : <polygon points={polygon(sides, 3.9)} fill={color} />}
     </svg>
   );
   if (!tip) return icon;
   return (
-    <Tooltip title={`Difficulty ${i} of 5 · ${DIFFICULTY_LABELS[i] ?? ""}`} mouseEnterDelay={0.3}>
+    <Tooltip title={`Intensity ${i} of 5 · ${DIFFICULTY_LABELS[i] ?? ""}`} mouseEnterDelay={0.3}>
       <span style={{ display: "inline-flex" }}>{icon}</span>
     </Tooltip>
   );

@@ -32,7 +32,10 @@ func (d *DB) ListSessions(ctx context.Context, q SessionQuery) ([]*Session, erro
 		where, args = append(where, "s.task_id = ?"), append(args, q.TaskID)
 	}
 	if len(q.EnergyTypes) > 0 {
-		where = append(where, inList("s.energy_type_id", q.EnergyTypes, &args))
+		// Any of its energy types, not only the first.
+		own := inList("s.energy_type_id", q.EnergyTypes, &args)
+		parts := inList("energy_type_id", q.EnergyTypes, &args)
+		where = append(where, "("+own+" OR s.id IN (SELECT session_id FROM session_energy WHERE "+parts+"))")
 	}
 	if len(q.Areas) > 0 {
 		where = append(where, inList("s.area_id", q.Areas, &args))
@@ -76,6 +79,9 @@ func (d *DB) ListSessions(ctx context.Context, q SessionQuery) ([]*Session, erro
 		WHERE `+strings.Join(where, " AND ")+` ORDER BY s.logged_for DESC, s.created_at DESC`,
 		func(r *sql.Rows) (*Session, error) { return scanSession(r) }, args...)
 	if err != nil {
+		return nil, err
+	}
+	if err := d.attachEnergies(ctx, sessions); err != nil {
 		return nil, err
 	}
 	return sessions, d.attachSubtypes(ctx, sessions)

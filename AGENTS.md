@@ -31,7 +31,7 @@ Before calling a step done: run its acceptance check for real, `make test` passe
 - **All energy types are equal** (Change 001). There is no spend/restore: `energy_type.direction` stays in the table and nothing reads it. Every type earns points; lists of types are one flat list.
 - **Types are never subtracted from or divided by each other.** Adding them up is fine (everything counts). No balance, net, "work ÷ rest" or productivity-rate metric may exist (`TestNoMetricNetsEnergyTypes`).
 - **Metrics are a registry, not free SQL.** A new measure is one `register(...)` in `internal/db/metrics_*.go`; a new chart is one renderer in `web/src/dashboard/viz/`. Totals and running sums come from the server.
-- **Session points are stored at log time** (hours × the type's `points_per_hour` × difficulty, the session's else its task's else 1) and never recalculated by an edit or a rate change.
+- **Session points are stored at log time** (hours × share × the type's `points_per_hour` × difficulty, the part's else the session's task's else 1). An edit that changes hours, intensity, energy types or shares, or task recalculates them at today's rates (Change 002); a rate change alone never does, unless the user asks (`"recalculate": true`).
 - **Filters resolve on the server** (`GET /api/tasks?view=:id`). The client sends a view id, not a query.
 - **The task key is never shown on cards or in tables**, only in the task panel.
 - **Capture never writes** and never fails because the LLM is down: `capture.Parser.Parse` always returns a usable form.

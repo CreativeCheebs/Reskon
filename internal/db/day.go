@@ -63,8 +63,8 @@ func (d *DB) GetDay(ctx context.Context, day string) (*Day, error) {
 		return nil, err
 	}
 
-	err = scanInto(ctx, d, `SELECT e.id, e.name, SUM(s.hours) FROM session s
-		JOIN energy_type e ON e.id = s.energy_type_id
+	err = scanInto(ctx, d, `SELECT e.id, e.name, SUM(s.hours * `+partShare+`) FROM session s `+sessionPartsJoin+`
+		JOIN energy_type e ON e.id = `+partEnergy+`
 		WHERE s.deleted_at IS NULL AND s.logged_for = ?
 		GROUP BY e.id ORDER BY e.position, e.id`, func(r *sql.Rows) error {
 		var t EnergyTotal

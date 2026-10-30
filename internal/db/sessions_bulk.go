@@ -26,11 +26,27 @@ var bulkSessionColumns = columns{
 // Detaching from a task (task_id null) keeps the task's title as the
 // session's label when it has none, so the row never goes blank. Attaching
 // to a task takes the task's area unless area_id is also set.
+//
+// Points are stored afresh at today's rates when the change is to energy
+// type, intensity or task, or when set is just {"recalculate": true}
+// (Change 002).
 func (d *DB) BulkSessions(ctx context.Context, ids []int64, set Fields, del bool) (int, error) {
 	if len(ids) == 0 {
 		return 0, invalid("no sessions selected")
 	}
-	if del == (len(set) > 0) {
+	recalc := takeRecalculate(set)
+	for _, k := range []string{"energy_type_id", "difficulty", "task_id"} {
+		if _, ok := set[k]; ok {
+			recalc = true
+		}
+	}
+	if recalc && del {
+		return 0, invalid("give either fields to set or delete, not both or neither")
+	}
+	if recalc && len(set) == 0 {
+		set = Fields{}
+	}
+	if del == (len(set) > 0 || recalc) {
 		return 0, invalid("give either fields to set or delete, not both or neither")
 	}
 	seen := map[int64]bool{}
@@ -96,12 +112,34 @@ func (d *DB) BulkSessions(ctx context.Context, ids []int64, set Fields, del bool
 			return 0, err
 		}
 	}
-	sets := make([]string, len(cols))
-	for i, c := range cols {
-		sets[i] = c + " = ?"
+	if len(cols) > 0 {
+		sets := make([]string, len(cols))
+		for i, c := range cols {
+			sets[i] = c + " = ?"
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE session SET `+strings.Join(sets, ", ")+` WHERE `+in, append(vals, args...)...); err != nil {
+			return 0, uniqueAsConflict(err, "conflict")
+		}
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE session SET `+strings.Join(sets, ", ")+` WHERE `+in, append(vals, args...)...); err != nil {
-		return 0, uniqueAsConflict(err, "conflict")
+	// Sessions with several energy types: one type set for all makes them
+	// one-type sessions; an intensity set for all applies to every part.
+	var partArgs []any
+	partsIn := inList("session_id", uniq, &partArgs)
+	if _, ok := set["energy_type_id"]; ok {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM session_energy WHERE `+partsIn, partArgs...); err != nil {
+			return 0, err
+		}
+	} else if _, ok := set["difficulty"]; ok {
+		if _, err := tx.ExecContext(ctx, `UPDATE session_energy SET difficulty = (SELECT difficulty FROM session WHERE id = session_id) WHERE `+partsIn, partArgs...); err != nil {
+			return 0, err
+		}
+	}
+	if recalc {
+		for _, id := range uniq {
+			if err := recalcPoints(ctx, tx, id); err != nil {
+				return 0, err
+			}
+		}
 	}
 	return len(uniq), tx.Commit()
 }

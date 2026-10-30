@@ -1,17 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import { Alert, Button, Form, Input, Modal, Radio, Select, Space, Spin, Typography, type InputRef } from "antd";
+import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import { message } from "../theme/feedback";
 import { api } from "../api";
 import { useApp } from "../store";
 import { local } from "../offline";
 import type { CaptureParse, Task, TaskBrief } from "../types";
 import { DifficultySlider } from "../task/DifficultySlider";
-import { emptySession, sessionBody, SessionFields, type SessionDraft } from "../sessions/SessionForm";
+import { emptySession, sessionBody, sessionReady, SessionFields, type SessionDraft } from "../sessions/SessionForm";
 import { priorityOptions } from "../task/LevelIcons";
+import { palette } from "../theme/palette";
 
-// Quick capture: one line in, a filled form out, nothing written until the
-// user confirms. Enter saves, Escape cancels. If the parser is off or slow
-// the server returns the manual form with the raw text as the title.
+// Quick capture: one line in, filled forms out, nothing written until the
+// user confirms. One line can hold several entries ("6 hours at the
+// hospital, work was only 1 of them"); each gets its own form and Save
+// writes them all. Enter saves, Escape cancels. If the parser is off or
+// slow the server returns the manual form with the raw text as the title.
 
 interface TaskDraft {
   title: string;
@@ -24,14 +28,22 @@ interface TaskDraft {
 type Intent = "task" | "session";
 const LAST_AREA = "jitterbug.lastAreaId";
 
+interface Entry {
+  id: number;
+  parse: CaptureParse;
+  intent: Intent | null;
+  task: TaskDraft;
+  session: SessionDraft;
+}
+
+let nextEntryId = 1;
+
 export function CaptureModal({ onClose, takeEarlyKeys }: { onClose: () => void; takeEarlyKeys: () => string }) {
   const { boot, online } = useApp();
   const [text, setText] = useState("");
   const [parsing, setParsing] = useState(false);
   const [parse, setParse] = useState<CaptureParse | null>(null);
-  const [intent, setIntent] = useState<Intent | null>(null);
-  const [task, setTask] = useState<TaskDraft | null>(null);
-  const [session, setSession] = useState<SessionDraft | null>(null);
+  const [entries, setEntries] = useState<Entry[]>([]);
   const [tasks, setTasks] = useState<TaskBrief[]>([]);
   const [busy, setBusy] = useState(false);
   const saveRef = useRef<HTMLButtonElement>(null);
@@ -42,10 +54,51 @@ export function CaptureModal({ onClose, takeEarlyKeys }: { onClose: () => void; 
   }, []);
   useEffect(() => {
     if (parse) setTimeout(() => saveRef.current?.focus(), 50);
-  }, [parse, intent]);
+  }, [parse]);
 
   const idByName = <T extends { id: number; name: string }>(rows: T[], name: string | null) =>
     name ? rows.find((r) => r.name.toLowerCase() === name.toLowerCase())?.id ?? null : null;
+
+  const toEntry = (p: CaptureParse, raw: string): Entry => {
+    // A task must have an area, so it falls back to the last one used; a
+    // session only gets the area the text gave, never a guess.
+    const lastArea = Number(local.get(LAST_AREA)) || null;
+    const parsedArea = idByName(boot.areas, p.area);
+    const areaId = parsedArea ?? (boot.areas.some((a) => a.id === lastArea) ? lastArea : boot.areas[0]?.id ?? null);
+    const energyId = idByName(boot.energy_types, p.energy_type);
+    // Several energy types in one activity: the first is the entry's own.
+    const parts = (p.energies ?? []).map((e) => ({
+      energy_type_id: idByName(boot.energy_types, e.energy_type),
+      share: e.share,
+      difficulty: e.difficulty,
+    }));
+    const several = parts.length > 1 && parts.every((x) => x.energy_type_id);
+    const subtypeIds = (p.subtypes ?? [])
+      .map((n) => boot.subtypes.find((s) => s.name.toLowerCase() === n.toLowerCase() && (!energyId || s.energy_type_id === energyId))?.id)
+      .filter((x): x is number => x !== undefined)
+      .slice(0, 4);
+    return {
+      id: nextEntryId++,
+      parse: p,
+      intent: p.intent === "session" ? "session" : p.intent === "task" ? "task" : null,
+      task: { title: p.title ?? raw, area_id: areaId, energy_type_id: energyId, difficulty: p.difficulty, priority_id: null },
+      session: emptySession({
+        task_id: p.matched_task_id ?? null,
+        label: p.matched_task_id ? "" : p.title ?? raw,
+        area_id: parsedArea,
+        // Events never get a task from capture.
+        kind: p.kind === "event" ? "event" : "task",
+        energy_type_id: energyId,
+        hours: p.hours,
+        difficulty: p.difficulty,
+        ...(several ? { share: parts[0].share, more: parts.slice(1) } : {}),
+        subtypes: subtypeIds,
+        // The title is shortened by the model, so the line as typed is kept
+        // as the note.
+        note: raw && !p.fallback && p.title && p.title !== raw ? raw : "",
+      }),
+    };
+  };
 
   const runParse = async () => {
     if (!text.trim()) return;
@@ -59,60 +112,58 @@ export function CaptureModal({ onClose, takeEarlyKeys }: { onClose: () => void; 
     }
     setParsing(false);
     setParse(p);
-
-    const lastArea = Number(local.get(LAST_AREA)) || null;
-    const areaId = idByName(boot.areas, p.area) ?? (boot.areas.some((a) => a.id === lastArea) ? lastArea : boot.areas[0]?.id ?? null);
-    const energyId = idByName(boot.energy_types, p.energy_type);
-    setIntent(p.intent === "session" ? "session" : p.intent === "task" ? "task" : null);
-    setTask({
-      title: p.title ?? text.trim(),
-      area_id: areaId,
-      energy_type_id: energyId,
-      difficulty: p.difficulty,
-      priority_id: null,
-    });
-    const subtypeIds = (p.subtypes ?? [])
-      .map((n) => boot.subtypes.find((s) => s.name.toLowerCase() === n.toLowerCase() && (!energyId || s.energy_type_id === energyId))?.id)
-      .filter((x): x is number => x !== undefined)
-      .slice(0, 4);
-    setSession(
-      emptySession({
-        task_id: p.matched_task_id ?? null,
-        label: p.matched_task_id ? "" : p.title ?? text.trim(),
-        area_id: areaId,
-        // Events never get a task from capture.
-        kind: p.kind === "event" ? "event" : "task",
-        energy_type_id: energyId,
-        hours: p.hours,
-        difficulty: p.difficulty,
-        subtypes: subtypeIds,
-      }),
-    );
+    setEntries((p.entries?.length ? p.entries : [p]).map((e) => toEntry(e, text.trim())));
   };
 
-  const audit = () => ({ _capture: { raw: text, parse, at: new Date().toISOString() } });
+  const update = (id: number, patch: Partial<Entry>) => setEntries((es) => es.map((e) => (e.id === id ? { ...e, ...patch } : e)));
+  const remove = (id: number) => setEntries((es) => es.filter((e) => e.id !== id));
+  const addEntry = () => {
+    const e = toEntry({ ...emptyParse(), intent: "session", title: "" }, "");
+    e.session = { ...e.session, note: text.trim() };
+    setEntries((es) => [...es, e]);
+  };
 
+  const audit = (e: Entry) => ({ _capture: { raw: text, parse: e.parse, entries: entries.length, at: new Date().toISOString() } });
+
+  const saveOne = async (e: Entry) => {
+    if (e.intent === "task") {
+      const t = e.task;
+      if (!t.title.trim() || !t.area_id) throw new Error("A task needs a title and an area.");
+      const body: Record<string, unknown> = { title: t.title.trim(), area_id: t.area_id, custom: audit(e) };
+      if (t.energy_type_id) body.energy_type_id = t.energy_type_id;
+      if (t.difficulty) body.difficulty = t.difficulty;
+      if (t.priority_id) body.priority_id = t.priority_id;
+      await api.post<Task>("/tasks", body);
+      local.set(LAST_AREA, String(t.area_id));
+    } else if (e.intent === "session") {
+      const body = sessionBody(e.session);
+      await api.post("/sessions", { ...body, custom: { ...body.custom, ...audit(e) } });
+    }
+  };
+
+  // Saves entries one by one. A saved entry leaves the list, so after an
+  // error only the ones still to save remain and Save can be pressed again.
   const save = async () => {
-    if (!intent || busy) return;
+    if (!canSave) return;
     setBusy(true);
+    let tasksAdded = 0;
+    let sessionsLogged = 0;
     try {
-      if (intent === "task" && task) {
-        if (!task.title.trim() || !task.area_id) throw new Error("A task needs a title and an area.");
-        const body: Record<string, unknown> = { title: task.title.trim(), area_id: task.area_id, custom: audit() };
-        if (task.energy_type_id) body.energy_type_id = task.energy_type_id;
-        if (task.difficulty) body.difficulty = task.difficulty;
-        if (task.priority_id) body.priority_id = task.priority_id;
-        await api.post<Task>("/tasks", body);
-        local.set(LAST_AREA, String(task.area_id));
-        message.success("Task added");
-      } else if (intent === "session" && session) {
-        const body = sessionBody(session);
-        await api.post("/sessions", { ...body, custom: { ...body.custom, ...audit() } });
-        message.success("Session logged");
+      for (const e of entries) {
+        await saveOne(e);
+        if (e.intent === "task") tasksAdded++;
+        else sessionsLogged++;
+        remove(e.id);
       }
+      const parts = [
+        tasksAdded ? `${tasksAdded} task${tasksAdded > 1 ? "s" : ""} added` : "",
+        sessionsLogged ? `${sessionsLogged} session${sessionsLogged > 1 ? "s" : ""} logged` : "",
+      ].filter(Boolean);
+      message.success(parts.join(", ").replace(/^./, (c) => c.toUpperCase()));
       onClose();
-    } catch (e) {
-      message.error((e as Error).message);
+    } catch (err) {
+      const done = tasksAdded + sessionsLogged;
+      message.error(done ? `${done} saved; the next one failed: ${(err as Error).message}` : (err as Error).message);
     } finally {
       setBusy(false);
     }
@@ -128,7 +179,11 @@ export function CaptureModal({ onClose, takeEarlyKeys }: { onClose: () => void; 
     save();
   };
 
-  const canSave = online && !!intent && !busy && (intent === "task" ? !!task?.title.trim() && !!task?.area_id : !!session?.hours && !!session?.energy_type_id);
+  const entryReady = (e: Entry) =>
+    e.intent === "task" ? !!e.task.title.trim() && !!e.task.area_id : e.intent === "session" ? sessionReady(e.session) : false;
+  const canSave = online && !busy && entries.length > 0 && entries.every(entryReady);
+  const several = entries.length > 1;
+  const totalHours = entries.reduce((n, e) => n + (e.intent === "session" ? e.session.hours ?? 0 : 0), 0);
 
   return (
     <Modal
@@ -148,7 +203,7 @@ export function CaptureModal({ onClose, takeEarlyKeys }: { onClose: () => void; 
           <Space>
             <Button onClick={onClose}>Cancel</Button>
             <Button ref={saveRef} type="primary" disabled={!canSave} loading={busy} onClick={save}>
-              Save
+              {several ? `Save ${entries.length}` : "Save"}
             </Button>
           </Space>
         ) : null
@@ -173,7 +228,7 @@ export function CaptureModal({ onClose, takeEarlyKeys }: { onClose: () => void; 
               }}
             />
             <Typography.Text type="secondary" style={{ fontSize: 11 }}>
-              Enter to read it · Esc to close · past tense logs a session, future or imperative makes a task
+              Enter to read it · Esc to close · past tense logs a session, future or imperative makes a task · one line can hold several
             </Typography.Text>
           </Spin>
         ) : (
@@ -181,15 +236,38 @@ export function CaptureModal({ onClose, takeEarlyKeys }: { onClose: () => void; 
             {parse.fallback && (
               <Alert type="info" showIcon message="Filled in by hand" description={parse.fallback_reason} style={{ padding: "4px 10px" }} />
             )}
-            {/* Radio, not Segmented: Segmented shows its first option as
-                selected when nothing is, which would be a silent guess. */}
-            <Radio.Group value={intent} onChange={(e) => setIntent(e.target.value)} optionType="button" buttonStyle="solid">
-              <Radio.Button value="task">Task</Radio.Button>
-              <Radio.Button value="session">Session</Radio.Button>
-            </Radio.Group>
-            {!intent && <Typography.Text type="secondary">Is this a task to do, or a session that happened?</Typography.Text>}
-            {intent === "task" && task && <TaskFields draft={task} onChange={setTask} />}
-            {intent === "session" && session && <SessionFields draft={session} onChange={setSession} tasks={tasks} disabled={!online} />}
+            {several && (
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                Read as {entries.length} entries{totalHours ? ` · ${Number(totalHours.toFixed(2))} h in all` : ""}. Check each, remove any you don't want.
+              </Typography.Text>
+            )}
+            {entries.map((e, i) => (
+              <div
+                key={e.id}
+                style={several ? { border: `1px solid ${palette.border}`, borderRadius: 8, padding: "8px 10px 2px" } : undefined}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                  {several && <Typography.Text strong style={{ fontSize: 12 }}>{i + 1}.</Typography.Text>}
+                  {/* Radio, not Segmented: Segmented shows its first option as
+                      selected when nothing is, which would be a silent guess. */}
+                  <Radio.Group value={e.intent} onChange={(ev) => update(e.id, { intent: ev.target.value })} optionType="button" buttonStyle="solid" size={several ? "small" : "middle"}>
+                    <Radio.Button value="task">Task</Radio.Button>
+                    <Radio.Button value="session">Session</Radio.Button>
+                  </Radio.Group>
+                  {several && (
+                    <Button size="small" type="text" icon={<DeleteOutlined />} onClick={() => remove(e.id)} aria-label="Remove this entry" style={{ marginLeft: "auto" }} />
+                  )}
+                </div>
+                {!e.intent && <Typography.Text type="secondary">Is this a task to do, or a session that happened?</Typography.Text>}
+                {e.intent === "task" && <TaskFields draft={e.task} onChange={(task) => update(e.id, { task })} />}
+                {e.intent === "session" && (
+                  <SessionFields draft={e.session} onChange={(session) => update(e.id, { session })} tasks={tasks} disabled={!online} />
+                )}
+              </div>
+            ))}
+            <Button size="small" type="dashed" icon={<PlusOutlined />} onClick={addEntry}>
+              Add entry
+            </Button>
           </Space>
         )}
       </div>
@@ -220,7 +298,7 @@ function TaskFields({ draft, onChange }: { draft: TaskDraft; onChange: (d: TaskD
         <Form.Item label="Energy type" help="Blank takes the area default" style={{ marginBottom: 8 }}>
           <Select allowClear value={draft.energy_type_id ?? undefined} onChange={(v) => set({ energy_type_id: v ?? null })} options={opt(boot.energy_types)} />
         </Form.Item>
-        <Form.Item label="Difficulty" style={{ marginBottom: 8 }}>
+        <Form.Item label="Intensity" style={{ marginBottom: 8 }}>
           <DifficultySlider value={draft.difficulty} width={230} onChange={(v) => set({ difficulty: v })} />
         </Form.Item>
         <Form.Item label="Priority" style={{ marginBottom: 8 }}>

@@ -66,9 +66,9 @@ func parseCeilings(raw string) map[int64]float64 {
 // hoursByDay sums hours: day -> energy type -> hours.
 func (d *DB) hoursByDay(ctx context.Context, from, to string) (map[string]map[int64]float64, error) {
 	out := map[string]map[int64]float64{}
-	err := scanInto(ctx, d, `SELECT s.logged_for, s.energy_type_id, SUM(s.hours) FROM session s
+	err := scanInto(ctx, d, `SELECT s.logged_for, `+partEnergy+` AS energy, SUM(s.hours * `+partShare+`) FROM session s `+sessionPartsJoin+`
 		WHERE s.deleted_at IS NULL AND s.logged_for >= ? AND s.logged_for <= ?
-		GROUP BY s.logged_for, s.energy_type_id`, func(r *sql.Rows) error {
+		GROUP BY s.logged_for, energy`, func(r *sql.Rows) error {
 		var day string
 		var id int64
 		var h float64

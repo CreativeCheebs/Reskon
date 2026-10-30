@@ -226,6 +226,17 @@ export interface SessionSubtype {
   weighted_h: number;
 }
 
+/** One energy type of a session. A one-type session has one, at share 1. */
+export interface SessionEnergy {
+  energy_type_id: number;
+  /** Part of the session's hours, 0..1; a session's shares add up to 1. */
+  share: number;
+  difficulty: number | null;
+  points: number | null;
+  /** Derived: session hours x share. */
+  hours: number;
+}
+
 export interface Session {
   id: number;
   task_id: number | null;
@@ -236,6 +247,8 @@ export interface Session {
   hours: number;
   /** Stored when logged (hours x the type's rate x difficulty). */
   points: number | null;
+  /** Derived: what the session would earn at today's rates. */
+  points_now: number | null;
   difficulty: number | null;
   started_at: string | null;
   logged_for: string;
@@ -243,6 +256,7 @@ export interface Session {
   custom: Record<string, unknown>;
   created_at: string;
   subtypes: SessionSubtype[];
+  energies: SessionEnergy[];
 }
 
 export interface CaptureParse {
@@ -259,7 +273,11 @@ export interface CaptureParse {
   matched_task_id?: number | null;
   fallback?: boolean;
   fallback_reason?: string;
+  /** Several energy types in one activity; shares are percents adding up to 100. */
+  energies?: { energy_type: string; share: number; difficulty: number | null }[] | null;
+  /** Every entry in the line, the first being the fields above. */
+  entries?: CaptureParse[];
 }
 
-/** Difficulty is 1-5. Labels match the imported Jira levels. */
-export const DIFFICULTY_LABELS: Record<number, string> = { 1: "Easy", 2: "Medium", 3: "Hard", 4: "Very hard", 5: "Extreme" };
+/** Intensity (stored as difficulty) is 1-5: how hard or intense the work or event was. */
+export const DIFFICULTY_LABELS: Record<number, string> = { 1: "Light", 2: "Moderate", 3: "Intense", 4: "Very intense", 5: "Extreme" };

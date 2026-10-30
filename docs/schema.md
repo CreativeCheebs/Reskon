@@ -85,3 +85,15 @@ No schema change. Remaps `task.difficulty` and `session.difficulty` from 1/2/4/8
 | --- | --- |
 | widget `viz` | Two more: `pie` (each group value's share of the whole) and `share_bar` (each day, week or month stacked to 100% by its split). A widget query may carry `"cumulative": true`, which small multiples use for one running total per series. |
 | built-in widgets | The year: "Points, cumulative" is soft-deleted and replaced by running totals per energy type (points and hours), plus each week's share by type. Today: two pies by energy type, hours and points. This month: each day's share by type (hours and points) and the month's pies. Built-in dashboards only. |
+
+### Migration 008 (retire "Energy drain felt")
+
+| Change | Purpose |
+| --- | --- |
+| custom_field `energy_drain_felt` (session) | Soft-deleted. It had no answer for leisure and events and could not say which energy type it meant. The row stays, and values already on sessions stay in their `custom` JSON. Restore it by clearing `deleted_at`. |
+
+### Migration 009 (several energy types in one session)
+
+| Change | Purpose |
+| --- | --- |
+| `session_energy` (new) | One row per energy type of a session with two or more: `share` of its hours (0..1, the rows add up to 1), `difficulty` (its intensity), `points` (stored when logged: hours × share × rate × intensity, the part's else the task's else 1), `position`. A one-type session has no rows and is read as itself at share 1. With rows, the session's `energy_type_id` and `difficulty` are the first part's and its `points` the sum of the parts'. Nothing existing is changed. |

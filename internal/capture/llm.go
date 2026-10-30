@@ -29,7 +29,7 @@ func (p *Parser) parseWithProvider(ctx context.Context, cfg Config, text string,
 		}
 		return Fallback(text, reason)
 	}
-	return Normalise(*raw, text, l)
+	return normaliseAll(*raw, text, l)
 }
 
 // OpenAI talks to any OpenAI-compatible /chat/completions endpoint, local
@@ -39,7 +39,7 @@ type OpenAI struct {
 }
 
 func (o OpenAI) Complete(ctx context.Context, cfg Config, text string, l Lookups) (*Result, error) {
-	body, _ := json.Marshal(map[string]any{
+	req := map[string]any{
 		"model":           cfg.Model,
 		"temperature":     0,
 		"response_format": map[string]string{"type": "json_object"},
@@ -47,21 +47,25 @@ func (o OpenAI) Complete(ctx context.Context, cfg Config, text string, l Lookups
 			{"role": "system", "content": systemPrompt(l)},
 			{"role": "user", "content": text},
 		},
-	})
+	}
+	if cfg.ReasoningEffort != "" {
+		req["reasoning_effort"] = cfg.ReasoningEffort
+	}
+	body, _ := json.Marshal(req)
 	url := strings.TrimRight(cfg.Endpoint, "/") + "/chat/completions"
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	hreq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Content-Type", "application/json")
+	hreq.Header.Set("Content-Type", "application/json")
 	if cfg.APIKey != "" {
-		req.Header.Set("Authorization", "Bearer "+cfg.APIKey)
+		hreq.Header.Set("Authorization", "Bearer "+cfg.APIKey)
 	}
 	client := o.Client
 	if client == nil {
 		client = http.DefaultClient
 	}
-	res, err := client.Do(req)
+	res, err := client.Do(hreq)
 	if err != nil {
 		return nil, err
 	}
@@ -93,11 +97,42 @@ func decodeContent(content string) (*Result, error) {
 	if start < 0 || end <= start {
 		return nil, fmt.Errorf("model reply has no JSON object")
 	}
-	var r Result
-	if err := json.Unmarshal([]byte(content[start:end+1]), &r); err != nil {
+	return decodeObject([]byte(content[start:end+1]), 0)
+}
+
+// decodeObject reads the contract from obj. Some models wrap it, e.g.
+// {"name": "response", "type": "json_object", "value": {...}}: when obj
+// has none of the contract's keys, the one object inside it is tried
+// instead.
+func decodeObject(obj []byte, depth int) (*Result, error) {
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(obj, &fields); err != nil {
 		return nil, fmt.Errorf("model reply is not the contract: %v", err)
 	}
-	return &r, nil
+	for _, k := range []string{"entries", "intent", "kind", "title", "energy_type", "hours", "area"} {
+		if _, ok := fields[k]; ok {
+			var r Result
+			if err := json.Unmarshal(obj, &r); err != nil {
+				return nil, fmt.Errorf("model reply is not the contract: %v", err)
+			}
+			if k == "entries" && len(r.Entries) == 0 && r.Intent == nil && r.Title == nil {
+				return nil, fmt.Errorf("model reply has no entries")
+			}
+			return &r, nil
+		}
+	}
+	if depth < 2 {
+		var inner []json.RawMessage
+		for _, v := range fields {
+			if t := bytes.TrimSpace(v); len(t) > 0 && t[0] == '{' {
+				inner = append(inner, t)
+			}
+		}
+		if len(inner) == 1 {
+			return decodeObject(inner[0], depth+1)
+		}
+	}
+	return nil, fmt.Errorf("model reply has none of the contract's fields")
 }
 
 func truncate(s string, n int) string {
@@ -109,16 +144,28 @@ func truncate(s string, n int) string {
 
 func systemPrompt(l Lookups) string {
 	var b strings.Builder
-	b.WriteString(`You turn one line a person typed about their day into JSON. Reply with one JSON object and nothing else:
-{"intent": "session"|"task", "kind": "task"|"event", "title": string, "energy_type": string, "hours": number, "difficulty": 1-5 (1 easy, 5 hardest), "subtypes": [string], "area": string, "matched_task_key": string, "confidence": number}
+	b.WriteString(`You turn one line a person typed about their day into JSON entries. Reply with one JSON object and nothing else:
+{"entries": [{"intent": "session"|"task", "kind": "task"|"event", "title": string, "energy_type": string, "energies": [{"energy_type": string, "share": percent, "difficulty": 1-5}], "hours": number, "difficulty": 1-5, "subtypes": [string], "area": string, "matched_task_key": string, "confidence": number}]}
+Do not wrap it in another object.
 
-Rules:
+Entries:
+- Usually the line is one entry. Make several only when it describes separate activities, each with its own time or purpose.
+- When a total is split ("6 hours at the hospital, work was only 1 hour, grandfather's diagnosis took the rest"), give each part its own entry and make the parts add up to the total: work 1 hour, grandfather's diagnosis 5 hours.
+- At most 6 entries.
+- Separate activities at different times are separate entries. One activity that involves several energy types at the same time is one entry with "energies" (see below).
+
+Rules for each entry:
 - Past tense (something that happened) -> intent "session". Future, intention or imperative ("need to", "should", "buy X") -> intent "task".
 - kind "event" is for things that happened but are not work: a bath, a meal, a nap, gaming, time with people. Work, chores and errands are kind "task".
-- Use null for anything the text does not say. Do not guess hours, difficulty or area.
+- Use null for anything the text does not say. Do not guess hours.
+- energy_type: always pick the closest type from the list for the activity itself (coding or electronics -> Engineering-like, games or shows -> Leisure-like, exercise -> Physical-like, errands and paperwork -> Admin-like). Null only if none fits.
+- energies: only when one activity clearly involves two or more energy types at once ("studied for the exam with friends" -> Learning 70, Leisure 30; "gym with my brother, caught up the whole time" -> Physical 60, Leisure 40). Shares are percents of the activity's time and add up to 100; each may have its own difficulty. energy_type is then the first of them. Otherwise null.
+- hours: the duration in hours; convert minutes (180 mins -> 3, 45 min -> 0.75).
+- difficulty is how intense or hard it was: 1 light, 2 moderate, 3 intense, 4 very intense, 5 extreme. Set it only when the text describes it ("it was intense" -> 3, "exhausting" -> 4, "easy" -> 1).
+- area: the part of life it belongs to, only when that is clear from the text (gaming, hobbies, family, chores and health belong to a personal area, not a job; plain "work" or "my work" means the job area). Otherwise null.
 - energy_type, subtypes and area must be copied exactly from the lists below, or null.
 - matched_task_key: only if the text is clearly about one of the open tasks listed below; copy its key exactly. Never invent a key. Events never match a task.
-- title: a short clean title in the person's words, without the duration.
+- title: a short name for the thing itself, like a list entry, not the sentence. Drop the verb, the duration and how it felt. "Played video game Quantum Break for 3 hours, it was intense" -> "Video game - Quantum Break". "Worked on the stm32 demo for 2 hours" -> "STM32 demo". "Need to order a replacement NVR drive" -> "Order replacement NVR drive". Never copy the whole sentence; a title is a few words.
 - confidence: 0 to 1, how sure you are of intent and kind.
 
 `)

@@ -148,5 +148,7 @@ func captureConfig(ctx context.Context) capture.Config {
 		Endpoint: get("llm_endpoint", "JITTERBUG_LLM_ENDPOINT"),
 		Model:    get("llm_model", "JITTERBUG_LLM_MODEL"),
 		APIKey:   get("llm_api_key", "JITTERBUG_LLM_API_KEY"),
+
+		ReasoningEffort: os.Getenv("JITTERBUG_LLM_REASONING_EFFORT"),
 	}
 }

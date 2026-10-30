@@ -92,11 +92,11 @@ export const TOKEN_HELP: Record<PaletteKey, string> = {
   danger: "Errors, stalled tasks, delete buttons",
   epic: "The epic symbol and epic labels",
   shadow: "Shadows under cards and menus (drawn semi-transparent, so usually near black)",
-  difficulty1: "Difficulty 1 (trivial): circle inside a circle",
-  difficulty2: "Difficulty 2: triangle inside a circle",
-  difficulty3: "Difficulty 3: square inside a circle",
-  difficulty4: "Difficulty 4: pentagon inside a circle",
-  difficulty5: "Difficulty 5 (hardest): hexagon inside a circle",
+  difficulty1: "Intensity 1 (trivial): circle inside a circle",
+  difficulty2: "Intensity 2: triangle inside a circle",
+  difficulty3: "Intensity 3: square inside a circle",
+  difficulty4: "Intensity 4: pentagon inside a circle",
+  difficulty5: "Intensity 5 (most intense): hexagon inside a circle",
 };
 
 const HEX = /^#[0-9a-fA-F]{6}$/;

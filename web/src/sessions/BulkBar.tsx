@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import type { Dayjs } from "dayjs";
-import { Button, DatePicker, Divider, Popover, Select, Space } from "antd";
+import { Button, DatePicker, Divider, Popover, Select, Space, Tooltip } from "antd";
 import { api } from "../api";
 import { useApp } from "../store";
 import { WriteButton } from "../offline";
@@ -102,7 +102,7 @@ export function BulkBar({
           <Space direction="vertical">
             <DifficultySlider value={diff} width={260} onChange={setDiff} />
             <Space>
-              <WriteButton size="small" type="primary" disabled={busy} onClick={() => set({ difficulty: diff }, diff ? `Difficulty set to ${diff}` : "Difficulty cleared")}>
+              <WriteButton size="small" type="primary" disabled={busy} onClick={() => set({ difficulty: diff }, diff ? `Intensity set to ${diff}` : "Intensity cleared")}>
                 Apply to {plural}
               </WriteButton>
             </Space>
@@ -110,7 +110,7 @@ export function BulkBar({
         }
       >
         <Button size="small" disabled={busy}>
-          Difficulty…
+          Intensity…
         </Button>
       </Popover>
       <Popover
@@ -133,6 +133,13 @@ export function BulkBar({
           Move to date…
         </Button>
       </Popover>
+      <Tooltip title="Work out their points again at today's rates (after a rate change)">
+        <span>
+          <WriteButton size="small" disabled={busy} onClick={() => set({ recalculate: true }, "Points recalculated")}>
+            Recalculate points
+          </WriteButton>
+        </span>
+      </Tooltip>
       <Select
         size="small"
         showSearch

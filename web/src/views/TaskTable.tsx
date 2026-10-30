@@ -114,7 +114,7 @@ export function TaskTable({
   if (show.difficulty)
     cols.push({
       key: "diff",
-      title: "Diff",
+      title: "Int.",
       width: 60,
       render: (_, t) =>
         t.difficulty && (

@@ -35,14 +35,14 @@ export function DifficultySlider({
         tooltip={{ formatter: (v) => (v ? `${v} · ${DIFFICULTY_LABELS[v]}` : "") }}
         onChange={(v) => setDraft(v)}
         onChangeComplete={(v) => v !== value && onChange(v)}
-        aria-label="Difficulty"
+        aria-label="Intensity"
       />
       <span style={{ fontSize: 11, color: unset ? palette.subtle : palette.fg, minWidth: 70, whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: 5 }}>
         {!unset && <DifficultyIcon level={draft} tip={false} />}
         {unset ? "Not set" : `${draft} · ${DIFFICULTY_LABELS[draft]}`}
       </span>
       {!unset && !disabled && (
-        <Tooltip title="Clear difficulty">
+        <Tooltip title="Clear intensity">
           <Button size="small" type="text" style={{ padding: 0, width: 18, minWidth: 18, color: palette.subtle }} onClick={() => onChange(null)}>
             ✕
           </Button>

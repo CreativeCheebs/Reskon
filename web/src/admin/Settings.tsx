@@ -112,7 +112,7 @@ export function Settings() {
       children: (
         <>
           <Typography.Paragraph type="secondary">
-            Every type is equal and every type earns points: hours × the type's rate × difficulty. A new rate
+            Every type is equal and every type earns points: hours × the type's rate × intensity. A new rate
             applies to sessions logged after it. Types are added up, never set against each other.
           </Typography.Paragraph>
           <LookupEditor

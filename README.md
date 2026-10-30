@@ -32,6 +32,7 @@ The first time you open it, it asks you to create the **admin** account. After t
 | `JITTERBUG_LLM_ENDPOINT` | — | OpenAI-compatible base URL for quick capture, e.g. `http://ollama:11434/v1` |
 | `JITTERBUG_LLM_MODEL` | — | Model name |
 | `JITTERBUG_LLM_API_KEY` | — | Bearer token, if the endpoint needs one |
+| `JITTERBUG_LLM_REASONING_EFFORT` | — | `low`, `medium` or `high`; sent only when set. Use `low` for reasoning models (e.g. gpt-oss) so capture answers inside its 5 seconds |
 
 The LLM values can also be set per person in **Settings → Capture & weights**, which take precedence. Without them, capture uses the manual form. The app never needs the LLM to start.
 

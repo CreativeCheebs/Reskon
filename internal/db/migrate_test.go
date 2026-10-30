@@ -196,3 +196,21 @@ func TestMigration006RewritesFeedbackAndOwnWidgets(t *testing.T) {
 		}
 	}
 }
+
+// Migration 008 retires the seeded "Energy drain felt" session field and
+// keeps its row.
+func TestMigration008RetiresEnergyDrain(t *testing.T) {
+	d := openTest(t)
+	defs, err := customFieldDefs(context.Background(), d, "session")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := defs["energy_drain_felt"]; ok {
+		t.Error("energy_drain_felt is still a live session field")
+	}
+	var n int
+	d.QueryRow(`SELECT COUNT(*) FROM custom_field WHERE key = 'energy_drain_felt' AND deleted_at IS NOT NULL`).Scan(&n)
+	if n != 1 {
+		t.Errorf("soft-deleted energy_drain_felt rows = %d, want 1", n)
+	}
+}
