@@ -105,16 +105,20 @@ func register(m *metricDef) { metricRegistry[m.Name] = m }
 // offer, so it can never build a query the server rejects.
 type MetricCatalog struct {
 	Metrics []*metricDef        `json:"metrics"`
+	Vizzes  []string            `json:"vizzes"`
 	Ranges  []string            `json:"ranges"`
 	Reduces []string            `json:"reduces"`
 	Filters map[string][]string `json:"filter_values"` // fixed-value filters
 }
 
+// WidgetVizzes are the visualisations a widget may use.
+var WidgetVizzes = []string{"bar", "line", "cumulative", "number", "list", "bands", "split_bar", "table"}
+
 var metricRanges = []string{"today", "7d", "30d", "90d", "1y", "month", "all"}
 var metricReduces = []string{"sum", "nonzero", "max", "last", "count"}
 
 func (d *DB) MetricCatalog() *MetricCatalog {
-	out := &MetricCatalog{Ranges: metricRanges, Reduces: metricReduces, Filters: map[string][]string{
+	out := &MetricCatalog{Vizzes: WidgetVizzes, Ranges: metricRanges, Reduces: metricReduces, Filters: map[string][]string{
 		"direction": {"spend", "restore"},
 		"kind":      {"task", "event", "buff", "debuff", "modifier"},
 	}}

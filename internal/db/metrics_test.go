@@ -220,3 +220,28 @@ func TestDirectionGuard(t *testing.T) {
 		}
 	}
 }
+
+func TestMetricCatalogListsGroupsAndFilters(t *testing.T) {
+	d := openTest(t)
+	cat := d.MetricCatalog()
+	if len(cat.Metrics) == 0 || cat.Metrics[0].Name != "session_hours" {
+		t.Fatalf("catalog starts with %v", cat.Metrics)
+	}
+	for _, m := range cat.Metrics {
+		if len(m.Groups) == 0 || m.Unit == "" || m.Label == "" || m.run == nil {
+			t.Errorf("%s is incomplete: %+v", m.Name, m)
+		}
+		// Every grouping the catalog offers must be accepted.
+		for _, g := range m.Groups {
+			q := MetricQuery{Metric: m.Name, Group: g}
+			if _, err := CheckMetricQuery(&q); err != nil {
+				t.Errorf("%s by %s: %v", m.Name, g, err)
+			}
+		}
+	}
+	for _, name := range []string{"balance", "net_energy", "productivity_rate"} {
+		if _, ok := metricRegistry[name]; ok {
+			t.Errorf("%s must never exist", name)
+		}
+	}
+}
