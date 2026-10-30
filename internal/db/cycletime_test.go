@@ -58,4 +58,8 @@ func TestCycleTimeForView(t *testing.T) {
 	if ct.Tasks[0].Segments[0].StatusID != 2 || ct.Tasks[0].Segments[1].StatusID != 3 {
 		t.Errorf("segment statuses wrong: %+v", ct.Tasks[0].Segments)
 	}
+	sh := ct.Tasks[0].StatusHours
+	if len(sh) != 2 || sh[2] != ct.Tasks[0].Segments[0].Hours || sh[3] != ct.Tasks[0].Segments[1].Hours {
+		t.Errorf("status hours = %v", sh)
+	}
 }

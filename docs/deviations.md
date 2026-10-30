@@ -111,7 +111,10 @@ Section 5 shows `CREATE INDEX task_review_due ON task (json_extract(custom, '$.r
 Keys must match `^[a-z][a-z0-9_]{0,63}$` so they can be placed in a JSON path safely. A deleted field's key cannot be reused (the `UNIQUE (entity, key)` constraint, and its data is still stored under that key).
 
 ### `GET /api/cycle-time?view=:id`
-The stacked cycle-time chart needs segments for every task in a view; deriving them client-side would break "one implementation, server-side". Added this endpoint. `GET /api/tasks/:id/transitions` returns `{transitions, segments}`.
+The stacked cycle-time chart needs segments for every task in a view; deriving them client-side would break "one implementation, server-side". Added this endpoint. `GET /api/tasks/:id/transitions` returns `{transitions, segments}`. Each task also carries `status_hours` (its segments summed per status) for the chart's hover breakdown, so the client never adds up time in status itself.
+
+### Cycle time chart: shades for statuses that share a colour
+Statuses that share a colour would be indistinguishable on the stacked bars, so on the cycle-time chart only, the first such status (by board order) keeps the colour and each later one gets the lighter or darker shade of it furthest from the other colours on the chart. Everywhere else statuses show their own colour.
 
 ### Seeded Everything and Stuck show area and status
 Their card configuration turns on the Area and Status columns, since they span every area. Everything else uses the section 7 example defaults.

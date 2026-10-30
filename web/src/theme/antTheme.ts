@@ -60,8 +60,8 @@ export const makeAntTheme = (): ThemeConfig => ({
       darkItemColor: palette.muted,
       darkItemHoverColor: palette.fg,
       darkItemHoverBg: palette.hover,
-      // Softer than a full selected fill; the accent text still marks it.
-      darkItemSelectedBg: blend(palette.selected, palette.bg, 0.65),
+      // An accent tint, strong enough to find at a glance on a dark sidebar.
+      darkItemSelectedBg: blend(palette.accent, palette.bg, 0.16),
       darkItemSelectedColor: palette.accent,
       darkGroupTitleColor: palette.subtle,
       itemHeight: 30,
@@ -70,7 +70,7 @@ export const makeAntTheme = (): ThemeConfig => ({
     },
     Drawer: { colorBgElevated: palette.overlay },
     Modal: { contentBg: palette.overlay, headerBg: palette.overlay, footerBg: palette.overlay },
-    Segmented: { itemSelectedBg: palette.hover, trackBg: palette.panelDim },
+    Segmented: { itemSelectedBg: blend(palette.accent, palette.bg, 0.22), itemSelectedColor: palette.fg, trackBg: palette.panelDim },
     Tabs: { itemColor: palette.muted },
     Tag: { defaultBg: palette.hover, defaultColor: palette.fg },
     Select: { optionSelectedBg: palette.selected },

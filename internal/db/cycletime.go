@@ -42,6 +42,9 @@ type TaskSegments struct {
 	Title    string    `json:"title"`
 	Segments []Segment `json:"segments"`
 	TotalH   float64   `json:"total_h"`
+	// StatusHours sums this task's segments per status, so a status the
+	// task passed through twice is one figure.
+	StatusHours map[int64]float64 `json:"status_hours"`
 }
 
 // CycleTime is the chart for a view: one bar per task, plus hours per
@@ -89,9 +92,10 @@ func (d *DB) CycleTimeForView(ctx context.Context, viewID int64) (*CycleTime, er
 	}
 	now := time.Now()
 	for _, t := range tasks {
-		ts := TaskSegments{TaskID: t.ID, Title: t.Title, Segments: segments(byTask[t.ID], now)}
+		ts := TaskSegments{TaskID: t.ID, Title: t.Title, Segments: segments(byTask[t.ID], now), StatusHours: map[int64]float64{}}
 		for _, s := range ts.Segments {
 			ts.TotalH += s.Hours
+			ts.StatusHours[s.StatusID] += s.Hours
 			out.StatusTotals[s.StatusID] += s.Hours
 		}
 		out.Tasks = append(out.Tasks, ts)
