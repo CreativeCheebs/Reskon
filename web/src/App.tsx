@@ -18,21 +18,30 @@ import { ViewIconMark } from "./icons/ViewIconMark";
 const Settings = lazy(() => import("./admin/Settings").then((m) => ({ default: m.Settings })));
 const SessionsScreen = lazy(() => import("./sessions/SessionsScreen").then((m) => ({ default: m.SessionsScreen })));
 const CycleTimeScreen = lazy(() => import("./chart/CycleTimeScreen").then((m) => ({ default: m.CycleTimeScreen })));
+const DashboardScreen = lazy(() => import("./dashboard/DashboardScreen").then((m) => ({ default: m.DashboardScreen })));
 
 // Screens are addressed by the URL hash (#/view/3, #/settings) so a reload
 // lands where you were. Overlays like the backlog are never routes.
 
-type Screen = { kind: "view"; id: number } | { kind: "settings" } | { kind: "sessions" } | { kind: "cycle" };
+type Screen =
+  | { kind: "view"; id: number }
+  | { kind: "dashboard"; id?: number }
+  | { kind: "settings" }
+  | { kind: "sessions" }
+  | { kind: "cycle" };
 
 function parseHash(): Screen | null {
   const parts = window.location.hash.replace(/^#\/?/, "").split("/");
   if (parts[0] === "view" && parts[1]) return { kind: "view", id: Number(parts[1]) };
+  if (parts[0] === "dashboard") return { kind: "dashboard", id: parts[1] ? Number(parts[1]) : undefined };
   if (parts[0] === "settings" || parts[0] === "sessions" || parts[0] === "cycle") return { kind: parts[0] };
   return null;
 }
 
 function toHash(s: Screen) {
-  return s.kind === "view" ? `#/view/${s.id}` : `#/${s.kind}`;
+  if (s.kind === "view") return `#/view/${s.id}`;
+  if (s.kind === "dashboard") return s.id ? `#/dashboard/${s.id}` : "#/dashboard";
+  return `#/${s.kind}`;
 }
 
 export function App() {
@@ -94,6 +103,7 @@ export function App() {
       label: <span style={{ paddingLeft: 12 }}>Workspace</span>,
       key: "workspace",
       children: [
+        { key: "dashboard", label: "Dashboards" },
         { key: "sessions", label: "Sessions" },
         { key: "cycle", label: "Cycle time" },
         { key: "settings", label: "Settings" },
@@ -139,7 +149,7 @@ export function App() {
           onClick={({ key }) => {
             if (key === "new-view") newView();
             else if (key.startsWith("view-")) go({ kind: "view", id: Number(key.slice(5)) });
-            else go({ kind: key as "settings" | "sessions" | "cycle" });
+            else go({ kind: key as "settings" | "sessions" | "cycle" | "dashboard" });
           }}
         />
         <div
@@ -179,6 +189,7 @@ export function App() {
             {current.kind === "settings" && <Settings />}
             {current.kind === "sessions" && <SessionsScreen />}
             {current.kind === "cycle" && <CycleTimeScreen />}
+            {current.kind === "dashboard" && <DashboardScreen id={current.id} onOpen={(id) => go({ kind: "dashboard", id })} />}
           </Suspense>
         </Layout.Content>
       </Layout>

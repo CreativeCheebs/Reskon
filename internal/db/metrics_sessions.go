@@ -252,7 +252,7 @@ func (r *metricRun) sessionKeys(s *sessionRow, by string, asSplit bool) []keyed 
 		key := strconv.FormatInt(s.id, 10)
 		title := s.title
 		if title == "" {
-			title = "Session " + key
+			title = "Untitled session"
 		}
 		r.label(key, title, nil)
 		if e := r.energy[s.energy]; e != nil {

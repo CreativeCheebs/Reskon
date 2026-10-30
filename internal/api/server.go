@@ -84,6 +84,7 @@ func (s *Server) routes() {
 	s.stateRoutes()
 	s.imageRoutes()
 	s.metricRoutes()
+	s.dashboardRoutes()
 }
 
 func (s *Server) bootstrap(w http.ResponseWriter, r *http.Request) {

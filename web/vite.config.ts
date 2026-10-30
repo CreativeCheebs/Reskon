@@ -15,7 +15,9 @@ export default defineConfig({
       output: {
         // Libraries change far less often than JitterBug's own code; in their
         // own file they stay cached across upgrades.
+        // Chart and grid libraries only load with the screens that use them.
         manualChunks(id) {
+          if (/node_modules\/(recharts|d3-|victory-vendor|react-grid-layout|react-resizable|react-draggable|lodash|recharts-scale|react-smooth|eventemitter3|decimal\.js|internmap|fast-equals|tiny-invariant)/.test(id)) return "charts";
           if (id.includes("node_modules")) return "vendor";
         },
       },

@@ -1,0 +1,120 @@
+// Shapes of the dashboards and metrics API. Every number in a widget comes
+// from GET /api/metrics; widgets only draw it.
+
+export type Viz = "bar" | "line" | "cumulative" | "number" | "list" | "bands" | "split_bar" | "table";
+
+export interface WidgetQuery {
+  metric: string;
+  group?: string;
+  range?: string;
+  from?: string;
+  to?: string;
+  filters?: Record<string, string | number | (string | number)[]>;
+  split?: string | null;
+  reduce?: string;
+}
+
+export interface WidgetOptions {
+  color?: string;
+  show_axis?: boolean;
+  /** Narrower than this, the widget shows its number instead of a squashed chart. */
+  min_width_px?: number;
+}
+
+export interface Widget {
+  id: number;
+  dashboard_id: number;
+  title: string | null;
+  viz: Viz;
+  query: WidgetQuery;
+  options: WidgetOptions;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  position: number;
+}
+
+export interface Dashboard {
+  id: number;
+  name: string;
+  position: number;
+  is_builtin: boolean;
+  widgets: Widget[];
+}
+
+export interface MetricPoint {
+  key: string;
+  label: string;
+  value: number;
+  split?: string;
+  detail?: string;
+}
+
+export interface MetricSeries {
+  key: string;
+  label: string;
+  color: string | null;
+}
+
+export interface StateSpan {
+  state_id: number;
+  name: string;
+  kind: "buff" | "debuff" | "modifier";
+  from: string;
+  to: string;
+  started_on: string;
+  cleared: boolean;
+  severity: number;
+  effective_severity: number;
+}
+
+export interface MetricResult {
+  metric: string;
+  unit: string;
+  direction: "spend" | "restore" | "";
+  group: string;
+  from: string;
+  to: string;
+  points: MetricPoint[];
+  series: MetricSeries[];
+  reduce: string;
+  total: number;
+  spans?: StateSpan[];
+  meta?: Record<string, unknown>;
+}
+
+export interface MetricDef {
+  name: string;
+  label: string;
+  description: string;
+  unit: string;
+  direction: "spend" | "from_energy_type" | "";
+  groups: string[];
+  splits: string[] | null;
+  filters: string[] | null;
+  reduce: string;
+  ranged: boolean;
+}
+
+export interface MetricCatalog {
+  metrics: MetricDef[];
+  vizzes: Viz[];
+  ranges: string[];
+  reduces: string[];
+  filter_values: Record<string, string[]>;
+}
+
+export const TIME_GROUPS = ["day", "week", "month"];
+
+/** Narrowest width each viz draws well at; below it, the number fallback. */
+export const MIN_WIDTH: Record<Viz, number> = {
+  bar: 280,
+  line: 280,
+  cumulative: 280,
+  split_bar: 320,
+  bands: 320,
+  table: 260,
+  list: 0,
+  number: 0,
+};

@@ -60,7 +60,8 @@ func (d *DB) newRun(ctx context.Context, m *metricDef, q *MetricQuery, now time.
 	if r.energy, err = d.lookupRows(ctx, `SELECT id, name, color, position, direction, 0 FROM energy_type`); err != nil {
 		return nil, err
 	}
-	if r.subtypes, err = d.lookupRows(ctx, `SELECT s.id, s.name, e.color, e.position * 1000 + s.position, e.direction, s.energy_type_id
+	// Subtypes have no colour of their own; the client picks distinct ones.
+	if r.subtypes, err = d.lookupRows(ctx, `SELECT s.id, s.name, NULL, e.position * 1000 + s.position, e.direction, s.energy_type_id
 		FROM subtype s JOIN energy_type e ON e.id = s.energy_type_id`); err != nil {
 		return nil, err
 	}
