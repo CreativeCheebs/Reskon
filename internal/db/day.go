@@ -13,17 +13,21 @@ import (
 type Day struct {
 	Day           string         `json:"day"`
 	Plan          DayPlan        `json:"plan"`
+	Suggested     *Suggested     `json:"suggested"` // what the morning plan offers
+	Readout       []ReadoutRow   `json:"readout"`   // spend per energy type against the saved ceiling
 	Spend         []EnergyTotal  `json:"spend"`
 	Restore       []EnergyTotal  `json:"restore"`
+	InForce       []*State       `json:"in_force"` // states in force that day, shown not entered
 	SubtypeTotals []SubtypeTotal `json:"subtype_totals"`
 	Sessions      []*Session     `json:"sessions"`
 }
 
 type DayPlan struct {
-	Focus    json.RawMessage `json:"focus"`
-	Ceilings json.RawMessage `json:"ceilings"`
-	LockedAt *string         `json:"locked_at"`
-	Note     *string         `json:"note"`
+	Saved           bool            `json:"saved"` // a plan row exists for the day
+	Focus           json.RawMessage `json:"focus"`
+	Ceilings        json.RawMessage `json:"ceilings"`
+	Note            *string         `json:"note"`
+	CeilingFeedback *string         `json:"ceiling_feedback"`
 }
 
 type EnergyTotal struct {
@@ -44,15 +48,20 @@ func (d *DB) GetDay(ctx context.Context, day string) (*Day, error) {
 	}
 	out := &Day{Day: day, Spend: []EnergyTotal{}, Restore: []EnergyTotal{}, SubtypeTotals: []SubtypeTotal{}}
 	var focus, ceilings string
-	err := d.QueryRowContext(ctx, `SELECT focus, ceilings, locked_at, note FROM day_plan WHERE day = ?`, day).
-		Scan(&focus, &ceilings, &out.Plan.LockedAt, &out.Plan.Note)
+	err := d.QueryRowContext(ctx, `SELECT focus, ceilings, note, ceiling_feedback FROM day_plan WHERE day = ?`, day).
+		Scan(&focus, &ceilings, &out.Plan.Note, &out.Plan.CeilingFeedback)
 	switch {
 	case err == sql.ErrNoRows:
 		focus, ceilings = "[]", "{}"
 	case err != nil:
 		return nil, err
+	default:
+		out.Plan.Saved = true
 	}
 	out.Plan.Focus, out.Plan.Ceilings = json.RawMessage(focus), json.RawMessage(ceilings)
+	if out.Suggested, err = d.suggest(ctx, day); err != nil {
+		return nil, err
+	}
 
 	err = scanInto(ctx, d, `SELECT e.id, e.name, e.direction, SUM(s.hours) FROM session s
 		JOIN energy_type e ON e.id = s.energy_type_id
@@ -72,6 +81,22 @@ func (d *DB) GetDay(ctx context.Context, day string) (*Day, error) {
 	}, day)
 	if err != nil {
 		return nil, err
+	}
+
+	energy, err := d.ListEnergyTypes(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out.Readout = readout(out.Spend, parseCeilings(ceilings), energy)
+	states, err := d.ListStates(ctx, day)
+	if err != nil {
+		return nil, err
+	}
+	out.InForce = []*State{}
+	for _, s := range states {
+		if s.InForce {
+			out.InForce = append(out.InForce, s)
+		}
 	}
 
 	if out.Sessions, err = d.ListSessions(ctx, SessionQuery{From: day, To: day}); err != nil {

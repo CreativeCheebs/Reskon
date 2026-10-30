@@ -92,9 +92,3 @@ func stateDetail(s *State, day string) string {
 }
 
 func trimNum(v float64) string { return strconv.FormatFloat(float64(int64(v*10+0.5))/10, 'f', -1, 64) }
-
-// stateInForce reports whether s is in force on day.
-func stateInForce(s *State, day string) bool {
-	return s.StartedOn <= day && (s.ClearedOn == nil || day < *s.ClearedOn)
-}
-

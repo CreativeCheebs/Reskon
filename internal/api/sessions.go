@@ -14,6 +14,18 @@ func (s *Server) sessionRoutes() {
 	m.HandleFunc("PATCH /api/sessions/{id}", s.patchSession)
 	m.HandleFunc("DELETE /api/sessions/{id}", s.deleteSession)
 	m.HandleFunc("GET /api/day/{date}", s.getDay)
+	m.HandleFunc("PATCH /api/day/{date}", s.patchDay)
+}
+
+// patchDay saves part of a day's plan. Any day, any time: days never lock.
+func (s *Server) patchDay(w http.ResponseWriter, r *http.Request) {
+	f, err := decodeFields(r)
+	if err != nil {
+		respond(w, nil, err)
+		return
+	}
+	v, err := dbOf(r.Context()).PatchDay(r.Context(), r.PathValue("date"), f)
+	respond(w, v, err)
 }
 
 // listSessions accepts ?from=&to= (YYYY-MM-DD), task_id, energy_type and

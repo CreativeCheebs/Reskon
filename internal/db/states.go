@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"math"
+	"sort"
 	"time"
 )
 
@@ -24,6 +25,9 @@ type State struct {
 	// Derived on read for the requested day, never written back.
 	EffectiveOn       string  `json:"effective_on"`
 	EffectiveSeverity float64 `json:"effective_severity"`
+	InForce           bool    `json:"in_force"`     // started, not yet cleared, on that day
+	DaysRunning       int     `json:"days_running"` // day N since started_on (day 1 = the start), up to clearing
+	Ended             bool    `json:"ended"`        // past its duration but not cleared: "ended, not cleared"
 }
 
 // decayFactor is f(t) from spec section 6, where t is the fraction of the
@@ -97,10 +101,20 @@ func checkStateDates(f Fields) error {
 
 func withEffective(s *State, on string) *State {
 	day, err := time.Parse("2006-01-02", on)
-	if err == nil {
-		s.EffectiveOn = on
-		s.EffectiveSeverity = effectiveSeverity(s, day)
+	if err != nil {
+		return s
 	}
+	s.EffectiveOn = on
+	s.EffectiveSeverity = effectiveSeverity(s, day)
+	s.InForce = s.StartedOn <= on && (s.ClearedOn == nil || on < *s.ClearedOn)
+	last := on
+	if s.ClearedOn != nil && *s.ClearedOn <= on {
+		last = addDays(*s.ClearedOn, -1)
+	}
+	if s.StartedOn <= last {
+		s.DaysRunning = daysBetween(s.StartedOn, last) + 1
+	}
+	s.Ended = s.InForce && s.DurationDays != nil && *s.DurationDays > 0 && s.DaysRunning > int(*s.DurationDays)
 	return s
 }
 
@@ -110,11 +124,19 @@ func (d *DB) ListStates(ctx context.Context, on string) ([]*State, error) {
 	if !validDate(on) {
 		return nil, invalid("on must be YYYY-MM-DD")
 	}
-	states, err := collect(ctx, d, `SELECT `+stateCols+` FROM state ORDER BY cleared_on IS NOT NULL, started_on DESC, id DESC`,
+	states, err := collect(ctx, d, `SELECT `+stateCols+` FROM state ORDER BY started_on, id`,
 		func(r *sql.Rows) (*State, error) { return scanState(r) })
 	for _, s := range states {
 		withEffective(s, on)
 	}
+	// In force first, then the longest running; cleared and not-yet-started after.
+	sort.SliceStable(states, func(i, j int) bool {
+		a, b := states[i], states[j]
+		if a.InForce != b.InForce {
+			return a.InForce
+		}
+		return a.DaysRunning > b.DaysRunning
+	})
 	return states, err
 }
 
