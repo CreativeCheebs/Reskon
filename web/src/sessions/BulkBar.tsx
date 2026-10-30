@@ -73,7 +73,7 @@ export function BulkBar({
         value={null}
         disabled={busy}
         onChange={(v: number) => set({ energy_type_id: v }, `Energy type set to ${boot.energy_types.find((e) => e.id === v)?.name}`)}
-        options={boot.energy_types.map((e) => ({ value: e.id, label: `${e.name} · ${e.direction}` }))}
+        options={boot.energy_types.map((e) => ({ value: e.id, label: e.name }))}
       />
       <Select
         size="small"

@@ -22,7 +22,6 @@ type metricRun struct {
 
 	areas, energy, subtypes, statuses map[int64]*lookupRow
 
-	direction string // the result's direction: spend, restore or ""
 	values    map[[2]string]float64
 	labels    map[string]string
 	details   map[string]string
@@ -42,9 +41,6 @@ func (d *DB) newRun(ctx context.Context, m *metricDef, q *MetricQuery, now time.
 		values: map[[2]string]float64{}, labels: map[string]string{}, details: map[string]string{},
 		series: map[string]*MetricSeries{}, seriesPos: map[string]int64{}, keyPos: map[string]int64{},
 	}
-	if m.Direction == "spend" {
-		r.direction = "spend"
-	}
 	r.weekStart = 1
 	var ws int
 	if ok, err := d.Setting(ctx, "week_start", &ws); err == nil && ok && ws >= 1 && ws <= 7 {
@@ -54,18 +50,18 @@ func (d *DB) newRun(ctx context.Context, m *metricDef, q *MetricQuery, now time.
 	if r.from, r.to, err = d.resolveRange(ctx, q, r.today); err != nil {
 		return nil, err
 	}
-	if r.areas, err = d.lookupRows(ctx, `SELECT id, name, color, position, '', 0 FROM area`); err != nil {
+	if r.areas, err = d.lookupRows(ctx, `SELECT id, name, color, position, 0 FROM area`); err != nil {
 		return nil, err
 	}
-	if r.energy, err = d.lookupRows(ctx, `SELECT id, name, color, position, direction, 0 FROM energy_type`); err != nil {
+	if r.energy, err = d.lookupRows(ctx, `SELECT id, name, color, position, 0 FROM energy_type`); err != nil {
 		return nil, err
 	}
 	// Subtypes have no colour of their own; the client picks distinct ones.
-	if r.subtypes, err = d.lookupRows(ctx, `SELECT s.id, s.name, NULL, e.position * 1000 + s.position, e.direction, s.energy_type_id
+	if r.subtypes, err = d.lookupRows(ctx, `SELECT s.id, s.name, NULL, e.position * 1000 + s.position, s.energy_type_id
 		FROM subtype s JOIN energy_type e ON e.id = s.energy_type_id`); err != nil {
 		return nil, err
 	}
-	if r.statuses, err = d.lookupRows(ctx, `SELECT id, name, color, position, '', 0 FROM status`); err != nil {
+	if r.statuses, err = d.lookupRows(ctx, `SELECT id, name, color, position, 0 FROM status`); err != nil {
 		return nil, err
 	}
 	return r, nil
@@ -213,7 +209,7 @@ func (r *metricRun) lookupKey(kind string, id int64, asSplit bool) string {
 // reduce, and builds the response.
 func (r *metricRun) finish() *MetricResult {
 	out := &MetricResult{
-		Metric: r.def.Name, Unit: r.def.Unit, Direction: r.direction, Group: r.q.Group,
+		Metric: r.def.Name, Unit: r.def.Unit, Group: r.q.Group,
 		From: r.from, To: r.to, Points: []MetricPoint{}, Series: []MetricSeries{},
 		Spans: r.spans, Meta: r.meta, Reduce: r.q.Reduce,
 	}
@@ -273,6 +269,13 @@ func (r *metricRun) finish() *MetricResult {
 	}
 
 	out.Total = reduce(out.Reduce, keys, totals)
+	for i := range out.Series {
+		own := map[string]float64{}
+		for _, k := range keys {
+			own[k] = r.values[[2]string{k, out.Series[i].Key}]
+		}
+		out.Series[i].Total = reduce(out.Reduce, keys, own)
+	}
 
 	running := map[string]float64{}
 	for _, k := range keys {

@@ -11,10 +11,10 @@ import (
 // grouped by local day (logged_for), area, energy type or subtype.
 
 func init() {
-	sessionFilters := []string{"area", "energy_type", "subtype", "kind", "task_id", "direction"}
+	sessionFilters := []string{"area", "energy_type", "subtype", "kind", "task_id"}
 	register(&metricDef{
-		Name: "session_hours", Label: "Session hours", Unit: "hours", Direction: "from_energy_type",
-		Description: "Hours logged. Spend and restore are never mixed: filter by direction or energy type. By subtype, hours are weighted by rank.",
+		Name: "session_hours", Label: "Session hours", Unit: "hours",
+		Description: "Hours logged, across every energy type unless filtered. By subtype, hours are weighted by rank.",
 		Groups:      []string{"day", "week", "month", "area", "subtype", "energy_type", "session"},
 		Splits:      []string{"area", "subtype", "energy_type"},
 		Filters:     sessionFilters, Reduce: "sum", Ranged: true,
@@ -23,9 +23,9 @@ func init() {
 		},
 	})
 	register(&metricDef{
-		Name: "work_points", Label: "Work points", Unit: "points", Direction: "spend",
-		Description: "Points stored on spend sessions when they were logged (hours × difficulty). By subtype, weighted by rank.",
-		Groups:      []string{"day", "week", "month", "area", "subtype"},
+		Name: "points", Label: "Points", Unit: "points",
+		Description: "Points stored on sessions when they were logged (hours × the type's rate × difficulty), every energy type. By subtype, weighted by rank.",
+		Groups:      []string{"day", "week", "month", "area", "energy_type", "subtype"},
 		Splits:      []string{"area", "subtype", "energy_type"},
 		Filters:     sessionFilters, Reduce: "sum", Ranged: true,
 		run: func(d *DB, ctx context.Context, r *metricRun) error {
@@ -62,7 +62,7 @@ type sessionSub struct {
 }
 
 // energyCandidates is the set of energy types a session query can match
-// after its energy_type, direction and subtype filters.
+// after its energy_type and subtype filters.
 func (r *metricRun) energyCandidates() (map[int64]bool, error) {
 	out := map[int64]bool{}
 	for id := range r.energy {
@@ -83,18 +83,6 @@ func (r *metricRun) energyCandidates() (map[int64]bool, error) {
 			}
 		}
 	}
-	if v := r.q.Filters["direction"]; len(v) > 0 {
-		for _, dir := range v {
-			if dir != "spend" && dir != "restore" {
-				return nil, invalid("direction must be spend or restore")
-			}
-		}
-		for id := range out {
-			if !contains(v, r.energy[id].direction) {
-				delete(out, id)
-			}
-		}
-	}
 	if v := r.q.Filters["subtype"]; len(v) > 0 {
 		ids, err := resolveIDs("subtype", v, r.subtypes)
 		if err != nil {
@@ -110,38 +98,7 @@ func (r *metricRun) energyCandidates() (map[int64]bool, error) {
 			}
 		}
 	}
-	if r.def.Direction == "spend" {
-		for id := range out {
-			if r.energy[id].direction != "spend" {
-				delete(out, id)
-			}
-		}
-	}
 	return out, nil
-}
-
-// guardDirection is the no-netting rule as validation: one query may not
-// mix directions. If the filters leave both spend and restore energy types
-// in play (with or without a split by energy type), the query is refused.
-// To see both, use two widgets; they are never summed, netted or divided.
-func (r *metricRun) guardDirection(energy map[int64]bool) error {
-	seen := map[string]bool{}
-	for id := range energy {
-		seen[r.energy[id].direction] = true
-	}
-	if seen["spend"] && seen["restore"] {
-		return invalid("%s would mix spend and restore; filter by direction or energy type, and use two widgets to see both", r.def.Name)
-	}
-	return nil
-}
-
-// directionOf is the one direction a set of energy types shares, or "".
-func (r *metricRun) directionOf(energy map[int64]bool) string {
-	dir := ""
-	for id := range energy {
-		dir = r.energy[id].direction
-	}
-	return dir
 }
 
 // loadSessions reads the sessions in range that pass the query's filters.
@@ -276,12 +233,6 @@ func (d *DB) sessionMetric(ctx context.Context, r *metricRun, value func(*sessio
 	energy, err := r.energyCandidates()
 	if err != nil {
 		return err
-	}
-	if r.def.Direction == "from_energy_type" {
-		if err := r.guardDirection(energy); err != nil {
-			return err
-		}
-		r.direction = r.directionOf(energy)
 	}
 	needSubtypes := r.q.Group == "subtype" || r.q.Split == "subtype"
 	sessions, err := d.loadSessions(ctx, r, energy, needSubtypes)

@@ -73,10 +73,11 @@ func TestMigration003Difficulty(t *testing.T) {
 	}
 }
 
-// Migration 005 backfills points on every spend session at the formula in
-// force (hours x difficulty, else the task's, else 1), leaves restore
-// sessions without points, and seeds the three default dashboards.
-func TestMigration005PointsBackfillAndDashboards(t *testing.T) {
+// Migrations 005 and 006 backfill points on every session at the formula
+// in force (hours x rate x difficulty, else the task's, else 1; every rate
+// starts at 1), old restore-type sessions included, and lay out the
+// default dashboards.
+func TestMigrations005And006PointsBackfillAndDashboards(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "old.db")
 	upTo4 := fstest.MapFS{}
 	for _, name := range []string{"001_init.sql", "002_epics_board_state.sql", "003_difficulty_1_to_5.sql", "004_view_look.sql"} {
@@ -97,7 +98,8 @@ func TestMigration005PointsBackfillAndDashboards(t *testing.T) {
 	old.Exec(ins, 1, nil, 1, 2.0, 4, now)   // own difficulty: 8
 	old.Exec(ins, 2, 1, 1, 1.5, nil, now)   // task's difficulty 3: 4.5
 	old.Exec(ins, 3, nil, 2, 2.5, nil, now) // neither: 2.5
-	old.Exec(ins, 4, nil, 4, 8.0, 2, now)   // Rest (restore): none
+	old.Exec(ins, 4, nil, 4, 8.0, 2, now)   // Rest (an old restore type): 16 since 006
+	old.Exec(ins, 5, nil, 5, 1.5, nil, now) // Leisure: 1.5
 	old.Close()
 
 	d, err := Open(path)
@@ -105,7 +107,7 @@ func TestMigration005PointsBackfillAndDashboards(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer d.Close()
-	want := map[int64]*float64{1: ptr(8.0), 2: ptr(4.5), 3: ptr(2.5), 4: nil}
+	want := map[int64]*float64{1: ptr(8.0), 2: ptr(4.5), 3: ptr(2.5), 4: ptr(16.0), 5: ptr(1.5)}
 	for id, w := range want {
 		var got *float64
 		d.QueryRow(`SELECT points FROM session WHERE id = ?`, id).Scan(&got)
@@ -115,9 +117,22 @@ func TestMigration005PointsBackfillAndDashboards(t *testing.T) {
 	}
 	var dashboards, widgets int
 	d.QueryRow(`SELECT COUNT(*) FROM dashboard WHERE is_builtin = 1`).Scan(&dashboards)
-	d.QueryRow(`SELECT COUNT(DISTINCT dashboard_id) FROM widget`).Scan(&widgets)
+	d.QueryRow(`SELECT COUNT(DISTINCT dashboard_id) FROM widget WHERE deleted_at IS NULL`).Scan(&widgets)
 	if dashboards != 3 || widgets != 3 {
 		t.Errorf("dashboards = %d, with widgets = %d; want 3 and 3", dashboards, widgets)
+	}
+	// No live widget still uses work_points or a direction filter, and the
+	// new all-types widgets are there.
+	var stale, multiples int
+	d.QueryRow(`SELECT COUNT(*) FROM widget WHERE deleted_at IS NULL AND (query LIKE '%work_points%' OR query LIKE '%direction%')`).Scan(&stale)
+	d.QueryRow(`SELECT COUNT(*) FROM widget WHERE deleted_at IS NULL AND viz = 'small_multiples'`).Scan(&multiples)
+	if stale != 0 || multiples != 2 {
+		t.Errorf("stale widgets = %d, small multiples = %d; want 0 and 2", stale, multiples)
+	}
+	var drift string
+	d.QueryRow(`SELECT value FROM setting WHERE key = 'drift_energy_types'`).Scan(&drift)
+	if drift != "[1,2,3]" {
+		t.Errorf("drift_energy_types = %s, want the old spend types [1,2,3]", drift)
 	}
 }
 
@@ -128,4 +143,54 @@ func deref(p *float64) any {
 		return nil
 	}
 	return *p
+}
+
+// Migration 006 on a database that already ran 005: a day's single
+// ceiling answer is copied to each type that had a ceiling, and widgets on
+// a dashboard of your own keep working (work_points becomes points, the
+// direction filter goes) without being replaced.
+func TestMigration006RewritesFeedbackAndOwnWidgets(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "old.db")
+	upTo5 := fstest.MapFS{}
+	for _, name := range []string{"001_init.sql", "002_epics_board_state.sql", "003_difficulty_1_to_5.sql", "004_view_look.sql", "005_dashboards_points.sql"} {
+		body, err := migrationFS.ReadFile("migrations/" + name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		upTo5["m/"+name] = &fstest.MapFile{Data: body}
+	}
+	old, err := OpenMigrated(path, upTo5, "m")
+	if err != nil {
+		t.Fatal(err)
+	}
+	old.Exec(`INSERT INTO day_plan (day, ceilings, ceiling_feedback) VALUES ('2026-10-20', '{"1": 8, "2": 0, "3": 2}', 'too_high')`)
+	old.Exec(`INSERT INTO dashboard (id, name) VALUES (10, 'Mine')`)
+	old.Exec(`INSERT INTO widget (id, dashboard_id, viz, query) VALUES
+		(100, 10, 'bar', '{"metric":"work_points","group":"week"}'),
+		(101, 10, 'bar', '{"metric":"session_hours","filters":{"direction":"restore","area":"Main job"}}')`)
+	old.Close()
+
+	d, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+	day, err := d.GetDay(context.Background(), "2026-10-20")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fb := day.Plan.CeilingFeedback; len(fb) != 2 || fb["1"] != "too_high" || fb["3"] != "too_high" {
+		t.Errorf("feedback = %v, want too_high for types 1 and 3 (2 had no ceiling)", fb)
+	}
+	for id, want := range map[int64]string{
+		100: `{"metric":"points","group":"week"}`,
+		101: `{"metric":"session_hours","filters":{"area":"Main job"}}`,
+	} {
+		var q string
+		var deleted *string
+		d.QueryRow(`SELECT query, deleted_at FROM widget WHERE id = ?`, id).Scan(&q, &deleted)
+		if q != want || deleted != nil {
+			t.Errorf("widget %d = %s (deleted %v), want %s", id, q, deleted, want)
+		}
+	}
 }

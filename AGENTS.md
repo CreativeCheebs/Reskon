@@ -1,7 +1,7 @@
 # AGENTS.md — read first
 
 **What this is:** JitterBug, a self-hosted task board and time log. Several people can sign in to one server; each has a completely separate database.
-**The spec:** [`build_spec_phase_1.md`](build_spec_phase_1.md) and [`build_spec_phase_2.md`](build_spec_phase_2.md) are authoritative on *what* and *why*. You cannot edit it. Where the code differs, append to [`docs/deviations.md`](docs/deviations.md) and say so in your handoff.
+**The spec:** [`build_spec_phase_1.md`](build_spec_phase_1.md) and [`build_spec_phase_2.md`](build_spec_phase_2.md) are authoritative on *what* and *why*, as amended by the change docs in [`docs/changes/`](docs/changes/) (a change doc wins where they differ). You cannot edit the specs. Where the code differs, append to [`docs/deviations.md`](docs/deviations.md) and say so in your handoff.
 
 ## Stack
 
@@ -27,10 +27,11 @@ Before calling a step done: run its acceptance check for real, `make test` passe
 - **Schema:** migration 001 is the full schema. After first run, only additive migrations (`002_*.sql`, ...). Update `docs/schema.md` with each.
 - **Derived values** (ages, first started, completed, time in status, points, progress, segments, weighted subtype hours, effective severity) are computed on read in `internal/db` (mostly `derive.go`), returned by the API, and **never** stored or recomputed in the client.
 - **Status changes** only through `db.Move` / `POST /api/tasks/:id/move` (or status deletion), which writes the `status_transition` row in the same transaction. The log is append-only.
-- **Code branches on `status_category.behaviour`** and `energy_type.direction`, never on a status or type name.
-- **Nothing nets rest against work.** No ratio, balance or combined total of spend and restore, anywhere. A metric query that would mix them is a 400 (`guardDirection`); never add a `balance`-type metric.
+- **Code branches on `status_category.behaviour`**, never on a status or type name.
+- **All energy types are equal** (Change 001). There is no spend/restore: `energy_type.direction` stays in the table and nothing reads it. Every type earns points; lists of types are one flat list.
+- **Types are never subtracted from or divided by each other.** Adding them up is fine (everything counts). No balance, net, "work ÷ rest" or productivity-rate metric may exist (`TestNoMetricNetsEnergyTypes`).
 - **Metrics are a registry, not free SQL.** A new measure is one `register(...)` in `internal/db/metrics_*.go`; a new chart is one renderer in `web/src/dashboard/viz/`. Totals and running sums come from the server.
-- **Session points are stored at log time** (hours × difficulty) and never recalculated by an edit.
+- **Session points are stored at log time** (hours × the type's `points_per_hour` × difficulty, the session's else its task's else 1) and never recalculated by an edit or a rate change.
 - **Filters resolve on the server** (`GET /api/tasks?view=:id`). The client sends a view id, not a query.
 - **The task key is never shown on cards or in tables**, only in the task panel.
 - **Capture never writes** and never fails because the LLM is down: `capture.Parser.Parse` always returns a usable form.

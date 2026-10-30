@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 )
@@ -99,47 +100,48 @@ func sameTotals(t *testing.T, what string, got, want map[string]float64) {
 	}
 }
 
-func TestSessionHoursAndWorkPointsMatchSQL(t *testing.T) {
+func TestSessionHoursAndPointsMatchSQL(t *testing.T) {
 	f := newMetricFixture(t)
-	res := f.metric(t, MetricQuery{Metric: "session_hours", Group: "day", Range: "30d", Filters: map[string][]string{"direction": {"spend"}}})
-	if res.Direction != "spend" || res.Unit != "hours" {
-		t.Errorf("direction/unit = %s/%s", res.Direction, res.Unit)
+	res := f.metric(t, MetricQuery{Metric: "session_hours", Group: "day", Range: "30d"})
+	if res.Unit != "hours" {
+		t.Errorf("unit = %s", res.Unit)
 	}
 	if len(res.Points) != 30 || res.From != "2026-10-01" || res.To != "2026-10-30" {
 		t.Errorf("30d gave %d points %s..%s, want 30 dense days 2026-10-01..2026-10-30", len(res.Points), res.From, res.To)
 	}
-	sameTotals(t, "spend hours", pointMap(res), sqlTotals(t, f.d, `SELECT s.logged_for, SUM(s.hours) FROM session s
-		JOIN energy_type e ON e.id = s.energy_type_id WHERE e.direction = 'spend' AND s.deleted_at IS NULL GROUP BY s.logged_for`))
+	sameTotals(t, "hours, every type", pointMap(res), sqlTotals(t, f.d, `SELECT logged_for, SUM(hours) FROM session
+		WHERE deleted_at IS NULL GROUP BY logged_for`))
 
-	res = f.metric(t, MetricQuery{Metric: "session_hours", Group: "day", Range: "7d", Filters: map[string][]string{"direction": {"restore"}}})
-	sameTotals(t, "restore hours", pointMap(res), sqlTotals(t, f.d, `SELECT s.logged_for, SUM(s.hours) FROM session s
-		JOIN energy_type e ON e.id = s.energy_type_id WHERE e.direction = 'restore' AND s.logged_for >= '2026-10-24' GROUP BY s.logged_for`))
+	res = f.metric(t, MetricQuery{Metric: "session_hours", Group: "day", Range: "7d", Filters: map[string][]string{"energy_type": {"Rest"}}})
+	sameTotals(t, "Rest hours", pointMap(res), sqlTotals(t, f.d, `SELECT logged_for, SUM(hours) FROM session
+		WHERE energy_type_id = 4 AND logged_for >= '2026-10-24' GROUP BY logged_for`))
 
-	res = f.metric(t, MetricQuery{Metric: "session_hours", Group: "day", Filters: map[string][]string{"area": {"personal"}, "direction": {"spend"}}})
-	sameTotals(t, "personal spend by name", pointMap(res), sqlTotals(t, f.d, `SELECT s.logged_for, SUM(s.hours) FROM session s
-		JOIN energy_type e ON e.id = s.energy_type_id WHERE e.direction = 'spend' AND s.area_id = ? GROUP BY s.logged_for`, f.home.ID))
+	res = f.metric(t, MetricQuery{Metric: "session_hours", Group: "day", Filters: map[string][]string{"area": {"personal"}}})
+	sameTotals(t, "personal by name", pointMap(res), sqlTotals(t, f.d, `SELECT logged_for, SUM(hours) FROM session
+		WHERE area_id = ? GROUP BY logged_for`, f.home.ID))
 
-	res = f.metric(t, MetricQuery{Metric: "work_points", Group: "day", Range: "30d"})
-	sameTotals(t, "points", pointMap(res), sqlTotals(t, f.d, `SELECT logged_for, SUM(points) FROM session
-		WHERE points IS NOT NULL GROUP BY logged_for`))
+	res = f.metric(t, MetricQuery{Metric: "points", Group: "day", Range: "30d"})
+	sameTotals(t, "points", pointMap(res), sqlTotals(t, f.d, `SELECT logged_for, SUM(points) FROM session GROUP BY logged_for`))
 	want := sqlTotals(t, f.d, `SELECT 'all', SUM(points) FROM session`)["all"]
-	if res.Total != want || res.Direction != "spend" {
-		t.Errorf("points total = %v (%s), want %v (spend)", res.Total, res.Direction, want)
+	if res.Total != want {
+		t.Errorf("points total = %v, want %v", res.Total, want)
 	}
 
-	res = f.metric(t, MetricQuery{Metric: "work_points", Group: "area", Range: "all"})
-	sameTotals(t, "points by area", pointMap(res), sqlTotals(t, f.d, `SELECT area_id, SUM(points) FROM session
-		WHERE points IS NOT NULL GROUP BY area_id`))
+	res = f.metric(t, MetricQuery{Metric: "points", Group: "area", Range: "all"})
+	sameTotals(t, "points by area", pointMap(res), sqlTotals(t, f.d, `SELECT area_id, SUM(points) FROM session GROUP BY area_id`))
 	if res.Points[0].Label != "Main job" {
 		t.Errorf("area label = %q", res.Points[0].Label)
 	}
 
+	res = f.metric(t, MetricQuery{Metric: "points", Group: "energy_type", Range: "all"})
+	sameTotals(t, "points by type", pointMap(res), sqlTotals(t, f.d, `SELECT energy_type_id, SUM(points) FROM session GROUP BY energy_type_id`))
+
 	// By subtype, hours carry the rank weight (rank 1 = 1.0 here).
-	res = f.metric(t, MetricQuery{Metric: "session_hours", Group: "subtype", Filters: map[string][]string{"direction": {"spend"}}})
+	res = f.metric(t, MetricQuery{Metric: "session_hours", Group: "subtype"})
 	sameTotals(t, "hours by subtype", pointMap(res), sqlTotals(t, f.d, `SELECT ss.subtype_id, SUM(s.hours) FROM session s
 		JOIN session_subtype ss ON ss.session_id = s.id GROUP BY ss.subtype_id`))
 
-	res = f.metric(t, MetricQuery{Metric: "work_points", Group: "day", Range: "7d", Cumulative: true})
+	res = f.metric(t, MetricQuery{Metric: "points", Group: "day", Range: "7d", Cumulative: true})
 	if last := res.Points[len(res.Points)-1].Value; last != sqlTotals(t, f.d, `SELECT 'x', SUM(points) FROM session WHERE logged_for >= '2026-10-24'`)["x"] {
 		t.Errorf("cumulative ends at %v", last)
 	}
@@ -156,7 +158,7 @@ func TestSessionHoursAndWorkPointsMatchSQL(t *testing.T) {
 
 func TestMetricEmptyRangeIsEmptyList(t *testing.T) {
 	f := newMetricFixture(t)
-	res := f.metric(t, MetricQuery{Metric: "work_points", Group: "day", From: "2025-01-01", To: "2025-01-31"})
+	res := f.metric(t, MetricQuery{Metric: "points", Group: "day", From: "2025-01-01", To: "2025-01-31"})
 	if res.Points == nil || len(res.Points) != 0 || res.Total != 0 {
 		t.Errorf("empty range = %+v, want [] and total 0", res.Points)
 	}
@@ -168,7 +170,7 @@ func TestWeekGroupingFollowsWeekStart(t *testing.T) {
 	// that weekday, and the totals must match SQL bucketing by the same rule.
 	for ws := 1; ws <= 7; ws++ {
 		f.d.PutSetting(f.ctx, "week_start", []byte(fmt.Sprint(ws)))
-		res := f.metric(t, MetricQuery{Metric: "work_points", Group: "week", From: "2026-10-01", To: "2026-10-31"})
+		res := f.metric(t, MetricQuery{Metric: "points", Group: "week", From: "2026-10-01", To: "2026-10-31"})
 		for _, p := range res.Points {
 			wd := int(parseDay(p.Key).Weekday())
 			if wd == 0 {
@@ -185,38 +187,75 @@ func TestWeekGroupingFollowsWeekStart(t *testing.T) {
 	}
 }
 
-// The direction guard rejects every query that would mix spend and
-// restore, and allows each direction on its own.
-func TestDirectionGuard(t *testing.T) {
+// Change 001: a split by energy type returns every type, the old restore
+// types included, each with its own hours and points. There is no guard
+// left to refuse it.
+func TestSplitByEnergyTypeReturnsEveryType(t *testing.T) {
 	f := newMetricFixture(t)
-	gym := fmt.Sprint(f.gym.ID)
-	mixed := []MetricQuery{
-		{Metric: "session_hours"},
-		{Metric: "session_hours", Split: "energy_type"},
-		{Metric: "session_hours", Group: "energy_type"},
-		{Metric: "session_hours", Filters: map[string][]string{"area": {"Personal"}}},
-		{Metric: "session_hours", Filters: map[string][]string{"direction": {"spend", "restore"}}},
-		{Metric: "session_hours", Filters: map[string][]string{"energy_type": {"Engineering", "Rest"}}},
-		{Metric: "session_hours", Filters: map[string][]string{"energy_type": {"2", "5"}}, Split: "energy_type"},
-		{Metric: "session_hours", Filters: map[string][]string{"kind": {"event"}}},
-		{Metric: "session_hours", Filters: map[string][]string{"task_id": {"1"}}},
+	for _, metric := range []string{"session_hours", "points"} {
+		res := f.metric(t, MetricQuery{Metric: metric, Group: "day", Range: "30d", Split: "energy_type"})
+		var names []string
+		for _, s := range res.Series {
+			names = append(names, s.Label)
+		}
+		if strings.Join(names, ",") != "Engineering,Physical,Admin,Rest" {
+			t.Errorf("%s series = %v, want every logged type in position order", metric, names)
+		}
+		col := map[string]string{"session_hours": "hours", "points": "points"}[metric]
+		sameTotals(t, metric+" by type", pointMap(res), sqlTotals(t, f.d, `SELECT logged_for || energy_type_id, SUM(`+col+`)
+			FROM session WHERE logged_for >= '2026-10-01' GROUP BY 1`))
+		// Each series carries its own total, for small multiples.
+		own := map[string]float64{}
+		for _, s := range res.Series {
+			own[s.Key] = s.Total
+		}
+		sameTotals(t, metric+" series totals", own, sqlTotals(t, f.d, `SELECT energy_type_id, SUM(`+col+`)
+			FROM session WHERE logged_for >= '2026-10-01' GROUP BY 1`))
 	}
-	for _, q := range mixed {
-		_, err := f.d.Metric(f.ctx, q, metricNow)
-		if _, ok := err.(*InvalidError); !ok {
-			t.Errorf("%+v: err = %v, want a 400", q, err)
+}
+
+// No metric in the registry nets types: none subtracts one energy type
+// from another or divides by one. Checked as a property: logging more
+// hours of any type, on its own, never lowers any value of any metric,
+// in any grouping or split. "Work minus rest" or "work / rest" would fall
+// when rest is added. (Drift is a run of days under a threshold, not a
+// value per type: more hours of a counted type end the run by design.)
+func TestNoMetricNetsEnergyTypes(t *testing.T) {
+	f := newMetricFixture(t)
+	f.d.Exec(`INSERT INTO day_plan (day, ceilings) VALUES ('2026-10-29', '{"1": 5, "4": 8}'), ('2026-10-30', '{"1": 8, "2": 2, "4": 6}')`)
+	var shapes []MetricQuery
+	for name, m := range metricRegistry {
+		if name == "drift" {
+			continue
+		}
+		for _, g := range m.Groups {
+			shapes = append(shapes, MetricQuery{Metric: name, Group: g, Range: "7d"})
+			for _, sp := range m.Splits {
+				if sp != g {
+					shapes = append(shapes, MetricQuery{Metric: name, Group: g, Range: "7d", Split: sp})
+				}
+			}
 		}
 	}
-	allowed := []MetricQuery{
-		{Metric: "session_hours", Filters: map[string][]string{"direction": {"restore"}}, Split: "energy_type"},
-		{Metric: "session_hours", Filters: map[string][]string{"energy_type": {"Engineering", "Admin"}}, Split: "energy_type"},
-		{Metric: "session_hours", Filters: map[string][]string{"subtype": {gym}}},
-		{Metric: "session_hours", Filters: map[string][]string{"subtype": {gym}, "energy_type": {"Rest"}}}, // matches nothing
-		{Metric: "work_points", Split: "energy_type"}, // spend only by definition
+	snapshot := func() map[string]map[string]float64 {
+		out := map[string]map[string]float64{}
+		for _, q := range shapes {
+			out[fmt.Sprintf("%+v", q)] = pointMap(f.metric(t, q))
+		}
+		return out
 	}
-	for _, q := range allowed {
-		if _, err := f.d.Metric(f.ctx, q, metricNow); err != nil {
-			t.Errorf("%+v: %v", q, err)
+	for _, energy := range []int64{1, 2, 3, 4, 5} {
+		before := snapshot()
+		if _, err := f.d.CreateSession(f.ctx, fields(t, fmt.Sprintf(`{"energy_type_id":%d,"hours":3,"kind":"event","logged_for":"2026-10-30"}`, energy))); err != nil {
+			t.Fatal(err)
+		}
+		after := snapshot()
+		for q, vals := range before {
+			for k, v := range vals {
+				if after[q][k] < v-1e-9 {
+					t.Errorf("adding energy type %d lowered %s[%s]: %v -> %v", energy, q, k, v, after[q][k])
+				}
+			}
 		}
 	}
 }

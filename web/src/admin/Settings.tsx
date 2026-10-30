@@ -112,27 +112,19 @@ export function Settings() {
       children: (
         <>
           <Typography.Paragraph type="secondary">
-            Spend and restore are tracked separately and never netted against each other.
+            Every type is equal and every type earns points: hours × the type's rate × difficulty. A new rate
+            applies to sessions logged after it. Types are added up, never set against each other.
           </Typography.Paragraph>
           <LookupEditor
             collection="energy-types"
             rows={boot.energy_types as never}
             fields={[
               { key: "name", title: "Name", kind: "text" },
-              {
-                key: "direction",
-                title: "Direction",
-                kind: "select",
-                width: 120,
-                options: [
-                  { value: "spend", label: "spend" },
-                  { value: "restore", label: "restore" },
-                ],
-              },
+              { key: "points_per_hour", title: "Points / hour", kind: "number", width: 110, step: 0.5 },
               { key: "color", title: "Colour", kind: "color", width: 80 },
               { key: "position", title: "Order", kind: "number", width: 80 },
             ]}
-            newRow={() => ({ name: unique("New energy type", boot.energy_types), direction: "spend", position: next(boot.energy_types) })}
+            newRow={() => ({ name: unique("New energy type", boot.energy_types), points_per_hour: 1, position: next(boot.energy_types) })}
           />
         </>
       ),

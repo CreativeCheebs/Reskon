@@ -7,7 +7,8 @@ import { formatHours } from "../format";
 import { Heading, Panel } from "./Panel";
 import { severityText, type DayData } from "./types";
 
-// Morning: focus, ceilings, and what is in force. Everything is optional
+// Morning: focus, ceilings, and what is in force. Any energy type may have
+// a ceiling, and none has to: "–" means no ceiling. Everything is optional
 // and carried forward from the last plan, so most mornings are one tap
 // ("Keep this plan") or none. States are shown, never entered here.
 
@@ -20,7 +21,6 @@ export function PlanPanel({ data, onSave }: { data: DayData; onSave: (patch: Rec
   const { plan, suggested } = data;
   const focus = plan.saved ? plan.focus : suggested.focus;
   const ceilings = plan.saved ? plan.ceilings : suggested.ceilings;
-  const spendTypes = boot.energy_types.filter((e) => e.direction === "spend");
 
   // An edit to an unsaved day saves the carried-forward plan with it.
   const saveWith = (patch: { focus?: string[]; ceilings?: Record<string, number> }) =>
@@ -62,7 +62,7 @@ export function PlanPanel({ data, onSave }: { data: DayData; onSave: (patch: Rec
 
       <Heading>Ceilings</Heading>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {spendTypes.map((e) => {
+        {boot.energy_types.map((e) => {
           const v = ceilings[e.id];
           const held = !plan.saved ? suggested.held[e.id] : undefined;
           return (

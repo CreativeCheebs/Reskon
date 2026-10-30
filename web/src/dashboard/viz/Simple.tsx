@@ -50,13 +50,21 @@ function DriftViz({ res }: { res: MetricResult }) {
     );
   }
   let text: string;
-  if (run === 0) text = "No low-work run today.";
+  if (m.counted_types === 0) {
+    return (
+      <div style={{ color: palette.subtle, display: "flex", flexDirection: "column", justifyContent: "center", height: "100%" }}>
+        <div style={{ fontSize: 28, fontWeight: 600 }}>–</div>
+        <div style={{ fontSize: 12 }}>Choose which energy types count for Drift in Settings.</div>
+      </div>
+    );
+  }
+  if (run === 0) text = "No low run today.";
   else if (planned > 0) text = `Day ${run} of a ${planned}-day break.`;
-  else text = `Day ${run} of low work. No break was planned.`;
+  else text = `Day ${run} of a low run. No break was planned.`;
   return (
     <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", height: "100%" }}>
       <div style={{ fontSize: 20, fontWeight: 600 }}>{text}</div>
-      {run > 0 && <div style={{ color: palette.muted, fontSize: 12 }}>Under {String(m.low_hours)}h of spend a day, since {String(m.run_start)}.</div>}
+      {run > 0 && <div style={{ color: palette.muted, fontSize: 12 }}>Under {String(m.low_hours)}h a day of the counted types, since {String(m.run_start)}.</div>}
     </div>
   );
 }

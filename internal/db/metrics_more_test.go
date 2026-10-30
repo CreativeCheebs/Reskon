@@ -113,16 +113,18 @@ func TestPlanMetrics(t *testing.T) {
 	// Engineering hours in the fixture: 10-29 = 5.5, 10-30 = 6.5; Physical 1 each.
 	d.Exec(`INSERT INTO day_plan (day, ceilings) VALUES ('2026-10-29', '{"1": 5, "2": 2, "4": 1}'), ('2026-10-30', '{"1": 8}')`)
 	res := f.metric(t, MetricQuery{Metric: "days_over_plan", Group: "day", Range: "7d"})
-	if len(res.Points) != 1 || res.Points[0].Key != "2026-10-29" || res.Points[0].Detail != "Engineering 5.5 of 5" {
+	// Any type over its own ceiling counts, Rest included.
+	if len(res.Points) != 1 || res.Points[0].Key != "2026-10-29" || res.Points[0].Detail != "Engineering 5.5 of 5 · Rest 7.5 of 1" || res.Points[0].Value != 2 {
 		t.Errorf("days over plan = %+v", res.Points)
 	}
 	res = f.metric(t, MetricQuery{Metric: "ceiling_vs_actual", Group: "energy_type", Range: "7d"})
 	got := pointMap(res)
-	if fmt.Sprintf("%.4f", got["1"]) != fmt.Sprintf("%.4f", 12.0/13) || got["2"] != 0.5 || res.Direction != "spend" {
-		t.Errorf("ceiling vs actual = %v, want Engineering 12/13, Physical 0.5 (Rest has no ceiling)", got)
+	// Every type with a ceiling is covered, Rest included (7.5 of 1).
+	if fmt.Sprintf("%.4f", got["1"]) != fmt.Sprintf("%.4f", 12.0/13) || got["2"] != 0.5 || got["4"] != 7.5 {
+		t.Errorf("ceiling vs actual = %v, want Engineering 12/13, Physical 0.5, Rest 7.5", got)
 	}
-	if _, ok := got["4"]; ok {
-		t.Error("a restore energy type was set against a ceiling")
+	if _, ok := got["3"]; ok {
+		t.Error("Admin has no ceiling but was set against one")
 	}
 
 	// Drift: no low days yet (today has spend), and plans exist.
@@ -143,9 +145,17 @@ func TestDriftCountsLowDaysAgainstPlannedBreak(t *testing.T) {
 	d.CreateSession(f.ctx, fields(t, `{"energy_type_id":1,"hours":6,"logged_for":"2026-10-23"}`))
 	d.CreateSession(f.ctx, fields(t, `{"energy_type_id":1,"hours":0.5,"logged_for":"2026-10-26"}`))
 	d.Exec(`INSERT INTO day_plan (day, ceilings) VALUES ('2026-10-24', '{"1": 0}'), ('2026-10-25', '{"1": 0}'), ('2026-10-27', '{"1": 6}')`)
+	// Drift counts only the types in drift_energy_types (seeded from the
+	// old spend types): eight hours of Rest does not end a low run.
+	d.CreateSession(f.ctx, fields(t, `{"energy_type_id":4,"hours":8,"kind":"event","logged_for":"2026-10-28"}`))
 	res = f.metric(t, MetricQuery{Metric: "drift"})
 	// 10-24 .. 10-30 are all under an hour: day 7, of a 2-day planned break.
 	if res.Total != 7 || res.Meta["planned_break"] != 2 || res.Meta["run_start"] != "2026-10-24" {
 		t.Errorf("drift = %v %v, want 7 days with a 2-day break", res.Total, res.Meta)
+	}
+	// With no types chosen, there is no run to count.
+	d.PutSetting(f.ctx, "drift_energy_types", []byte(`[]`))
+	if res = f.metric(t, MetricQuery{Metric: "drift"}); res.Total != 0 {
+		t.Errorf("drift with no counted types = %v", res.Total)
 	}
 }

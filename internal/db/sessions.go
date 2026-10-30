@@ -18,7 +18,7 @@ type Session struct {
 	Kind         string           `json:"kind"`
 	EnergyTypeID int64            `json:"energy_type_id"`
 	Hours        float64          `json:"hours"`
-	Points       *float64         `json:"points"` // stored when logged; nil for restore sessions
+	Points       *float64         `json:"points"` // stored when logged (hours x rate x difficulty)
 	Difficulty   *int64           `json:"difficulty"`
 	StartedAt    *string          `json:"started_at"`
 	LoggedFor    string           `json:"logged_for"`
@@ -268,14 +268,12 @@ func (d *DB) CreateSession(ctx context.Context, f Fields) (*Session, error) {
 	return d.GetSession(ctx, id)
 }
 
-// sessionPoints is what a session earns when it is logged: hours x
-// difficulty, where difficulty is the session's, else its task's, else 1.
-// Restore sessions earn none. The result is stored on the session, so a
-// later change to this formula never rewrites history.
-func sessionPoints(direction string, hours float64, difficulty, taskDifficulty *int64) *float64 {
-	if direction != "spend" {
-		return nil
-	}
+// sessionPoints is what a session earns when it is logged: hours x its
+// energy type's points rate x difficulty, where difficulty is the
+// session's, else its task's, else 1. Every energy type earns points. The
+// result is stored on the session, so a later change to this formula or
+// to a rate never rewrites history.
+func sessionPoints(rate, hours float64, difficulty, taskDifficulty *int64) *float64 {
 	d := int64(1)
 	switch {
 	case difficulty != nil:
@@ -283,15 +281,15 @@ func sessionPoints(direction string, hours float64, difficulty, taskDifficulty *
 	case taskDifficulty != nil:
 		d = *taskDifficulty
 	}
-	p := hours * float64(d)
+	p := hours * rate * float64(d)
 	return &p
 }
 
 // storedPoints looks up what sessionPoints needs for a session about to be
-// written: its energy type's direction and its task's difficulty.
+// written: its energy type's rate and its task's difficulty.
 func storedPoints(ctx context.Context, q querier, energyTypeID int64, hours float64, difficulty, taskID *int64) (*float64, error) {
-	var direction string
-	err := q.QueryRowContext(ctx, `SELECT direction FROM energy_type WHERE id = ?`, energyTypeID).Scan(&direction)
+	var rate float64
+	err := q.QueryRowContext(ctx, `SELECT points_per_hour FROM energy_type WHERE id = ?`, energyTypeID).Scan(&rate)
 	if err == sql.ErrNoRows {
 		return nil, invalid("energy type %d does not exist", energyTypeID)
 	}
@@ -304,7 +302,7 @@ func storedPoints(ctx context.Context, q querier, energyTypeID int64, hours floa
 			return nil, err
 		}
 	}
-	return sessionPoints(direction, hours, difficulty, taskDiff), nil
+	return sessionPoints(rate, hours, difficulty, taskDiff), nil
 }
 
 // fillPoints sets f["points"] for a new session from its other fields.

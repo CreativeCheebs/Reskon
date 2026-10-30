@@ -67,7 +67,7 @@ func TestEventSessionNeedsEnergyTypeWithoutArea(t *testing.T) {
 	}
 }
 
-func TestDayKeepsSpendAndRestoreApart(t *testing.T) {
+func TestDayTotalsEveryTypeInOneList(t *testing.T) {
 	d := openTest(t)
 	ctx := context.Background()
 	d.CreateSession(ctx, fields(t, `{"hours":3,"logged_for":"2026-10-28","energy_type_id":1}`))
@@ -77,11 +77,8 @@ func TestDayKeepsSpendAndRestoreApart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(day.Spend) != 1 || day.Spend[0].Hours != 3 {
-		t.Errorf("spend = %+v", day.Spend)
-	}
-	if len(day.Restore) != 1 || day.Restore[0].Hours != 2 {
-		t.Errorf("restore = %+v", day.Restore)
+	if len(day.Totals) != 2 || day.Totals[0].Hours != 3 || day.Totals[1].Hours != 2 {
+		t.Errorf("totals = %+v", day.Totals)
 	}
 }
 
@@ -101,7 +98,7 @@ func TestSessionPointsStoredAtLogTime(t *testing.T) {
 	for _, c := range []struct {
 		s    *Session
 		want any
-	}{{own, 8.0}, {fromTask, 4.5}, {plain, 2.5}, {rest, nil}} {
+	}{{own, 8.0}, {fromTask, 4.5}, {plain, 2.5}, {rest, 7.0}} {
 		if got := deref(c.s.Points); got != c.want {
 			t.Errorf("session %d points = %v, want %v", c.s.ID, got, c.want)
 		}
@@ -129,5 +126,20 @@ func TestSessionPointsStoredAtLogTime(t *testing.T) {
 	fresh, _ := d.CreateSession(ctx, fields(t, fmt.Sprintf(`{"task_id":%d,"hours":1.5,"logged_for":"2026-10-29"}`, tk.ID)))
 	if *old.Points != 4.5 || *fresh.Points != 7.5 {
 		t.Errorf("old/new points = %v/%v, want 4.5/7.5", *old.Points, *fresh.Points)
+	}
+	// Every type has a rate: points = hours x rate x difficulty. A new rate
+	// applies to sessions logged after it.
+	if _, err := d.PatchEnergyType(ctx, 4, fields(t, `{"points_per_hour":0.5}`)); err != nil {
+		t.Fatal(err)
+	}
+	sleep, _ := d.CreateSession(ctx, fields(t, `{"energy_type_id":4,"hours":8,"difficulty":2,"kind":"event","logged_for":"2026-10-29"}`))
+	if *sleep.Points != 8 {
+		t.Errorf("rate 0.5 x 8h x difficulty 2 = %v, want 8", *sleep.Points)
+	}
+	if again, _ := d.GetSession(ctx, rest.ID); *again.Points != 7 {
+		t.Errorf("old Rest session changed with the rate: %v", *again.Points)
+	}
+	if _, err := d.PatchEnergyType(ctx, 4, fields(t, `{"points_per_hour":-1}`)); err == nil {
+		t.Error("negative rate accepted")
 	}
 }

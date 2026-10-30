@@ -17,13 +17,11 @@ import { DifficultyIcon } from "../task/LevelIcons";
 
 // Sessions by day, with filters (applied on the server) and selection for
 // bulk changes: tick rows, tick a day to take all of it, or select
-// everything the filters show. Day totals are per energy type with spend
-// and restore kept apart; nothing combines them.
+// everything the filters show. Day totals are per energy type, in one list.
 
 interface DayTotals {
   day: string;
-  spend: { energy_type_id: number; name: string; hours: number }[];
-  restore: { energy_type_id: number; name: string; hours: number }[];
+  totals: { energy_type_id: number; name: string; hours: number }[];
 }
 
 interface Filters {
@@ -288,20 +286,9 @@ export function SessionsScreen() {
           <div key={day} style={{ marginBottom: 18 }}>
             <Space wrap style={{ marginBottom: 6 }}>
               <span style={{ fontWeight: 600 }}>{dayjs(day).format("ddd D MMM YYYY")}</span>
-              {t && t.spend.length > 0 && (
+              {t && t.totals.length > 0 && (
                 <span style={{ color: palette.muted }}>
-                  Spend:{" "}
-                  {t.spend.map((x) => (
-                    <Lozenge key={x.energy_type_id} color={energy(x.energy_type_id)?.color}>
-                      {x.name} {formatHours(x.hours)}
-                    </Lozenge>
-                  ))}
-                </span>
-              )}
-              {t && t.restore.length > 0 && (
-                <span style={{ color: palette.muted }}>
-                  Restore:{" "}
-                  {t.restore.map((x) => (
+                  {t.totals.map((x) => (
                     <Lozenge key={x.energy_type_id} color={energy(x.energy_type_id)?.color}>
                       {x.name} {formatHours(x.hours)}
                     </Lozenge>

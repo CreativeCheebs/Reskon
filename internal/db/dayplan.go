@@ -8,9 +8,9 @@ import (
 	"strconv"
 )
 
-// The day screen's plan (Phase 2 section 6): focus areas, a ceiling per
-// spend energy type, and the evening answer on whether the ceiling was
-// right. Days are never locked: any day can be edited at any time.
+// The day screen's plan (Phase 2 section 6, Change 001): focus areas, an
+// optional ceiling for any energy type, and the evening answer on whether
+// the ceilings were right. Days are never locked: any day can be edited at any time.
 
 var ceilingFeedback = map[string]bool{"about_right": true, "too_high": true, "too_low": true}
 
@@ -39,8 +39,9 @@ type HeldNote struct {
 	From  float64 `json:"from"` // the ceiling that was too high
 }
 
-// ReadoutRow is one spend energy type in the evening readout. Over is true
-// only when spend passed the day's own saved ceiling.
+// ReadoutRow is one energy type in the evening readout. Over is true only
+// when its hours passed a ceiling saved for it that day; a type with no
+// ceiling never warns.
 type ReadoutRow struct {
 	EnergyTypeID int64    `json:"energy_type_id"`
 	Name         string   `json:"name"`
@@ -50,7 +51,10 @@ type ReadoutRow struct {
 }
 
 // PatchDay saves part of a day's plan, creating the row if needed:
-// {focus: [area names], ceilings: {energy_type_id: hours}, note, ceiling_feedback}.
+// {focus: [area names], ceilings: {energy_type_id: hours}, note,
+// ceiling_feedback: {energy_type_id: answer or null}}. Ceilings replace the
+// day's set (a type left out has no ceiling); feedback answers merge, and
+// null clears one.
 func (d *DB) PatchDay(ctx context.Context, day string, f Fields) (*Day, error) {
 	if !validDate(day) {
 		return nil, invalid("date must be YYYY-MM-DD")
@@ -79,9 +83,8 @@ func (d *DB) PatchDay(ctx context.Context, day string, f Fields) (*Day, error) {
 				if err != nil || v < 0 || v > 24 {
 					return nil, invalid("ceiling %s must be 0-24 hours for an energy type id", id)
 				}
-				var dir string
-				if err := d.QueryRowContext(ctx, `SELECT direction FROM energy_type WHERE id = ?`, n).Scan(&dir); err != nil || dir != "spend" {
-					return nil, invalid("ceilings are for spend energy types only (%s is not one)", id)
+				if err := d.exists(ctx, "energy_type", n); err != nil {
+					return nil, invalid("energy type %s does not exist", id)
 				}
 				clean[id] = v
 			}
@@ -94,11 +97,28 @@ func (d *DB) PatchDay(ctx context.Context, day string, f Fields) (*Day, error) {
 			}
 			sets["note"] = v
 		case "ceiling_feedback":
-			var v *string
-			if json.Unmarshal(raw, &v) != nil || (v != nil && !ceilingFeedback[*v]) {
-				return nil, invalid("ceiling_feedback must be about_right, too_high, too_low or null")
+			var answers map[string]*string
+			if json.Unmarshal(raw, &answers) != nil {
+				return nil, invalid("ceiling_feedback must be {energy_type_id: answer}")
 			}
-			sets["ceiling_feedback"] = v
+			var current string
+			d.QueryRowContext(ctx, `SELECT ceiling_feedbacks FROM day_plan WHERE day = ?`, day).Scan(&current)
+			merged := parseFeedback(current)
+			for id, v := range answers {
+				if _, err := strconv.ParseInt(id, 10, 64); err != nil {
+					return nil, invalid("ceiling_feedback keys are energy type ids")
+				}
+				switch {
+				case v == nil:
+					delete(merged, id)
+				case ceilingFeedback[*v]:
+					merged[id] = *v
+				default:
+					return nil, invalid("ceiling_feedback answers are about_right, too_high, too_low or null")
+				}
+			}
+			b, _ := json.Marshal(merged)
+			sets["ceiling_feedbacks"] = string(b)
 		default:
 			return nil, invalid("field %q cannot be set", k)
 		}
@@ -155,45 +175,65 @@ func (d *DB) suggest(ctx context.Context, day string) (*Suggested, error) {
 	for id, pd := range latest {
 		out.Ceilings[strconv.FormatInt(id, 10)] = plans[pd][id]
 	}
-	// The most recent feedback within the hold-and-creep window.
-	var fbDay, fb string
-	err = d.QueryRowContext(ctx, `SELECT day, ceiling_feedback FROM day_plan
-		WHERE day < ? AND day >= ? AND ceiling_feedback IS NOT NULL ORDER BY day DESC LIMIT 1`,
-		day, addDays(day, -(holdDays+creepDays))).Scan(&fbDay, &fb)
-	if err == sql.ErrNoRows || fb != "too_high" {
-		return out, nil
-	}
+	// Per energy type, its most recent answer within the hold-and-creep
+	// window. Only "too high" holds; any later answer ends the hold.
+	type answer struct{ day, value string }
+	recent := map[string]answer{}
+	err = scanInto(ctx, d, `SELECT day, ceiling_feedbacks FROM day_plan
+		WHERE day < ? AND day >= ? AND ceiling_feedbacks != '{}' ORDER BY day`,
+		func(r *sql.Rows) error {
+			var fd, raw string
+			if err := r.Scan(&fd, &raw); err != nil {
+				return err
+			}
+			for id, v := range parseFeedback(raw) {
+				recent[id] = answer{fd, v} // later days overwrite earlier ones
+			}
+			return nil
+		}, day, addDays(day, -(holdDays+creepDays)))
 	if err != nil {
 		return nil, err
 	}
-	k := daysBetween(fbDay, day) // 1 = the day after
-	factor := tooHighFactor
-	if k > holdDays {
-		factor += (1 - tooHighFactor) * float64(k-holdDays) / float64(creepDays)
-	}
-	for id, was := range plans[fbDay] {
-		key := strconv.FormatInt(id, 10)
-		if was <= 0 {
+	for key, a := range recent {
+		id, _ := strconv.ParseInt(key, 10, 64)
+		was := plans[a.day][id]
+		if a.value != "too_high" || was <= 0 {
 			continue
 		}
+		k := daysBetween(a.day, day) // 1 = the day after
+		factor := tooHighFactor
+		if k > holdDays {
+			factor += (1 - tooHighFactor) * float64(k-holdDays) / float64(creepDays)
+		}
 		out.Ceilings[key] = roundQuarter(was * factor)
-		out.Held[key] = HeldNote{Since: fbDay, Day: k, From: was}
+		out.Held[key] = HeldNote{Since: a.day, Day: k, From: was}
 	}
 	return out, nil
 }
 
-// readout sets each spend energy type's spent hours beside the day's own
-// saved ceiling. Restore is reported separately by GetDay, never here.
-func readout(spend []EnergyTotal, ceilings map[int64]float64, energy []EnergyType) []ReadoutRow {
+// parseFeedback reads {"<energy_type_id>": answer}; unknown answers are
+// skipped.
+func parseFeedback(raw string) map[string]string {
+	var m map[string]string
+	json.Unmarshal([]byte(raw), &m)
+	out := map[string]string{}
+	for k, v := range m {
+		if ceilingFeedback[v] {
+			out[k] = v
+		}
+	}
+	return out
+}
+
+// readout lists every energy type with a ceiling or hours that day, in
+// one flat list, each beside the day's own saved ceiling for it.
+func readout(totals []EnergyTotal, ceilings map[int64]float64, energy []EnergyType) []ReadoutRow {
 	spent := map[int64]float64{}
-	for _, t := range spend {
+	for _, t := range totals {
 		spent[t.EnergyTypeID] = t.Hours
 	}
 	out := []ReadoutRow{}
 	for _, e := range energy {
-		if e.Direction != "spend" {
-			continue
-		}
 		c, planned := ceilings[e.ID]
 		if !planned && spent[e.ID] == 0 {
 			continue

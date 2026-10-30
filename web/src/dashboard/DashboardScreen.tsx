@@ -247,7 +247,8 @@ function Stack({ dashboard }: { dashboard: Dashboard }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       {widgets.map((w) => (
-        <div key={w.id} style={{ height: w.viz === "number" ? 130 : w.viz === "bands" ? Math.max(130, w.h * 48) : 300 }}>
+        // Small multiples become a vertical stack as tall as their types need.
+        <div key={w.id} style={{ height: w.viz === "number" ? 130 : w.viz === "bands" ? Math.max(130, w.h * 48) : w.viz === "small_multiples" ? undefined : 300 }}>
           <WidgetFrame widget={w} editing={false} />
         </div>
       ))}

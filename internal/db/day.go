@@ -8,15 +8,14 @@ import (
 
 // Day is GET /api/day/:date: the plan plus totals for one local date.
 //
-// Spend and restore are reported as two separate lists. There is no
-// combined figure, ratio or balance: nothing nets rest against work.
+// Energy types are reported in one flat list. Hours of one type are never
+// subtracted from or divided by another.
 type Day struct {
 	Day           string         `json:"day"`
 	Plan          DayPlan        `json:"plan"`
 	Suggested     *Suggested     `json:"suggested"` // what the morning plan offers
-	Readout       []ReadoutRow   `json:"readout"`   // spend per energy type against the saved ceiling
-	Spend         []EnergyTotal  `json:"spend"`
-	Restore       []EnergyTotal  `json:"restore"`
+	Readout       []ReadoutRow   `json:"readout"`   // hours per energy type against the saved ceiling
+	Totals        []EnergyTotal  `json:"totals"`    // hours per energy type
 	InForce       []*State       `json:"in_force"` // states in force that day, shown not entered
 	SubtypeTotals []SubtypeTotal `json:"subtype_totals"`
 	Sessions      []*Session     `json:"sessions"`
@@ -27,7 +26,7 @@ type DayPlan struct {
 	Focus           json.RawMessage `json:"focus"`
 	Ceilings        json.RawMessage `json:"ceilings"`
 	Note            *string         `json:"note"`
-	CeilingFeedback *string         `json:"ceiling_feedback"`
+	CeilingFeedback map[string]string `json:"ceiling_feedback"` // energy type id -> about_right, too_high, too_low
 }
 
 type EnergyTotal struct {
@@ -46,37 +45,33 @@ func (d *DB) GetDay(ctx context.Context, day string) (*Day, error) {
 	if !validDate(day) {
 		return nil, invalid("date must be YYYY-MM-DD")
 	}
-	out := &Day{Day: day, Spend: []EnergyTotal{}, Restore: []EnergyTotal{}, SubtypeTotals: []SubtypeTotal{}}
-	var focus, ceilings string
-	err := d.QueryRowContext(ctx, `SELECT focus, ceilings, note, ceiling_feedback FROM day_plan WHERE day = ?`, day).
-		Scan(&focus, &ceilings, &out.Plan.Note, &out.Plan.CeilingFeedback)
+	out := &Day{Day: day, Totals: []EnergyTotal{}, SubtypeTotals: []SubtypeTotal{}}
+	var focus, ceilings, feedback string
+	err := d.QueryRowContext(ctx, `SELECT focus, ceilings, note, ceiling_feedbacks FROM day_plan WHERE day = ?`, day).
+		Scan(&focus, &ceilings, &out.Plan.Note, &feedback)
 	switch {
 	case err == sql.ErrNoRows:
-		focus, ceilings = "[]", "{}"
+		focus, ceilings, feedback = "[]", "{}", "{}"
 	case err != nil:
 		return nil, err
 	default:
 		out.Plan.Saved = true
 	}
 	out.Plan.Focus, out.Plan.Ceilings = json.RawMessage(focus), json.RawMessage(ceilings)
+	out.Plan.CeilingFeedback = parseFeedback(feedback)
 	if out.Suggested, err = d.suggest(ctx, day); err != nil {
 		return nil, err
 	}
 
-	err = scanInto(ctx, d, `SELECT e.id, e.name, e.direction, SUM(s.hours) FROM session s
+	err = scanInto(ctx, d, `SELECT e.id, e.name, SUM(s.hours) FROM session s
 		JOIN energy_type e ON e.id = s.energy_type_id
 		WHERE s.deleted_at IS NULL AND s.logged_for = ?
 		GROUP BY e.id ORDER BY e.position, e.id`, func(r *sql.Rows) error {
 		var t EnergyTotal
-		var dir string
-		if err := r.Scan(&t.EnergyTypeID, &t.Name, &dir, &t.Hours); err != nil {
+		if err := r.Scan(&t.EnergyTypeID, &t.Name, &t.Hours); err != nil {
 			return err
 		}
-		if dir == "restore" {
-			out.Restore = append(out.Restore, t)
-		} else {
-			out.Spend = append(out.Spend, t)
-		}
+		out.Totals = append(out.Totals, t)
 		return nil
 	}, day)
 	if err != nil {
@@ -87,7 +82,7 @@ func (d *DB) GetDay(ctx context.Context, day string) (*Day, error) {
 	if err != nil {
 		return nil, err
 	}
-	out.Readout = readout(out.Spend, parseCeilings(ceilings), energy)
+	out.Readout = readout(out.Totals, parseCeilings(ceilings), energy)
 	states, err := d.ListStates(ctx, day)
 	if err != nil {
 		return nil, err

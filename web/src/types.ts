@@ -33,9 +33,9 @@ export interface Priority {
 export interface EnergyType {
   id: number;
   name: string;
-  direction: "spend" | "restore";
   color: string | null;
   position: number;
+  points_per_hour: number;
 }
 
 export interface Subtype {
@@ -233,7 +233,7 @@ export interface Session {
   kind: "task" | "event";
   energy_type_id: number;
   hours: number;
-  /** Stored when logged (hours x difficulty); null for restore sessions. */
+  /** Stored when logged (hours x the type's rate x difficulty). */
   points: number | null;
   difficulty: number | null;
   started_at: string | null;

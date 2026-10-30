@@ -1,7 +1,7 @@
 // Shapes of the dashboards and metrics API. Every number in a widget comes
 // from GET /api/metrics; widgets only draw it.
 
-export type Viz = "bar" | "line" | "cumulative" | "number" | "list" | "bands" | "split_bar" | "table";
+export type Viz = "bar" | "line" | "cumulative" | "number" | "list" | "bands" | "split_bar" | "small_multiples" | "table";
 
 export interface WidgetQuery {
   metric: string;
@@ -55,6 +55,8 @@ export interface MetricSeries {
   key: string;
   label: string;
   color: string | null;
+  /** This series alone, reduced by the server. */
+  total: number;
 }
 
 export interface StateSpan {
@@ -72,7 +74,6 @@ export interface StateSpan {
 export interface MetricResult {
   metric: string;
   unit: string;
-  direction: "spend" | "restore" | "";
   group: string;
   from: string;
   to: string;
@@ -89,7 +90,6 @@ export interface MetricDef {
   label: string;
   description: string;
   unit: string;
-  direction: "spend" | "from_energy_type" | "";
   groups: string[];
   splits: string[] | null;
   filters: string[] | null;
@@ -113,6 +113,7 @@ export const MIN_WIDTH: Record<Viz, number> = {
   line: 280,
   cumulative: 280,
   split_bar: 320,
+  small_multiples: 280,
   bands: 320,
   table: 260,
   list: 0,

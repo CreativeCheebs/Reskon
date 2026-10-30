@@ -10,12 +10,14 @@ import (
 )
 
 // The metrics API (Phase 2 spec section 4): one endpoint, a registry of
-// named metrics, no free SQL. Each metric declares its unit, direction and
-// the groupings, splits and filters it allows; anything else is rejected.
+// named metrics, no free SQL. Each metric declares its unit and the
+// groupings, splits and filters it allows; anything else is rejected.
 // Every widget is a metric query plus a visualisation.
 //
 // Values are computed on read from stored rows. Nothing here is cached or
-// stored, and no metric combines spend with restore.
+// stored. Energy types may be added up (everything counts) but never
+// subtracted from or divided by one another: no balance, net or rate
+// across types exists here.
 
 // MetricQuery is one request: GET /api/metrics?metric=...&group=...
 type MetricQuery struct {
@@ -40,11 +42,14 @@ type MetricPoint struct {
 	Detail string  `json:"detail,omitempty"`
 }
 
-// MetricSeries names one split value, in display order.
+// MetricSeries names one split value, in display order. Total is that
+// series alone reduced to one figure (small multiples show it per type;
+// series are never added together there).
 type MetricSeries struct {
 	Key   string  `json:"key"`
 	Label string  `json:"label"`
 	Color *string `json:"color"`
+	Total float64 `json:"total"`
 }
 
 // MetricResult is the response. Points is never null: an empty range
@@ -52,7 +57,6 @@ type MetricSeries struct {
 type MetricResult struct {
 	Metric    string         `json:"metric"`
 	Unit      string         `json:"unit"`
-	Direction string         `json:"direction"` // spend, restore, or "" (none)
 	Group     string         `json:"group"`
 	From      string         `json:"from"`
 	To        string         `json:"to"`
@@ -85,7 +89,6 @@ type metricDef struct {
 	Label       string   `json:"label"`
 	Description string   `json:"description"`
 	Unit        string   `json:"unit"`
-	Direction   string   `json:"direction"` // spend, from_energy_type, or ""
 	Groups      []string `json:"groups"`
 	Splits      []string `json:"splits"`
 	Filters     []string `json:"filters"`
@@ -112,15 +115,14 @@ type MetricCatalog struct {
 }
 
 // WidgetVizzes are the visualisations a widget may use.
-var WidgetVizzes = []string{"bar", "line", "cumulative", "number", "list", "bands", "split_bar", "table"}
+var WidgetVizzes = []string{"bar", "line", "cumulative", "number", "list", "bands", "split_bar", "small_multiples", "table"}
 
 var metricRanges = []string{"today", "7d", "30d", "90d", "1y", "month", "all"}
 var metricReduces = []string{"sum", "nonzero", "max", "last", "count"}
 
 func (d *DB) MetricCatalog() *MetricCatalog {
 	out := &MetricCatalog{Vizzes: WidgetVizzes, Ranges: metricRanges, Reduces: metricReduces, Filters: map[string][]string{
-		"direction": {"spend", "restore"},
-		"kind":      {"task", "event", "buff", "debuff", "modifier"},
+		"kind": {"task", "event", "buff", "debuff", "modifier"},
 	}}
 	for _, m := range metricRegistry {
 		out.Metrics = append(out.Metrics, m)
@@ -131,7 +133,7 @@ func (d *DB) MetricCatalog() *MetricCatalog {
 
 // metricOrder keeps the catalog in the spec's order.
 func metricOrder(name string) int {
-	for i, n := range []string{"session_hours", "work_points", "session_count", "tasks_closed", "tasks_open",
+	for i, n := range []string{"session_hours", "points", "session_count", "tasks_closed", "tasks_open",
 		"time_in_status", "cycle_time", "state_days", "days_over_plan", "ceiling_vs_actual", "drift"} {
 		if n == name {
 			return i
@@ -214,11 +216,10 @@ func (d *DB) Metric(ctx context.Context, q MetricQuery, now time.Time) (*MetricR
 // lookupNames maps id -> name (and colour) for one lookup table, deleted
 // rows included so history keeps its labels.
 type lookupRow struct {
-	name      string
-	color     *string
-	position  int64
-	direction string // energy types only
-	energy    int64  // subtypes only: their energy type
+	name     string
+	color    *string
+	position int64
+	energy   int64 // subtypes only: their energy type
 }
 
 func (d *DB) lookupRows(ctx context.Context, query string) (map[int64]*lookupRow, error) {
@@ -226,7 +227,7 @@ func (d *DB) lookupRows(ctx context.Context, query string) (map[int64]*lookupRow
 	err := scanInto(ctx, d, query, func(r *sql.Rows) error {
 		var id int64
 		row := &lookupRow{}
-		if err := r.Scan(&id, &row.name, &row.color, &row.position, &row.direction, &row.energy); err != nil {
+		if err := r.Scan(&id, &row.name, &row.color, &row.position, &row.energy); err != nil {
 			return err
 		}
 		out[id] = row

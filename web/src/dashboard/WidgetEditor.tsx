@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Form, Input, Modal, Radio, Select } from "antd";
+import { Alert, Form, Input, Modal, Select } from "antd";
 import { message } from "../theme/feedback";
 import { api } from "../api";
 import { useApp } from "../store";
@@ -21,6 +21,7 @@ const VIZ_LABEL: Record<Viz, string> = {
   list: "List",
   bands: "Bands (states across days)",
   split_bar: "Stacked bars",
+  small_multiples: "Small multiples (one chart per type)",
   table: "Table",
 };
 
@@ -51,7 +52,7 @@ const GROUP_LABEL: Record<string, string> = {
 
 const COLORS = ["accent", "success", "warn", "epic", "muted"];
 
-const CHART_VIZZES: Viz[] = ["bar", "line", "cumulative", "split_bar"];
+const CHART_VIZZES: Viz[] = ["bar", "line", "cumulative", "split_bar", "small_multiples"];
 
 let catalogCache: Promise<MetricCatalog> | null = null;
 function loadCatalog() {
@@ -100,7 +101,7 @@ export function WidgetEditor({
   const [tasks, setTasks] = useState<TaskBrief[]>([]);
   const [title, setTitle] = useState(editing?.title ?? "");
   const [viz, setViz] = useState<Viz>(editing?.viz ?? "bar");
-  const [query, setQuery] = useState<WidgetQuery>(editing?.query ?? { metric: "work_points", group: "day", range: "30d" });
+  const [query, setQuery] = useState<WidgetQuery>(editing?.query ?? { metric: "points", group: "day", range: "30d" });
   const [options, setOptions] = useState<WidgetOptions>(editing?.options ?? {});
   const [busy, setBusy] = useState(false);
 
@@ -108,6 +109,14 @@ export function WidgetEditor({
     loadCatalog().then(setCatalog).catch((e) => message.error((e as Error).message));
   }, []);
   const metric: MetricDef | undefined = catalog?.metrics.find((m) => m.name === query.metric);
+  // Small multiples draw one chart per split value, so picking them splits
+  // by energy type when nothing else is chosen.
+  const pickViz = (v: Viz) => {
+    setViz(v);
+    if (v === "small_multiples" && !query.split && metric?.splits?.includes("energy_type") && query.group !== "energy_type") {
+      setQuery({ ...query, split: "energy_type" });
+    }
+  };
   useEffect(() => {
     if (metric?.filters?.includes("task_id") && tasks.length === 0) {
       api.get<TaskBrief[]>("/tasks?brief=1").then(setTasks).catch(() => undefined);
@@ -131,7 +140,6 @@ export function WidgetEditor({
     if (!m) return;
     const keep: Filters = {};
     for (const [k, v] of Object.entries(filters)) if (m.filters?.includes(k)) keep[k] = v;
-    if (m.direction === "from_energy_type" && !keep.direction && !keep.energy_type) keep.direction = ["spend"];
     setQuery({
       metric: name,
       group: m.groups.includes(query.group ?? "") ? query.group : m.groups[0],
@@ -141,9 +149,6 @@ export function WidgetEditor({
     });
   };
 
-  const needsDirection = metric?.direction === "from_energy_type";
-  const direction = (filters.direction?.[0] as string | undefined) ?? undefined;
-  const energyOptions = boot.energy_types.filter((e) => !needsDirection || !direction || e.direction === direction);
   const kindValues =
     query.metric === "state_days" ? ["buff", "debuff", "modifier"] : ["task", "event"];
 
@@ -197,7 +202,7 @@ export function WidgetEditor({
           </Form.Item>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 12px" }}>
             <Form.Item label="Show as" {...item}>
-              <Select value={viz} onChange={setViz} options={(catalog?.vizzes ?? []).map((v) => ({ value: v, label: VIZ_LABEL[v] }))} />
+              <Select value={viz} onChange={pickViz} options={(catalog?.vizzes ?? []).map((v) => ({ value: v, label: VIZ_LABEL[v] }))} />
             </Form.Item>
             <Form.Item label="Group by" {...item}>
               <Select
@@ -262,22 +267,6 @@ export function WidgetEditor({
               </Form.Item>
             )}
           </div>
-          {needsDirection && (
-            <Form.Item label="Direction" {...item} extra="Spend and restore are never mixed in one widget. To see both, add two.">
-              <Radio.Group
-                value={direction}
-                onChange={(e) => {
-                  const keepEnergy = (filters.energy_type ?? []).filter(
-                    (id) => boot.energy_types.find((x) => x.id === Number(id))?.direction === e.target.value,
-                  );
-                  setQuery({ ...query, filters: { ...filters, direction: [e.target.value], energy_type: keepEnergy } });
-                }}
-              >
-                <Radio.Button value="spend">Spend</Radio.Button>
-                <Radio.Button value="restore">Restore</Radio.Button>
-              </Radio.Group>
-            </Form.Item>
-          )}
           {metric?.filters?.includes("area") && (
             <Form.Item label="Areas" {...item}>
               <Select mode="multiple" allowClear placeholder="All" value={filters.area?.map(Number)} onChange={(v) => setFilter("area", v)}
@@ -287,15 +276,13 @@ export function WidgetEditor({
           {metric?.filters?.includes("energy_type") && (
             <Form.Item label="Energy types" {...item}>
               <Select mode="multiple" allowClear placeholder="All" value={filters.energy_type?.map(Number)} onChange={(v) => setFilter("energy_type", v)}
-                options={energyOptions.map((e) => ({ value: e.id, label: e.name }))} />
+                options={boot.energy_types.map((e) => ({ value: e.id, label: e.name }))} />
             </Form.Item>
           )}
           {metric?.filters?.includes("subtype") && boot.subtypes.length > 0 && (
             <Form.Item label="Subtypes" {...item}>
               <Select mode="multiple" allowClear placeholder="All" value={filters.subtype?.map(Number)} onChange={(v) => setFilter("subtype", v)}
-                options={boot.subtypes
-                  .filter((s) => energyOptions.some((e) => e.id === s.energy_type_id))
-                  .map((s) => ({ value: s.id, label: s.name }))} />
+                options={boot.subtypes.map((s) => ({ value: s.id, label: s.name }))} />
             </Form.Item>
           )}
           {metric?.filters?.includes("status") && (

@@ -9,27 +9,27 @@ import (
 	"strings"
 )
 
-// Metrics that compare spend against the day's own plan. Only spend energy
-// types have ceilings; rest is never set against them.
+// Metrics that set each energy type's hours against the day's own plan.
+// Any type may have a ceiling; a type without one is never compared.
 
 func init() {
 	register(&metricDef{
 		Name: "days_over_plan", Label: "Days over plan", Unit: "list",
-		Description: "Days where spend passed that day's own ceiling for at least one energy type, with what happened.",
+		Description: "Days where at least one energy type went over that day's own ceiling for it, with what happened.",
 		Groups:      []string{"day"},
 		Filters:     []string{"energy_type"}, Reduce: "count", Ranged: true,
 		run: (*DB).daysOverPlan,
 	})
 	register(&metricDef{
 		Name: "ceiling_vs_actual", Label: "Ceiling vs actual", Unit: "ratio",
-		Description: "Spend as a share of the planned ceiling (1 = exactly the ceiling), on days with a saved plan.",
+		Description: "Hours as a share of the planned ceiling (1 = exactly the ceiling), per type that had one, on days with a saved plan.",
 		Groups:      []string{"day", "energy_type"},
 		Filters:     []string{"energy_type"}, Reduce: "max", Ranged: true,
 		run: (*DB).ceilingVsActual,
 	})
 	register(&metricDef{
 		Name: "drift", Label: "Drift", Unit: "days",
-		Description: "The current run of low-work days, set beside the break the morning plans intended. Elapsed as fact.",
+		Description: "The current run of low days (under the threshold, counting the energy types chosen in Settings), set beside the break the morning plans intended. Elapsed as fact.",
 		Groups:      []string{"now"},
 		Reduce:      "last",
 		run:         (*DB).drift,
@@ -63,12 +63,11 @@ func parseCeilings(raw string) map[int64]float64 {
 	return out
 }
 
-// spendByDay sums spend-direction hours: day -> energy type -> hours.
-func (d *DB) spendByDay(ctx context.Context, from, to string) (map[string]map[int64]float64, error) {
+// hoursByDay sums hours: day -> energy type -> hours.
+func (d *DB) hoursByDay(ctx context.Context, from, to string) (map[string]map[int64]float64, error) {
 	out := map[string]map[int64]float64{}
 	err := scanInto(ctx, d, `SELECT s.logged_for, s.energy_type_id, SUM(s.hours) FROM session s
-		JOIN energy_type e ON e.id = s.energy_type_id
-		WHERE s.deleted_at IS NULL AND e.direction = 'spend' AND s.logged_for >= ? AND s.logged_for <= ?
+		WHERE s.deleted_at IS NULL AND s.logged_for >= ? AND s.logged_for <= ?
 		GROUP BY s.logged_for, s.energy_type_id`, func(r *sql.Rows) error {
 		var day string
 		var id int64
@@ -85,9 +84,9 @@ func (d *DB) spendByDay(ctx context.Context, from, to string) (map[string]map[in
 	return out, err
 }
 
-// spendCeilingTypes keeps the spend energy types a plan has a ceiling for,
-// narrowed by an energy_type filter.
-func (r *metricRun) spendCeilingTypes(ceilings map[int64]float64) ([]int64, error) {
+// ceilingTypes keeps the energy types a plan has a ceiling for, narrowed
+// by an energy_type filter.
+func (r *metricRun) ceilingTypes(ceilings map[int64]float64) ([]int64, error) {
 	var keep map[int64]bool
 	if v := r.q.Filters["energy_type"]; len(v) > 0 {
 		ids, err := resolveIDs("energy type", v, r.energy)
@@ -98,8 +97,7 @@ func (r *metricRun) spendCeilingTypes(ceilings map[int64]float64) ([]int64, erro
 	}
 	var out []int64
 	for id, c := range ceilings {
-		e := r.energy[id]
-		if e == nil || e.direction != "spend" || c <= 0 || (keep != nil && !keep[id]) {
+		if r.energy[id] == nil || c <= 0 || (keep != nil && !keep[id]) {
 			continue
 		}
 		out = append(out, id)
@@ -109,24 +107,23 @@ func (r *metricRun) spendCeilingTypes(ceilings map[int64]float64) ([]int64, erro
 
 func (d *DB) daysOverPlan(ctx context.Context, r *metricRun) error {
 	r.sparse = true
-	r.direction = "spend"
 	plans, err := d.planCeilings(ctx, r.from, r.to)
 	if err != nil {
 		return err
 	}
-	spend, err := d.spendByDay(ctx, r.from, r.to)
+	hours, err := d.hoursByDay(ctx, r.from, r.to)
 	if err != nil {
 		return err
 	}
 	for day, ceilings := range plans {
-		types, err := r.spendCeilingTypes(ceilings)
+		types, err := r.ceilingTypes(ceilings)
 		if err != nil {
 			return err
 		}
 		var over []string
 		n := 0.0
 		for _, id := range types {
-			if spent := spend[day][id]; spent > ceilings[id] {
+			if spent := hours[day][id]; spent > ceilings[id] {
 				over = append(over, fmt.Sprintf("%s %s of %s", r.energy[id].name, trimNum(spent), trimNum(ceilings[id])))
 				n++
 			}
@@ -149,18 +146,17 @@ func sortedStrings(s []string) []string {
 }
 
 func (d *DB) ceilingVsActual(ctx context.Context, r *metricRun) error {
-	r.direction = "spend"
 	plans, err := d.planCeilings(ctx, r.from, r.to)
 	if err != nil {
 		return err
 	}
-	spend, err := d.spendByDay(ctx, r.from, r.to)
+	hours, err := d.hoursByDay(ctx, r.from, r.to)
 	if err != nil {
 		return err
 	}
 	planned, spent := map[string]float64{}, map[string]float64{}
 	for day, ceilings := range plans {
-		types, err := r.spendCeilingTypes(ceilings)
+		types, err := r.ceilingTypes(ceilings)
 		if err != nil {
 			return err
 		}
@@ -170,7 +166,7 @@ func (d *DB) ceilingVsActual(ctx context.Context, r *metricRun) error {
 				key = r.lookupKey("energy_type", id, false)
 			}
 			planned[key] += ceilings[id]
-			spent[key] += spend[day][id]
+			spent[key] += hours[day][id]
 		}
 	}
 	for key, p := range planned {
@@ -183,16 +179,20 @@ func (d *DB) ceilingVsActual(ctx context.Context, r *metricRun) error {
 	return nil
 }
 
-// drift counts back from today through days whose spend stayed under
-// drift_low_hours, and how many of those days a saved plan intended as a
-// break (every spend ceiling under the same line). Facts only.
+// drift counts back from today through days whose hours, over the energy
+// types in the drift_energy_types setting, stayed under drift_low_hours,
+// and how many of those days a saved plan intended as a break (those
+// types' ceilings adding up to under the same line). Facts only.
 func (d *DB) drift(ctx context.Context, r *metricRun) error {
 	low := 1.0
 	d.Setting(ctx, "drift_low_hours", &low)
+	var counted []int64
+	d.Setting(ctx, "drift_energy_types", &counted)
+	types := idSet(counted)
 	var plans int
 	d.QueryRowContext(ctx, `SELECT COUNT(*) FROM day_plan`).Scan(&plans)
 	from := addDays(r.today, -365)
-	spend, err := d.spendByDay(ctx, from, r.today)
+	hours, err := d.hoursByDay(ctx, from, r.today)
 	if err != nil {
 		return err
 	}
@@ -202,35 +202,32 @@ func (d *DB) drift(ctx context.Context, r *metricRun) error {
 	}
 	run, planned := 0, 0
 	day := r.today
-	for ; day >= from; day = addDays(day, -1) {
-		total := 0.0
-		for _, h := range spend[day] {
-			total += h
-		}
-		if total >= low {
+	for ; day >= from && len(types) > 0; day = addDays(day, -1) {
+		if sumTypes(hours[day], types) >= low {
 			break
 		}
 		run++
-		if c, ok := ceilings[day]; ok && len(c) > 0 && plannedBreak(r, c, low) {
+		if c, ok := ceilings[day]; ok && len(c) > 0 && sumTypes(c, types) < low {
 			planned++
 		}
 	}
 	r.add("now", "", float64(run))
 	r.label("now", "Current run", nil)
-	r.meta = map[string]any{"run": run, "planned_break": planned, "has_plans": plans > 0, "low_hours": low}
+	r.meta = map[string]any{"run": run, "planned_break": planned, "has_plans": plans > 0, "low_hours": low, "counted_types": len(types)}
 	if run > 0 {
 		r.meta["run_start"] = addDays(r.today, -(run - 1))
 	}
 	return nil
 }
 
-// plannedBreak: the plan's spend ceilings add up to less than low hours.
-func plannedBreak(r *metricRun, ceilings map[int64]float64, low float64) bool {
+// sumTypes adds the hours of the given energy types. Adding is allowed:
+// it never subtracts or divides one type by another.
+func sumTypes(byType map[int64]float64, types map[int64]bool) float64 {
 	total := 0.0
-	for id, c := range ceilings {
-		if e := r.energy[id]; e != nil && e.direction == "spend" {
-			total += c
+	for id, h := range byType {
+		if types[id] {
+			total += h
 		}
 	}
-	return total < low
+	return total
 }

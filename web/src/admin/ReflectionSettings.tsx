@@ -19,7 +19,18 @@ export function ReflectionSettings() {
           options={DAYS.map((d, i) => ({ value: i + 1, label: d }))}
         />
       </Form.Item>
-      <Form.Item label="Low-work day, for Drift" extra="A day with less spend than this counts towards the Drift widget's run.">
+      <Form.Item label="Drift counts" extra="The energy types whose hours Drift adds up for a day. Any type can be in or out.">
+        <Select
+          mode="multiple"
+          placeholder="None"
+          value={(Array.isArray(boot.settings.drift_energy_types) ? (boot.settings.drift_energy_types as number[]) : []).filter((id) =>
+            boot.energy_types.some((e) => e.id === id),
+          )}
+          onChange={(v: number[]) => save("drift_energy_types", v)}
+          options={boot.energy_types.map((e) => ({ value: e.id, label: e.name }))}
+        />
+      </Form.Item>
+      <Form.Item label="Low day, for Drift" extra="A day with fewer hours than this, across the types above, counts towards the Drift widget's run.">
         <InputNumber
           min={0}
           max={24}

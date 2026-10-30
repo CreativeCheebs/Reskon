@@ -22,7 +22,7 @@ Applied migration version is kept in `PRAGMA user_version` (no bookkeeping table
 | `status_category` | The four behaviours (`todo`, `in_progress`, `done`, `cancelled`) that code branches on. Statuses map to one. |
 | `status` | User-editable workflow statuses. `on_board = 0` hides a status from the board (Backlog, Cancelled). `alert_after_days` flags stalled tasks. |
 | `priority` | User-editable priorities with a `weight` multiplier used in points (centred on 1.0). |
-| `energy_type` | Engineering, Physical, Admin, Rest, Leisure… `direction` is `spend` or `restore`; the two are never netted. |
+| `energy_type` | Engineering, Physical, Admin, Rest, Leisure… All equal (Change 001). `direction` is no longer read (migration 006); `points_per_hour` is the type's rate. |
 | `subtype` | Finer activity kinds, each belonging to one energy type. Ships empty. |
 | `area` | Main job / Personal / Freelance… Owns the task key prefix and a default energy type. |
 | `task` | The work item. Exactly one area. `key` is permanent. `board_pos` is fractional. `custom` holds custom field values as JSON. No dates beyond created/updated/deleted — the rest derive from `status_transition`. |
@@ -64,6 +64,17 @@ No schema change. Remaps `task.difficulty` and `session.difficulty` from 1/2/4/8
 | --- | --- |
 | `dashboard` (`name`, `position`, `is_builtin`, `deleted_at`) | A named dashboard. Seeded: Today, This month, The year (all editable and deletable). |
 | `widget` (`dashboard_id`, `title`, `viz`, `query`, `options`, `x`, `y`, `w`, `h`, `position`, `deleted_at`) | One widget: a metric query (JSON: `metric`, `group`, `range` or `from`/`to`, `filters`, `split`, `reduce`) plus a visualisation (`bar`, `line`, `cumulative`, `number`, `list`, `bands`, `split_bar`, `table`). `x/y/w/h` are grid units on a 12-column grid; `position` is the single-column (mobile) order. |
-| `session.points` (REAL, NULL for restore sessions) | Stored when the session is logged: hours × difficulty (the session's, else its task's, else 1). Never recalculated by an edit; editable by hand. Backfilled once by this migration. |
+| `session.points` (REAL) | Stored when the session is logged: hours × difficulty (the session's, else its task's, else 1); since 006, × the type's rate too. Never recalculated by an edit; editable by hand. Backfilled once here for spend sessions, and by 006 for the rest. |
 | `day_plan.ceiling_feedback` (`about_right` / `too_high` / `too_low` / NULL) | The evening answer to "was today's ceiling about right?". Drives the suggested ceilings of the following days. |
 | settings `week_start` (1 = Monday … 7 = Sunday, default 1), `drift_low_hours` (default 1) | Week grouping in metrics; the spend below which a day counts as low-work for the Drift widget. |
+
+### Migration 006 (Change 001: all energy types are equal)
+
+| Change | Purpose |
+| --- | --- |
+| `energy_type.points_per_hour` (REAL, NOT NULL, default 1) | Every type's points rate. Points = hours × rate × difficulty. Editable in Settings → Energy types; a new rate applies to sessions logged after it. |
+| `energy_type.direction` | Kept (additive only), no longer read. New types get a filler value. |
+| `session.points` backfill | Sessions with no points (the old restore types) get hours × rate × difficulty, once. |
+| `day_plan.ceiling_feedbacks` (JSON, default `{}`) | `{"<energy_type_id>": "about_right" \| "too_high" \| "too_low"}`: the evening question, per type that had a ceiling. A day's old single answer is copied to each type it had a ceiling for. `day_plan.ceiling_feedback` is no longer read. |
+| setting `drift_energy_types` (JSON list of ids) | The types whose hours Drift adds up. Seeded with the old spend types. |
+| widgets | `work_points` → `points` and the `direction` filter removed in every saved query. The built-in dashboards' widgets are soft-deleted and replaced with Change 001's layout; your own dashboards are not touched. |

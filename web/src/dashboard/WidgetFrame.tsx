@@ -8,6 +8,7 @@ import { MIN_WIDTH, type MetricResult, type Widget } from "./types";
 import { Chart } from "./viz/Charts";
 import { ListViz, NumberViz, TableViz } from "./viz/Simple";
 import { BandsViz } from "./viz/Bands";
+import { SmallMultiplesViz } from "./viz/SmallMultiples";
 
 // One widget: fetches its metric on mount (and on refresh, never by
 // polling) by widget id, then hands the result to its viz. Narrower than
@@ -55,12 +56,16 @@ export function VizBody({ widget, res }: { widget: Pick<Widget, "viz" | "options
   const { ref, width } = useWidth();
   const min = widget.options.min_width_px ?? MIN_WIDTH[widget.viz];
   const narrow = width > 0 && width < min;
-  const viz = narrow ? "number" : widget.viz;
+  // Small multiples fall back per type, never to one summed number.
+  const viz = narrow && widget.viz !== "small_multiples" ? "number" : widget.viz;
   const empty = res.points.length === 0 && viz !== "number" && viz !== "bands";
+  const scrolls = viz === "list" || viz === "table" || viz === "small_multiples";
   return (
-    <div ref={ref} style={{ flex: 1, minHeight: 0, overflow: viz === "list" || viz === "table" ? "auto" : "hidden" }}>
+    <div ref={ref} style={{ flex: 1, minHeight: 0, overflow: scrolls ? "auto" : "hidden" }}>
       {empty ? (
         <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Nothing in this range" style={{ margin: "8px 0" }} />
+      ) : viz === "small_multiples" ? (
+        <SmallMultiplesViz res={res} narrow={narrow} />
       ) : viz === "number" ? (
         <NumberViz res={res} />
       ) : viz === "list" ? (
@@ -111,9 +116,6 @@ export const WidgetFrame = memo(function WidgetFrame({
         <span style={{ flex: 1, fontWeight: 600, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {widget.title || widget.query.metric}
         </span>
-        {res?.direction && (
-          <span style={{ color: palette.subtle, fontSize: 11 }}>{res.direction}</span>
-        )}
         <span className="no-drag" style={{ display: "inline-flex" }}>
           <Tooltip title="Refresh">
             <Button size="small" type="text" icon={<ReloadOutlined spin={loading} />} onClick={reload} />

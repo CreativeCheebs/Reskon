@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 )
 
@@ -31,10 +32,10 @@ var priorityColumns = columns{
 }
 
 var energyTypeColumns = columns{
-	"name":      kText,
-	"direction": kText,
-	"color":     kTextNull,
-	"position":  kInt,
+	"name":            kText,
+	"color":           kTextNull,
+	"position":        kInt,
+	"points_per_hour": kReal,
 }
 
 var subtypeColumns = columns{
@@ -274,16 +275,37 @@ func (d *DB) DeletePriority(ctx context.Context, id int64, reassignTo *int64, cl
 
 func (d *DB) getEnergyType(ctx context.Context, id int64) (*EnergyType, error) {
 	var e EnergyType
-	err := d.QueryRowContext(ctx, `SELECT id, name, direction, color, position FROM energy_type
-		WHERE id = ? AND deleted_at IS NULL`, id).Scan(&e.ID, &e.Name, &e.Direction, &e.Color, &e.Position)
+	err := d.QueryRowContext(ctx, `SELECT id, name, color, position, points_per_hour FROM energy_type
+		WHERE id = ? AND deleted_at IS NULL`, id).Scan(&e.ID, &e.Name, &e.Color, &e.Position, &e.PointsPerHour)
 	if err == sql.ErrNoRows {
 		return nil, ErrNotFound
 	}
 	return &e, err
 }
 
+// checkRate keeps a points rate at zero or above.
+func checkRate(f Fields) error {
+	if raw, ok := f["points_per_hour"]; ok {
+		var v float64
+		if json.Unmarshal(raw, &v) != nil || v < 0 {
+			return invalid("points_per_hour must be 0 or more")
+		}
+	}
+	return nil
+}
+
 func (d *DB) CreateEnergyType(ctx context.Context, f Fields) (*EnergyType, error) {
-	id, err := d.insertRow(ctx, "energy_type", f, energyTypeColumns)
+	if err := checkRate(f); err != nil {
+		return nil, err
+	}
+	// direction is a NOT NULL column from before Change 001. Nothing reads
+	// it; a new type gets a filler value.
+	f["direction"] = json.RawMessage(`"spend"`)
+	cols := columns{"direction": kText}
+	for k, v := range energyTypeColumns {
+		cols[k] = v
+	}
+	id, err := d.insertRow(ctx, "energy_type", f, cols)
 	if err != nil {
 		return nil, err
 	}
@@ -291,6 +313,9 @@ func (d *DB) CreateEnergyType(ctx context.Context, f Fields) (*EnergyType, error
 }
 
 func (d *DB) PatchEnergyType(ctx context.Context, id int64, f Fields) (*EnergyType, error) {
+	if err := checkRate(f); err != nil {
+		return nil, err
+	}
 	if err := d.patchRow(ctx, "energy_type", id, f, energyTypeColumns); err != nil {
 		return nil, err
 	}

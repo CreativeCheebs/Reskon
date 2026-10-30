@@ -28,7 +28,8 @@ export interface DayData {
     focus: string[];
     ceilings: Record<string, number>;
     note: string | null;
-    ceiling_feedback: Feedback | null;
+    /** energy type id -> answer, for types that had a ceiling */
+    ceiling_feedback: Record<string, Feedback>;
   };
   suggested: {
     focus: string[];
@@ -36,8 +37,7 @@ export interface DayData {
     held: Record<string, { since: string; day: number; from: number }>;
   };
   readout: { energy_type_id: number; name: string; planned: number | null; spent: number; over: boolean }[];
-  spend: { energy_type_id: number; name: string; hours: number }[];
-  restore: { energy_type_id: number; name: string; hours: number }[];
+  totals: { energy_type_id: number; name: string; hours: number }[];
   in_force: StateRow[];
   sessions: Session[];
 }

@@ -142,7 +142,7 @@ export function SessionFields({
               setTouchedEnergy(true);
               set({ energy_type_id: v, subtypes: [] });
             }}
-            options={boot.energy_types.map((e) => ({ value: e.id, label: `${e.name} · ${e.direction}` }))}
+            options={boot.energy_types.map((e) => ({ value: e.id, label: e.name }))}
           />
         </Form.Item>
         <Form.Item label="Hours" required style={{ marginBottom: 8 }}>

@@ -84,7 +84,7 @@ Section 9 says writes send the `updated_at` they last saw, but the `session` tab
 Accepts `?from=YYYY-MM-DD&to=YYYY-MM-DD&task_id=N&energy_type=1,2&area=1,2&kind=task|event&has_task=true|false&has_difficulty=true|false&has_subtypes=true|false&q=words` (all server-side). `POST /api/sessions/bulk` takes `{ids, set:{energy_type_id|kind|area_id|difficulty|logged_for|task_id}}` or `{ids, delete:true}` and applies it in one transaction, refusing everything if any id is missing. Detaching keeps the task's title as the label; attaching takes the task's area. Hours, notes, labels and subtypes stay per-session edits. The Sessions screen selects rows, whole days, or everything shown; hidden rows drop out of the selection when filters change.
 
 ### `GET /api/day/:date` shape
-Returns `{day, plan, spend: [...], restore: [...], subtype_totals, sessions}`. Spend and restore are two separate lists per energy type; there is no combined figure anywhere.
+Returns `{day, plan, spend: [...], restore: [...], subtype_totals, sessions}`. Spend and restore are two separate lists per energy type; there is no combined figure anywhere. *Since Change 001: one `totals` list; see below.*
 
 ### Session hours limit
 `hours` must be in (0, 24]. Not in the spec; prevents a typo of 25 or 250.
@@ -125,16 +125,16 @@ Their card configuration turns on the Area and Status columns, since they span e
 The Phase 2 spec names its migration 002; 002-004 were already used, so it is `005_dashboards_points.sql`.
 
 ### Session points formula (owner decision, 2026-10-30)
-The spec stores a session's points at log time but gives no formula. Owner chose **hours × difficulty**, difficulty being the session's, else its task's, else 1. Restore-direction sessions store no points (NULL). There is no separate rate. `points` is editable by hand (`PATCH /api/sessions/:id {"points": n}`); no edit recalculates it. Jira-imported sessions get points the same way.
+The spec stores a session's points at log time but gives no formula. Owner chose **hours × difficulty**, difficulty being the session's, else its task's, else 1. Restore-direction sessions store no points (NULL). There is no separate rate. `points` is editable by hand (`PATCH /api/sessions/:id {"points": n}`); no edit recalculates it. Jira-imported sessions get points the same way. *Changed by Change 001: every type earns points, at hours × the type's rate × difficulty; see below.*
 
 ### `day_plan.ceiling_feedback` column
 Section 8 says no other schema changes are needed, but `day_plan` has nowhere to keep the evening "was today's ceiling about right?" answer, which section 6 needs to persist. Added one nullable column in migration 005. `day_plan.locked_at` stays unused: days are never locked.
 
 ### Metrics API details
 - **Ranges** add `today` and `month` (this calendar month) to the spec's `7d / 30d / 90d / 1y / all`. The default dashboards need "today" and "this month", and a saved widget cannot hold relative `from`/`to` dates.
-- **Spend and restore never share a query.** `session_hours` is refused (400) whenever its filters still match energy types of both directions, split or not, so every such widget names a direction or energy types. The widget editor asks for spend or restore. `work_points` is spend by definition; no other metric reads hours by direction.
+- ~~Spend and restore never share a query~~: removed by Change 001. There is no direction guard; a split across every type is the normal case.
 - **Extra groupings**: `session_hours` by `session` (one row per session, for the Today dashboard's "today's work" table); `drift` is an 11th metric (group `now`) for the Drift widget, since section 5 gives it no metric.
-- **Extra filter** `direction` (`spend`/`restore`) on session metrics, for "Rest hours per day: direction=restore".
+- ~~Extra filter `direction`~~: removed by Change 001. A saved query that still has it is rewritten by migration 006; a new one is a 400.
 - **Filters per metric**, not "everywhere": each metric lists the filters that mean something for it (a status filter on session hours does not); others are a 400. The catalog says which.
 - **Filter values** are ids or names (matched without regard to case); the editor saves ids so renames do not break widgets.
 - **By subtype**, hours and points carry the subtype's rank weight (the existing weighted subtype hours); sessions without a subtype are left out of subtype groupings. Counts count a session once per subtype.
@@ -146,10 +146,10 @@ Section 8 says no other schema changes are needed, but `day_plan` has nowhere to
 - **Local days for timestamps** (task completions, transitions) use the server's time zone (`TZ`; the container ships tzdata).
 
 ### Default dashboards
-As section 5, with these substitutions: **Today**'s "today's sessions" is "Today's work", spend sessions only (one query cannot mix directions); "active states" is "In force". **This month**'s "counts" are four number widgets: tasks closed, sessions logged, rest hours, days with something in the way (gym sessions need a subtype the app does not ship). **The year**'s "rest days per month" is **rest hours per month**, since the day label (rest/normal/heavy) is deferred.
+*Replaced by Change 001's layout (migration 006).* Before that: as section 5, with these substitutions: **Today**'s "today's sessions" is "Today's work", spend sessions only (one query cannot mix directions); "active states" is "In force". **This month**'s "counts" are four number widgets: tasks closed, sessions logged, rest hours, days with something in the way (gym sessions need a subtype the app does not ship). **The year**'s "rest days per month" is **rest hours per month**, since the day label (rest/normal/heavy) is deferred.
 
 ### Ceiling suggestion
-The suggestion is the last saved ceiling for each spend energy type, carried forward. After "too high" it is 80% of that day's ceiling for three days, then eases back over four (85, 90, 95, 100%), rounded to quarter hours. A later answer of any kind ends the hold. Nothing is saved until the user taps **Keep this plan** or changes something, so an untouched day has no plan (and no over-plan warning). States in force are listed, never entered, on the plan.
+The suggestion is the last saved ceiling for each energy type, carried forward. After "too high" it is 80% of that day's ceiling for three days, then eases back over four (85, 90, 95, 100%), rounded to quarter hours. A later answer of any kind ends the hold. Since Change 001 all of this is per energy type: "too high" for one type holds only that type. Nothing is saved until the user taps **Keep this plan** or changes something, so an untouched day has no plan (and no over-plan warning). States in force are listed, never entered, on the plan.
 
 ### Dashboard layout
 `position` (the phone order) is rewritten from the grid's reading order on every layout save, since phones have no editing to set it otherwise. Under 768px the sidebar folds away behind a tab, for every screen.
@@ -158,13 +158,34 @@ The suggestion is the last saved ceiling for each spend energy type, carried for
 Clear sets `cleared_on`: for a state past its duration, the day the duration ran out; otherwise today. Either can be changed in its form. Delete (only offered once cleared) removes the row; clearing is the normal way to end one. `GET /api/states` items gain `in_force`, `days_running` and `ended`, and sort in force first, then by days running. `GET /api/states/shapes` samples each decay curve for the picker's sketches.
 
 ### Settings
-`week_start` (1 = Monday … 7 = Sunday) and `drift_low_hours` (Settings → Reflection).
+`week_start` (1 = Monday … 7 = Sunday), `drift_low_hours` and `drift_energy_types` (Settings → Reflection).
+
+## Change 001: all energy types are equal (`docs/changes/001-all-energy-types-equal.md`)
+
+### Migration 006, not 002
+Change 001 folds its schema into "migration 002". Migration 005 had already run on existing databases, so the change is `006_energy_types_equal.sql`.
+
+### Points rate
+`energy_type.points_per_hour` (default 1) for every type. Points = hours × rate × difficulty (the session's, else its task's, else 1). With every rate at 1 this equals the earlier hours × difficulty, so points already stored are unchanged; only sessions with no points (old restore types) are backfilled. The rate is editable in Settings → Energy types and applies from then on. Change 001 does not say the rate multiplies difficulty; it was the reading that keeps "hours × difficulty" (owner decision) intact.
+
+### Ceiling feedback per type
+Change 001 asks the ceiling question per type. `day_plan.ceiling_feedback` held one answer per day, so migration 006 adds `ceiling_feedbacks` (JSON, per energy type id) and copies each day's old answer to every type that had a ceiling that day. `PATCH /api/day/:date` takes `ceiling_feedback: {"<id>": answer \| null}` (merged; null clears one). `GET /api/day/:date` returns `plan.ceiling_feedback` as that object.
+
+### `GET /api/day/:date` shape
+`spend` and `restore` are replaced by one `totals` list. `readout` lists every type with a ceiling or hours that day.
+
+### Default dashboards
+As Change 001 section 6. Today's "today's sessions" is a table of every session today. This month's "counts" are three numbers: tasks closed, sessions logged, days with something in the way. The year's "All energy types — points" is by week (as the change's defaults table says), not by day. Migration 006 soft-deletes the old built-in widgets (rows kept) and adds these; widgets on dashboards you made are kept, with `work_points` renamed and the direction filter dropped.
+
+### Small multiples
+Each type's mini chart shows its y-axis labels and its own total in the header. The totals are per series and come from the server (`series[].total`), so the widget never adds types together, including the narrow fallback, where each type becomes its own number. Picking small multiples in the editor splits by energy type when no split is set.
+
 
 ## Needs review
 
 Gaps where the spec was silent and the most reversible option was taken. Each is small to change.
 
-- **Points formula** (`taskPoints` in `internal/db/derive.go`): `difficulty × priority.weight`. Confirm or give the real formula. (Session points are stored per session from Phase 2: hours × difficulty.)
+- **Points formula** (`taskPoints` in `internal/db/derive.go`): `difficulty × priority.weight`. Confirm or give the real formula. (Session points are stored per session from Phase 2: hours × rate × difficulty.)
 - **Subtypes ship empty** (section 3 vs section 12). Flip by adding the section 3 list to a new migration's seeds.
 - **All seeded statuses are built-in.** Un-builtin any of them with `UPDATE status SET is_builtin = 0 WHERE ...`.
 - **Area deletion is refused while tasks remain** (409). Alternative: a reassign dialog like statuses.
@@ -173,6 +194,7 @@ Gaps where the spec was silent and the most reversible option was taken. Each is
 - **Progress bar** is `logged hours / estimate`, capped at 100% (`progress_pct`). The spec names a progress bar without saying of what.
 - **Card "subtypes"** shows the distinct subtypes of sessions logged against the task (tasks have no subtypes of their own).
 - **"Too low"** only ends a "too high" hold; it does not raise the next suggestion. The spec gives behaviour for "too high" only.
-- **Drift**: a low-work day is one with less than `drift_low_hours` (default 1h) of spend; a planned break day is one whose saved plan's spend ceilings add up to less than that. The run counts back from today, today included.
+- **Drift** after Change 001: with no spend/restore, Drift needs to know which types make a "low" day. It adds up the hours of the types in `drift_energy_types` (Settings → Reflection, seeded with the old spend types); a low day is under `drift_low_hours` (default 1h) of those; a planned break day is one whose saved ceilings for those types add up to less than that. With no types chosen, the widget asks you to choose. The run counts back from today, today included. Change 001 is silent on Drift.
+- **Starting rates** (Change 001, open item 1): every type starts at 1 point per hour.
 - **Stuck work** leaves out off-board statuses (Backlog). Filter by status to include them.
 - **Band colours**: debuffs use the epic purple, buffs green, modifiers the accent blue. Red was avoided on purpose (no red-means-bad).

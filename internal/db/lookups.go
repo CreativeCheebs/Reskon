@@ -36,12 +36,14 @@ type Priority struct {
 	IsBuiltin bool    `json:"is_builtin"`
 }
 
+// EnergyType is one kind of energy. All types are equal: none is work or
+// rest, and every one earns points at its own rate.
 type EnergyType struct {
-	ID        int64   `json:"id"`
-	Name      string  `json:"name"`
-	Direction string  `json:"direction"`
-	Color     *string `json:"color"`
-	Position  int64   `json:"position"`
+	ID            int64   `json:"id"`
+	Name          string  `json:"name"`
+	Color         *string `json:"color"`
+	Position      int64   `json:"position"`
+	PointsPerHour float64 `json:"points_per_hour"`
 }
 
 type Subtype struct {
@@ -184,10 +186,10 @@ func (d *DB) ListPriorities(ctx context.Context) ([]Priority, error) {
 }
 
 func (d *DB) ListEnergyTypes(ctx context.Context) ([]EnergyType, error) {
-	return collect(ctx, d, `SELECT id, name, direction, color, position FROM energy_type
+	return collect(ctx, d, `SELECT id, name, color, position, points_per_hour FROM energy_type
 		WHERE deleted_at IS NULL ORDER BY position, id`,
 		func(r *sql.Rows) (e EnergyType, err error) {
-			err = r.Scan(&e.ID, &e.Name, &e.Direction, &e.Color, &e.Position)
+			err = r.Scan(&e.ID, &e.Name, &e.Color, &e.Position, &e.PointsPerHour)
 			return
 		})
 }
