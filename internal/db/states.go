@@ -196,3 +196,18 @@ func (d *DB) DeleteState(ctx context.Context, id int64) error {
 	}
 	return nil
 }
+
+// DecayShapes samples f(t) for each decay shape from t = 0 to 1.25 (a
+// quarter past the duration), for the picker's small curve sketches. The
+// client draws these points; it never evaluates a curve itself.
+func DecayShapes() map[string][]float64 {
+	out := map[string][]float64{}
+	for _, shape := range []string{"static", "linear", "fast", "slow"} {
+		pts := make([]float64, 26)
+		for i := range pts {
+			pts[i] = decayFactor(shape, float64(i)*0.05)
+		}
+		out[shape] = pts
+	}
+	return out
+}

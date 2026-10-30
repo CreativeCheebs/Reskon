@@ -76,3 +76,27 @@ func TestZeroedStateStaysListed(t *testing.T) {
 		t.Errorf("states on day 12 = %+v", states)
 	}
 }
+
+// Severity now differs from the entered one as the curve decays; reaching
+// zero does not clear it; past its duration it is "ended, not cleared".
+func TestStateDerivedDaysAndEnded(t *testing.T) {
+	d := openTest(t)
+	ctx := context.Background()
+	s, _ := d.CreateState(ctx, fields(t, `{"name":"Fever","kind":"debuff","severity":4,"started_on":"2026-10-01","duration_days":7,"decay":"linear"}`), "2026-10-01")
+	mid, _ := d.GetState(ctx, s.ID, "2026-10-04")
+	if mid.EffectiveSeverity == mid.Severity || !near(mid.EffectiveSeverity, 4*(1-3.0/7)) || mid.DaysRunning != 4 || mid.Ended {
+		t.Errorf("day 4 = %+v", mid)
+	}
+	late, _ := d.GetState(ctx, s.ID, "2026-10-12")
+	if late.EffectiveSeverity != 0 || !late.InForce || !late.Ended || late.DaysRunning != 12 || late.ClearedOn != nil {
+		t.Errorf("day 12 = %+v, want zero, in force, ended, not cleared", late)
+	}
+	d.PatchState(ctx, s.ID, fields(t, `{"cleared_on":"2026-10-08"}`), "2026-10-12")
+	cleared, _ := d.GetState(ctx, s.ID, "2026-10-12")
+	if cleared.InForce || cleared.Ended || cleared.DaysRunning != 7 {
+		t.Errorf("cleared = %+v, want 7 days run, not in force", cleared)
+	}
+	if shapes := DecayShapes(); shapes["fast"][0] != 1 || !near(shapes["linear"][10], 0.5) || shapes["slow"][25] != 0 {
+		t.Errorf("shapes = %v", shapes)
+	}
+}

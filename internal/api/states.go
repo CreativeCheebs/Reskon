@@ -27,4 +27,7 @@ func (s *Server) stateRoutes() {
 		},
 		delete: func(ctx context.Context, id int64, r *http.Request) error { return dbOf(ctx).DeleteState(ctx, id) },
 	})
+	s.mux.HandleFunc("GET /api/states/shapes", func(w http.ResponseWriter, r *http.Request) {
+		respond(w, db.DecayShapes(), nil)
+	})
 }

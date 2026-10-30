@@ -18,6 +18,7 @@ import { ViewIconMark } from "./icons/ViewIconMark";
 const Settings = lazy(() => import("./admin/Settings").then((m) => ({ default: m.Settings })));
 const SessionsScreen = lazy(() => import("./sessions/SessionsScreen").then((m) => ({ default: m.SessionsScreen })));
 const CycleTimeScreen = lazy(() => import("./chart/CycleTimeScreen").then((m) => ({ default: m.CycleTimeScreen })));
+const StatesScreen = lazy(() => import("./states/StatesScreen").then((m) => ({ default: m.StatesScreen })));
 const DayScreen = lazy(() => import("./day/DayScreen").then((m) => ({ default: m.DayScreen })));
 const DashboardScreen = lazy(() => import("./dashboard/DashboardScreen").then((m) => ({ default: m.DashboardScreen })));
 
@@ -30,14 +31,15 @@ type Screen =
   | { kind: "day"; date?: string }
   | { kind: "settings" }
   | { kind: "sessions" }
-  | { kind: "cycle" };
+  | { kind: "cycle" }
+  | { kind: "states" };
 
 function parseHash(): Screen | null {
   const parts = window.location.hash.replace(/^#\/?/, "").split("/");
   if (parts[0] === "view" && parts[1]) return { kind: "view", id: Number(parts[1]) };
   if (parts[0] === "day") return { kind: "day", date: parts[1] || undefined };
   if (parts[0] === "dashboard") return { kind: "dashboard", id: parts[1] ? Number(parts[1]) : undefined };
-  if (parts[0] === "settings" || parts[0] === "sessions" || parts[0] === "cycle") return { kind: parts[0] };
+  if (parts[0] === "settings" || parts[0] === "sessions" || parts[0] === "cycle" || parts[0] === "states") return { kind: parts[0] };
   return null;
 }
 
@@ -109,6 +111,7 @@ export function App() {
       children: [
         { key: "day", label: "Day" },
         { key: "dashboard", label: "Dashboards" },
+        { key: "states", label: "Buffs & debuffs" },
         { key: "sessions", label: "Sessions" },
         { key: "cycle", label: "Cycle time" },
         { key: "settings", label: "Settings" },
@@ -163,11 +166,11 @@ export function App() {
           inlineIndent={12}
           selectedKeys={[selectedKey]}
           items={menuItems}
-          style={{ borderInlineEnd: "none" }}
+          style={{ borderInlineEnd: "none", maxHeight: "calc(100vh - 100px)", overflowY: "auto" }}
           onClick={({ key }) => {
             if (key === "new-view") newView();
             else if (key.startsWith("view-")) go({ kind: "view", id: Number(key.slice(5)) });
-            else go({ kind: key as "settings" | "sessions" | "cycle" | "dashboard" | "day" });
+            else go({ kind: key as "settings" | "sessions" | "cycle" | "dashboard" | "day" | "states" });
           }}
         />
         <div
@@ -207,6 +210,7 @@ export function App() {
             {current.kind === "settings" && <Settings />}
             {current.kind === "sessions" && <SessionsScreen />}
             {current.kind === "cycle" && <CycleTimeScreen />}
+            {current.kind === "states" && <StatesScreen />}
             {current.kind === "day" && <DayScreen date={current.date} onDate={(date) => go({ kind: "day", date })} />}
             {current.kind === "dashboard" && <DashboardScreen id={current.id} onOpen={(id) => go({ kind: "dashboard", id })} />}
           </Suspense>
