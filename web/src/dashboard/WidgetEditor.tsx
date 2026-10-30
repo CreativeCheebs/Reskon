@@ -1,0 +1,344 @@
+import { useEffect, useMemo, useState } from "react";
+import { Alert, Form, Input, Modal, Radio, Select } from "antd";
+import { message } from "../theme/feedback";
+import { api } from "../api";
+import { useApp } from "../store";
+import { palette } from "../theme/palette";
+import type { TaskBrief } from "../types";
+import type { MetricCatalog, MetricDef, Viz, Widget, WidgetOptions, WidgetQuery } from "./types";
+import { TIME_GROUPS } from "./types";
+import { useMetric, VizBody } from "./WidgetFrame";
+
+// Builds a widget from the metrics catalog: only metrics, groupings, splits
+// and filters the server lists are offered, so nothing built here can be
+// refused. A live preview runs the query as it is edited.
+
+const VIZ_LABEL: Record<Viz, string> = {
+  bar: "Bars",
+  line: "Line",
+  cumulative: "Cumulative (only rises)",
+  number: "Number",
+  list: "List",
+  bands: "Bands (states across days)",
+  split_bar: "Stacked bars",
+  table: "Table",
+};
+
+const RANGE_LABEL: Record<string, string> = {
+  today: "Today",
+  "7d": "7 days",
+  "30d": "30 days",
+  "90d": "90 days",
+  "1y": "Year",
+  month: "This month",
+  all: "All",
+};
+
+const GROUP_LABEL: Record<string, string> = {
+  day: "Day",
+  week: "Week",
+  month: "Month",
+  area: "Area",
+  subtype: "Subtype",
+  energy_type: "Energy type",
+  session: "Session",
+  status: "Status",
+  task: "Task",
+  kind: "Kind",
+  name: "Name",
+  now: "Now",
+};
+
+const COLORS = ["accent", "success", "warn", "epic", "muted"];
+
+const CHART_VIZZES: Viz[] = ["bar", "line", "cumulative", "split_bar"];
+
+let catalogCache: Promise<MetricCatalog> | null = null;
+function loadCatalog() {
+  catalogCache ??= api.get<MetricCatalog>("/metrics/catalog").catch((e) => {
+    catalogCache = null;
+    throw e;
+  });
+  return catalogCache;
+}
+
+type Filters = Record<string, (string | number)[]>;
+
+function asList(v: unknown): (string | number)[] {
+  if (v === null || v === undefined) return [];
+  return Array.isArray(v) ? v : [v as string | number];
+}
+
+/** The query string for a preview: the same query a saved widget runs. */
+export function metricPath(q: WidgetQuery, viz: Viz): string {
+  const p = new URLSearchParams({ metric: q.metric });
+  if (q.group) p.set("group", q.group);
+  if (q.range) p.set("range", q.range);
+  if (q.split) p.set("split", q.split);
+  if (q.reduce) p.set("reduce", q.reduce);
+  if (viz === "cumulative") p.set("cumulative", "1");
+  for (const [k, v] of Object.entries(q.filters ?? {})) {
+    const list = asList(v);
+    if (list.length) p.set(`filters[${k}]`, list.join(","));
+  }
+  return `/metrics?${p}`;
+}
+
+export function WidgetEditor({
+  dashboardId,
+  editing,
+  onClose,
+  onSaved,
+}: {
+  dashboardId: number;
+  editing?: Widget;
+  onClose: () => void;
+  onSaved: (w: Widget) => void;
+}) {
+  const { boot, online } = useApp();
+  const [catalog, setCatalog] = useState<MetricCatalog | null>(null);
+  const [tasks, setTasks] = useState<TaskBrief[]>([]);
+  const [title, setTitle] = useState(editing?.title ?? "");
+  const [viz, setViz] = useState<Viz>(editing?.viz ?? "bar");
+  const [query, setQuery] = useState<WidgetQuery>(editing?.query ?? { metric: "work_points", group: "day", range: "30d" });
+  const [options, setOptions] = useState<WidgetOptions>(editing?.options ?? {});
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    loadCatalog().then(setCatalog).catch((e) => message.error((e as Error).message));
+  }, []);
+  const metric: MetricDef | undefined = catalog?.metrics.find((m) => m.name === query.metric);
+  useEffect(() => {
+    if (metric?.filters?.includes("task_id") && tasks.length === 0) {
+      api.get<TaskBrief[]>("/tasks?brief=1").then(setTasks).catch(() => undefined);
+    }
+  }, [metric, tasks.length]);
+
+  const filters: Filters = useMemo(() => {
+    const out: Filters = {};
+    for (const [k, v] of Object.entries(query.filters ?? {})) out[k] = asList(v);
+    return out;
+  }, [query.filters]);
+  const setFilter = (k: string, v: (string | number)[]) => {
+    const next = { ...filters, [k]: v };
+    if (!v.length) delete next[k];
+    setQuery({ ...query, filters: next });
+  };
+
+  // Changing metric keeps only what the new metric allows.
+  const pickMetric = (name: string) => {
+    const m = catalog?.metrics.find((x) => x.name === name);
+    if (!m) return;
+    const keep: Filters = {};
+    for (const [k, v] of Object.entries(filters)) if (m.filters?.includes(k)) keep[k] = v;
+    if (m.direction === "from_energy_type" && !keep.direction && !keep.energy_type) keep.direction = ["spend"];
+    setQuery({
+      metric: name,
+      group: m.groups.includes(query.group ?? "") ? query.group : m.groups[0],
+      range: query.range,
+      split: m.splits?.includes(query.split ?? "") ? query.split : null,
+      filters: keep,
+    });
+  };
+
+  const needsDirection = metric?.direction === "from_energy_type";
+  const direction = (filters.direction?.[0] as string | undefined) ?? undefined;
+  const energyOptions = boot.energy_types.filter((e) => !needsDirection || !direction || e.direction === direction);
+  const kindValues =
+    query.metric === "state_days" ? ["buff", "debuff", "modifier"] : ["task", "event"];
+
+  const previewPath = metric ? metricPath(query, viz) : null;
+  const [debounced, setDebounced] = useState(previewPath);
+  useEffect(() => {
+    const t = window.setTimeout(() => setDebounced(previewPath), 250);
+    return () => window.clearTimeout(t);
+  }, [previewPath]);
+  const preview = useMetric(debounced);
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      const body = { title: title.trim() || null, viz, query: { ...query, filters }, options };
+      const w = editing
+        ? await api.patch<Widget>(`/widgets/${editing.id}`, body)
+        : await api.post<Widget>("/widgets", { ...body, dashboard_id: dashboardId, x: 0, w: viz === "number" ? 3 : 6, h: viz === "number" ? 3 : 6 });
+      onSaved(w);
+      onClose();
+    } catch (e) {
+      message.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const item = { style: { marginBottom: 10 } };
+  return (
+    <Modal
+      open
+      width={920}
+      title={editing ? "Edit widget" : "Add widget"}
+      okText="Save"
+      onOk={save}
+      onCancel={onClose}
+      okButtonProps={{ loading: busy, disabled: !online || !metric || !!preview.error }}
+    >
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 20 }}>
+        <Form layout="vertical" size="small">
+          <Form.Item label="Title" {...item}>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={metric?.label} />
+          </Form.Item>
+          <Form.Item label="Measure" {...item} extra={metric?.description}>
+            <Select
+              value={query.metric}
+              onChange={pickMetric}
+              options={catalog?.metrics.map((m) => ({ value: m.name, label: m.label }))}
+              loading={!catalog}
+            />
+          </Form.Item>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 12px" }}>
+            <Form.Item label="Show as" {...item}>
+              <Select value={viz} onChange={setViz} options={(catalog?.vizzes ?? []).map((v) => ({ value: v, label: VIZ_LABEL[v] }))} />
+            </Form.Item>
+            <Form.Item label="Group by" {...item}>
+              <Select
+                value={query.group}
+                onChange={(group) =>
+                  setQuery({ ...query, group, split: TIME_GROUPS.concat("task").includes(group) && group !== query.split ? query.split : null })
+                }
+                options={metric?.groups.map((g) => ({ value: g, label: GROUP_LABEL[g] ?? g }))}
+              />
+            </Form.Item>
+            {metric?.ranged && (
+              <Form.Item label="Range" {...item}>
+                <Select
+                  value={query.range ?? "30d"}
+                  onChange={(range) => setQuery({ ...query, range })}
+                  options={catalog?.ranges.map((r) => ({ value: r, label: RANGE_LABEL[r] ?? r }))}
+                />
+              </Form.Item>
+            )}
+            {CHART_VIZZES.includes(viz) && (metric?.splits?.length ?? 0) > 0 && TIME_GROUPS.concat("task").includes(query.group ?? "") && (
+              <Form.Item label="Split by" {...item}>
+                <Select
+                  allowClear
+                  placeholder="No split"
+                  value={query.split ?? undefined}
+                  onChange={(split) => setQuery({ ...query, split: split ?? null })}
+                  options={metric?.splits?.filter((s) => s !== query.group).map((s) => ({ value: s, label: GROUP_LABEL[s] ?? s }))}
+                />
+              </Form.Item>
+            )}
+            {viz === "number" && (
+              <Form.Item label="Figure" {...item}>
+                <Select
+                  value={query.reduce ?? ""}
+                  onChange={(reduce) => setQuery({ ...query, reduce: reduce || undefined })}
+                  options={[
+                    { value: "", label: `Default (${metric?.reduce ?? "sum"})` },
+                    { value: "sum", label: "Total" },
+                    { value: "nonzero", label: "Days or rows with any" },
+                    { value: "max", label: "Largest" },
+                    { value: "last", label: "Latest" },
+                    { value: "count", label: "Number of rows" },
+                  ]}
+                />
+              </Form.Item>
+            )}
+            {CHART_VIZZES.includes(viz) && !query.split && (
+              <Form.Item label="Colour" {...item}>
+                <Select
+                  value={options.color ?? "accent"}
+                  onChange={(color) => setOptions({ ...options, color })}
+                  options={COLORS.map((c) => ({
+                    value: c,
+                    label: (
+                      <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
+                        <span style={{ width: 10, height: 10, borderRadius: 2, background: (palette as Record<string, string>)[c] }} />
+                        {c}
+                      </span>
+                    ),
+                  }))}
+                />
+              </Form.Item>
+            )}
+          </div>
+          {needsDirection && (
+            <Form.Item label="Direction" {...item} extra="Spend and restore are never mixed in one widget. To see both, add two.">
+              <Radio.Group
+                value={direction}
+                onChange={(e) => {
+                  const keepEnergy = (filters.energy_type ?? []).filter(
+                    (id) => boot.energy_types.find((x) => x.id === Number(id))?.direction === e.target.value,
+                  );
+                  setQuery({ ...query, filters: { ...filters, direction: [e.target.value], energy_type: keepEnergy } });
+                }}
+              >
+                <Radio.Button value="spend">Spend</Radio.Button>
+                <Radio.Button value="restore">Restore</Radio.Button>
+              </Radio.Group>
+            </Form.Item>
+          )}
+          {metric?.filters?.includes("area") && (
+            <Form.Item label="Areas" {...item}>
+              <Select mode="multiple" allowClear placeholder="All" value={filters.area?.map(Number)} onChange={(v) => setFilter("area", v)}
+                options={boot.areas.map((a) => ({ value: a.id, label: a.name }))} />
+            </Form.Item>
+          )}
+          {metric?.filters?.includes("energy_type") && (
+            <Form.Item label="Energy types" {...item}>
+              <Select mode="multiple" allowClear placeholder="All" value={filters.energy_type?.map(Number)} onChange={(v) => setFilter("energy_type", v)}
+                options={energyOptions.map((e) => ({ value: e.id, label: e.name }))} />
+            </Form.Item>
+          )}
+          {metric?.filters?.includes("subtype") && boot.subtypes.length > 0 && (
+            <Form.Item label="Subtypes" {...item}>
+              <Select mode="multiple" allowClear placeholder="All" value={filters.subtype?.map(Number)} onChange={(v) => setFilter("subtype", v)}
+                options={boot.subtypes
+                  .filter((s) => energyOptions.some((e) => e.id === s.energy_type_id))
+                  .map((s) => ({ value: s.id, label: s.name }))} />
+            </Form.Item>
+          )}
+          {metric?.filters?.includes("status") && (
+            <Form.Item label="Statuses" {...item}>
+              <Select mode="multiple" allowClear placeholder="All" value={filters.status?.map(Number)} onChange={(v) => setFilter("status", v)}
+                options={boot.statuses.map((s) => ({ value: s.id, label: s.name }))} />
+            </Form.Item>
+          )}
+          {metric?.filters?.includes("kind") && (
+            <Form.Item label="Kind" {...item}>
+              <Select mode="multiple" allowClear placeholder="All" value={filters.kind as string[] | undefined} onChange={(v) => setFilter("kind", v)}
+                options={kindValues.map((k) => ({ value: k, label: k === "task" ? "work" : k }))} />
+            </Form.Item>
+          )}
+          {metric?.filters?.includes("task_id") && (
+            <Form.Item label="Tasks" {...item}>
+              <Select mode="multiple" allowClear showSearch optionFilterProp="label" placeholder="All" value={filters.task_id?.map(Number)}
+                onChange={(v) => setFilter("task_id", v)} options={tasks.map((t) => ({ value: t.id, label: t.title }))} />
+            </Form.Item>
+          )}
+        </Form>
+        <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+          <div style={{ color: palette.subtle, fontSize: 12, marginBottom: 6 }}>Preview</div>
+          <div
+            style={{
+              height: 300,
+              display: "flex",
+              flexDirection: "column",
+              background: palette.panel,
+              border: `1px solid ${palette.border}`,
+              borderRadius: 8,
+              padding: "8px 12px",
+            }}
+          >
+            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>{title || metric?.label}</div>
+            {preview.error ? (
+              <Alert type="warning" showIcon message={preview.error} />
+            ) : preview.res ? (
+              <VizBody widget={{ viz, options }} res={preview.res} />
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </Modal>
+  );
+}

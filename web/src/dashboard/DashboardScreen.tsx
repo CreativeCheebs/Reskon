@@ -1,22 +1,44 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, Empty, Segmented, Spin } from "antd";
+import { Button, Empty, Input, Popconfirm, Segmented, Spin, Tooltip } from "antd";
+import { CheckOutlined, DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
 import GridLayout, { WidthProvider, type Layout } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 import { message } from "../theme/feedback";
 import { api } from "../api";
 import { useApp } from "../store";
+import { WriteButton } from "../offline";
+import { palette } from "../theme/palette";
 import type { Dashboard, Widget } from "./types";
 import { WidgetFrame } from "./WidgetFrame";
+import { WidgetEditor } from "./WidgetEditor";
 
 // Dashboards: a 12-column grid of widgets (40px rows, 8px margins). View
-// only unless edit mode is on, so reading never drags a widget by accident.
+// only by default, so reading never drags a widget by accident; edit mode
+// is a toggle. Positions save once, on drop. Under 768px the same widgets
+// stack in one column in their saved order, with no editing at all.
 
 const Grid = WidthProvider(GridLayout);
+const MOBILE_PX = 768;
+
+function useNarrowWindow() {
+  const [narrow, setNarrow] = useState(() => window.innerWidth < MOBILE_PX);
+  useEffect(() => {
+    const on = () => setNarrow(window.innerWidth < MOBILE_PX);
+    window.addEventListener("resize", on);
+    return () => window.removeEventListener("resize", on);
+  }, []);
+  return narrow;
+}
 
 export function DashboardScreen({ id, onOpen }: { id?: number; onOpen: (id: number) => void }) {
   const { reloadKey } = useApp();
+  const narrow = useNarrowWindow();
   const [dashboards, setDashboards] = useState<Dashboard[] | null>(null);
+  const [editMode, setEditMode] = useState(false);
+  const [editor, setEditor] = useState<{ widget?: Widget } | null>(null);
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const editing = editMode && !narrow;
 
   const load = useCallback(async () => {
     try {
@@ -30,50 +52,205 @@ export function DashboardScreen({ id, onOpen }: { id?: number; onOpen: (id: numb
   }, [load, reloadKey]);
 
   const current = dashboards?.find((d) => d.id === id) ?? dashboards?.[0];
+  const replace = (d: Dashboard) => setDashboards((all) => all?.map((x) => (x.id === d.id ? d : x)) ?? all);
+  const replaceWidget = (w: Widget) =>
+    setDashboards((all) =>
+      all?.map((d) =>
+        d.id !== w.dashboard_id
+          ? d
+          : { ...d, widgets: d.widgets.some((x) => x.id === w.id) ? d.widgets.map((x) => (x.id === w.id ? w : x)) : [...d.widgets, w] },
+      ) ?? all,
+    );
+
+  const run = async (fn: () => Promise<void>) => {
+    try {
+      await fn();
+    } catch (e) {
+      message.error((e as Error).message);
+    }
+  };
+  const newDashboard = () =>
+    run(async () => {
+      const d = await api.post<Dashboard>("/dashboards", { name: "New dashboard" });
+      setDashboards((all) => [...(all ?? []), d]);
+      onOpen(d.id);
+      setEditMode(true);
+      setRenaming(d.name);
+    });
+  const rename = (name: string) =>
+    run(async () => {
+      setRenaming(null);
+      if (!current || !name.trim() || name === current.name) return;
+      replace(await api.patch<Dashboard>(`/dashboards/${current.id}`, { name: name.trim() }));
+    });
+  const deleteDashboard = () =>
+    run(async () => {
+      if (!current) return;
+      await api.del(`/dashboards/${current.id}`);
+      const rest = (dashboards ?? []).filter((d) => d.id !== current.id);
+      setDashboards(rest);
+      if (rest[0]) onOpen(rest[0].id);
+    });
+  const deleteWidget = (w: Widget) =>
+    run(async () => {
+      await api.del(`/widgets/${w.id}`);
+      setDashboards((all) => all?.map((d) => (d.id === w.dashboard_id ? { ...d, widgets: d.widgets.filter((x) => x.id !== w.id) } : d)) ?? all);
+    });
+  const saveLayout = (layout: Layout[]) =>
+    run(async () => {
+      if (!current) return;
+      const before = new Map(current.widgets.map((w) => [String(w.id), w]));
+      const changed = layout.some((l) => {
+        const w = before.get(l.i);
+        return w && (w.x !== l.x || w.y !== l.y || w.w !== l.w || w.h !== l.h);
+      });
+      if (!changed) return;
+      const items = layout.map((l) => ({ id: Number(l.i), x: l.x, y: l.y, w: l.w, h: l.h }));
+      replace(await api.patch<Dashboard>(`/dashboards/${current.id}/layout`, { items }));
+    });
 
   if (!dashboards) return <Spin style={{ margin: 40 }} />;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10, minHeight: 0 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-        <Segmented
-          value={current?.id}
-          onChange={(v) => onOpen(Number(v))}
-          options={dashboards.map((d) => ({ value: d.id, label: d.name }))}
-        />
+        {editing && renaming !== null ? (
+          <Input
+            autoFocus
+            size="small"
+            style={{ width: 220 }}
+            value={renaming}
+            onChange={(e) => setRenaming(e.target.value)}
+            onPressEnter={() => rename(renaming)}
+            onBlur={() => rename(renaming)}
+          />
+        ) : (
+          <Segmented
+            value={current?.id}
+            onChange={(v) => onOpen(Number(v))}
+            options={dashboards.map((d) => ({ value: d.id, label: d.name }))}
+            style={{ maxWidth: "100%", overflowX: "auto" }}
+          />
+        )}
+        <span style={{ flex: 1 }} />
+        {editing && current && (
+          <>
+            <WriteButton size="small" icon={<PlusOutlined />} onClick={() => setEditor({})}>
+              Add widget
+            </WriteButton>
+            <WriteButton size="small" onClick={() => setRenaming(current.name)}>
+              Rename
+            </WriteButton>
+            <Popconfirm title={`Delete "${current.name}"?`} description="Its widgets go with it." onConfirm={deleteDashboard} okText="Delete">
+              <WriteButton size="small" icon={<DeleteOutlined />} />
+            </Popconfirm>
+            <WriteButton size="small" onClick={newDashboard}>
+              New dashboard
+            </WriteButton>
+          </>
+        )}
+        {!narrow && (
+          <Tooltip title={editing ? undefined : "Move, resize, add and remove widgets"}>
+            <Button size="small" type={editing ? "primary" : "default"} icon={editing ? <CheckOutlined /> : <EditOutlined />} onClick={() => setEditMode(!editMode)}>
+              {editing ? "Done" : "Edit"}
+            </Button>
+          </Tooltip>
+        )}
       </div>
       {!current ? (
-        <Alert type="info" message="No dashboards." />
+        <Empty description="No dashboards.">
+          <WriteButton onClick={newDashboard}>New dashboard</WriteButton>
+        </Empty>
+      ) : current.widgets.length === 0 ? (
+        <Empty description="This dashboard has no widgets yet.">
+          {!narrow && (
+            <WriteButton
+              onClick={() => {
+                setEditMode(true);
+                setEditor({});
+              }}
+            >
+              Add widget
+            </WriteButton>
+          )}
+        </Empty>
+      ) : narrow ? (
+        <Stack dashboard={current} />
       ) : (
-        <DashboardGrid key={current.id} dashboard={current} />
+        <DashboardGrid
+          key={current.id}
+          dashboard={current}
+          editing={editing}
+          onLayout={saveLayout}
+          onEdit={(widget) => setEditor({ widget })}
+          onDelete={deleteWidget}
+        />
+      )}
+      {editor && current && (
+        <WidgetEditor dashboardId={current.id} editing={editor.widget} onClose={() => setEditor(null)} onSaved={replaceWidget} />
       )}
     </div>
   );
 }
 
-function DashboardGrid({ dashboard }: { dashboard: Dashboard }) {
+function DashboardGrid({
+  dashboard,
+  editing,
+  onLayout,
+  onEdit,
+  onDelete,
+}: {
+  dashboard: Dashboard;
+  editing: boolean;
+  onLayout: (l: Layout[]) => void;
+  onEdit: (w: Widget) => void;
+  onDelete: (w: Widget) => void;
+}) {
   const layout: Layout[] = useMemo(
     () => dashboard.widgets.map((w) => ({ i: String(w.id), x: w.x, y: w.y, w: w.w, h: w.h, minW: 2, minH: 2 })),
     [dashboard.widgets],
   );
   const byId = useMemo(() => new Map<string, Widget>(dashboard.widgets.map((w) => [String(w.id), w])), [dashboard.widgets]);
-  if (dashboard.widgets.length === 0) return <Empty description="This dashboard has no widgets yet." />;
   return (
-    <Grid
-      className="jb-dashboard"
-      layout={layout}
-      cols={12}
-      rowHeight={40}
-      margin={[8, 8]}
-      containerPadding={[0, 0]}
-      isDraggable={false}
-      isResizable={false}
-      compactType="vertical"
-    >
-      {layout.map((l) => (
-        <div key={l.i}>
-          <WidgetFrame widget={byId.get(l.i)!} editing={false} />
+    <>
+      <style>{`
+        .jb-dashboard .react-grid-item.react-grid-placeholder { background: ${palette.accent}; opacity: 0.15; border-radius: 8px; }
+        .jb-dashboard .react-grid-item > .react-resizable-handle::after { border-color: ${palette.subtle}; }
+      `}</style>
+      <Grid
+        className="jb-dashboard"
+        layout={layout}
+        cols={12}
+        rowHeight={40}
+        margin={[8, 8]}
+        containerPadding={[0, 0]}
+        isDraggable={editing}
+        isResizable={editing}
+        resizeHandles={["se"]}
+        draggableCancel=".no-drag"
+        compactType="vertical"
+        onDragStop={onLayout}
+        onResizeStop={onLayout}
+      >
+        {layout.map((l) => (
+          <div key={l.i}>
+            <WidgetFrame widget={byId.get(l.i)!} editing={editing} onEdit={onEdit} onDelete={onDelete} />
+          </div>
+        ))}
+      </Grid>
+    </>
+  );
+}
+
+/** Phones: one column, saved order, each widget at a height its kind suits. */
+function Stack({ dashboard }: { dashboard: Dashboard }) {
+  const widgets = [...dashboard.widgets].sort((a, b) => a.position - b.position);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {widgets.map((w) => (
+        <div key={w.id} style={{ height: w.viz === "number" ? 130 : w.viz === "bands" ? Math.max(130, w.h * 48) : 300 }}>
+          <WidgetFrame widget={w} editing={false} />
         </div>
       ))}
-    </Grid>
+    </div>
   );
 }

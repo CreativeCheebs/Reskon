@@ -131,10 +131,23 @@ export function App() {
   return (
     <EpicsProvider>
     <Layout style={{ height: "100vh" }}>
+      {/* Under 768px the sidebar folds away behind a tab, so phones get the
+          full width (dashboards stack in one column there). */}
       <Layout.Sider
         width={200}
-        style={{ borderRight: `1px solid ${palette.border}`, position: "relative" }}
+        breakpoint="md"
+        collapsedWidth={0}
+        zeroWidthTriggerStyle={{ top: 6, zIndex: 20 }}
+        className="jb-sider"
+        style={{ borderRight: `1px solid ${palette.border}`, position: "relative", zIndex: 10 }}
       >
+        <style>{`
+          .jb-sider .ant-layout-sider-children { overflow: hidden; }
+          @media (max-width: 767px) {
+            .jb-sider { position: fixed !important; top: 0; bottom: 0; left: 0; }
+            .jb-content { padding-top: 46px !important; }
+          }
+        `}</style>
         <div style={{ padding: "12px 12px 8px 20px", display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ flex: 1, fontWeight: 700, letterSpacing: 0.3 }}>JitterBug</span>
           <CaptureButton />
@@ -182,7 +195,7 @@ export function App() {
             message="Offline — showing the last loaded data. Changes are disabled until the server is reachable."
           />
         )}
-        <Layout.Content style={{ padding: 14, overflow: "auto", display: "flex", flexDirection: "column" }}>
+        <Layout.Content className="jb-content" style={{ padding: 14, overflow: "auto", display: "flex", flexDirection: "column" }}>
           {view && <ViewScreen key={view.id} view={view} />}
           {current.kind === "view" && !view && <Alert type="info" message="That view no longer exists." />}
           <Suspense fallback={<Spin style={{ margin: 40 }} />}>
