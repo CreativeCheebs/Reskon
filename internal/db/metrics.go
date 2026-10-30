@@ -30,6 +30,7 @@ type MetricQuery struct {
 	Split      string              `json:"split"`
 	Reduce     string              `json:"reduce"`     // sum, nonzero, max, last, count
 	Cumulative bool                `json:"cumulative"` // running total over time
+	Share      bool                `json:"share"`      // also give each value's part of its whole
 }
 
 // MetricPoint is one value. Key is a date (day), the week's first day
@@ -40,6 +41,11 @@ type MetricPoint struct {
 	Value  float64 `json:"value"`
 	Split  string  `json:"split,omitempty"`
 	Detail string  `json:"detail,omitempty"`
+	// Share is Value's part of its whole (0..1), on share queries only: of
+	// its group key's total across splits, or with no split, of every key
+	// together. It is a part of the sum of all types, never one type
+	// divided by another.
+	Share *float64 `json:"share,omitempty"`
 }
 
 // MetricSeries names one split value, in display order. Total is that
@@ -55,17 +61,18 @@ type MetricSeries struct {
 // MetricResult is the response. Points is never null: an empty range
 // returns [].
 type MetricResult struct {
-	Metric    string         `json:"metric"`
-	Unit      string         `json:"unit"`
-	Group     string         `json:"group"`
-	From      string         `json:"from"`
-	To        string         `json:"to"`
-	Points    []MetricPoint  `json:"points"`
-	Series    []MetricSeries `json:"series"`
-	Reduce    string         `json:"reduce"`
-	Total     float64        `json:"total"` // the points reduced to one figure
-	Spans     []StateSpan    `json:"spans,omitempty"`
-	Meta      map[string]any `json:"meta,omitempty"`
+	Metric     string         `json:"metric"`
+	Unit       string         `json:"unit"`
+	Group      string         `json:"group"`
+	From       string         `json:"from"`
+	To         string         `json:"to"`
+	Points     []MetricPoint  `json:"points"`
+	Series     []MetricSeries `json:"series"`
+	Reduce     string         `json:"reduce"`
+	Cumulative bool           `json:"cumulative,omitempty"` // points are running totals
+	Total      float64        `json:"total"`                // the points reduced to one figure
+	Spans      []StateSpan    `json:"spans,omitempty"`
+	Meta       map[string]any `json:"meta,omitempty"`
 }
 
 // StateSpan is one state drawn as a single span across the days it was in
@@ -115,7 +122,7 @@ type MetricCatalog struct {
 }
 
 // WidgetVizzes are the visualisations a widget may use.
-var WidgetVizzes = []string{"bar", "line", "cumulative", "number", "list", "bands", "split_bar", "small_multiples", "table"}
+var WidgetVizzes = []string{"bar", "line", "cumulative", "number", "list", "bands", "split_bar", "small_multiples", "table", "pie", "share_bar"}
 
 var metricRanges = []string{"today", "7d", "30d", "90d", "1y", "month", "all"}
 var metricReduces = []string{"sum", "nonzero", "max", "last", "count"}

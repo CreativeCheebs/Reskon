@@ -122,12 +122,14 @@ func TestMigrations005And006PointsBackfillAndDashboards(t *testing.T) {
 		t.Errorf("dashboards = %d, with widgets = %d; want 3 and 3", dashboards, widgets)
 	}
 	// No live widget still uses work_points or a direction filter, and the
-	// new all-types widgets are there.
-	var stale, multiples int
+	// new all-types widgets are there (two from 006, two running totals
+	// from 007, which replace the single points running total).
+	var stale, multiples, onePointsTotal int
 	d.QueryRow(`SELECT COUNT(*) FROM widget WHERE deleted_at IS NULL AND (query LIKE '%work_points%' OR query LIKE '%direction%')`).Scan(&stale)
 	d.QueryRow(`SELECT COUNT(*) FROM widget WHERE deleted_at IS NULL AND viz = 'small_multiples'`).Scan(&multiples)
-	if stale != 0 || multiples != 2 {
-		t.Errorf("stale widgets = %d, small multiples = %d; want 0 and 2", stale, multiples)
+	d.QueryRow(`SELECT COUNT(*) FROM widget WHERE deleted_at IS NULL AND viz = 'cumulative'`).Scan(&onePointsTotal)
+	if stale != 0 || multiples != 4 || onePointsTotal != 0 {
+		t.Errorf("stale widgets = %d, small multiples = %d, cumulative = %d; want 0, 4 and 0", stale, multiples, onePointsTotal)
 	}
 	var drift string
 	d.QueryRow(`SELECT value FROM setting WHERE key = 'drift_energy_types'`).Scan(&drift)

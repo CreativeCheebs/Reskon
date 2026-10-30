@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Area, AreaChart, Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { palette } from "../../theme/palette";
 import { formatValue, keyLabel, seriesColors } from "../format";
 import type { MetricResult } from "../types";
@@ -10,6 +10,7 @@ import type { MetricResult } from "../types";
 // admin; every chart shares the same range and x-axis, so days line up.
 // Series are never added together here: each shows its own total, which
 // the server reduced. Narrow, each type falls back to its own number.
+// With running totals (from the server), each chart is a rising area.
 
 const CELL_MIN = 220; // px; the grid wraps to one column below two of these
 const CELL_HEIGHT = 120;
@@ -44,6 +45,7 @@ export function SmallMultiplesViz({ res, narrow }: { res: MetricResult; narrow: 
   }
 
   const tick = { fill: palette.subtle, fontSize: 10 };
+  const Chart = res.cumulative ? AreaChart : BarChart;
   return (
     <div style={{ display: "grid", gridTemplateColumns: `repeat(auto-fill, minmax(${CELL_MIN}px, 1fr))`, gap: "10px 14px" }}>
       {res.series.map((s, i) => (
@@ -60,7 +62,7 @@ export function SmallMultiplesViz({ res, narrow }: { res: MetricResult; narrow: 
           </div>
           <div style={{ height: CELL_HEIGHT }}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={bySeries.get(s.key)} margin={{ top: 4, right: 4, bottom: 0, left: -14 }}>
+              <Chart data={bySeries.get(s.key)} margin={{ top: 4, right: 4, bottom: 0, left: -14 }}>
                 <XAxis dataKey="name" tick={tick} tickLine={false} axisLine={{ stroke: palette.border }} minTickGap={16} />
                 <YAxis
                   tick={tick}
@@ -73,15 +75,19 @@ export function SmallMultiplesViz({ res, narrow }: { res: MetricResult; narrow: 
                   tickFormatter={(v: number) => formatValue(v, res.unit, res.metric)}
                 />
                 <Tooltip
-                  cursor={{ fill: palette.hover }}
+                  cursor={res.cumulative ? { stroke: palette.borderStrong } : { fill: palette.hover }}
                   contentStyle={{ background: palette.overlay, border: `1px solid ${palette.border}`, borderRadius: 6, fontSize: 12 }}
                   labelStyle={{ color: palette.fg }}
                   itemStyle={{ color: palette.muted }}
                   labelFormatter={(_, payload) => (payload?.[0]?.payload as { long?: string } | undefined)?.long ?? ""}
                   formatter={(v: number) => [formatValue(v, res.unit, res.metric), s.label]}
                 />
-                <Bar dataKey="value" fill={colors[i]} maxBarSize={24} radius={[2, 2, 0, 0]} isAnimationActive={false} />
-              </BarChart>
+                {res.cumulative ? (
+                  <Area dataKey="value" stroke={colors[i]} fill={colors[i]} fillOpacity={0.18} strokeWidth={2} isAnimationActive={false} />
+                ) : (
+                  <Bar dataKey="value" fill={colors[i]} maxBarSize={24} radius={[2, 2, 0, 0]} isAnimationActive={false} />
+                )}
+              </Chart>
             </ResponsiveContainer>
           </div>
         </div>

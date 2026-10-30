@@ -1,7 +1,7 @@
 // Shapes of the dashboards and metrics API. Every number in a widget comes
 // from GET /api/metrics; widgets only draw it.
 
-export type Viz = "bar" | "line" | "cumulative" | "number" | "list" | "bands" | "split_bar" | "small_multiples" | "table";
+export type Viz = "bar" | "line" | "cumulative" | "number" | "list" | "bands" | "split_bar" | "small_multiples" | "table" | "pie" | "share_bar";
 
 export interface WidgetQuery {
   metric: string;
@@ -12,6 +12,8 @@ export interface WidgetQuery {
   filters?: Record<string, string | number | (string | number)[]>;
   split?: string | null;
   reduce?: string;
+  /** Small multiples: running totals, one per series. */
+  cumulative?: boolean;
 }
 
 export interface WidgetOptions {
@@ -49,6 +51,8 @@ export interface MetricPoint {
   value: number;
   split?: string;
   detail?: string;
+  /** Pies and share bars: this value's part of its whole (0..1), from the server. */
+  share?: number;
 }
 
 export interface MetricSeries {
@@ -81,6 +85,8 @@ export interface MetricResult {
   series: MetricSeries[];
   reduce: string;
   total: number;
+  /** Points are running totals. */
+  cumulative?: boolean;
   spans?: StateSpan[];
   meta?: Record<string, unknown>;
 }
@@ -118,4 +124,12 @@ export const MIN_WIDTH: Record<Viz, number> = {
   table: 260,
   list: 0,
   number: 0,
+  pie: 0,
+  share_bar: 320,
 };
+
+/** Dates the dashboard's picker runs every widget over, instead of each widget's own range. */
+export interface DateOverride {
+  from: string;
+  to: string;
+}

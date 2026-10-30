@@ -21,6 +21,11 @@ export function formatValue(v: number, unit: string, metric = ""): string {
   }
 }
 
+/** A share from the server (0..1) as a whole percent. */
+export function formatShare(share: number | undefined): string {
+  return share === undefined ? "" : `${Math.round(share * 100)}%`;
+}
+
 const round = (v: number) => (Number.isInteger(v) ? v : Number(v.toFixed(1)));
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];

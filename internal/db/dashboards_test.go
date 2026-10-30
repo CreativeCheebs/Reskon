@@ -36,7 +36,7 @@ func TestDefaultDashboardsAndLayout(t *testing.T) {
 	// grid's reading order.
 	month := all[1]
 	a, b := month.Widgets[0], month.Widgets[1]
-	got, err := d.SaveLayout(ctx, month.ID, []LayoutItem{{ID: a.ID, X: 0, Y: 60, W: 6, H: 3}, {ID: b.ID, X: 0, Y: 0, W: 12, H: 4}})
+	got, err := d.SaveLayout(ctx, month.ID, []LayoutItem{{ID: a.ID, X: 0, Y: 600, W: 6, H: 3}, {ID: b.ID, X: 0, Y: 0, W: 12, H: 4}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +55,7 @@ func TestDefaultDashboardsAndLayout(t *testing.T) {
 		t.Errorf("valid widget refused: %v", err)
 	}
 	for _, bad := range []string{
-		`{"dashboard_id":1,"viz":"pie","query":{"metric":"points"}}`,
+		`{"dashboard_id":1,"viz":"donut","query":{"metric":"points"}}`,
 		`{"dashboard_id":1,"viz":"bar","query":{"metric":"balance"}}`,
 		`{"dashboard_id":1,"viz":"bar","query":{"metric":"points","group":"status"}}`,
 		`{"dashboard_id":1,"viz":"bar","query":{"metric":"points","filters":{"status":"Done"}}}`,

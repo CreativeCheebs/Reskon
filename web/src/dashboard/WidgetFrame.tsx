@@ -4,15 +4,17 @@ import { DeleteOutlined, EditOutlined, HolderOutlined, ReloadOutlined } from "@a
 import { api } from "../api";
 import { useApp } from "../store";
 import { palette } from "../theme/palette";
-import { MIN_WIDTH, type MetricResult, type Widget } from "./types";
+import { MIN_WIDTH, type DateOverride, type MetricResult, type Widget } from "./types";
 import { Chart } from "./viz/Charts";
 import { ListViz, NumberViz, TableViz } from "./viz/Simple";
 import { BandsViz } from "./viz/Bands";
 import { SmallMultiplesViz } from "./viz/SmallMultiples";
+import { PieViz } from "./viz/Pie";
 
 // One widget: fetches its metric on mount (and on refresh, never by
 // polling) by widget id, then hands the result to its viz. Narrower than
 // the viz's minimum width, it shows the number instead of a squashed chart.
+// With the dashboard's date picker set, the server runs it over those dates.
 
 /** Fetches path on mount, on reconnect, and when dep changes. */
 export function useMetric(path: string | null, dep = "") {
@@ -59,11 +61,13 @@ export function VizBody({ widget, res }: { widget: Pick<Widget, "viz" | "options
   // Small multiples fall back per type, never to one summed number.
   const viz = narrow && widget.viz !== "small_multiples" ? "number" : widget.viz;
   const empty = res.points.length === 0 && viz !== "number" && viz !== "bands";
-  const scrolls = viz === "list" || viz === "table" || viz === "small_multiples";
+  const scrolls = viz === "list" || viz === "table" || viz === "small_multiples" || viz === "pie";
   return (
     <div ref={ref} style={{ flex: 1, minHeight: 0, overflow: scrolls ? "auto" : "hidden" }}>
       {empty ? (
         <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Nothing in this range" style={{ margin: "8px 0" }} />
+      ) : viz === "pie" ? (
+        <PieViz res={res} />
       ) : viz === "small_multiples" ? (
         <SmallMultiplesViz res={res} narrow={narrow} />
       ) : viz === "number" ? (
@@ -84,18 +88,21 @@ export function VizBody({ widget, res }: { widget: Pick<Widget, "viz" | "options
 export const WidgetFrame = memo(function WidgetFrame({
   widget,
   editing,
+  dates,
   onEdit,
   onDelete,
 }: {
   widget: Widget;
   editing: boolean;
+  dates?: DateOverride | null;
   onEdit?: (w: Widget) => void;
   onDelete?: (w: Widget) => void;
 }) {
   const { online } = useApp();
   // The path carries only the widget's id, so a saved change to its query
   // refetches through dep.
-  const { res, error, loading, reload } = useMetric(`/metrics?widget=${widget.id}`, JSON.stringify(widget.query));
+  const over = dates ? `&from=${dates.from}&to=${dates.to}` : "";
+  const { res, error, loading, reload } = useMetric(`/metrics?widget=${widget.id}${over}`, JSON.stringify(widget.query));
 
   return (
     <div

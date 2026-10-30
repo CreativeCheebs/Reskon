@@ -14,11 +14,13 @@ import {
   YAxis,
 } from "recharts";
 import { palette } from "../../theme/palette";
-import { formatValue, keyLabel, optionColor, seriesColors } from "../format";
+import { formatShare, formatValue, keyLabel, optionColor, seriesColors } from "../format";
 import type { MetricResult, Viz, WidgetOptions } from "../types";
 
-// bar, line, cumulative and split_bar, drawn with Recharts. Values and
-// running totals come from the server; this only lays them out.
+// bar, line, cumulative, split_bar and share_bar, drawn with Recharts.
+// Values, running totals and shares come from the server; this only lays
+// them out. A share bar stacks each key's shares to 100%, and its tooltip
+// gives the value beside the share.
 
 interface Row {
   key: string;
@@ -29,6 +31,7 @@ interface Row {
 
 export function Chart({ res, viz, options }: { res: MetricResult; viz: Viz; options: WidgetOptions }) {
   const split = res.series.length > 0;
+  const share = viz === "share_bar";
   const { rows, keys, colors, names } = useMemo(() => {
     const byKey = new Map<string, Row>();
     for (const p of res.points) {
@@ -37,13 +40,15 @@ export function Chart({ res, viz, options }: { res: MetricResult; viz: Viz; opti
         row = { key: p.key, name: keyLabel(res, p.key, p.label), long: keyLabel(res, p.key, p.label, true) };
         byKey.set(p.key, row);
       }
-      row[split ? `s:${p.split}` : "value"] = p.value;
+      const k = split ? `s:${p.split}` : "value";
+      row[k] = share ? (p.share ?? 0) * 100 : p.value;
+      row[`raw:${k}`] = p.value;
     }
     const keys = split ? res.series.map((s) => `s:${s.key}`) : ["value"];
     const colors = split ? seriesColors(res.series) : [optionColor(options.color)];
     const names = split ? res.series.map((s) => s.label) : [res.metric];
     return { rows: [...byKey.values()], keys, colors, names };
-  }, [res, split, options.color]);
+  }, [res, split, share, options.color]);
 
   const axis = options.show_axis !== false;
   const tick = { fill: palette.subtle, fontSize: 11 };
@@ -55,14 +60,27 @@ export function Chart({ res, viz, options }: { res: MetricResult; viz: Viz; opti
     <>
       <CartesianGrid stroke={palette.border} strokeDasharray="2 4" vertical={false} />
       <XAxis dataKey="name" hide={!axis} tick={tick} tickLine={false} axisLine={{ stroke: palette.border }} minTickGap={12} />
-      <YAxis hide={!axis} tick={tick} tickLine={false} axisLine={false} width={44} tickFormatter={(v: number) => formatValue(v, res.unit, res.metric)} />
+      <YAxis
+        hide={!axis}
+        tick={tick}
+        tickLine={false}
+        axisLine={false}
+        width={44}
+        domain={share ? [0, 100] : undefined}
+        ticks={share ? [0, 25, 50, 75, 100] : undefined}
+        tickFormatter={(v: number) => (share ? `${v}%` : formatValue(v, res.unit, res.metric))}
+      />
       <Tooltip
         cursor={{ fill: palette.hover, stroke: palette.borderStrong }}
         contentStyle={{ background: palette.overlay, border: `1px solid ${palette.border}`, borderRadius: 6, fontSize: 12 }}
         labelStyle={{ color: palette.fg }}
         itemStyle={{ color: palette.muted }}
         labelFormatter={(_, payload) => (payload?.[0]?.payload as Row | undefined)?.long ?? ""}
-        formatter={(v: number, key: string) => [formatValue(v, res.unit, res.metric), split ? names[keys.indexOf(key)] : undefined]}
+        formatter={(v: number, key: string, item: { payload?: Row }) => {
+          const raw = item?.payload?.[`raw:${key}`] as number | undefined;
+          const shown = share ? `${formatShare(v / 100)} · ${formatValue(raw ?? 0, res.unit, res.metric)}` : formatValue(v, res.unit, res.metric);
+          return [shown, split ? names[keys.indexOf(key)] : undefined];
+        }}
       />
       {split && <Legend wrapperStyle={{ fontSize: 11, color: palette.muted }} formatter={(key: string) => names[keys.indexOf(key)]} />}
     </>

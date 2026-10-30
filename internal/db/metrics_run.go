@@ -211,7 +211,7 @@ func (r *metricRun) finish() *MetricResult {
 	out := &MetricResult{
 		Metric: r.def.Name, Unit: r.def.Unit, Group: r.q.Group,
 		From: r.from, To: r.to, Points: []MetricPoint{}, Series: []MetricSeries{},
-		Spans: r.spans, Meta: r.meta, Reduce: r.q.Reduce,
+		Spans: r.spans, Meta: r.meta, Reduce: r.q.Reduce, Cumulative: r.q.Cumulative,
 	}
 	if out.Reduce == "" {
 		out.Reduce = r.def.Reduce
@@ -277,6 +277,10 @@ func (r *metricRun) finish() *MetricResult {
 		out.Series[i].Total = reduce(out.Reduce, keys, own)
 	}
 
+	var whole float64 // every key together, for shares without a split
+	for _, k := range keys {
+		whole += totals[k]
+	}
 	running := map[string]float64{}
 	for _, k := range keys {
 		label := r.labels[k]
@@ -289,7 +293,19 @@ func (r *metricRun) finish() *MetricResult {
 				running[s] += v
 				v = running[s]
 			}
-			out.Points = append(out.Points, MetricPoint{Key: k, Label: label, Value: v, Split: s, Detail: r.details[k]})
+			p := MetricPoint{Key: k, Label: label, Value: v, Split: s, Detail: r.details[k]}
+			if r.q.Share && !r.q.Cumulative {
+				of := whole
+				if r.q.Split != "" {
+					of = totals[k]
+				}
+				share := 0.0
+				if of > 0 {
+					share = v / of
+				}
+				p.Share = &share
+			}
+			out.Points = append(out.Points, p)
 		}
 	}
 	return out

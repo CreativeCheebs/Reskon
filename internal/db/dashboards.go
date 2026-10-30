@@ -307,7 +307,10 @@ func (d *DB) WidgetQuery(ctx context.Context, id int64) (MetricQuery, error) {
 		return MetricQuery{}, err
 	}
 	q, err := ParseWidgetQuery(w.Query)
-	// A cumulative widget shows running totals, summed here, not in the client.
-	q.Cumulative = w.Viz == "cumulative"
+	// A cumulative widget shows running totals, summed here, not in the
+	// client; small multiples may ask for them in the query. Pies and share
+	// bars get each value's part of its whole, also from here.
+	q.Cumulative = q.Cumulative || w.Viz == "cumulative"
+	q.Share = w.Viz == "pie" || w.Viz == "share_bar"
 	return q, err
 }

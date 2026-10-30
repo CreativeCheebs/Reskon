@@ -29,3 +29,26 @@ func TestMetricsSplitByEveryTypeOverHTTP(t *testing.T) {
 		t.Errorf("unknown metric = %d, want 400", code)
 	}
 }
+
+// The dashboard's date picker runs a saved widget over other dates.
+func TestWidgetMetricOverDatesOverHTTP(t *testing.T) {
+	srv := newServer(t)
+	c := newClient(t, srv)
+	if code := c.do("POST", "/api/auth/setup", m{"username": "alice", "password": "long enough password"}, nil); code != 200 {
+		t.Fatalf("setup = %d", code)
+	}
+	var w struct{ ID int64 }
+	if code := c.do("POST", "/api/widgets", m{"dashboard_id": 1, "viz": "pie", "query": m{"metric": "session_hours", "group": "energy_type", "range": "today"}}, &w); code != 200 && code != 201 {
+		t.Fatalf("create widget = %d", code)
+	}
+	var res struct{ From, To string }
+	if code := c.do("GET", "/api/metrics?widget="+itoa(w.ID)+"&from=2026-03-01&to=2026-03-07", nil, &res); code != 200 {
+		t.Fatalf("widget over dates = %d", code)
+	}
+	if res.From != "2026-03-01" || res.To != "2026-03-07" {
+		t.Errorf("widget ran %s..%s, want the picked dates", res.From, res.To)
+	}
+	if code := c.do("GET", "/api/metrics?widget="+itoa(w.ID)+"&from=2026-03-07&to=2026-03-01", nil, nil); code != 400 {
+		t.Errorf("dates backwards = %d, want 400", code)
+	}
+}

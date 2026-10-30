@@ -78,3 +78,10 @@ No schema change. Remaps `task.difficulty` and `session.difficulty` from 1/2/4/8
 | `day_plan.ceiling_feedbacks` (JSON, default `{}`) | `{"<energy_type_id>": "about_right" \| "too_high" \| "too_low"}`: the evening question, per type that had a ceiling. A day's old single answer is copied to each type it had a ceiling for. `day_plan.ceiling_feedback` is no longer read. |
 | setting `drift_energy_types` (JSON list of ids) | The types whose hours Drift adds up. Seeded with the old spend types. |
 | widgets | `work_points` → `points` and the `direction` filter removed in every saved query. The built-in dashboards' widgets are soft-deleted and replaced with Change 001's layout; your own dashboards are not touched. |
+
+### Migration 007 (dashboard shares and running totals)
+
+| Change | Purpose |
+| --- | --- |
+| widget `viz` | Two more: `pie` (each group value's share of the whole) and `share_bar` (each day, week or month stacked to 100% by its split). A widget query may carry `"cumulative": true`, which small multiples use for one running total per series. |
+| built-in widgets | The year: "Points, cumulative" is soft-deleted and replaced by running totals per energy type (points and hours), plus each week's share by type. Today: two pies by energy type, hours and points. This month: each day's share by type (hours and points) and the month's pies. Built-in dashboards only. |

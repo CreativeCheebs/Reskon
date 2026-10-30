@@ -159,3 +159,58 @@ func TestDriftCountsLowDaysAgainstPlannedBreak(t *testing.T) {
 		t.Errorf("drift with no counted types = %v", res.Total)
 	}
 }
+
+func TestMetricShares(t *testing.T) {
+	f := newMetricFixture(t)
+	check := func(what string, res *MetricResult, perKey bool) {
+		t.Helper()
+		sums, whole := map[string]float64{}, 0.0
+		for _, p := range res.Points {
+			if p.Share == nil {
+				t.Fatalf("%s: point %s/%s has no share", what, p.Key, p.Split)
+			}
+			sums[p.Key] += *p.Share
+			whole += *p.Share
+		}
+		if len(res.Points) == 0 {
+			t.Fatalf("%s: no points", what)
+		}
+		if perKey {
+			for k, s := range sums {
+				if s > 1e-9 && (s < 1-1e-9 || s > 1+1e-9) {
+					t.Errorf("%s: shares of %s add to %v, want 1", what, k, s)
+				}
+			}
+		} else if whole < 1-1e-9 || whole > 1+1e-9 {
+			t.Errorf("%s: shares add to %v, want 1", what, whole)
+		}
+	}
+	// A pie: each energy type's part of all hours in the range.
+	check("by type", f.metric(t, MetricQuery{Metric: "session_hours", Group: "energy_type", Range: "7d", Share: true}), false)
+	// A share bar: each type's part of its own day.
+	check("per day", f.metric(t, MetricQuery{Metric: "points", Group: "day", Range: "7d", Split: "energy_type", Share: true}), true)
+
+	if res := f.metric(t, MetricQuery{Metric: "points", Group: "day", Range: "7d"}); len(res.Points) > 0 && res.Points[0].Share != nil {
+		t.Error("shares given without asking")
+	}
+}
+
+func TestSmallMultiplesRunningTotals(t *testing.T) {
+	f := newMetricFixture(t)
+	res := f.metric(t, MetricQuery{Metric: "session_hours", Group: "day", Range: "7d", Split: "energy_type", Cumulative: true})
+	last := map[string]float64{}
+	for _, p := range res.Points {
+		if p.Value < last[p.Split]-1e-9 {
+			t.Errorf("running total for %s fell on %s: %v -> %v", p.Split, p.Key, last[p.Split], p.Value)
+		}
+		last[p.Split] = p.Value
+	}
+	for _, s := range res.Series {
+		if fmt.Sprintf("%.6f", last[s.Key]) != fmt.Sprintf("%.6f", s.Total) {
+			t.Errorf("%s ends at %v, total %v", s.Label, last[s.Key], s.Total)
+		}
+	}
+	if !res.Cumulative {
+		t.Error("result does not say it is cumulative")
+	}
+}

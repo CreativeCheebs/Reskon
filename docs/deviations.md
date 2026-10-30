@@ -183,6 +183,17 @@ Each type's mini chart shows its y-axis labels and its own total in the header. 
 ### Session difficulty defaults to the task's
 Picking a task in the session form fills in the task's difficulty unless one was set by hand. Opening an existing session leaves it as saved until its task is changed. (The server already used the task's difficulty for points when the session has none.) `GET /api/tasks?brief=1` items gain `difficulty`.
 
+## Dashboard dates, shares and running totals (asked for after Change 001)
+
+### Date picker
+A dashboard can run every widget over one day (with day-before and day-after buttons) or a span of dates, instead of each widget's own range. The client sends `GET /api/metrics?widget=:id&from=&to=`; the server swaps the widget's range for those dates. Metrics that ignore ranges (open tasks, stuck work) are unchanged. The choice is not saved; it stays while switching dashboards and resets on reload.
+
+### Shares (pie, share bars)
+`share=1` (set by the server for `pie` and `share_bar` widgets) adds `share` to each point: its value as a part of its whole, the group key's total across splits, or with no split every key together. This is a part of the sum of all types, never one type divided by another; values themselves are unchanged and `TestNoMetricNetsEnergyTypes` still holds. Tooltips and the pie's legend show the share and the value.
+
+### Running totals per type
+Small multiples can show running totals (`"cumulative": true` in the query, "Running total" in the widget editor), drawn as rising areas. Each type's header shows its total, which is where its line ends.
+
 ## Needs review
 
 Gaps where the spec was silent and the most reversible option was taken. Each is small to change.

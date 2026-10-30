@@ -17,9 +17,11 @@ func (s *Server) metricRoutes() {
 
 // getMetric: ?widget=:id runs a saved widget's query (what widgets send),
 // or the query in full for the widget editor's preview:
-// ?metric=&group=&range= (or from=&to=)&split=&reduce=&cumulative=1
+// ?metric=&group=&range= (or from=&to=)&split=&reduce=&cumulative=1&share=1
 // and filters as filters[name]=value, repeated or comma-separated. Filter
-// values are ids, or names matched without regard to case.
+// values are ids, or names matched without regard to case. A widget may be
+// given from=&to= too: the dashboard's date picker runs every widget over
+// those dates instead of its own range.
 func (s *Server) getMetric(w http.ResponseWriter, r *http.Request) {
 	v := r.URL.Query()
 	if id, ok, err := queryID(r, "widget"); err != nil || ok {
@@ -32,6 +34,9 @@ func (s *Server) getMetric(w http.ResponseWriter, r *http.Request) {
 			respond(w, nil, err)
 			return
 		}
+		if v.Get("from") != "" || v.Get("to") != "" {
+			q.Range, q.From, q.To = "", v.Get("from"), v.Get("to")
+		}
 		res, err := dbOf(r.Context()).Metric(r.Context(), q, time.Now())
 		respond(w, res, err)
 		return
@@ -40,6 +45,7 @@ func (s *Server) getMetric(w http.ResponseWriter, r *http.Request) {
 		Metric: v.Get("metric"), Group: v.Get("group"), Range: v.Get("range"),
 		From: v.Get("from"), To: v.Get("to"), Split: v.Get("split"), Reduce: v.Get("reduce"),
 		Cumulative: v.Get("cumulative") == "1" || v.Get("cumulative") == "true",
+		Share:      v.Get("share") == "1" || v.Get("share") == "true",
 		Filters:    map[string][]string{},
 	}
 	for key, values := range v {

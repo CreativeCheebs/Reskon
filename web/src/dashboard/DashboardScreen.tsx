@@ -9,14 +9,17 @@ import { api } from "../api";
 import { useApp } from "../store";
 import { WriteButton } from "../offline";
 import { palette } from "../theme/palette";
-import type { Dashboard, Widget } from "./types";
+import type { Dashboard, DateOverride, Widget } from "./types";
+import { DatesPicker, type DatesMode } from "./DatesPicker";
 import { WidgetFrame } from "./WidgetFrame";
 import { WidgetEditor } from "./WidgetEditor";
 
 // Dashboards: a 12-column grid of widgets (40px rows, 8px margins). View
 // only by default, so reading never drags a widget by accident; edit mode
 // is a toggle. Positions save once, on drop. Under 768px the same widgets
-// stack in one column in their saved order, with no editing at all.
+// stack in one column in their saved order, with no editing at all. The
+// date picker runs every widget over one day or a span of dates; it stays
+// set while switching dashboards.
 
 const Grid = WidthProvider(GridLayout);
 const MOBILE_PX = 768;
@@ -38,6 +41,8 @@ export function DashboardScreen({ id, onOpen }: { id?: number; onOpen: (id: numb
   const [editMode, setEditMode] = useState(false);
   const [editor, setEditor] = useState<{ widget?: Widget } | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
+  const [datesMode, setDatesMode] = useState<DatesMode>("own");
+  const [dates, setDates] = useState<DateOverride | null>(null);
   const editing = editMode && !narrow;
 
   const load = useCallback(async () => {
@@ -131,6 +136,14 @@ export function DashboardScreen({ id, onOpen }: { id?: number; onOpen: (id: numb
             style={{ maxWidth: "100%", overflowX: "auto" }}
           />
         )}
+        <DatesPicker
+          mode={datesMode}
+          dates={dates}
+          onChange={(m, d) => {
+            setDatesMode(m);
+            setDates(d);
+          }}
+        />
         <span style={{ flex: 1 }} />
         {editing && current && (
           <>
@@ -174,12 +187,13 @@ export function DashboardScreen({ id, onOpen }: { id?: number; onOpen: (id: numb
           )}
         </Empty>
       ) : narrow ? (
-        <Stack dashboard={current} />
+        <Stack dashboard={current} dates={dates} />
       ) : (
         <DashboardGrid
           key={current.id}
           dashboard={current}
           editing={editing}
+          dates={dates}
           onLayout={saveLayout}
           onEdit={(widget) => setEditor({ widget })}
           onDelete={deleteWidget}
@@ -195,12 +209,14 @@ export function DashboardScreen({ id, onOpen }: { id?: number; onOpen: (id: numb
 function DashboardGrid({
   dashboard,
   editing,
+  dates,
   onLayout,
   onEdit,
   onDelete,
 }: {
   dashboard: Dashboard;
   editing: boolean;
+  dates: DateOverride | null;
   onLayout: (l: Layout[]) => void;
   onEdit: (w: Widget) => void;
   onDelete: (w: Widget) => void;
@@ -233,7 +249,7 @@ function DashboardGrid({
       >
         {layout.map((l) => (
           <div key={l.i}>
-            <WidgetFrame widget={byId.get(l.i)!} editing={editing} onEdit={onEdit} onDelete={onDelete} />
+            <WidgetFrame widget={byId.get(l.i)!} editing={editing} dates={dates} onEdit={onEdit} onDelete={onDelete} />
           </div>
         ))}
       </Grid>
@@ -242,14 +258,14 @@ function DashboardGrid({
 }
 
 /** Phones: one column, saved order, each widget at a height its kind suits. */
-function Stack({ dashboard }: { dashboard: Dashboard }) {
+function Stack({ dashboard, dates }: { dashboard: Dashboard; dates: DateOverride | null }) {
   const widgets = [...dashboard.widgets].sort((a, b) => a.position - b.position);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       {widgets.map((w) => (
         // Small multiples become a vertical stack as tall as their types need.
         <div key={w.id} style={{ height: w.viz === "number" ? 130 : w.viz === "bands" ? Math.max(130, w.h * 48) : w.viz === "small_multiples" ? undefined : 300 }}>
-          <WidgetFrame widget={w} editing={false} />
+          <WidgetFrame widget={w} editing={false} dates={dates} />
         </div>
       ))}
     </div>

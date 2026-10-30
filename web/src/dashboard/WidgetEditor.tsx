@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Form, Input, Modal, Select } from "antd";
+import { Alert, Checkbox, Form, Input, Modal, Select } from "antd";
 import { message } from "../theme/feedback";
 import { api } from "../api";
 import { useApp } from "../store";
@@ -23,6 +23,8 @@ const VIZ_LABEL: Record<Viz, string> = {
   split_bar: "Stacked bars",
   small_multiples: "Small multiples (one chart per type)",
   table: "Table",
+  pie: "Pie (each part's share)",
+  share_bar: "Share bars (each day to 100%)",
 };
 
 const RANGE_LABEL: Record<string, string> = {
@@ -52,7 +54,7 @@ const GROUP_LABEL: Record<string, string> = {
 
 const COLORS = ["accent", "success", "warn", "epic", "muted"];
 
-const CHART_VIZZES: Viz[] = ["bar", "line", "cumulative", "split_bar", "small_multiples"];
+const CHART_VIZZES: Viz[] = ["bar", "line", "cumulative", "split_bar", "small_multiples", "share_bar"];
 
 let catalogCache: Promise<MetricCatalog> | null = null;
 function loadCatalog() {
@@ -77,7 +79,8 @@ export function metricPath(q: WidgetQuery, viz: Viz): string {
   if (q.range) p.set("range", q.range);
   if (q.split) p.set("split", q.split);
   if (q.reduce) p.set("reduce", q.reduce);
-  if (viz === "cumulative") p.set("cumulative", "1");
+  if (viz === "cumulative" || (viz === "small_multiples" && q.cumulative)) p.set("cumulative", "1");
+  if (viz === "pie" || viz === "share_bar") p.set("share", "1");
   for (const [k, v] of Object.entries(q.filters ?? {})) {
     const list = asList(v);
     if (list.length) p.set(`filters[${k}]`, list.join(","));
@@ -109,13 +112,21 @@ export function WidgetEditor({
     loadCatalog().then(setCatalog).catch((e) => message.error((e as Error).message));
   }, []);
   const metric: MetricDef | undefined = catalog?.metrics.find((m) => m.name === query.metric);
-  // Small multiples draw one chart per split value, so picking them splits
-  // by energy type when nothing else is chosen.
+  // Small multiples and share bars draw one series per split value, so
+  // picking them splits by energy type when nothing else is chosen; a pie
+  // groups by energy type unless it already groups by something not in time.
+  // Running totals belong to small multiples only.
   const pickViz = (v: Viz) => {
     setViz(v);
-    if (v === "small_multiples" && !query.split && metric?.splits?.includes("energy_type") && query.group !== "energy_type") {
-      setQuery({ ...query, split: "energy_type" });
+    const next = { ...query, cumulative: v === "small_multiples" ? query.cumulative : undefined };
+    if ((v === "small_multiples" || v === "share_bar") && !query.split && metric?.splits?.includes("energy_type") && TIME_GROUPS.includes(query.group ?? "")) {
+      next.split = "energy_type";
     }
+    if (v === "pie" && TIME_GROUPS.includes(query.group ?? "") && metric?.groups.includes("energy_type")) {
+      next.group = "energy_type";
+      next.split = null;
+    }
+    setQuery(next);
   };
   useEffect(() => {
     if (metric?.filters?.includes("task_id") && tasks.length === 0) {
@@ -146,6 +157,7 @@ export function WidgetEditor({
       range: query.range,
       split: m.splits?.includes(query.split ?? "") ? query.split : null,
       filters: keep,
+      cumulative: query.cumulative,
     });
   };
 
@@ -231,6 +243,13 @@ export function WidgetEditor({
                   onChange={(split) => setQuery({ ...query, split: split ?? null })}
                   options={metric?.splits?.filter((s) => s !== query.group).map((s) => ({ value: s, label: GROUP_LABEL[s] ?? s }))}
                 />
+              </Form.Item>
+            )}
+            {viz === "small_multiples" && (
+              <Form.Item label="Running total" {...item}>
+                <Checkbox checked={!!query.cumulative} onChange={(e) => setQuery({ ...query, cumulative: e.target.checked || undefined })}>
+                  Each chart only rises
+                </Checkbox>
               </Form.Item>
             )}
             {viz === "number" && (
