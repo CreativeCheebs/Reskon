@@ -84,3 +84,50 @@ func TestDayKeepsSpendAndRestoreApart(t *testing.T) {
 		t.Errorf("restore = %+v", day.Restore)
 	}
 }
+
+// Points are stored when a session is logged and never recalculated by an
+// edit; a rate or formula change applies only from then on.
+func TestSessionPointsStoredAtLogTime(t *testing.T) {
+	d := openTest(t)
+	ctx := context.Background()
+	a := mustArea(t, d, "Main job", "OM2")
+	tk := mustTask(t, d, a.ID, "hard thing")
+	d.PatchTask(ctx, tk.ID, fields(t, fmt.Sprintf(`{"difficulty":3,"updated_at":%q}`, tk.UpdatedAt)))
+
+	own, _ := d.CreateSession(ctx, fields(t, `{"energy_type_id":1,"hours":2,"difficulty":4,"logged_for":"2026-10-28"}`))
+	fromTask, _ := d.CreateSession(ctx, fields(t, fmt.Sprintf(`{"task_id":%d,"hours":1.5,"logged_for":"2026-10-28"}`, tk.ID)))
+	plain, _ := d.CreateSession(ctx, fields(t, `{"energy_type_id":2,"hours":2.5,"logged_for":"2026-10-28"}`))
+	rest, _ := d.CreateSession(ctx, fields(t, `{"energy_type_id":4,"hours":7,"kind":"event","logged_for":"2026-10-28"}`))
+	for _, c := range []struct {
+		s    *Session
+		want any
+	}{{own, 8.0}, {fromTask, 4.5}, {plain, 2.5}, {rest, nil}} {
+		if got := deref(c.s.Points); got != c.want {
+			t.Errorf("session %d points = %v, want %v", c.s.ID, got, c.want)
+		}
+	}
+
+	// Editing hours or difficulty leaves the stored points alone.
+	edited, err := d.PatchSession(ctx, own.ID, fields(t, `{"hours":3,"difficulty":5}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if *edited.Points != 8 {
+		t.Errorf("points after edit = %v, want 8 (unchanged)", *edited.Points)
+	}
+	// Points can be set by hand.
+	if edited, _ = d.PatchSession(ctx, own.ID, fields(t, `{"points":15}`)); *edited.Points != 15 {
+		t.Errorf("points set by hand = %v, want 15", *edited.Points)
+	}
+	if _, err := d.PatchSession(ctx, own.ID, fields(t, `{"points":-1}`)); err == nil {
+		t.Error("negative points accepted")
+	}
+	// A formula change (here: the task's difficulty) applies to new sessions only.
+	cur, _ := d.GetTask(ctx, tk.ID)
+	d.PatchTask(ctx, tk.ID, fields(t, fmt.Sprintf(`{"difficulty":5,"updated_at":%q}`, cur.UpdatedAt)))
+	old, _ := d.GetSession(ctx, fromTask.ID)
+	fresh, _ := d.CreateSession(ctx, fields(t, fmt.Sprintf(`{"task_id":%d,"hours":1.5,"logged_for":"2026-10-29"}`, tk.ID)))
+	if *old.Points != 4.5 || *fresh.Points != 7.5 {
+		t.Errorf("old/new points = %v/%v, want 4.5/7.5", *old.Points, *fresh.Points)
+	}
+}

@@ -30,6 +30,7 @@ export function SessionModal({
           kind: editing.kind,
           energy_type_id: editing.energy_type_id,
           hours: editing.hours,
+          points: editing.points,
           difficulty: editing.difficulty,
           subtypes: editing.subtypes.map((s) => s.subtype_id),
           logged_for: editing.logged_for,

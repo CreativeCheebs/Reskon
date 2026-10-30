@@ -18,6 +18,7 @@ type Session struct {
 	Kind         string           `json:"kind"`
 	EnergyTypeID int64            `json:"energy_type_id"`
 	Hours        float64          `json:"hours"`
+	Points       *float64         `json:"points"` // stored when logged; nil for restore sessions
 	Difficulty   *int64           `json:"difficulty"`
 	StartedAt    *string          `json:"started_at"`
 	LoggedFor    string           `json:"logged_for"`
@@ -35,13 +36,13 @@ type SessionSubtype struct {
 	WeightedH float64 `json:"weighted_h"` // session hours x weight
 }
 
-const sessionCols = `id, task_id, label, area_id, kind, energy_type_id, hours, difficulty,
+const sessionCols = `id, task_id, label, area_id, kind, energy_type_id, hours, points, difficulty,
 	started_at, logged_for, note, custom, created_at`
 
 func scanSession(r interface{ Scan(...any) error }) (*Session, error) {
 	var s Session
 	var custom string
-	err := r.Scan(&s.ID, &s.TaskID, &s.Label, &s.AreaID, &s.Kind, &s.EnergyTypeID, &s.Hours, &s.Difficulty,
+	err := r.Scan(&s.ID, &s.TaskID, &s.Label, &s.AreaID, &s.Kind, &s.EnergyTypeID, &s.Hours, &s.Points, &s.Difficulty,
 		&s.StartedAt, &s.LoggedFor, &s.Note, &custom, &s.CreatedAt)
 	s.Custom = json.RawMessage(custom)
 	return &s, err
@@ -54,6 +55,7 @@ var sessionColumns = columns{
 	"kind":           kText,
 	"energy_type_id": kInt,
 	"hours":          kReal,
+	"points":         kRealNull,
 	"difficulty":     kIntNull,
 	"started_at":     kTextNull,
 	"logged_for":     kText,
@@ -91,6 +93,12 @@ func validateSessionFields(f Fields) error {
 		var h float64
 		if json.Unmarshal(raw, &h) != nil || h <= 0 || h > 24 {
 			return invalid("hours must be more than 0 and at most 24")
+		}
+	}
+	if raw, ok := f["points"]; ok && !isNull(raw) {
+		var p float64
+		if json.Unmarshal(raw, &p) != nil || p < 0 {
+			return invalid("points must be a number, 0 or more")
 		}
 	}
 	if raw, ok := f["difficulty"]; ok && !isNull(raw) {
@@ -228,6 +236,11 @@ func (d *DB) CreateSession(ctx context.Context, f Fields) (*Session, error) {
 	if err := resolveSessionDefaults(ctx, tx, f); err != nil {
 		return nil, err
 	}
+	if _, set := f["points"]; !set {
+		if err := fillPoints(ctx, tx, f); err != nil {
+			return nil, err
+		}
+	}
 	custom := "{}"
 	if hasCustom {
 		if custom, err = d.mergeCustom(ctx, tx, "session", "{}", customPatch); err != nil {
@@ -255,8 +268,76 @@ func (d *DB) CreateSession(ctx context.Context, f Fields) (*Session, error) {
 	return d.GetSession(ctx, id)
 }
 
+// sessionPoints is what a session earns when it is logged: hours x
+// difficulty, where difficulty is the session's, else its task's, else 1.
+// Restore sessions earn none. The result is stored on the session, so a
+// later change to this formula never rewrites history.
+func sessionPoints(direction string, hours float64, difficulty, taskDifficulty *int64) *float64 {
+	if direction != "spend" {
+		return nil
+	}
+	d := int64(1)
+	switch {
+	case difficulty != nil:
+		d = *difficulty
+	case taskDifficulty != nil:
+		d = *taskDifficulty
+	}
+	p := hours * float64(d)
+	return &p
+}
+
+// storedPoints looks up what sessionPoints needs for a session about to be
+// written: its energy type's direction and its task's difficulty.
+func storedPoints(ctx context.Context, q querier, energyTypeID int64, hours float64, difficulty, taskID *int64) (*float64, error) {
+	var direction string
+	err := q.QueryRowContext(ctx, `SELECT direction FROM energy_type WHERE id = ?`, energyTypeID).Scan(&direction)
+	if err == sql.ErrNoRows {
+		return nil, invalid("energy type %d does not exist", energyTypeID)
+	}
+	if err != nil {
+		return nil, err
+	}
+	var taskDiff *int64
+	if taskID != nil {
+		if err := q.QueryRowContext(ctx, `SELECT difficulty FROM task WHERE id = ?`, *taskID).Scan(&taskDiff); err != nil && err != sql.ErrNoRows {
+			return nil, err
+		}
+	}
+	return sessionPoints(direction, hours, difficulty, taskDiff), nil
+}
+
+// fillPoints sets f["points"] for a new session from its other fields.
+func fillPoints(ctx context.Context, q querier, f Fields) error {
+	energy, _, err := f.int64Field("energy_type_id")
+	if err != nil {
+		return err
+	}
+	var hours float64
+	json.Unmarshal(f["hours"], &hours)
+	var difficulty, taskID *int64
+	if n, ok, err := f.int64Field("difficulty"); err != nil {
+		return err
+	} else if ok {
+		difficulty = &n
+	}
+	if n, ok, err := f.int64Field("task_id"); err != nil {
+		return err
+	} else if ok {
+		taskID = &n
+	}
+	p, err := storedPoints(ctx, q, energy, hours, difficulty, taskID)
+	if err != nil {
+		return err
+	}
+	f["points"], _ = json.Marshal(p)
+	return nil
+}
+
 // PatchSession updates a session. The session table has no updated_at, so
-// edits are last-write-wins (see docs/deviations.md).
+// edits are last-write-wins (see docs/deviations.md). Points are never
+// recalculated here: they were stored when the session was logged and
+// change only when sent explicitly.
 func (d *DB) PatchSession(ctx context.Context, id int64, f Fields) (*Session, error) {
 	subtypes, hasSubtypes, err := parseSubtypes(f)
 	if err != nil {

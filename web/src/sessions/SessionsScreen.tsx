@@ -116,6 +116,7 @@ export function SessionsScreen() {
     { key: "energy", title: "Energy", width: 120, render: (_, s) => energy(s.energy_type_id)?.name },
     { key: "area", title: "Area", width: 100, render: (_, s) => boot.areas.find((a) => a.id === s.area_id)?.name ?? "" },
     { key: "hours", title: "Hours", width: 70, render: (_, s) => formatHours(s.hours) },
+    { key: "points", title: "Points", width: 64, render: (_, s) => (s.points === null ? "" : Number(s.points.toFixed(2))) },
     {
       key: "diff",
       title: "Diff",

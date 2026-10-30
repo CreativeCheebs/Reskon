@@ -119,6 +119,17 @@ Statuses that share a colour would be indistinguishable on the stacked bars, so 
 ### Seeded Everything and Stuck show area and status
 Their card configuration turns on the Area and Status columns, since they span every area. Everything else uses the section 7 example defaults.
 
+## Phase 2 (`build_spec_phase_2.md`)
+
+### Migration 005, not 002
+The Phase 2 spec names its migration 002; 002-004 were already used, so it is `005_dashboards_points.sql`.
+
+### Session points formula (owner decision, 2026-10-30)
+The spec stores a session's points at log time but gives no formula. Owner chose **hours × difficulty**, difficulty being the session's, else its task's, else 1. Restore-direction sessions store no points (NULL). There is no separate rate. `points` is editable by hand (`PATCH /api/sessions/:id {"points": n}`); no edit recalculates it. Jira-imported sessions get points the same way.
+
+### `day_plan.ceiling_feedback` column
+Section 8 says no other schema changes are needed, but `day_plan` has nowhere to keep the evening "was today's ceiling about right?" answer, which section 6 needs to persist. Added one nullable column in migration 005. `day_plan.locked_at` stays unused: days are never locked.
+
 ## Needs review
 
 Gaps where the spec was silent and the most reversible option was taken. Each is small to change.

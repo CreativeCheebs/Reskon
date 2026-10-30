@@ -57,3 +57,13 @@ No schema change. Remaps `task.difficulty` and `session.difficulty` from 1/2/4/8
 | `view.color` (`#rrggbb` or NULL) | Tints the view's icon. NULL = theme text colour. |
 | `view.background` (JSON, default `{}`) | `image_id`, `fit` (`cover` = crop, `contain` = fit, `stretch`), `opacity` (0-1, of the image), `blur` (px), `surface_opacity` (0-1, how solid columns and tables are over the image). |
 | `image` (`id`, `mime`, `data` BLOB, `created_at`) | Uploaded background images: PNG, JPEG, GIF or WebP, at most 8 MB. Images no live view uses are deleted when a view's background changes or a view is deleted, once they are an hour old. Served by `GET /api/images/:id`; uploaded by `POST /api/images` with the raw file as the body. |
+
+### Migration 005 (Phase 2)
+
+| Change | Purpose |
+| --- | --- |
+| `dashboard` (`name`, `position`, `is_builtin`, `deleted_at`) | A named dashboard. Seeded: Today, This month, The year (all editable and deletable). |
+| `widget` (`dashboard_id`, `title`, `viz`, `query`, `options`, `x`, `y`, `w`, `h`, `position`, `deleted_at`) | One widget: a metric query (JSON: `metric`, `group`, `range` or `from`/`to`, `filters`, `split`, `reduce`) plus a visualisation (`bar`, `line`, `cumulative`, `number`, `list`, `bands`, `split_bar`, `table`). `x/y/w/h` are grid units on a 12-column grid; `position` is the single-column (mobile) order. |
+| `session.points` (REAL, NULL for restore sessions) | Stored when the session is logged: hours × difficulty (the session's, else its task's, else 1). Never recalculated by an edit; editable by hand. Backfilled once by this migration. |
+| `day_plan.ceiling_feedback` (`about_right` / `too_high` / `too_low` / NULL) | The evening answer to "was today's ceiling about right?". Drives the suggested ceilings of the following days. |
+| settings `week_start` (1 = Monday … 7 = Sunday, default 1), `drift_low_hours` (default 1) | Week grouping in metrics; the spend below which a day counts as low-work for the Drift widget. |

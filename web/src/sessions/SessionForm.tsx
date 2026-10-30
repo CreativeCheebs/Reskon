@@ -20,6 +20,9 @@ export interface SessionDraft {
   kind: "task" | "event";
   energy_type_id: number | null;
   hours: number | null;
+  /** Only when editing: points were stored when the session was logged and
+   *  change only by hand. Undefined on a new session (the server sets them). */
+  points?: number | null;
   difficulty: number | null;
   subtypes: number[];
   logged_for: string;
@@ -61,6 +64,7 @@ export function sessionBody(d: SessionDraft) {
     started_at: d.started_at,
     note: d.note || null,
     custom: d.custom,
+    ...(d.points !== undefined ? { points: d.points } : {}),
   };
 }
 
@@ -147,6 +151,11 @@ export function SessionFields({
         <Form.Item label="Difficulty" style={{ marginBottom: 8 }}>
           <DifficultySlider value={draft.difficulty} disabled={disabled} width={230} onChange={(v) => set({ difficulty: v })} />
         </Form.Item>
+        {draft.points !== undefined && (
+          <Form.Item label="Points" tooltip="Stored when the session was logged. Editing hours or difficulty leaves them as they are." style={{ marginBottom: 8 }}>
+            <InputNumber style={{ width: "100%" }} min={0} step={0.5} value={draft.points} onChange={(v) => set({ points: v })} />
+          </Form.Item>
+        )}
         <Form.Item label="Logged for" required style={{ marginBottom: 8 }}>
           <DatePicker
             style={{ width: "100%" }}

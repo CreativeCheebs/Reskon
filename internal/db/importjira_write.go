@@ -342,9 +342,13 @@ func (im *importer) worklog(w jiraWorklog) error {
 		note = &c
 	}
 	custom, _ := json.Marshal(map[string]any{"_jira": map[string]any{"worklog_id": w.ID}})
-	if _, err := im.tx.ExecContext(im.ctx, `INSERT INTO session (task_id, area_id, kind, energy_type_id, hours, started_at,
-		logged_for, note, custom, created_at) VALUES (?, ?, 'task', ?, ?, ?, ?, ?, ?, ?)`,
-		taskID, im.areaOf[taskID], *energy, h, started, day, note, string(custom), Now()); err != nil {
+	points, err := storedPoints(im.ctx, im.tx, *energy, h, nil, &taskID)
+	if err != nil {
+		return err
+	}
+	if _, err := im.tx.ExecContext(im.ctx, `INSERT INTO session (task_id, area_id, kind, energy_type_id, hours, points, started_at,
+		logged_for, note, custom, created_at) VALUES (?, ?, 'task', ?, ?, ?, ?, ?, ?, ?, ?)`,
+		taskID, im.areaOf[taskID], *energy, h, points, started, day, note, string(custom), Now()); err != nil {
 		return err
 	}
 	im.rep.Sessions++

@@ -233,6 +233,8 @@ export interface Session {
   kind: "task" | "event";
   energy_type_id: number;
   hours: number;
+  /** Stored when logged (hours x difficulty); null for restore sessions. */
+  points: number | null;
   difficulty: number | null;
   started_at: string | null;
   logged_for: string;
