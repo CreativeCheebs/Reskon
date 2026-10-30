@@ -151,6 +151,7 @@ export function App() {
       >
         <style>{`
           .jb-sider .ant-layout-sider-children { overflow: hidden; }
+          .jb-sider.ant-layout-sider-collapsed .jb-sider-foot { display: none !important; }
           @media (max-width: 767px) {
             .jb-sider { position: fixed !important; top: 0; bottom: 0; left: 0; }
             .jb-content { padding-top: 46px !important; }
@@ -174,6 +175,7 @@ export function App() {
           }}
         />
         <div
+          className="jb-sider-foot"
           style={{
             position: "absolute",
             bottom: 0,
