@@ -12,6 +12,7 @@ import { useAuth } from "./auth/AuthGate";
 import { EpicsProvider } from "./task/useEpics";
 import { ThemeSync } from "./theme/ThemeSync";
 import { ViewIconMark } from "./icons/ViewIconMark";
+import { InForceBar } from "./states/InForceBar";
 
 // Screens opened now and then load on first visit, keeping them out of the
 // bundle every page load parses.
@@ -206,6 +207,7 @@ export function App() {
           />
         )}
         <Layout.Content className="jb-content" style={{ padding: 14, overflow: "auto", display: "flex", flexDirection: "column" }}>
+          <InForceBar onOpen={() => go({ kind: "states" })} />
           {view && <ViewScreen key={view.id} view={view} />}
           {current.kind === "view" && !view && <Alert type="info" message="That view no longer exists." />}
           <Suspense fallback={<Spin style={{ margin: 40 }} />}>

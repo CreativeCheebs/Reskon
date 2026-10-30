@@ -8,12 +8,12 @@ import { palette } from "../theme/palette";
 import { today } from "../format";
 import type { StateRow } from "../day/types";
 import { DecaySketch } from "./DecaySketch";
-import { SEVERITY_MAX, severityBand } from "./severity";
+import { SEVERITY_MAX, SeverityIcon, severityBand } from "./severity";
 
 // Add or edit a buff, debuff or modifier. Decay defaults to static (holds
 // until cleared); there is no auto-clear. Severity is a slider from 0 to 5
-// with words for what a value roughly means; a larger value saved before
-// stretches the slider to fit.
+// in half steps, each step named with what it roughly feels like; a larger
+// value saved before stretches the slider to fit.
 
 const SHAPES: { value: StateRow["decay"]; label: string; hint: string }[] = [
   { value: "static", label: "Static", hint: "Holds until cleared" },
@@ -113,7 +113,8 @@ export function StateForm({
 function SeverityField({ kind, value, onChange }: { kind: StateRow["kind"]; value: number; onChange: (n: number) => void }) {
   const max = Math.max(SEVERITY_MAX, Math.ceil(value));
   const band = severityBand(value, kind);
-  const mark = (n: number) => ({ label: <span style={{ fontSize: 11, color: palette.muted }}>{severityBand(n, kind).name}</span> });
+  const marks: Record<number, { label: React.ReactNode }> = {};
+  for (let n = 0; n <= max; n++) marks[n] = { label: <span style={{ fontSize: 11, color: palette.subtle }}>{n}</span> };
   return (
     <Form.Item label="Severity" style={{ marginBottom: 10 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
@@ -121,15 +122,17 @@ function SeverityField({ kind, value, onChange }: { kind: StateRow["kind"]; valu
           min={0}
           max={max}
           step={0.5}
+          dots
           value={value}
           onChange={onChange}
-          marks={{ 0: " ", 1: mark(1), 3: mark(3), 5: mark(5) }}
+          marks={marks}
           tooltip={{ formatter: (n) => `${n} · ${severityBand(n ?? 0, kind).name}` }}
           style={{ flex: 1, margin: "6px 6px 18px" }}
         />
         <InputNumber min={0} step={0.5} value={value} onChange={(n) => onChange(n ?? 0)} style={{ width: 70 }} />
       </div>
-      <div style={{ fontSize: 12, color: palette.muted }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: palette.muted }}>
+        <SeverityIcon kind={kind} severity={value} />
         <span style={{ fontWeight: 600, color: palette.fg }}>{band.name}</span> · {band.hint}
       </div>
     </Form.Item>

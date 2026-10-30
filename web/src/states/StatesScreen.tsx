@@ -8,7 +8,8 @@ import { useApp } from "../store";
 import { WriteButton } from "../offline";
 import { palette } from "../theme/palette";
 import { severityText, type StateRow } from "../day/types";
-import { severityBand } from "./severity";
+import { KIND_COLOR, SeverityIcon, severityBand } from "./severity";
+import { STATES_CHANGED } from "./InForceBar";
 import { DecaySketch } from "./DecaySketch";
 import { StateForm } from "./StateForm";
 
@@ -16,8 +17,6 @@ import { StateForm } from "./StateForm";
 // by the server for today. Reaching zero never clears a state: it stays
 // listed until cleared by hand, and past its duration it reads "ended, not
 // cleared" with a one-tap clear. A state never scales any number.
-
-const KIND_COLOR = { debuff: () => palette.epic, buff: () => palette.success, modifier: () => palette.accent };
 
 export function StatesScreen() {
   const { reloadKey } = useApp();
@@ -29,6 +28,7 @@ export function StatesScreen() {
   const load = useCallback(async () => {
     try {
       setStates(await api.get<StateRow[]>("/states"));
+      window.dispatchEvent(new Event(STATES_CHANGED));
     } catch (e) {
       message.error((e as Error).message);
     }
@@ -93,12 +93,15 @@ export function StatesScreen() {
           {
             key: "sev",
             title: "Severity now",
-            width: 150,
+            width: 190,
             render: (_, s) => {
               const band = severityBand(s.effective_severity, s.kind);
               return (
                 <Tooltip title={band.hint}>
-                  {severityText(s)} <span style={{ color: palette.muted }}>· {band.name.toLowerCase()}</span>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                    <SeverityIcon kind={s.kind} severity={s.effective_severity} />
+                    {severityText(s)} <span style={{ color: palette.muted }}>· {band.name.toLowerCase()}</span>
+                  </span>
                 </Tooltip>
               );
             },

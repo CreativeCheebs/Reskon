@@ -194,8 +194,10 @@ A dashboard can run every widget over one day (with day-before and day-after but
 ### Running totals per type
 Small multiples can show running totals (`"cumulative": true` in the query, "Running total" in the widget editor), drawn as rising areas. Each type's header shows its total, which is where its line ends.
 
-### Severity scale
-Severity stays a plain number on the server. The form offers a slider from 0 to 5 in half steps (a larger saved value stretches it), with words for what a value roughly means: 0 none, up to 1.5 mild ("doesn't affect much"), up to 3 moderate ("affects a little bit in every part of life"), above that severe ("affects a lot, and it's noticeable"); buffs read as a lift instead, and the top band is "strong". The list shows the band of the severity now beside the number. The words are indicative and live in `web/src/states/severity.ts`.
+### Severity scale and the in-force bar
+Severity stays a plain number on the server. The form offers a slider from 0 to 5 in half steps (a larger saved value stretches it). Each step has a name and what it roughly feels like, a pain-scale ladder compressed into 0-5: none, very mild (barely noticeable), very low (noticeable), low (distracting sometimes), intermediate (distracting usually), moderate (interrupting), high (hard to ignore), very high (can't ignore), severe (awful), very severe (hard to bear), unbearable. Buffs have their own wording for the same steps. The words are indicative and live in `web/src/states/severity.tsx`.
+
+Each state has a symbol: a ring in its kind's colour, filled clockwise by severity now out of 5. The states in force show as chips (symbol, name, step) along the top of every screen; tapping one opens Buffs & debuffs. The bar is hidden when nothing is in force.
 
 ## Needs review
 

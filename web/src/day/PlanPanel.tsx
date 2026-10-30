@@ -6,6 +6,7 @@ import { palette } from "../theme/palette";
 import { formatHours } from "../format";
 import { Heading, Panel } from "./Panel";
 import { severityText, type DayData } from "./types";
+import { SeverityIcon, severityBand } from "../states/severity";
 
 // Morning: focus, ceilings, and what is in force. Any energy type may have
 // a ceiling, and none has to: "–" means no ceiling. Everything is optional
@@ -101,10 +102,11 @@ export function InForce({ data }: { data: DayData }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
       {data.in_force.map((s) => (
-        <div key={s.id} style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
+        <div key={s.id} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <SeverityIcon kind={s.kind} severity={s.effective_severity} />
           <span style={{ fontWeight: 600 }}>{s.name}</span>
           <span style={{ color: palette.muted, fontSize: 12 }}>
-            {s.kind} · {severityText(s)} · day {s.days_running}
+            {s.kind} · {severityText(s)} {severityBand(s.effective_severity, s.kind).name.toLowerCase()} · day {s.days_running}
             {s.ended ? " · ended, not cleared" : ""}
           </span>
         </div>
