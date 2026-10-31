@@ -10,7 +10,7 @@ export function useSaveView(view: View) {
   const { updateView, online } = useApp();
 
   const save = useCallback(
-    async (patch: Partial<Pick<View, "layout" | "name">> & { board_state?: BoardState }) => {
+    async (patch: Partial<Pick<View, "layout" | "name" | "filter">> & { board_state?: BoardState }) => {
       const next: View = { ...view, ...patch, board_state: { ...view.board_state, ...(patch.board_state ?? {}) } };
       updateView(next);
       if (!online) return;

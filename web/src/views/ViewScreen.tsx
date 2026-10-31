@@ -71,6 +71,9 @@ export function ViewScreen({ view }: { view: View }) {
   const groupBy: GroupBy = view.board_state?.group_by ?? "none";
   const groupOptions = GROUP_OPTIONS.filter((o) => !(view.layout === "board" && o.tableOnly));
   const filters = activeFilterCount(view);
+  // Quick switch for the filter's types: everything, tasks only, epics only.
+  const types = view.filter?.types ?? [];
+  const typeShown = types.length === 1 ? types[0] : "all";
   // Statuses kept off the board (Backlog, Cancelled ...), opened as overlays.
   const hiddenStatuses = boot.statuses.filter((s) => !s.on_board).sort((a, b) => a.position - b.position);
 
@@ -164,6 +167,17 @@ export function ViewScreen({ view }: { view: View }) {
             options={[
               { value: "board", label: "Board" },
               { value: "table", label: "Table" },
+            ]}
+          />
+          <Segmented
+            size="small"
+            value={typeShown}
+            disabled={!online}
+            onChange={(v) => save({ filter: { ...view.filter, types: v === "all" ? null : [v as "task" | "epic"] } })}
+            options={[
+              { value: "all", label: "All" },
+              { value: "task", label: "Tasks" },
+              { value: "epic", label: "Epics" },
             ]}
           />
           <Select<GroupBy>
