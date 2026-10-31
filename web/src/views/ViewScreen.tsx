@@ -108,128 +108,135 @@ export function ViewScreen({ view }: { view: View }) {
     <SurfaceOpacityProvider value={surface}>
     <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, position: "relative" }}>
       <ViewBackdrop bg={look.background} />
+      {/* Two rows on the board's edges: what this is (title, search, the
+          off-board statuses), then how it's shown. Each row wraps by group,
+          never inside one. */}
       <div
         style={{
           display: "flex",
-          alignItems: "center",
-          gap: "8px 20px",
+          flexDirection: "column",
+          gap: 8,
           marginBottom: 12,
-          flexWrap: "wrap",
           position: "relative",
           // Over an image the toolbar gets a backing so its text stays readable.
-          ...(surface < 1 ? { background: withAlpha(palette.bg, Math.max(surface, 0.6)), borderRadius: 6, padding: "4px 6px", margin: "-4px -6px 8px" } : {}),
+          ...(surface < 1 ? { background: withAlpha(palette.bg, Math.max(surface, 0.6)), borderRadius: 6, padding: "6px 8px", margin: "-6px -8px 6px" } : {}),
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 12, flex: "1 1 360px", minWidth: 0 }}>
-          <h1
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              margin: 0,
-              fontSize: 18,
-              lineHeight: "28px",
-              fontWeight: 650,
-              letterSpacing: -0.2,
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              flex: "none",
-              maxWidth: 280,
-            }}
-            title={view.name}
-          >
-            {/* The view's icon on a tint of its colour, like a page badge. */}
-            <span
+        <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px 16px", minHeight: 28 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 16, flex: "1 1 320px", minWidth: 0 }}>
+            <h1
               style={{
-                width: 28,
-                height: 28,
-                flex: "none",
-                display: "inline-flex",
+                display: "flex",
                 alignItems: "center",
-                justifyContent: "center",
-                borderRadius: 7,
-                background: blend(look.color && /^#[0-9a-fA-F]{6}$/.test(look.color) ? look.color : palette.accent, palette.bg, 0.2),
+                gap: 10,
+                margin: 0,
+                fontSize: 18,
+                lineHeight: "28px",
+                fontWeight: 650,
+                letterSpacing: -0.2,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                // The search gives way, not the title; a long name truncates here.
+                flex: "none",
+                maxWidth: 320,
               }}
+              title={view.name}
             >
-              {look.icon?.emoji || look.icon?.svg || look.color ? (
-                <ViewIconMark icon={look.icon} color={look.color} size={18} />
-              ) : view.layout === "table" ? (
-                <TableOutlined style={{ color: palette.accent, fontSize: 16 }} />
-              ) : (
-                <ProjectOutlined style={{ color: palette.accent, fontSize: 16 }} />
-              )}
-            </span>
-            <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{view.name}</span>
-          </h1>
-          <Input
-            size="small"
-            allowClear
-            prefix={<SearchOutlined />}
-            placeholder="Search title, key, description"
-            style={{ flex: "0 1 260px", minWidth: 140 }}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => e.key === "Escape" && setSearch("")}
-          />
-          {view.layout === "board" && tasks && (
-            <div style={{ display: "flex", alignItems: "center", gap: 2, flex: "none" }}>
+              {/* The view's icon on a tint of its colour, like a page badge. */}
+              <span
+                style={{
+                  width: 28,
+                  height: 28,
+                  flex: "none",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: 7,
+                  background: blend(look.color && /^#[0-9a-fA-F]{6}$/.test(look.color) ? look.color : palette.accent, palette.bg, 0.2),
+                }}
+              >
+                {look.icon?.emoji || look.icon?.svg || look.color ? (
+                  <ViewIconMark icon={look.icon} color={look.color} size={18} />
+                ) : view.layout === "table" ? (
+                  <TableOutlined style={{ color: palette.accent, fontSize: 16 }} />
+                ) : (
+                  <ProjectOutlined style={{ color: palette.accent, fontSize: 16 }} />
+                )}
+              </span>
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{view.name}</span>
+            </h1>
+            <Input
+              size="small"
+              allowClear
+              prefix={<SearchOutlined />}
+              placeholder="Search title, key, description"
+              style={{ flex: "0 1 280px", minWidth: 160 }}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => e.key === "Escape" && setSearch("")}
+            />
+          </div>
+          {view.layout === "board" && tasks && hiddenStatuses.length > 0 && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flex: "none", marginLeft: "auto" }}>
               {hiddenStatuses.map((s) => (
-                <Button key={s.id} size="small" type="text" style={{ color: palette.muted }} onClick={() => setHiddenStatus(s.id)}>
-                  {s.name} <span style={{ color: palette.subtle, marginLeft: 4 }}>{tasks.filter((t) => t.status_id === s.id).length}</span>
-                </Button>
+                <HiddenStatusButton key={s.id} name={s.name} count={tasks.filter((t) => t.status_id === s.id).length} onClick={() => setHiddenStatus(s.id)} />
               ))}
             </div>
           )}
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", rowGap: 8, marginLeft: "auto" }}>
-          <Segmented
-            size="small"
-            value={view.layout}
-            disabled={!online}
-            onChange={(v) => save({ layout: v as View["layout"] })}
-            options={[
-              { value: "board", label: "Board" },
-              { value: "table", label: "Table" },
-            ]}
-          />
-          <Segmented
-            size="small"
-            value={typeShown}
-            disabled={!online}
-            onChange={(v) => save({ filter: { ...view.filter, types: v === "all" ? null : [v as "task" | "epic"] } })}
-            options={[
-              { value: "all", label: "All" },
-              { value: "task", label: "Tasks" },
-              { value: "epic", label: "Epics" },
-            ]}
-          />
-          <ToolbarGap />
-          <Select<GroupBy>
-            size="small"
-            className={groupBy !== "none" ? "jb-active" : undefined}
-            style={{ width: 160 }}
-            disabled={!online}
-            value={groupOptions.some((o) => o.value === groupBy) ? groupBy : "none"}
-            onChange={(v) => save({ board_state: { group_by: v } })}
-            options={groupOptions.map((o) => ({ value: o.value, label: o.value === "none" ? o.label : `Group: ${o.label}` }))}
-          />
-          {view.layout === "board" && (
-            <Select<BoardSort>
+        <div className="jb-toolbar" style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px 16px" }}>
+          <ToolbarGroup>
+            <Segmented
               size="small"
-              className={(view.board_state?.sort ?? "manual") !== "manual" ? "jb-active" : undefined}
-              style={{ width: 150 }}
+              value={view.layout}
               disabled={!online}
-              aria-label="Sort cards"
-              value={view.board_state?.sort ?? "manual"}
-              onChange={(v) => save({ board_state: { sort: v } })}
-              popupMatchSelectWidth={false}
-              options={SORT_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
-              labelRender={({ value }) => `Sort: ${SORT_OPTIONS.find((o) => o.value === value)?.label.split(",")[0]}`}
+              onChange={(v) => save({ layout: v as View["layout"] })}
+              options={[
+                { value: "board", label: "Board" },
+                { value: "table", label: "Table" },
+              ]}
             />
-          )}
-          <ToolbarGap />
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <Badge count={filters} size="small" color={palette.accent}>
+            <Segmented
+              size="small"
+              value={typeShown}
+              disabled={!online}
+              onChange={(v) => save({ filter: { ...view.filter, types: v === "all" ? null : [v as "task" | "epic"] } })}
+              options={[
+                { value: "all", label: "All" },
+                { value: "task", label: "Tasks" },
+                { value: "epic", label: "Epics" },
+              ]}
+            />
+          </ToolbarGroup>
+          <ToolbarGroup>
+            <Select<GroupBy>
+              size="small"
+              className={groupBy !== "none" ? "jb-active" : undefined}
+              style={{ width: 160 }}
+              disabled={!online}
+              aria-label="Group cards"
+              value={groupOptions.some((o) => o.value === groupBy) ? groupBy : "none"}
+              onChange={(v) => save({ board_state: { group_by: v } })}
+              popupMatchSelectWidth={false}
+              options={groupOptions.map((o) => ({ value: o.value, label: o.value === "none" ? o.label : `Group: ${o.label}` }))}
+            />
+            {view.layout === "board" && (
+              <Select<BoardSort>
+                size="small"
+                className={(view.board_state?.sort ?? "manual") !== "manual" ? "jb-active" : undefined}
+                style={{ width: 160 }}
+                disabled={!online}
+                aria-label="Sort cards"
+                value={view.board_state?.sort ?? "manual"}
+                onChange={(v) => save({ board_state: { sort: v } })}
+                popupMatchSelectWidth={false}
+                options={SORT_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+                labelRender={({ value }) => `Sort: ${SORT_OPTIONS.find((o) => o.value === value)?.label.split(",")[0]}`}
+              />
+            )}
+          </ToolbarGroup>
+          <ToolbarGroup right>
+            <Badge count={filters} size="small" color={palette.accent} offset={[-2, 2]}>
               <Button size="small" icon={<FilterOutlined />} className={filters ? "jb-active" : undefined} onClick={() => setDrawer("filter")}>
                 Filter
               </Button>
@@ -251,7 +258,7 @@ export function ViewScreen({ view }: { view: View }) {
             >
               <Button size="small" aria-label="View menu" icon={<EllipsisOutlined />} />
             </Dropdown>
-          </div>
+          </ToolbarGroup>
         </div>
       </div>
       <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
@@ -313,7 +320,35 @@ export function ViewScreen({ view }: { view: View }) {
   );
 }
 
-/** A thin divider between groups of toolbar controls. */
-function ToolbarGap() {
-  return <span aria-hidden style={{ width: 1, height: 16, background: palette.border, margin: "0 4px" }} />;
+/** Related toolbar controls that stay on one line when the toolbar wraps.
+ *  The right-hand group sits on the right edge. */
+function ToolbarGroup({ right, children }: { right?: boolean; children: React.ReactNode }) {
+  return <div style={{ display: "flex", alignItems: "center", gap: 6, flex: "none", marginLeft: right ? "auto" : undefined }}>{children}</div>;
+}
+
+/** A status kept off the board (Backlog, Cancelled ...) with its count;
+ *  quieter than the toolbar, opens the status as an overlay. */
+function HiddenStatusButton({ name, count, onClick }: { name: string; count: number; onClick: () => void }) {
+  return (
+    <Button size="small" type="text" onClick={onClick} aria-label={`${name}: ${count} tasks`} style={{ color: palette.muted, paddingInline: 8, gap: 6 }}>
+      {name}
+      <span
+        style={{
+          minWidth: 18,
+          height: 16,
+          padding: "0 5px",
+          borderRadius: 8,
+          background: palette.hover,
+          color: palette.fg,
+          fontSize: 11,
+          lineHeight: "16px",
+          fontVariantNumeric: "tabular-nums",
+          textAlign: "center",
+          boxSizing: "border-box",
+        }}
+      >
+        {count}
+      </span>
+    </Button>
+  );
 }

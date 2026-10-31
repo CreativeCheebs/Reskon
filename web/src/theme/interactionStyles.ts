@@ -33,6 +33,9 @@ export function interactionCss(): string {
       border-color: ${accentEdge} !important;
       color: ${palette.fg} !important;
     }
+    /* Segmented switches in the view toolbar get the same outline as the
+       selects and buttons beside them, so the row reads as one height. */
+    .jb-toolbar .ant-segmented { outline: 1px solid ${palette.borderStrong}; outline-offset: -1px; }
 
     .jb-sider .ant-menu-item .jb-nav-icon { color: ${palette.muted}; transition: color .12s ease; }
     .jb-sider .ant-menu-item-selected .jb-nav-icon { color: ${palette.accent}; }
