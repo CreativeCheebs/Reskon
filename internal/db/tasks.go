@@ -23,6 +23,8 @@ type Task struct {
 	Difficulty   *int64          `json:"difficulty"`
 	EstimateH    *float64        `json:"estimate_h"`
 	DueAt        *string         `json:"due_at"`
+	StartDate    *string         `json:"start_date"` // set by hand or by a move (see taskdates.go)
+	EndDate      *string         `json:"end_date"`
 	Type         string          `json:"type"`    // "task" or "epic"
 	EpicID       *int64          `json:"epic_id"` // the epic this task belongs to
 	BoardPos     float64         `json:"board_pos"`
@@ -33,14 +35,14 @@ type Task struct {
 }
 
 const taskCols = `id, key, title, description, area_id, status_id, priority_id, energy_type_id,
-	difficulty, estimate_h, due_at, board_pos, custom, created_at, updated_at, type, epic_id`
+	difficulty, estimate_h, due_at, board_pos, custom, created_at, updated_at, type, epic_id, start_date, end_date`
 
 func scanTask(r interface{ Scan(...any) error }) (*Task, error) {
 	var t Task
 	var custom string
 	err := r.Scan(&t.ID, &t.Key, &t.Title, &t.Description, &t.AreaID, &t.StatusID, &t.PriorityID,
 		&t.EnergyTypeID, &t.Difficulty, &t.EstimateH, &t.DueAt, &t.BoardPos, &custom, &t.CreatedAt, &t.UpdatedAt,
-		&t.Type, &t.EpicID)
+		&t.Type, &t.EpicID, &t.StartDate, &t.EndDate)
 	t.Custom = json.RawMessage(custom)
 	return &t, err
 }
@@ -56,6 +58,8 @@ var taskColumns = columns{
 	"difficulty":     kIntNull,
 	"estimate_h":     kRealNull,
 	"due_at":         kTextNull,
+	"start_date":     kTextNull,
+	"end_date":       kTextNull,
 	"type":           kText,
 	"epic_id":        kIntNull,
 }
@@ -78,6 +82,13 @@ func validateTaskFields(f Fields) error {
 		return err
 	} else if ok && s != "" && !validDate(s) {
 		return invalid("due_at must be YYYY-MM-DD")
+	}
+	for _, k := range []string{"start_date", "end_date"} {
+		if s, ok, err := f.stringField(k); err != nil {
+			return err
+		} else if ok && s != "" && !validDate(s) {
+			return invalid("%s must be YYYY-MM-DD", k)
+		}
 	}
 	return nil
 }
@@ -132,6 +143,7 @@ func (d *DB) CreateTask(ctx context.Context, f Fields) (*Task, error) {
 		return nil, err
 	}
 	delete(f, "status_id")
+	today := localDate(f)
 	customPatch, hasCustom := f["custom"]
 	delete(f, "custom")
 	if err := validateTaskFields(f); err != nil {
@@ -198,6 +210,10 @@ func (d *DB) CreateTask(ctx context.Context, f Fields) (*Task, error) {
 	}
 	id, _ := res.LastInsertId()
 	if err := writeTransition(ctx, tx, id, nil, statusID, "user", now); err != nil {
+		return nil, err
+	}
+	// A task created straight into In progress (say) gets its start date.
+	if err := applyDateRules(ctx, tx, id, statusID, today); err != nil {
 		return nil, err
 	}
 	if err := tx.Commit(); err != nil {

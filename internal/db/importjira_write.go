@@ -210,8 +210,9 @@ func (im *importer) issue(is jiraIssue, byKey map[string]jiraIssue, ex *jiraExpo
 	if p, ok := jiraPoints(is.Points); ok {
 		custom["jira_points"] = p
 	}
-	if is.StartDate != "" && validDate(is.StartDate) {
-		custom["start_date"] = is.StartDate
+	var start *string
+	if s := firstN(is.StartDate, 10); validDate(s) {
+		start = &s
 	}
 	var links []string
 	for _, l := range ex.Links[is.Key] {
@@ -255,10 +256,10 @@ func (im *importer) issue(is jiraIssue, byKey map[string]jiraIssue, ex *jiraExpo
 	}
 
 	res, err := im.tx.ExecContext(im.ctx, `INSERT INTO task (key, title, description, area_id, status_id, priority_id,
-		energy_type_id, difficulty, estimate_h, due_at, board_pos, custom, created_at, updated_at, type)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		energy_type_id, difficulty, estimate_h, due_at, board_pos, custom, created_at, updated_at, type, start_date)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		is.Key, strings.TrimSpace(is.Summary), descPtr, areaID, statusID, priorityID, energyID, difficulty, estimate, due,
-		pos, string(customJSON), created, updated, typ)
+		pos, string(customJSON), created, updated, typ, start)
 	if err != nil {
 		return err
 	}

@@ -114,7 +114,6 @@ func (im *importer) priority(jiraName string) (int64, error) {
 func (im *importer) customFields() error {
 	for _, f := range []struct{ Key, Label, Type string }{
 		{"jira_points", "Jira points", "real"},
-		{"start_date", "Start date", "date"},
 		{"jira_links", "Jira links", "text"},
 	} {
 		var one int

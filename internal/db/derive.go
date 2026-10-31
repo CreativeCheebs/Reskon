@@ -24,6 +24,9 @@ type TaskDerived struct {
 	Points         *float64 `json:"points"`           // difficulty x priority weight
 	LoggedH        float64  `json:"logged_h"`         // sum of session hours against the task
 	ProgressPct    *float64 `json:"progress_pct"`     // logged_h / estimate_h x 100, capped at 100; nil without estimate
+	RemainingH     *float64 `json:"remaining_h"`      // estimate_h - logged_h, below zero once over; nil without estimate
+	DaysToDue      *int     `json:"days_to_due"`      // calendar days from today to due_at: 0 due today, below zero overdue; nil without due date or once finished
+	PaceH          *float64 `json:"pace_h"`           // remaining_h spread over the days left, today and the due day included; nil unless both are known and positive
 	Subtypes       []string `json:"subtypes"`         // distinct subtypes from the task's sessions
 	EpicTasks      *int     `json:"epic_tasks"`       // epics only: tasks in it, cancelled excluded
 	EpicDone       *int     `json:"epic_done"`        // epics only: how many of those are done
@@ -101,6 +104,37 @@ func taskPoints(difficulty *int64, weight *float64) *float64 {
 	}
 	p := float64(*difficulty) * w
 	return &p
+}
+
+// remainingH is what is left of the estimate: the hours of the estimate not
+// yet logged, negative once the task has run over.
+func remainingH(logged float64, estimate *float64) *float64 {
+	if estimate == nil || *estimate <= 0 {
+		return nil
+	}
+	r := *estimate - logged
+	return &r
+}
+
+// duePace is how many calendar days remain until the due date (in the
+// server's time zone) and, while there is estimate left, the hours a day
+// it takes to finish by then. Today and the due day both count, so work
+// due today has one day.
+func duePace(due *string, remaining *float64, now time.Time) (*int, *float64) {
+	if due == nil {
+		return nil, nil
+	}
+	d, err := time.ParseInLocation("2006-01-02", *due, now.Location())
+	if err != nil {
+		return nil, nil
+	}
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	days := int(math.Round(d.Sub(today).Hours() / 24))
+	if remaining == nil || *remaining <= 0 || days < 0 {
+		return &days, nil
+	}
+	pace := *remaining / float64(days+1)
+	return &days, &pace
 }
 
 // progressPct is logged hours as a percentage of the estimate, capped at 100.
@@ -225,6 +259,10 @@ func (d *DB) derive(ctx context.Context, tasks []*Task, now time.Time) error {
 		t.Points = taskPoints(t.Difficulty, w)
 		t.LoggedH = logged[t.ID]
 		t.ProgressPct = progressPct(t.LoggedH, t.EstimateH)
+		t.RemainingH = remainingH(t.LoggedH, t.EstimateH)
+		if t.Behaviour != "done" && t.Behaviour != "cancelled" {
+			t.DaysToDue, t.PaceH = duePace(t.DueAt, t.RemainingH, now)
+		}
 		t.Subtypes = subtypes[t.ID]
 		if t.Subtypes == nil {
 			t.Subtypes = []string{}

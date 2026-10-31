@@ -50,11 +50,27 @@ export function priorityLevel(p: Priority, all: Priority[]): number {
   return Math.sign(d) * (Math.abs(d) <= 1 ? 1 : 2);
 }
 
+/** Colours for a priority with none of its own, by level: blue for the
+ *  lowest up to red for the highest. Also what "Use suggested colours" in
+ *  Settings → Priorities writes. */
+export const PRIORITY_LEVEL_COLORS: Record<number, string> = {
+  [-2]: "#579DFF",
+  [-1]: "#4BCE97",
+  0: "#F5CD47",
+  1: "#FEA362",
+  2: "#F87168",
+};
+
+/** The priority's own colour, else the colour for its level. */
+export function priorityColor(p: Priority, all: Priority[]): string {
+  return p.color && /^#[0-9a-fA-F]{6}$/.test(p.color) ? p.color : PRIORITY_LEVEL_COLORS[priorityLevel(p, all)];
+}
+
 /** Jira-style: double chevron, chevron, equals, chevron down, double
  *  chevron down, in the priority's colour. */
 export function PriorityIcon({ priority, all, size = 14, tip = true }: { priority: Priority; all: Priority[]; size?: number; tip?: boolean }) {
   const level = priorityLevel(priority, all);
-  const color = priority.color && /^#[0-9a-fA-F]{6}$/.test(priority.color) ? priority.color : palette.muted;
+  const color = priorityColor(priority, all);
   const chevron = (y: number, up: boolean) => (up ? `M3.5 ${y + 3}L8 ${y - 1.5}L12.5 ${y + 3}` : `M3.5 ${y - 3}L8 ${y + 1.5}L12.5 ${y - 3}`);
   let d: string;
   if (level === 0) d = "M3 6H13M3 10H13";

@@ -4,6 +4,7 @@ import { local } from "../offline";
 import { makeAntTheme } from "./antTheme";
 import { applyPalette, palette } from "./palette";
 import { BUILTIN_THEMES, parseTheme, type Theme } from "./themes";
+import { interactionCss } from "./interactionStyles";
 
 // Holds the active theme. Switching replaces the palette, rebuilds the Ant
 // token block and the global styles, and re-renders the app. The last theme
@@ -40,7 +41,8 @@ function initialTheme(): Theme {
 const style = document.createElement("style");
 document.head.appendChild(style);
 
-/** Page-level styles that live outside Ant: body, scrollbars. */
+/** Page-level styles that live outside Ant: body, scrollbars, and the
+ *  hover and focus states of cards, toolbar and sidebar. */
 function applyGlobalStyles() {
   document.body.style.background = palette.bg;
   document.body.style.color = palette.fg;
@@ -52,7 +54,7 @@ function applyGlobalStyles() {
     ::-webkit-scrollbar-thumb { background: ${palette.borderStrong}; border-radius: 6px; border: 2px solid ${palette.bg}; }
     ::-webkit-scrollbar-thumb:hover { background: ${palette.muted}; }
     ::-webkit-scrollbar-corner { background: transparent; }
-  `;
+  ` + interactionCss();
 }
 
 /** `children` is a render function, called on every theme change, so the

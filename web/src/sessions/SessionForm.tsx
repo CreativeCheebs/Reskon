@@ -1,16 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Button, DatePicker, Form, Input, InputNumber, Radio, Select, TimePicker, Typography } from "antd";
-import { CloseOutlined, PlusOutlined } from "@ant-design/icons";
+import { DatePicker, Form, Input, Segmented, Select, TimePicker, Typography } from "antd";
+import { DownOutlined, RightOutlined } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
 import { useApp } from "../store";
-import { formatHours, today } from "../format";
+import { today } from "../format";
 import { palette } from "../theme/palette";
 import type { Session, TaskBrief } from "../types";
-import { DifficultySlider } from "../task/DifficultySlider";
 import { RankedSubtypes } from "./RankedSubtypes";
 import { CustomFieldsEditor } from "../fields/CustomFieldsEditor";
+import { DurationInput, MAX_HOURS } from "./DurationInput";
+import { EnergyFields } from "./EnergyFields";
 
 // The fields of a session, shared by the manual log form and quick capture.
+// Laid out as a worklog: duration, date and start time first, then a short
+// description and the task; area, energy types, intensity and subtypes sit
+// in a quieter Details block, and the longer note opens on demand.
 // Energy type follows the spec's chain only for what is preselected:
 // task's energy type, else the area default, else blank. Difficulty
 // defaults to the task's when a task is picked and no difficulty was set
@@ -28,11 +32,13 @@ export interface EnergyPart {
   difficulty: number | null;
 }
 
-const MAX_ENERGIES = 4;
-
 export interface SessionDraft {
   task_id: number | null;
+  /** The worklog description (session.label). With a task it starts as the
+   *  task's title; left that way it is saved empty, so lists show the task. */
   label: string;
+  /** The label is still the task title filled in for the person. */
+  label_suggested?: boolean;
   area_id: number | null;
   kind: "task" | "event";
   energy_type_id: number | null;
@@ -77,7 +83,7 @@ export function draftParts(d: SessionDraft): EnergyPart[] {
   return [{ energy_type_id: d.energy_type_id, share: d.more.length ? d.share : 100, difficulty: d.difficulty }, ...d.more];
 }
 
-function withParts(d: SessionDraft, parts: EnergyPart[]): SessionDraft {
+export function withParts(d: SessionDraft, parts: EnergyPart[]): SessionDraft {
   const [first, ...more] = parts;
   return { ...d, energy_type_id: first.energy_type_id, share: more.length ? first.share : 100, difficulty: first.difficulty, more };
 }
@@ -113,6 +119,7 @@ export function sessionReady(d: SessionDraft): boolean {
   const parts = draftParts(d);
   return (
     !!d.hours &&
+    d.hours <= MAX_HOURS &&
     parts.every((p) => p.energy_type_id && p.share >= 1) &&
     new Set(parts.map((p) => p.energy_type_id)).size === parts.length &&
     parts.reduce((n, p) => n + p.share, 0) === 100
@@ -123,7 +130,7 @@ export function sessionReady(d: SessionDraft): boolean {
 export function sessionBody(d: SessionDraft) {
   return {
     task_id: d.task_id,
-    label: d.task_id ? null : d.label || null,
+    label: d.task_id && d.label_suggested ? null : d.label.trim() || null,
     area_id: d.area_id,
     kind: d.kind,
     energy_type_id: d.energy_type_id,
@@ -145,11 +152,14 @@ export function SessionFields({
   onChange,
   tasks,
   disabled,
+  autoFocus,
 }: {
   draft: SessionDraft;
   onChange: (d: SessionDraft) => void;
   tasks: TaskBrief[];
   disabled?: boolean;
+  /** Put the cursor in Duration (the manual log form). */
+  autoFocus?: boolean;
 }) {
   const { boot } = useApp();
   const set = (patch: Partial<SessionDraft>) => onChange({ ...draft, ...patch });
@@ -158,238 +168,224 @@ export function SessionFields({
     [tasks, draft.task_id],
   );
 
-  // Preselect energy type when the task or area changes and none is chosen.
+  // What a task or area preselects, worked out together and applied as one
+  // change: separate updates in the same render would each start from the
+  // same old draft and the last would undo the others.
+  //  - Energy type: the task's, else the area default, unless chosen by hand.
+  //  - Intensity: a new session takes its task's unless set by hand. Opening
+  //    an existing session leaves it as saved until its task is changed.
+  //  - Description: with a task and nothing typed, the task's title. Typing
+  //    takes it over; it is never overwritten after that.
   const [touchedEnergy, setTouchedEnergy] = useState(draft.energy_type_id !== null);
-  useEffect(() => {
-    if (touchedEnergy) return;
-    const task = tasks.find((t) => t.id === draft.task_id);
-    const area = boot.areas.find((a) => a.id === (task?.area_id ?? draft.area_id));
-    const energy = task?.energy_type_id ?? area?.default_energy_type_id ?? null;
-    if (energy !== draft.energy_type_id) set({ energy_type_id: energy });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft.task_id, draft.area_id, tasks]);
-
-  // Difficulty: a new session takes its task's difficulty unless one was
-  // set by hand. Opening an existing session leaves it as saved until its
-  // task is changed.
   const [touchedDifficulty, setTouchedDifficulty] = useState(draft.difficulty !== null);
   const openedWithTask = useRef(draft.points !== undefined ? draft.task_id : undefined);
   useEffect(() => {
-    if (touchedDifficulty || openedWithTask.current === draft.task_id) return;
-    openedWithTask.current = undefined;
-    const want = tasks.find((t) => t.id === draft.task_id)?.difficulty ?? null;
-    if (want !== draft.difficulty) set({ difficulty: want });
+    const task = tasks.find((t) => t.id === draft.task_id);
+    const patch: Partial<SessionDraft> = {};
+    if (!touchedEnergy) {
+      const area = boot.areas.find((a) => a.id === (task?.area_id ?? draft.area_id));
+      const energy = task?.energy_type_id ?? area?.default_energy_type_id ?? null;
+      if (energy !== draft.energy_type_id) patch.energy_type_id = energy;
+    }
+    if (!touchedDifficulty && openedWithTask.current !== draft.task_id) {
+      openedWithTask.current = undefined;
+      const want = task?.difficulty ?? null;
+      if (want !== draft.difficulty) patch.difficulty = want;
+    }
+    if (task && (!draft.label || draft.label_suggested) && task.title !== draft.label) {
+      patch.label = task.title;
+      patch.label_suggested = true;
+    }
+    if (Object.keys(patch).length) set(patch);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft.task_id, tasks]);
+  }, [draft.task_id, draft.area_id, tasks]);
 
+  const [durationError, setDurationError] = useState<string | null>(null);
+  const [noteOpen, setNoteOpen] = useState(!!draft.note);
   const startedAt: Dayjs | null = draft.started_at ? dayjs(draft.started_at) : null;
+  // Two columns for short fields side by side, one on a narrow screen.
+  const pair = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "0 12px" } as const;
+  const tight = { marginBottom: 10 };
 
   return (
-    <Form layout="vertical" size="small" disabled={disabled}>
-      <Form.Item label="Kind" style={{ marginBottom: 8 }}>
-        <Radio.Group value={draft.kind} onChange={(e) => set({ kind: e.target.value })}>
-          <Radio.Button value="task">Work</Radio.Button>
-          <Radio.Button value="event">Event (not work)</Radio.Button>
-        </Radio.Group>
-      </Form.Item>
-      {!draft.task_id && (
-        <Form.Item label="Title" style={{ marginBottom: 8 }}>
-          <Input value={draft.label} onChange={(e) => set({ label: e.target.value })} placeholder="What it was" />
-        </Form.Item>
-      )}
-      {/* An event is not work on a task, so it only asks for a title; one
-          already saved against a task still shows its task. */}
-      {(draft.kind === "task" || draft.task_id) && (
-        <Form.Item label="Task (optional)" style={{ marginBottom: 8 }}>
-          <Select
-            allowClear
-            showSearch
-            optionFilterProp="label"
-            placeholder="No task"
-            value={draft.task_id ?? undefined}
-            onChange={(v) => {
-              const t = tasks.find((x) => x.id === v);
-              set({ task_id: v ?? null, area_id: t?.area_id ?? draft.area_id });
-            }}
-            options={openTasks.map((t) => ({ value: t.id, label: t.title }))}
-          />
-        </Form.Item>
-      )}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 12px" }}>
-        <Form.Item label="Area" style={{ marginBottom: 8 }}>
-          <Select
-            allowClear
-            value={draft.area_id ?? undefined}
-            onChange={(v) => set({ area_id: v ?? null })}
-            options={boot.areas.map((a) => ({ value: a.id, label: a.name }))}
-          />
-        </Form.Item>
-        <Form.Item label="Hours" required style={{ marginBottom: 8 }}>
-          <InputNumber style={{ width: "100%" }} min={0.05} max={24} step={0.25} value={draft.hours} onChange={(v) => set({ hours: v })} />
-        </Form.Item>
-      </div>
-      <EnergyFields
-        draft={draft}
-        onChange={onChange}
-        disabled={disabled}
-        onFirstType={() => setTouchedEnergy(true)}
-        onFirstIntensity={() => setTouchedDifficulty(true)}
+    <Form layout="vertical" size="middle" disabled={disabled} requiredMark>
+      <Segmented
+        size="small"
+        value={draft.kind}
+        onChange={(v) => set({ kind: v as SessionDraft["kind"] })}
+        options={[
+          { value: "task", label: "Work" },
+          { value: "event", label: "Event (not work)" },
+        ]}
+        aria-label="Kind"
+        style={{ marginBottom: 12 }}
       />
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 12px" }}>
-        <Form.Item label="Logged for" required style={{ marginBottom: 8 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "0 12px" }}>
+        <Form.Item
+          label="Duration"
+          htmlFor="session-duration"
+          required
+          style={tight}
+          validateStatus={durationError ? "error" : undefined}
+          help={durationError ?? undefined}
+        >
+          <DurationInput
+            id="session-duration"
+            hours={draft.hours}
+            autoFocus={autoFocus}
+            disabled={disabled}
+            onChange={(hours, err) => {
+              setDurationError(err);
+              set({ hours });
+            }}
+          />
+        </Form.Item>
+        <Form.Item label="Date logged" htmlFor="session-date" required style={tight}>
           <DatePicker
+            id="session-date"
+            size="large"
             style={{ width: "100%" }}
             allowClear={false}
             value={dayjs(draft.logged_for)}
-            onChange={(d) => d && set({ logged_for: d.format("YYYY-MM-DD") })}
+            onChange={(d) => {
+              if (!d) return;
+              const day = d.format("YYYY-MM-DD");
+              // A start time stays the same time of day on the new date.
+              const s = draft.started_at ? dayjs(draft.started_at) : null;
+              set({ logged_for: day, started_at: s ? dayjs(day).hour(s.hour()).minute(s.minute()).second(0).toISOString() : null });
+            }}
           />
         </Form.Item>
-        <Form.Item label="Started at (optional)" style={{ marginBottom: 8 }}>
+        <Form.Item label="Started at" htmlFor="session-start" style={tight}>
           <TimePicker
+            id="session-start"
+            size="large"
             style={{ width: "100%" }}
             format="HH:mm"
+            placeholder="optional"
             value={startedAt}
             onChange={(t) =>
               set({
-                started_at: t
-                  ? dayjs(draft.logged_for).hour(t.hour()).minute(t.minute()).second(0).toISOString()
-                  : null,
+                started_at: t ? dayjs(draft.logged_for).hour(t.hour()).minute(t.minute()).second(0).toISOString() : null,
               })
             }
           />
         </Form.Item>
       </div>
-      <Form.Item label="Subtypes (drag to rank)" style={{ marginBottom: 8 }}>
-        <RankedSubtypes
-          value={draft.subtypes}
-          onChange={(subtypes) => set({ subtypes })}
-          energyTypeId={draft.more.length ? undefined : draft.energy_type_id ?? undefined}
-          disabled={disabled}
+      <Form.Item
+        label="Description"
+        htmlFor="session-description"
+        style={tight}
+        extra={draft.task_id && draft.label_suggested ? "Filled in from the task; type to describe this piece of work." : "A few words on what you did."}
+      >
+        <Input
+          id="session-description"
+          size="middle"
+          value={draft.label}
+          onChange={(e) => set({ label: e.target.value, label_suggested: false })}
+          placeholder={draft.kind === "event" ? "e.g. Dinner with family" : "e.g. Wired up the login form"}
+          maxLength={300}
         />
       </Form.Item>
-      <Form.Item label="Note" style={{ marginBottom: 8 }}>
-        <Input.TextArea autoSize={{ minRows: 1, maxRows: 4 }} value={draft.note} onChange={(e) => set({ note: e.target.value })} />
-      </Form.Item>
-      <CustomFieldsEditor entity="session" value={draft.custom} onChange={(k, v) => set({ custom: { ...draft.custom, [k]: v } })} disabled={disabled} />
-    </Form>
-  );
-}
+      {/* An event is not work on a task, so it doesn't offer one; one
+          already saved against a task still shows its task. */}
+      {(draft.kind === "task" || draft.task_id) && (
+        <Form.Item label="Task" htmlFor="session-task" style={tight}>
+          <Select
+            id="session-task"
+            size="middle"
+            allowClear
+            showSearch
+            optionFilterProp="label"
+            placeholder="No task (optional)"
+            value={draft.task_id ?? undefined}
+            onChange={(v) => {
+              const t = tasks.find((x) => x.id === v);
+              // Swap a filled-in title for the new task's; keep typed words.
+              const suggested = !draft.label || draft.label_suggested;
+              set({
+                task_id: v ?? null,
+                area_id: t?.area_id ?? draft.area_id,
+                ...(suggested ? { label: t?.title ?? "", label_suggested: !!t } : {}),
+              });
+            }}
+            options={openTasks.map((t) => ({ value: t.id, label: t.title }))}
+          />
+        </Form.Item>
+      )}
 
-// EnergyFields: the session's energy types, each with its intensity, and
-// with two or more, each one's share of the hours.
-function EnergyFields({
-  draft,
-  onChange,
-  disabled,
-  onFirstType,
-  onFirstIntensity,
-}: {
-  draft: SessionDraft;
-  onChange: (d: SessionDraft) => void;
-  disabled?: boolean;
-  onFirstType: () => void;
-  onFirstIntensity: () => void;
-}) {
-  const { boot } = useApp();
-  const parts = draftParts(draft);
-  const several = parts.length > 1;
-  const total = parts.reduce((n, p) => n + p.share, 0);
-  const setParts = (ps: EnergyPart[], patch: Partial<SessionDraft> = {}) => onChange({ ...withParts(draft, ps), ...patch });
-  const setPart = (i: number, patch: Partial<EnergyPart>) => setParts(parts.map((p, j) => (j === i ? { ...p, ...patch } : p)));
-
-  // Moving one share moves another the other way, so they keep adding up
-  // to 100: the last one, or the one before it when the last is moved.
-  const setShare = (i: number, v: number) => {
-    const ps = parts.map((p) => ({ ...p }));
-    const other = i === ps.length - 1 ? i - 1 : ps.length - 1;
-    const want = Math.min(99, Math.max(1, Math.round(v)));
-    const delta = want - ps[i].share;
-    ps[i].share = want;
-    ps[other].share = Math.max(1, ps[other].share - delta);
-    setParts(ps);
-  };
-  // A new type takes half of the biggest share.
-  const addPart = () => {
-    const ps = parts.map((p) => ({ ...p }));
-    const big = ps.reduce((b, p, j) => (p.share > ps[b].share ? j : b), 0);
-    const give = Math.max(1, Math.floor(ps[big].share / 2));
-    if (ps[big].share - give < 1) return;
-    ps[big].share -= give;
-    ps.push({ energy_type_id: null, share: give, difficulty: null });
-    setParts(ps);
-  };
-  // A removed type's share goes to the one above it.
-  const removePart = (i: number) => {
-    const ps = parts.filter((_, j) => j !== i).map((p) => ({ ...p }));
-    ps[Math.max(0, i - 1)].share += parts[i].share;
-    if (ps.length === 1) ps[0].share = 100;
-    setParts(ps);
-  };
-
-  const taken = new Set(parts.map((p) => p.energy_type_id));
-  return (
-    <Form.Item
-      label={several ? "Energy types · share of the hours · intensity" : "Energy type · intensity"}
-      required
-      style={{ marginBottom: 8 }}
-      help={
-        several && total !== 100 ? (
-          <span style={{ color: palette.warn }}>Shares add up to {total}%; they need to add up to 100%.</span>
-        ) : undefined
-      }
-    >
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        {parts.map((p, i) => (
-          <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+      <div
+        style={{
+          marginTop: 4,
+          padding: "10px 12px 2px",
+          border: `1px solid ${palette.border}`,
+          borderRadius: 8,
+          background: palette.panelDim,
+        }}
+      >
+        <Typography.Text type="secondary" style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 8 }}>
+          Details
+        </Typography.Text>
+        <div style={pair}>
+          <Form.Item label="Area" htmlFor="session-area" style={tight}>
             <Select
-              style={{ width: several ? 140 : 180 }}
-              placeholder="Energy type"
-              value={p.energy_type_id ?? undefined}
-              onChange={(v) => {
-                if (i === 0) onFirstType();
-                if (!several) setParts([{ ...p, energy_type_id: v }], { subtypes: [] });
-                else setPart(i, { energy_type_id: v });
-              }}
-              options={boot.energy_types.map((e) => ({ value: e.id, label: e.name, disabled: e.id !== p.energy_type_id && taken.has(e.id) }))}
+              id="session-area"
+              allowClear
+              placeholder="None"
+              value={draft.area_id ?? undefined}
+              onChange={(v) => set({ area_id: v ?? null })}
+              options={boot.areas.map((a) => ({ value: a.id, label: a.name }))}
             />
-            {several && (
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                <InputNumber
-                  size="small"
-                  style={{ width: 70 }}
-                  min={1}
-                  max={99}
-                  value={p.share}
-                  formatter={(v) => `${v}%`}
-                  parser={(v) => Number((v ?? "").replace("%", "")) || 1}
-                  onChange={(v) => v !== null && setShare(i, v)}
-                  aria-label="Share of the hours"
-                />
-                <span style={{ fontSize: 11, color: palette.muted, minWidth: 36 }}>
-                  {draft.hours ? formatHours((draft.hours * p.share) / 100) : ""}
-                </span>
-              </span>
-            )}
-            <DifficultySlider
-              value={p.difficulty}
-              disabled={disabled}
-              width={several ? 190 : 230}
-              onChange={(v) => {
-                if (i === 0) onFirstIntensity();
-                setPart(i, { difficulty: v });
-              }}
-            />
-            {several && !disabled && (
-              <Button size="small" type="text" icon={<CloseOutlined />} onClick={() => removePart(i)} aria-label="Remove this energy type" />
-            )}
-          </div>
-        ))}
-        {!disabled && parts.length < MAX_ENERGIES && (
-          <Typography.Link onClick={addPart} style={{ fontSize: 12 }}>
-            <PlusOutlined /> Add energy type
-          </Typography.Link>
-        )}
+          </Form.Item>
+        </div>
+        <EnergyFields
+          draft={draft}
+          onChange={onChange}
+          disabled={disabled}
+          onFirstType={() => setTouchedEnergy(true)}
+          onFirstIntensity={() => setTouchedDifficulty(true)}
+        />
+        <Form.Item label="Subtypes" tooltip="Drag to rank; rank sets each one's weight" style={tight}>
+          <RankedSubtypes
+            value={draft.subtypes}
+            onChange={(subtypes) => set({ subtypes })}
+            energyTypeId={draft.more.length ? undefined : draft.energy_type_id ?? undefined}
+            disabled={disabled}
+          />
+        </Form.Item>
+        <CustomFieldsEditor entity="session" value={draft.custom} onChange={(k, v) => set({ custom: { ...draft.custom, [k]: v } })} disabled={disabled} />
       </div>
-    </Form.Item>
+
+      {noteOpen ? (
+        <Form.Item
+          label="Note"
+          htmlFor="session-note"
+          style={{ marginTop: 12, marginBottom: 4 }}
+          extra="Longer thoughts kept with this session: how it went, what to pick up next."
+        >
+          <Input.TextArea
+            id="session-note"
+            autoSize={{ minRows: 2, maxRows: 6 }}
+            value={draft.note}
+            autoFocus={!draft.note}
+            onChange={(e) => set({ note: e.target.value })}
+          />
+        </Form.Item>
+      ) : (
+        <Typography.Link
+          style={{ display: "inline-block", marginTop: 12, fontSize: 13 }}
+          onClick={() => setNoteOpen(true)}
+          aria-expanded={false}
+          disabled={disabled}
+        >
+          <RightOutlined style={{ fontSize: 10 }} /> Add a note
+        </Typography.Link>
+      )}
+      {noteOpen && !draft.note && (
+        <Typography.Link style={{ fontSize: 12 }} onClick={() => setNoteOpen(false)} aria-expanded>
+          <DownOutlined style={{ fontSize: 10 }} /> Hide note
+        </Typography.Link>
+      )}
+    </Form>
   );
 }

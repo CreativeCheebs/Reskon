@@ -10,6 +10,7 @@ import { DifficultySlider } from "../task/DifficultySlider";
 import { emptySession, sessionBody, sessionReady, SessionFields, type SessionDraft } from "../sessions/SessionForm";
 import { priorityOptions } from "../task/LevelIcons";
 import { palette } from "../theme/palette";
+import { today } from "../format";
 
 // Quick capture: one line in, filled forms out, nothing written until the
 // user confirms. One line can hold several entries ("6 hours at the
@@ -129,7 +130,7 @@ export function CaptureModal({ onClose, takeEarlyKeys }: { onClose: () => void; 
     if (e.intent === "task") {
       const t = e.task;
       if (!t.title.trim() || !t.area_id) throw new Error("A task needs a title and an area.");
-      const body: Record<string, unknown> = { title: t.title.trim(), area_id: t.area_id, custom: audit(e) };
+      const body: Record<string, unknown> = { title: t.title.trim(), area_id: t.area_id, custom: audit(e), today: today() };
       if (t.energy_type_id) body.energy_type_id = t.energy_type_id;
       if (t.difficulty) body.difficulty = t.difficulty;
       if (t.priority_id) body.priority_id = t.priority_id;

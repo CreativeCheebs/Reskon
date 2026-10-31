@@ -18,14 +18,20 @@ import { message } from "../theme/feedback";
 import { api } from "../api";
 import { useApp } from "../store";
 import { cardConfigOf } from "../views/cardConfig";
-import type { Status, Task, View } from "../types";
+import type { ColumnLimit, Status, Task, View } from "../types";
+import { confirm } from "../theme/feedback";
+import { formatLimit, limitWeight } from "./limits";
+import { today } from "../format";
 import { Column } from "./Column";
 import { TaskCard } from "./TaskCard";
 import { COL_GAP } from "./useBoardFit";
+import { boardComparator } from "./sorting";
 
 // One row of status columns with drag and drop. Without grouping the board
 // is a single lane; grouped, each group (epic, priority ...) is a lane, and
-// cards move between columns within their lane.
+// cards move between columns within their lane. With a sort other than
+// manual, cards still move between columns (landing at the end of the
+// dragged order) but cannot be reordered within one.
 
 type Columns = Record<number, number[]>; // status id -> task ids in order
 
@@ -49,6 +55,8 @@ interface Props {
   boardStatuses: Status[];
   collapsed: Set<number>;
   onToggleCollapse: (statusId: number) => void;
+  limits: Map<number, { limit: ColumnLimit; use: number }>;
+  onSetLimit: (statusId: number, limit: ColumnLimit | null) => void;
   inLane: boolean;
   createDefaults: Record<string, unknown>;
   setTasks: (fn: (prev: Task[]) => Task[]) => void;
@@ -57,20 +65,24 @@ interface Props {
 }
 
 export function Lane(props: Props) {
-  const { view, tasks, boardStatuses, collapsed, onToggleCollapse, inLane, createDefaults, setTasks, refetch, onOpenTask } = props;
-  const { online } = useApp();
+  const { view, tasks, boardStatuses, collapsed, onToggleCollapse, limits, onSetLimit, inLane, createDefaults, setTasks, refetch, onOpenTask } =
+    props;
+  const { online, boot } = useApp();
   const config = useMemo(() => cardConfigOf(view), [view]);
+  const sort = view.board_state?.sort ?? "manual";
+  const sorted = sort !== "manual";
+  const compare = useMemo(() => boardComparator(sort, boot), [sort, boot]);
 
   const byId = useMemo(() => new Map(tasks.map((t) => [t.id, t])), [tasks]);
 
   const buildColumns = useCallback((): Columns => {
     const cols: Columns = {};
     for (const s of boardStatuses) cols[s.id] = [];
-    for (const t of [...tasks].sort((a, b) => a.board_pos - b.board_pos)) {
+    for (const t of [...tasks].sort(compare)) {
       if (cols[t.status_id]) cols[t.status_id].push(t.id);
     }
     return cols;
-  }, [tasks, boardStatuses]);
+  }, [tasks, boardStatuses, compare]);
 
   const [columns, setColumns] = useState<Columns>(buildColumns);
   const [activeId, setActiveId] = useState<number | null>(null);
@@ -132,6 +144,18 @@ export function Lane(props: Props) {
     const taskId = Number(active.id);
     const to = containerOf(over.id);
     if (to === undefined) return;
+    const moving = byId.get(taskId);
+    if (moving && moving.status_id !== to && !(await withinLimit(moving, to))) {
+      setColumns(buildColumns());
+      return;
+    }
+    if (sorted) {
+      const task = byId.get(taskId);
+      setColumns(buildColumns());
+      if (!task || task.status_id === to) return;
+      await send(taskId, { status_id: to, before_id: null, after_id: null });
+      return;
+    }
     let ids = columns[to];
     const oldIndex = ids.indexOf(taskId);
     const overIndex = ids.indexOf(Number(over.id));
@@ -143,12 +167,30 @@ export function Lane(props: Props) {
     const before_id = i > 0 ? ids[i - 1] : null;
     const after_id = i < ids.length - 1 ? ids[i + 1] : null;
     if (task && task.status_id === to && before_id === prevNeighbour(task) && after_id === nextNeighbour(task)) return;
+    await send(taskId, { status_id: to, before_id, after_id });
+  };
+
+  // A hard limit asks before a card takes its column past it.
+  const withinLimit = (t: Task, statusId: number): Promise<boolean> => {
+    const l = limits.get(statusId);
+    if (!l || !l.limit.hard) return Promise.resolve(true);
+    const after = l.use + limitWeight(t, l.limit.unit);
+    if (after <= l.limit.max) return Promise.resolve(true);
+    const name = boardStatuses.find((s) => s.id === statusId)?.name ?? "This column";
+    return new Promise((resolve) =>
+      confirm({
+        title: `${name} would go over its limit`,
+        content: `It would hold ${formatLimit(after, l.limit.unit)}; the limit is ${formatLimit(l.limit.max, l.limit.unit)}. Move it anyway?`,
+        okText: "Move anyway",
+        onOk: () => resolve(true),
+        onCancel: () => resolve(false),
+      }),
+    );
+  };
+
+  const send = async (taskId: number, body: { status_id: number; before_id: number | null; after_id: number | null }) => {
     try {
-      const { column_renumbered, ...updated } = await api.post<Task & { column_renumbered?: boolean }>(`/tasks/${taskId}/move`, {
-        status_id: to,
-        before_id,
-        after_id,
-      });
+      const { column_renumbered, ...updated } = await api.post<Task & { column_renumbered?: boolean }>(`/tasks/${taskId}/move`, { ...body, today: today() });
       setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
       // The server made room by renumbering the column: reload the others.
       if (column_renumbered) refetch();
@@ -197,6 +239,8 @@ export function Lane(props: Props) {
             view={view}
             collapsed={collapsed.has(s.id)}
             onToggleCollapse={() => onToggleCollapse(s.id)}
+            limit={limits.get(s.id)}
+            onSetLimit={(l) => onSetLimit(s.id, l)}
             inLane={inLane}
             createDefaults={createDefaults}
             onOpenTask={onOpenTask}

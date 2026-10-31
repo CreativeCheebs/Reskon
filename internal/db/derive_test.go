@@ -132,3 +132,55 @@ func TestMoveWritesTransitionsAndKeepsFirstStarted(t *testing.T) {
 		t.Errorf("reorder wrote a transition")
 	}
 }
+
+func TestRemainingH(t *testing.T) {
+	est := 12.0
+	for _, c := range []struct {
+		logged float64
+		est    *float64
+		want   *float64
+	}{
+		{3, &est, ptr(9.0)},
+		{14.5, &est, ptr(-2.5)}, // over the estimate
+		{3, nil, nil},
+		{3, ptr(0.0), nil},
+	} {
+		got := remainingH(c.logged, c.est)
+		if (got == nil) != (c.want == nil) || (got != nil && *got != *c.want) {
+			t.Errorf("remainingH(%v, %v) = %v, want %v", c.logged, deref(c.est), deref(got), deref(c.want))
+		}
+	}
+}
+
+func TestDuePace(t *testing.T) {
+	now := time.Date(2026, 10, 31, 15, 0, 0, 0, time.Local)
+	s := func(v string) *string { return &v }
+	for _, c := range []struct {
+		due       *string
+		remaining *float64
+		days      *int
+		pace      *float64
+	}{
+		{s("2026-11-02"), ptr(9.0), iptr(2), ptr(3.0)}, // today, Sunday, Monday
+		{s("2026-10-31"), ptr(4.0), iptr(0), ptr(4.0)}, // due today: one day
+		{s("2026-10-29"), ptr(4.0), iptr(-2), nil},     // overdue
+		{s("2026-11-02"), ptr(-1.0), iptr(2), nil},     // already over the estimate
+		{s("2026-11-02"), nil, iptr(2), nil},           // no estimate
+		{nil, ptr(9.0), nil, nil},
+	} {
+		days, pace := duePace(c.due, c.remaining, now)
+		if (days == nil) != (c.days == nil) || (days != nil && *days != *c.days) ||
+			(pace == nil) != (c.pace == nil) || (pace != nil && *pace != *c.pace) {
+			t.Errorf("duePace(%v, %v) = %v, %v; want %v, %v", deref2(c.due), deref(c.remaining), days, deref(pace), c.days, deref(c.pace))
+		}
+	}
+}
+
+func iptr(n int) *int { return &n }
+
+func deref2(p *string) string {
+	if p == nil {
+		return "nil"
+	}
+	return *p
+}

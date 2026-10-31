@@ -7,7 +7,8 @@ import { groupTasks } from "../views/grouping";
 import { useSaveView } from "../views/useViewState";
 import { useEpics } from "../task/useEpics";
 import { TypeIcon } from "../task/TypeIcon";
-import type { Task, View } from "../types";
+import type { ColumnLimit, Task, View } from "../types";
+import { limitUse } from "./limits";
 import { Lane } from "./Lane";
 import { COL_GAP, useBoardFit } from "./useBoardFit";
 import { useSurfaceOpacity, withAlpha } from "../views/ViewBackdrop";
@@ -42,6 +43,20 @@ export const Board = memo(function Board({ view, tasks, setTasks, refetch, onOpe
   );
   const groups = useMemo(() => groupTasks(tasks, groupBy, boot, epics), [tasks, groupBy, boot, epics]);
 
+  // Limits count every card the view shows in a column, all lanes together.
+  const limits = useMemo(() => {
+    const out = new Map<number, { limit: ColumnLimit; use: number }>();
+    for (const [sid, limit] of Object.entries(view.board_state?.limits ?? {}))
+      out.set(Number(sid), { limit, use: limitUse(tasks, Number(sid), limit) });
+    return out;
+  }, [view.board_state?.limits, tasks]);
+  const setLimit = (statusId: number, limit: ColumnLimit | null) => {
+    const next = { ...(view.board_state?.limits ?? {}) };
+    if (limit) next[statusId] = limit;
+    else delete next[statusId];
+    save({ board_state: { limits: next } });
+  };
+
   const collapsedCount = boardStatuses.filter((s) => collapsed.has(s.id)).length;
   const fit = useBoardFit(boardStatuses.length - collapsedCount, collapsedCount);
 
@@ -59,6 +74,8 @@ export const Board = memo(function Board({ view, tasks, setTasks, refetch, onOpe
       boardStatuses={boardStatuses}
       collapsed={collapsed}
       onToggleCollapse={toggleCollapse}
+      limits={limits}
+      onSetLimit={setLimit}
       inLane={inLane}
       createDefaults={g.defaults}
       setTasks={setTasks}

@@ -69,10 +69,23 @@ export type TaskType = "task" | "epic";
 
 export type GroupBy = "none" | "epic" | "priority" | "area" | "energy_type" | "difficulty" | "type" | "status";
 
+export type BoardSort = "manual" | "priority" | "due" | "difficulty" | "estimate" | "time_in_status" | "newest" | "oldest";
+
 /** UI state saved on the view as you use it. */
 export interface BoardState {
   collapsed?: number[]; // status ids
   group_by?: GroupBy;
+  /** Card order within each board column; absent means manual. */
+  sort?: BoardSort;
+  /** Column limits by status id. */
+  limits?: Record<string, ColumnLimit>;
+}
+
+export interface ColumnLimit {
+  max: number;
+  unit: "tasks" | "points" | "hours";
+  /** Hard: asks before a card is moved in past it. Soft: only shows it. */
+  hard: boolean;
 }
 
 export interface CardShow {
@@ -87,7 +100,11 @@ export interface CardShow {
   subtypes: boolean;
   estimate: boolean;
   progress_bar: boolean;
+  /** Under the time bar: hours a day needed to finish by the due date. */
+  pace: boolean;
   due: boolean;
+  start_date: boolean;
+  end_date: boolean;
   epic: boolean;
   logged: boolean;
   custom: string[];
@@ -96,6 +113,8 @@ export interface CardShow {
 export interface CardConfig {
   show: CardShow;
   density: "compact" | "comfortable";
+  /** Tables: priority and intensity as symbols only, without their names. */
+  icons_only: boolean;
 }
 
 export interface View {
@@ -175,6 +194,9 @@ export interface Task {
   difficulty: number | null;
   estimate_h: number | null;
   due_at: string | null;
+  /** Local dates, set by hand or filled in by a move (Settings → Task dates). */
+  start_date: string | null;
+  end_date: string | null;
   type: TaskType;
   epic_id: number | null;
   board_pos: number;
@@ -195,6 +217,9 @@ export interface Task {
   points: number | null;
   logged_h: number;
   progress_pct: number | null;
+  remaining_h: number | null;
+  days_to_due: number | null;
+  pace_h: number | null;
   subtypes: string[];
   epic_tasks: number | null; // epics only
   epic_done: number | null;

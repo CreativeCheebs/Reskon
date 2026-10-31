@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Badge, Button, Dropdown, Input, Segmented, Select, Spin } from "antd";
 import { confirm, message } from "../theme/feedback";
-import { SearchOutlined } from "@ant-design/icons";
+import { ControlOutlined, EllipsisOutlined, FilterOutlined, ProjectOutlined, SearchOutlined, TableOutlined } from "@ant-design/icons";
 import { api } from "../api";
 import { useApp } from "../store";
 import { Board } from "../board/Board";
@@ -14,8 +14,9 @@ import { CardSettings } from "./CardSettings";
 import { GROUP_OPTIONS } from "./grouping";
 import { useSaveView } from "./useViewState";
 import { cardConfigOf } from "./cardConfig";
-import type { GroupBy, Task, View } from "../types";
-import { palette } from "../theme/palette";
+import type { BoardSort, GroupBy, Task, View } from "../types";
+import { SORT_OPTIONS } from "../board/sorting";
+import { blend, palette } from "../theme/palette";
 import { ViewIconMark } from "../icons/ViewIconMark";
 import { SurfaceOpacityProvider, surfaceOpacityOf, ViewBackdrop, withAlpha } from "./ViewBackdrop";
 import { lookOf, ViewLookSettings, type ViewLook } from "./ViewLookSettings";
@@ -105,7 +106,7 @@ export function ViewScreen({ view }: { view: View }) {
 
   return (
     <SurfaceOpacityProvider value={surface}>
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
+    <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, position: "relative" }}>
       <ViewBackdrop bg={look.background} />
       <div
         style={{
@@ -120,24 +121,46 @@ export function ViewScreen({ view }: { view: View }) {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 12, flex: "1 1 360px", minWidth: 0 }}>
-          <div
+          <h1
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 8,
-              fontSize: 16,
-              lineHeight: "24px",
-              fontWeight: 600,
+              gap: 10,
+              margin: 0,
+              fontSize: 18,
+              lineHeight: "28px",
+              fontWeight: 650,
+              letterSpacing: -0.2,
               whiteSpace: "nowrap",
               overflow: "hidden",
               flex: "none",
-              maxWidth: 240,
+              maxWidth: 280,
             }}
             title={view.name}
           >
-            <ViewIconMark icon={look.icon} color={look.color} size={18} />
+            {/* The view's icon on a tint of its colour, like a page badge. */}
+            <span
+              style={{
+                width: 28,
+                height: 28,
+                flex: "none",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: 7,
+                background: blend(look.color && /^#[0-9a-fA-F]{6}$/.test(look.color) ? look.color : palette.accent, palette.bg, 0.2),
+              }}
+            >
+              {look.icon?.emoji || look.icon?.svg || look.color ? (
+                <ViewIconMark icon={look.icon} color={look.color} size={18} />
+              ) : view.layout === "table" ? (
+                <TableOutlined style={{ color: palette.accent, fontSize: 16 }} />
+              ) : (
+                <ProjectOutlined style={{ color: palette.accent, fontSize: 16 }} />
+              )}
+            </span>
             <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{view.name}</span>
-          </div>
+          </h1>
           <Input
             size="small"
             allowClear
@@ -158,7 +181,7 @@ export function ViewScreen({ view }: { view: View }) {
             </div>
           )}
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", rowGap: 8, marginLeft: "auto" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", rowGap: 8, marginLeft: "auto" }}>
           <Segmented
             size="small"
             value={view.layout}
@@ -180,21 +203,38 @@ export function ViewScreen({ view }: { view: View }) {
               { value: "epic", label: "Epics" },
             ]}
           />
+          <ToolbarGap />
           <Select<GroupBy>
             size="small"
+            className={groupBy !== "none" ? "jb-active" : undefined}
             style={{ width: 160 }}
             disabled={!online}
             value={groupOptions.some((o) => o.value === groupBy) ? groupBy : "none"}
             onChange={(v) => save({ board_state: { group_by: v } })}
             options={groupOptions.map((o) => ({ value: o.value, label: o.value === "none" ? o.label : `Group: ${o.label}` }))}
           />
+          {view.layout === "board" && (
+            <Select<BoardSort>
+              size="small"
+              className={(view.board_state?.sort ?? "manual") !== "manual" ? "jb-active" : undefined}
+              style={{ width: 150 }}
+              disabled={!online}
+              aria-label="Sort cards"
+              value={view.board_state?.sort ?? "manual"}
+              onChange={(v) => save({ board_state: { sort: v } })}
+              popupMatchSelectWidth={false}
+              options={SORT_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+              labelRender={({ value }) => `Sort: ${SORT_OPTIONS.find((o) => o.value === value)?.label.split(",")[0]}`}
+            />
+          )}
+          <ToolbarGap />
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <Badge count={filters} size="small" color={palette.accent}>
-              <Button size="small" onClick={() => setDrawer("filter")}>
+              <Button size="small" icon={<FilterOutlined />} className={filters ? "jb-active" : undefined} onClick={() => setDrawer("filter")}>
                 Filter
               </Button>
             </Badge>
-            <Button size="small" onClick={() => setDrawer("card")}>
+            <Button size="small" icon={<ControlOutlined />} onClick={() => setDrawer("card")}>
               {view.layout === "board" ? "Card" : "Columns"}
             </Button>
             <Dropdown
@@ -209,9 +249,7 @@ export function ViewScreen({ view }: { view: View }) {
                 onClick: ({ key }) => (key === "rename" ? rename() : key === "look" ? setDrawer("look") : remove()),
               }}
             >
-              <Button size="small" aria-label="View menu">
-                ⋯
-              </Button>
+              <Button size="small" aria-label="View menu" icon={<EllipsisOutlined />} />
             </Dropdown>
           </div>
         </div>
@@ -226,7 +264,18 @@ export function ViewScreen({ view }: { view: View }) {
         ) : view.layout === "board" ? (
           <Board view={view} tasks={tasks} setTasks={update} refetch={refetch} onOpenTask={setOpenTask} />
         ) : (
-          <TaskTable tasks={tasks} config={cardConfigOf(view)} groupBy={groupBy} widthsKey={`view:${view.id}`} onOpenTask={setOpenTask} />
+          <TaskTable
+            tasks={tasks}
+            config={cardConfigOf(view)}
+            groupBy={groupBy}
+            widthsKey={`view:${view.id}`}
+            onOpenTask={setOpenTask}
+            onMoved={(moved) => {
+              // A move can take tasks out of this view's filter.
+              update((prev) => prev.map((t) => moved.find((m) => m.id === t.id) ?? t));
+              refetch();
+            }}
+          />
         )}
       </div>
       {tasks && hiddenStatus !== null && (
@@ -262,4 +311,9 @@ export function ViewScreen({ view }: { view: View }) {
     </div>
     </SurfaceOpacityProvider>
   );
+}
+
+/** A thin divider between groups of toolbar controls. */
+function ToolbarGap() {
+  return <span aria-hidden style={{ width: 1, height: 16, background: palette.border, margin: "0 4px" }} />;
 }

@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
-import { Divider, Form, List, Tag } from "antd";
+import { Divider, Form, List, Tag, Typography } from "antd";
 import { api } from "../api";
 import { useApp } from "../store";
 import { WriteButton } from "../offline";
-import { formatAge, formatDateTime, formatHours } from "../format";
+import { formatAge, formatDateTime, formatHM, formatHours } from "../format";
 import { palette } from "../theme/palette";
 import { SessionModal } from "../sessions/SessionModal";
 import { CustomFieldsEditor } from "../fields/CustomFieldsEditor";
-import { CycleBar } from "../chart/CycleBar";
+import { CycleFlow } from "../chart/CycleFlow";
 import type { Segment, Session, Task, Transition } from "../types";
 
 // Task panel sections below the core fields: sessions logged against the
@@ -26,6 +26,7 @@ export function TaskExtras({
   const hasFields = boot.custom_fields.some((f) => f.entity === "task");
   const [sessions, setSessions] = useState<Session[]>([]);
   const [logging, setLogging] = useState<{ editing?: Session } | null>(null);
+  const [history, setHistory] = useState(false);
   const [cycle, setCycle] = useState<{ transitions: Transition[]; segments: Segment[] } | null>(null);
   const statusName = (id: number | null) => (id === null ? "created" : boot.statuses.find((s) => s.id === id)?.name ?? "deleted status");
 
@@ -76,9 +77,11 @@ export function TaskExtras({
             <span>{boot.energy_types.find((e) => e.id === s.energy_type_id)?.name}</span>
             <span>
               {s.kind === "event" && <Tag>event</Tag>}
-              {formatHours(s.hours)}
+              {formatHM(s.hours)}
             </span>
-            <span style={{ color: palette.muted, flex: 1, textAlign: "right" }}>{s.note}</span>
+            <span style={{ color: palette.muted, flex: 1, minWidth: 0, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {[s.label, s.note].filter(Boolean).join(" · ")}
+            </span>
           </List.Item>
         )}
       />
@@ -90,24 +93,29 @@ export function TaskExtras({
       </Divider>
       {cycle && (
         <>
-          <CycleBar segments={cycle.segments} scaleH={cycle.segments.reduce((s, x) => s + x.hours, 0)} />
-          <List
-            size="small"
-            style={{ marginTop: 6 }}
-            dataSource={[...cycle.transitions].reverse()}
-            renderItem={(t) => (
-              <List.Item style={{ padding: "2px 0", fontSize: 12 }}>
-                <span style={{ color: palette.muted }}>{formatDateTime(t.at)}</span>
-                <span>
-                  {statusName(t.from_status_id)} → {statusName(t.to_status_id)}
-                  {t.reason === "status_deleted" && <Tag style={{ marginLeft: 6 }}>status deleted</Tag>}
-                </span>
-                <span style={{ color: palette.muted, width: 50, textAlign: "right" }}>
-                  {formatAge(cycle.segments.find((s) => s.from === t.at && s.status_id === t.to_status_id)?.hours)}
-                </span>
-              </List.Item>
-            )}
-          />
+          <CycleFlow segments={cycle.segments} />
+          <Typography.Link style={{ fontSize: 12, display: "inline-block", marginTop: 8 }} onClick={() => setHistory((h) => !h)}>
+            {history ? "Hide" : "Show"} every move ({cycle.transitions.length})
+          </Typography.Link>
+          {history && (
+            <List
+              size="small"
+              style={{ marginTop: 6 }}
+              dataSource={[...cycle.transitions].reverse()}
+              renderItem={(t) => (
+                <List.Item style={{ padding: "2px 0", fontSize: 12 }}>
+                  <span style={{ color: palette.muted }}>{formatDateTime(t.at)}</span>
+                  <span>
+                    {statusName(t.from_status_id)} → {statusName(t.to_status_id)}
+                    {t.reason === "status_deleted" && <Tag style={{ marginLeft: 6 }}>status deleted</Tag>}
+                  </span>
+                  <span style={{ color: palette.muted, width: 50, textAlign: "right" }}>
+                    {formatAge(cycle.segments.find((s) => s.from === t.at && s.status_id === t.to_status_id)?.hours)}
+                  </span>
+                </List.Item>
+              )}
+            />
+          )}
         </>
       )}
       {logging && (

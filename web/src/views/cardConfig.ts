@@ -14,7 +14,10 @@ export const DEFAULT_SHOW: CardShow = {
   subtypes: true,
   estimate: true,
   progress_bar: true,
+  pace: true,
   due: false,
+  start_date: false,
+  end_date: false,
   epic: true,
   logged: false,
   custom: [],
@@ -31,8 +34,11 @@ export const SHOW_LABELS: Record<Exclude<keyof CardShow, "custom">, string> = {
   energy_type: "Energy type",
   subtypes: "Subtypes",
   estimate: "Estimate",
-  progress_bar: "Progress bar",
+  progress_bar: "Time bar (logged / estimate)",
+  pace: "Hours a day to the due date",
   due: "Due",
+  start_date: "Start date",
+  end_date: "End date",
   epic: "Epic",
   logged: "Logged time",
 };
@@ -42,6 +48,7 @@ export function cardConfigOf(view: View): CardConfig {
   return {
     show: { ...DEFAULT_SHOW, ...(cc.show ?? {}) },
     density: cc.density ?? "compact",
+    icons_only: cc.icons_only ?? false,
   };
 }
 

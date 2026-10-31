@@ -128,6 +128,9 @@ func (d *DB) DeleteStatus(ctx context.Context, id int64, reassignTo *int64) erro
 			if err := writeTransition(ctx, tx, tid, &from, *reassignTo, "status_deleted", now); err != nil {
 				return err
 			}
+			if err := applyDateRules(ctx, tx, tid, *reassignTo, todayOr("")); err != nil {
+				return err
+			}
 		}
 	}
 	if err := softDeleteNamed(ctx, tx, "status", id); err != nil {

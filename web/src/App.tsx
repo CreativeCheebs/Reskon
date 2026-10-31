@@ -1,5 +1,16 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { Alert, Button, Layout, Menu, Spin, Tooltip } from "antd";
+import {
+  BranchesOutlined,
+  CalendarOutlined,
+  DashboardOutlined,
+  FieldTimeOutlined,
+  PlusOutlined,
+  ProjectOutlined,
+  SettingOutlined,
+  TableOutlined,
+  ThunderboltOutlined,
+} from "@ant-design/icons";
 import { message } from "./theme/feedback";
 import { api } from "./api";
 import { OFFLINE_TIP } from "./offline";
@@ -71,25 +82,36 @@ export function App() {
   const current = screen ?? (views[0] ? { kind: "view" as const, id: views[0].id } : { kind: "settings" as const });
   const view = current.kind === "view" ? views.find((v) => v.id === current.id) : undefined;
 
-  const anyMark = views.some((v) => v.icon?.emoji || v.icon?.svg || v.color);
+  // Every row has a 16px symbol slot, so names line up under one another;
+  // section headings sit to the left of it, small and quiet.
+  const row = (mark: React.ReactNode, text: React.ReactNode) => (
+    <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+      <span className="jb-nav-icon" style={{ width: 16, display: "inline-flex", justifyContent: "center", flex: "none" }}>
+        {mark}
+      </span>
+      <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{text}</span>
+    </span>
+  );
+  const heading = (text: string) => (
+    <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: palette.subtle }}>{text}</span>
+  );
   const menuItems = [
     {
       type: "group" as const,
-      label: <span style={{ paddingLeft: 12 }}>Views</span>,
+      label: heading("Views"),
       key: "views",
       children: [
         ...views.map((v) => ({
           key: `view-${v.id}`,
-          label: (
-            <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-              {/* Names stay aligned: once any view has a mark, every row keeps the slot. */}
-              {anyMark && (
-                <span style={{ width: 16, display: "inline-flex", flex: "none" }}>
-                  <ViewIconMark icon={v.icon} color={v.color} />
-                </span>
-              )}
-              <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{v.name}</span>
-            </span>
+          label: row(
+            v.icon?.emoji || v.icon?.svg || v.color ? (
+              <ViewIconMark icon={v.icon} color={v.color} />
+            ) : v.layout === "table" ? (
+              <TableOutlined />
+            ) : (
+              <ProjectOutlined />
+            ),
+            v.name,
           ),
         })),
         {
@@ -97,7 +119,7 @@ export function App() {
           disabled: !online,
           label: (
             <Tooltip title={online ? undefined : OFFLINE_TIP}>
-              <span style={{ color: palette.subtle }}>+ New view</span>
+              <span style={{ color: palette.subtle }}>{row(<PlusOutlined />, "New view")}</span>
             </Tooltip>
           ),
         },
@@ -107,15 +129,15 @@ export function App() {
     { type: "divider" as const, style: { margin: "8px 20px", borderColor: palette.border } },
     {
       type: "group" as const,
-      label: <span style={{ paddingLeft: 12 }}>Workspace</span>,
+      label: heading("Workspace"),
       key: "workspace",
       children: [
-        { key: "day", label: "Day" },
-        { key: "dashboard", label: "Dashboards" },
-        { key: "states", label: "Buffs & debuffs" },
-        { key: "sessions", label: "Sessions" },
-        { key: "cycle", label: "Cycle time" },
-        { key: "settings", label: "Settings" },
+        { key: "day", label: row(<CalendarOutlined />, "Day") },
+        { key: "dashboard", label: row(<DashboardOutlined />, "Dashboards") },
+        { key: "states", label: row(<ThunderboltOutlined />, "Buffs & debuffs") },
+        { key: "sessions", label: row(<FieldTimeOutlined />, "Sessions") },
+        { key: "cycle", label: row(<BranchesOutlined />, "Cycle time") },
+        { key: "settings", label: row(<SettingOutlined />, "Settings") },
       ],
     },
   ];
@@ -152,6 +174,8 @@ export function App() {
       >
         <style>{`
           .jb-sider .ant-layout-sider-children { overflow: hidden; }
+          .jb-sider .ant-menu-item-group-title { padding: 12px 16px 4px 20px !important; }
+          .jb-sider .ant-menu-item { padding-left: 30px !important; }
           .jb-sider.ant-layout-sider-collapsed .jb-sider-foot { display: none !important; }
           @media (max-width: 767px) {
             .jb-sider { position: fixed !important; top: 0; bottom: 0; left: 0; }

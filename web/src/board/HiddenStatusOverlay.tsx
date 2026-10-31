@@ -3,7 +3,7 @@ import { message } from "../theme/feedback";
 import { api } from "../api";
 import { firstBoardTodoStatus, useApp } from "../store";
 import { WriteButton } from "../offline";
-import { formatAge } from "../format";
+import { formatAge, today } from "../format";
 import { useColumnWidths } from "../views/useColumnWidths";
 import type { Task } from "../types";
 
@@ -28,7 +28,7 @@ export function HiddenStatusOverlay({ statusId, tasks, onClose, onMoved, onOpenT
   const moveToBoard = async (t: Task) => {
     if (!target) return;
     try {
-      onMoved(await api.post<Task>(`/tasks/${t.id}/move`, { status_id: target.id }));
+      onMoved(await api.post<Task>(`/tasks/${t.id}/move`, { status_id: target.id, today: today() }));
     } catch (e) {
       message.error((e as Error).message);
     }

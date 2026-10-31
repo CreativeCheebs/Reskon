@@ -38,6 +38,9 @@ type MoveRequest struct {
 	StatusID int64  `json:"status_id"`
 	BeforeID *int64 `json:"before_id"` // card that will sit above
 	AfterID  *int64 `json:"after_id"`  // card that will sit below
+	// Today in the mover's time zone (YYYY-MM-DD), for start and end dates
+	// a move fills in. The server's own date when absent.
+	Today string `json:"today"`
 }
 
 // Move puts a task in a status column at a position. If the status changes,
@@ -60,20 +63,74 @@ func (d *DB) MoveReporting(ctx context.Context, taskID int64, req MoveRequest) (
 		return nil, false, err
 	}
 	defer tx.Rollback()
-
-	cur, err := d.getTask(ctx, tx, taskID)
+	renumbered, err := d.moveTx(ctx, tx, taskID, req)
 	if err != nil {
 		return nil, false, err
 	}
-	if err := statusExists(ctx, tx, req.StatusID); err != nil {
+	if err := tx.Commit(); err != nil {
 		return nil, false, err
 	}
+	t, err := d.GetTask(ctx, taskID)
+	return t, renumbered, err
+}
+
+// MoveMany puts several tasks in one status, each at the end of its column,
+// in one transaction: every status change writes its transition row, and
+// either all of them commit or none do. Tasks already in the status stay
+// where they are.
+func (d *DB) MoveMany(ctx context.Context, taskIDs []int64, statusID int64, today string) ([]*Task, error) {
+	if len(taskIDs) == 0 {
+		return []*Task{}, nil
+	}
+	if len(taskIDs) > 1000 {
+		return nil, invalid("at most 1000 tasks at a time")
+	}
+	tx, err := d.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+	for _, id := range taskIDs {
+		cur, err := d.getTask(ctx, tx, id)
+		if err != nil {
+			return nil, err
+		}
+		if cur.StatusID == statusID {
+			continue
+		}
+		if _, err := d.moveTx(ctx, tx, id, MoveRequest{StatusID: statusID, Today: today}); err != nil {
+			return nil, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	out := make([]*Task, 0, len(taskIDs))
+	for _, id := range taskIDs {
+		t, err := d.GetTask(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, t)
+	}
+	return out, nil
+}
+
+// moveTx is one move inside a caller's transaction.
+func (d *DB) moveTx(ctx context.Context, tx *sql.Tx, taskID int64, req MoveRequest) (bool, error) {
+	cur, err := d.getTask(ctx, tx, taskID)
+	if err != nil {
+		return false, err
+	}
+	if err := statusExists(ctx, tx, req.StatusID); err != nil {
+		return false, err
+	}
 	if (req.BeforeID != nil && *req.BeforeID == taskID) || (req.AfterID != nil && *req.AfterID == taskID) {
-		return nil, false, invalid("a task cannot be its own neighbour")
+		return false, invalid("a task cannot be its own neighbour")
 	}
 	pos, renumbered, err := dropPosition(ctx, tx, taskID, req.StatusID, req.BeforeID, req.AfterID)
 	if err != nil {
-		return nil, false, err
+		return false, err
 	}
 
 	if req.StatusID == cur.StatusID {
@@ -86,13 +143,9 @@ func (d *DB) MoveReporting(ctx context.Context, taskID int64, req MoveRequest) (
 			from := cur.StatusID
 			err = writeTransition(ctx, tx, taskID, &from, req.StatusID, "user", now)
 		}
+		if err == nil {
+			err = applyDateRules(ctx, tx, taskID, req.StatusID, todayOr(req.Today))
+		}
 	}
-	if err != nil {
-		return nil, false, err
-	}
-	if err := tx.Commit(); err != nil {
-		return nil, false, err
-	}
-	t, err := d.GetTask(ctx, taskID)
-	return t, renumbered, err
+	return renumbered, err
 }

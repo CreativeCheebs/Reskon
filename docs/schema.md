@@ -97,3 +97,15 @@ No schema change. Remaps `task.difficulty` and `session.difficulty` from 1/2/4/8
 | Change | Purpose |
 | --- | --- |
 | `session_energy` (new) | One row per energy type of a session with two or more: `share` of its hours (0..1, the rows add up to 1), `difficulty` (its intensity), `points` (stored when logged: hours × share × rate × intensity, the part's else the task's else 1), `position`. A one-type session has no rows and is read as itself at share 1. With rows, the session's `energy_type_id` and `difficulty` are the first part's and its `points` the sum of the parts'. Nothing existing is changed. |
+
+### Migration 010 (built-in start and end dates)
+
+| Change | Purpose |
+| --- | --- |
+| `task.start_date`, `task.end_date` (new, TEXT `YYYY-MM-DD`, nullable) | Dates the person sets in the task panel, or that a move fills in under the `task_dates` setting (see below). Stored, unlike `first_started_at` / `completed_at`, which stay derived from the transition log. |
+| copy from custom `start_date` | Valid values of the Jira import's `start_date` custom field are copied into `task.start_date`. The values stay in `custom` (never stripped). |
+| custom_field `start_date` (task) | Soft-deleted, so the panel shows one Start date. Restore it by clearing `deleted_at`. |
+
+Setting `task_dates`: `{"start_auto": true, "start_statuses": [ids] | null, "end_auto": true, "end_statuses": [ids] | null}`. Absent or `null` lists mean the defaults by behaviour: start on `in_progress`, end on `done` and `cancelled`. A move into a start status fills an empty start date; a move into an end status fills an empty end date; a move back to a `todo` or `in_progress` status clears the end date (only while `end_auto` is on). Moves carry the client's local date as `today`.
+
+View `board_state` (JSON, no migration) gains `sort` (card order in board columns: `manual`, `priority`, `due`, `difficulty`, `estimate`, `time_in_status`, `newest`, `oldest`) and `limits` (`{status_id: {max, unit: "tasks" | "points" | "hours", hard}}`). View `card_config` gains `icons_only` and `show.start_date` / `show.end_date` / `show.pace`.

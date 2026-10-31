@@ -5,15 +5,19 @@ import { useReassignDelete } from "./ReassignDialog";
 import { ReflectionSettings } from "./ReflectionSettings";
 import { CaptureSettings } from "./CaptureSettings";
 import { CustomFieldSettings } from "./CustomFieldSettings";
+import { TaskDateSettings } from "./TaskDateSettings";
 import { AccountSettings } from "../auth/AccountSettings";
 import { UsersSettings } from "../auth/UsersSettings";
 import { useAuth } from "../auth/AuthGate";
 import { AppearanceSettings } from "../theme/AppearanceSettings";
+import { api } from "../api";
+import { confirm, message } from "../theme/feedback";
+import { PRIORITY_LEVEL_COLORS, priorityLevel } from "../task/LevelIcons";
 
 // Settings: every lookup is a row the user can edit.
 
 export function Settings() {
-  const { boot } = useApp();
+  const { boot, reloadBootstrap, behaviourOf } = useApp();
   const { user } = useAuth();
   const statusDelete = useReassignDelete("statuses", false);
   const priorityDelete = useReassignDelete("priorities", true);
@@ -24,6 +28,43 @@ export function Settings() {
     for (let i = 2; rows.some((r) => r.name === name); i++) name = `${base} ${i}`;
     return name;
   };
+
+  // Recolours every priority by its rank by weight, replacing chosen colours.
+  const suggestPriorityColours = () =>
+    confirm({
+      title: "Recolour every priority by its rank?",
+      content: "Blue for the lowest, then green, yellow, orange, and red for the highest. Colours you chose are replaced.",
+      onOk: async () => {
+        try {
+          for (const p of boot.priorities)
+            await api.patch(`/priorities/${p.id}`, { color: PRIORITY_LEVEL_COLORS[priorityLevel(p, boot.priorities)] });
+        } catch (e) {
+          message.error((e as Error).message);
+        }
+        await reloadBootstrap();
+      },
+    });
+
+  // Recolours every status by its behaviour (and whether it is on the board),
+  // never its name: off-board to-do slate, to-do violet, in progress cyan,
+  // done green, cancelled grey. Replaces chosen colours.
+  const suggestStatusColours = () =>
+    confirm({
+      title: "Recolour every status by what it means?",
+      content: "Backlog-like statuses slate, to do violet, in progress cyan, done green, cancelled grey. Colours you chose are replaced.",
+      onOk: async () => {
+        const by: Record<string, string> = { todo: "#9F8FEF", in_progress: "#6CC3E0", done: "#4BCE97", cancelled: "#738496" };
+        try {
+          for (const s of boot.statuses) {
+            const b = behaviourOf(s.id) ?? "todo";
+            await api.patch(`/statuses/${s.id}`, { color: b === "todo" && !s.on_board ? "#8C9BAB" : by[b] });
+          }
+        } catch (e) {
+          message.error((e as Error).message);
+        }
+        await reloadBootstrap();
+      },
+    });
 
   const tabs = [
     {
@@ -54,7 +95,8 @@ export function Settings() {
         <>
           <Typography.Paragraph type="secondary">
             “On board” off makes a status a header button instead of a column (like Backlog). “Alert after” flags a task red once it
-            has sat in the status that many days.
+            has sat in the status that many days. The colour caps the column and tints its count.{" "}
+            <Typography.Link onClick={suggestStatusColours}>Use suggested colours for all</Typography.Link>
           </Typography.Paragraph>
           <LookupEditor
             collection="statuses"
@@ -89,7 +131,11 @@ export function Settings() {
       label: "Priorities",
       children: (
         <>
-          <Typography.Paragraph type="secondary">Weight multiplies points. 1.0 is neutral; an unset priority counts as 1.0.</Typography.Paragraph>
+          <Typography.Paragraph type="secondary">
+            Weight multiplies points. 1.0 is neutral; an unset priority counts as 1.0. A priority with no colour takes one by its
+            rank (blue lowest, red highest).{" "}
+            <Typography.Link onClick={suggestPriorityColours}>Use suggested colours for all</Typography.Link>
+          </Typography.Paragraph>
           <LookupEditor
             collection="priorities"
             rows={boot.priorities as never}
@@ -149,6 +195,7 @@ export function Settings() {
         />
       ),
     },
+    { key: "dates", label: "Task dates", children: <TaskDateSettings /> },
     { key: "custom", label: "Custom fields", children: <CustomFieldSettings /> },
     { key: "capture", label: "Capture & weights", children: <CaptureSettings /> },
     { key: "reflection", label: "Reflection", children: <ReflectionSettings /> },

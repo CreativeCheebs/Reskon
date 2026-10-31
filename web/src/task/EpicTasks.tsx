@@ -28,7 +28,7 @@ export function EpicTasks({ epic, version, onOpenTask }: Props) {
   const [tasks, setTasks] = useState<Task[] | null>(null);
   const saved = boot.settings[SETTING] as Partial<CardShow> | undefined;
   const show: CardShow = { ...DEFAULT_COLUMNS, ...saved, epic: false };
-  const config: CardConfig = { show, density: "compact" };
+  const config: CardConfig = { show, density: "compact", icons_only: false };
 
   useEffect(() => {
     api

@@ -104,7 +104,7 @@ export function FilterSettings({ view, onClose }: { view: View; onClose: () => v
           <Form.Item label="Min intensity">
             <DifficultySlider value={filter.difficulty_min} width={220} onChange={(v) => set("difficulty_min", v)} />
           </Form.Item>
-          <Form.Item label="Done within (days)">
+          <Form.Item label="Hide done after (days)" tooltip="Done tasks finished longer ago than this are left out. Empty: never hide.">
             <InputNumber min={0} value={filter.include_done_days ?? undefined} onChange={(v) => set("include_done_days", v ?? null)} placeholder="all" />
           </Form.Item>
           <Form.Item label="Open only">

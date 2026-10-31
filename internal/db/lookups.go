@@ -303,6 +303,11 @@ func (d *DB) PutSetting(ctx context.Context, key string, value json.RawMessage) 
 	if !json.Valid(value) {
 		return invalid("setting %s: value is not valid JSON", key)
 	}
+	if key == "task_dates" {
+		if err := checkDateRules(value); err != nil {
+			return err
+		}
+	}
 	_, err := d.ExecContext(ctx, `INSERT INTO setting (key, value) VALUES (?, ?)
 		ON CONFLICT (key) DO UPDATE SET value = excluded.value`, key, string(value))
 	return err

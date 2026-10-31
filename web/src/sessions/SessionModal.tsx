@@ -69,17 +69,20 @@ export function SessionModal({
     <Modal
       open
       width={560}
+      centered
       title={editing ? "Edit session" : "Log time"}
       okText="Save"
       onOk={save}
       onCancel={onClose}
+      // The form scrolls; the header and the Save / Cancel row stay put.
+      styles={{ body: { maxHeight: "calc(100vh - 200px)", overflowY: "auto", overflowX: "hidden", padding: "4px 2px 4px 0" } }}
       okButtonProps={{
         loading: busy,
         disabled: !online || !sessionReady(draft),
         title: online ? undefined : OFFLINE_TIP,
       }}
     >
-      <SessionFields draft={draft} onChange={setDraft} tasks={tasks} disabled={!online} />
+      <SessionFields draft={draft} onChange={setDraft} tasks={tasks} disabled={!online} autoFocus={!editing} />
       {editing && <PointsLine editing={editing} draft={draft} recalc={recalc} onRecalc={() => setRecalc(true)} />}
     </Modal>
   );

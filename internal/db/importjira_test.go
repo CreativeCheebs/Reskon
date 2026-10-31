@@ -104,7 +104,7 @@ func TestImportJira(t *testing.T) {
 		t.Errorf("fields: difficulty %v estimate %v logged %v", task.Difficulty, task.EstimateH, task.LoggedH)
 	}
 	if !strings.Contains(*task.Description, "worked first try") || !strings.Contains(string(task.Custom), `"jira_points":0.5`) ||
-		!strings.Contains(string(task.Custom), "blocks OM2-99") || !strings.Contains(string(task.Custom), `"start_date":"2026-01-03"`) {
+		!strings.Contains(string(task.Custom), "blocks OM2-99") || task.StartDate == nil || *task.StartDate != "2026-01-03" {
 		t.Errorf("kept data missing: desc %q custom %s", *task.Description, task.Custom)
 	}
 	if !strings.Contains(string(sub.Custom), "sub-task of OM2-11") {

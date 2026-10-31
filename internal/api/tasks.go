@@ -14,6 +14,7 @@ func (s *Server) taskRoutes() {
 	m.HandleFunc("PATCH /api/tasks/{id}", s.patchTask)
 	m.HandleFunc("DELETE /api/tasks/{id}", s.deleteTask)
 	m.HandleFunc("POST /api/tasks/{id}/move", s.moveTask)
+	m.HandleFunc("POST /api/tasks/move", s.moveTasks)
 	m.HandleFunc("GET /api/tasks/{id}/transitions", s.taskTransitions)
 	m.HandleFunc("GET /api/cycle-time", s.cycleTime)
 }
@@ -40,6 +41,22 @@ func (s *Server) moveTask(w http.ResponseWriter, r *http.Request) {
 		*db.Task
 		ColumnRenumbered bool `json:"column_renumbered,omitempty"`
 	}{t, renumbered}, nil)
+}
+
+// moveTasks moves several tasks to one status at once, from the table's
+// selection. Each goes to the end of its new column.
+func (s *Server) moveTasks(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		TaskIDs  []int64 `json:"task_ids"`
+		StatusID int64   `json:"status_id"`
+		Today    string  `json:"today"`
+	}
+	if err := decodeBody(r, &body); err != nil {
+		respond(w, nil, err)
+		return
+	}
+	ts, err := dbOf(r.Context()).MoveMany(r.Context(), body.TaskIDs, body.StatusID, body.Today)
+	respond(w, ts, err)
 }
 
 func (s *Server) taskTransitions(w http.ResponseWriter, r *http.Request) {

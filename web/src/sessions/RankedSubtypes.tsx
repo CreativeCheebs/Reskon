@@ -33,6 +33,14 @@ export function RankedSubtypes({
     onChange(arrayMove(value, value.indexOf(Number(e.active.id)), value.indexOf(Number(e.over.id))));
   };
 
+  // Nothing to pick: say so quietly rather than show a dead dropdown.
+  if (value.length === 0 && available.length === 0)
+    return (
+      <span style={{ fontSize: 12, color: palette.subtle }}>
+        {boot.subtypes.length === 0 ? "None configured (Settings → Subtypes)" : "None configured for this energy type"}
+      </span>
+    );
+
   return (
     <div>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
@@ -53,8 +61,9 @@ export function RankedSubtypes({
         <Select
           size="small"
           style={{ width: "100%", marginTop: value.length ? 4 : 0 }}
-          placeholder={available.length ? "+ Add subtype" : "No subtypes for this energy type (add some in Settings)"}
+          placeholder="+ Add subtype"
           value={null}
+          aria-label="Add a subtype"
           disabled={disabled || !available.length}
           onChange={(id: number) => onChange([...value, id])}
           options={available.map((s) => ({ value: s.id, label: s.name }))}

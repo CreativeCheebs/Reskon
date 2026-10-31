@@ -5,7 +5,7 @@ import dayjs from "dayjs";
 import { api, patchWithRetry } from "../api";
 import { useApp } from "../store";
 import { WriteButton } from "../offline";
-import { formatAge, formatDateTime, formatHours } from "../format";
+import { formatAge, formatDateTime, formatHours, today } from "../format";
 import { palette } from "../theme/palette";
 import type { Task } from "../types";
 import { DifficultySlider } from "./DifficultySlider";
@@ -14,6 +14,7 @@ import { TaskExtras } from "./TaskExtras";
 import { TypeIcon, TypeLabel } from "./TypeIcon";
 import { useEpics } from "./useEpics";
 import { priorityOptions } from "./LevelIcons";
+import { TimeBar } from "./TimeBar";
 
 // The task panel: the only place the task key is shown. Every edit is a
 // PATCH carrying the updated_at last seen; status changes go through /move.
@@ -85,7 +86,7 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
   const move = async (status_id: number) => {
     if (!task) return;
     try {
-      apply(await api.post<Task>(`/tasks/${task.id}/move`, { status_id }));
+      apply(await api.post<Task>(`/tasks/${task.id}/move`, { status_id, today: today() }));
     } catch (e) {
       message.error((e as Error).message);
     }
@@ -235,10 +236,29 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
                 onChange={(d) => patch({ due_at: d ? d.format("YYYY-MM-DD") : null })}
               />
             </Descriptions.Item>
+            <Descriptions.Item label="Start date">
+              <DatePicker
+                size="small"
+                style={{ width: 150 }}
+                disabled={ro}
+                value={task.start_date ? dayjs(task.start_date) : null}
+                onChange={(d) => patch({ start_date: d ? d.format("YYYY-MM-DD") : null })}
+              />
+            </Descriptions.Item>
+            <Descriptions.Item label="End date">
+              <DatePicker
+                size="small"
+                style={{ width: 150 }}
+                disabled={ro}
+                value={task.end_date ? dayjs(task.end_date) : null}
+                onChange={(d) => patch({ end_date: d ? d.format("YYYY-MM-DD") : null })}
+              />
+            </Descriptions.Item>
             <Descriptions.Item label="Intensity" span={2}>
               <DifficultySlider value={task.difficulty} disabled={ro} width={340} onChange={(v) => patch({ difficulty: v })} />
             </Descriptions.Item>
           </Descriptions>
+          <TimeBar task={task} size="panel" />
           <Input.TextArea
             placeholder="Description"
             autoSize={{ minRows: 3, maxRows: 12 }}

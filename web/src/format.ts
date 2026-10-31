@@ -13,6 +13,28 @@ export function formatHours(h: number | null | undefined): string {
   return `${Number.isInteger(h) ? h : h.toFixed(1)}h`;
 }
 
+/** Hours as "3h 2m", "45m" or "12h". */
+export function formatHM(h: number | null | undefined): string {
+  if (h === null || h === undefined) return "–";
+  const mins = Math.round(Math.abs(h) * 60);
+  const hh = Math.floor(mins / 60);
+  const mm = mins % 60;
+  const s = hh && mm ? `${hh}h ${mm}m` : hh ? `${hh}h` : `${mm}m`;
+  return h < 0 ? `-${s}` : s;
+}
+
+/** A stretch of time as its two largest units: "3d 3h", "5h 20m", "12m". */
+export function formatSpan(h: number | null | undefined): string {
+  if (h === null || h === undefined) return "–";
+  const mins = Math.max(0, Math.round(h * 60));
+  const d = Math.floor(mins / 1440);
+  const hh = Math.floor((mins % 1440) / 60);
+  const mm = mins % 60;
+  if (d) return hh ? `${d}d ${hh}h` : `${d}d`;
+  if (hh) return mm ? `${hh}h ${mm}m` : `${hh}h`;
+  return `${mm}m`;
+}
+
 export function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return "–";
   const d = new Date(iso);

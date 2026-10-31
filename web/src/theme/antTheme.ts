@@ -70,7 +70,14 @@ export const makeAntTheme = (): ThemeConfig => ({
     },
     Drawer: { colorBgElevated: palette.overlay },
     Modal: { contentBg: palette.overlay, headerBg: palette.overlay, footerBg: palette.overlay },
-    Segmented: { itemSelectedBg: blend(palette.accent, palette.bg, 0.22), itemSelectedColor: palette.fg, trackBg: palette.panelDim },
+    // The chosen option: a clear accent tint with full-strength text.
+    Segmented: {
+      itemSelectedBg: blend(palette.accent, palette.bg, 0.32),
+      itemSelectedColor: palette.fg,
+      itemColor: palette.muted,
+      itemHoverColor: palette.fg,
+      trackBg: palette.panelDim,
+    },
     Tabs: { itemColor: palette.muted },
     Tag: { defaultBg: palette.hover, defaultColor: palette.fg },
     Select: { optionSelectedBg: palette.selected },

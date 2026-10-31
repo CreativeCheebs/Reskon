@@ -131,3 +131,41 @@ func TestNewTaskTakesAreaDefaultEnergyType(t *testing.T) {
 
 func rawInt(n int64) []byte  { return []byte(fmt.Sprint(n)) }
 func rawStr(s string) []byte { b, _ := json.Marshal(s); return b }
+
+func TestMoveManyWritesOneTransitionEach(t *testing.T) {
+	ctx := context.Background()
+	d := openTest(t)
+	a := mustArea(t, d, "Personal", "PER")
+	x, y := mustTask(t, d, a.ID, "x"), mustTask(t, d, a.ID, "y")
+	// Status 1 is Backlog in the seed; tasks start in To do.
+	moved, err := d.MoveMany(ctx, []int64{x.ID, y.ID}, 1, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tk := range moved {
+		if tk.StatusID != 1 {
+			t.Errorf("%s in status %d, want 1", tk.Title, tk.StatusID)
+		}
+		trs, _ := d.Transitions(ctx, tk.ID)
+		if len(trs) != 2 || trs[1].ToStatusID != 1 {
+			t.Errorf("%s transitions = %+v", tk.Title, trs)
+		}
+	}
+	if moved[0].BoardPos >= moved[1].BoardPos {
+		t.Errorf("order not kept: %v, %v", moved[0].BoardPos, moved[1].BoardPos)
+	}
+	// Moving again to the same status writes nothing new.
+	if _, err := d.MoveMany(ctx, []int64{x.ID}, 1, ""); err != nil {
+		t.Fatal(err)
+	}
+	if trs, _ := d.Transitions(ctx, x.ID); len(trs) != 2 {
+		t.Errorf("no-op move wrote a transition: %d rows", len(trs))
+	}
+	// One bad id rolls back the whole batch.
+	if _, err := d.MoveMany(ctx, []int64{y.ID, 9999}, 2, ""); err == nil {
+		t.Error("want an error for a missing task")
+	}
+	if tk, _ := d.GetTask(ctx, y.ID); tk.StatusID != 1 {
+		t.Errorf("batch not rolled back: y in %d", tk.StatusID)
+	}
+}
