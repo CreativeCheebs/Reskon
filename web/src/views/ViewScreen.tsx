@@ -188,6 +188,8 @@ export function ViewScreen({ view }: { view: View }) {
           <ToolbarGroup>
             <Segmented
               size="small"
+              className="jb-seg"
+              aria-label="Layout"
               value={view.layout}
               disabled={!online}
               onChange={(v) => save({ layout: v as View["layout"] })}
@@ -198,6 +200,8 @@ export function ViewScreen({ view }: { view: View }) {
             />
             <Segmented
               size="small"
+              className="jb-seg"
+              aria-label="Show tasks, epics or both"
               value={typeShown}
               disabled={!online}
               onChange={(v) => save({ filter: { ...view.filter, types: v === "all" ? null : [v as "task" | "epic"] } })}

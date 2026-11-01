@@ -6,6 +6,8 @@ import { blend, palette } from "./palette";
 export function interactionCss(): string {
   const accentTint = blend(palette.accent, palette.bg, 0.2);
   const accentEdge = blend(palette.accent, palette.bg, 0.55);
+  const segSelected = blend(palette.accent, palette.panelDim, 0.3);
+  const segSelectedEdge = blend(palette.accent, palette.panelDim, 0.5);
   return `
     .jb-card {
       background: ${palette.panel};
@@ -33,9 +35,33 @@ export function interactionCss(): string {
       border-color: ${accentEdge} !important;
       color: ${palette.fg} !important;
     }
-    /* Segmented switches in the view toolbar get the same outline as the
-       selects and buttons beside them, so the row reads as one height. */
-    .jb-toolbar .ant-segmented { outline: 1px solid ${palette.borderStrong}; outline-offset: -1px; }
+    /* Segmented switches in the view toolbar (Board/Table, All/Tasks/Epics).
+       24px tall like the selects beside them: a 1px border, then a 2px gap
+       on every side of the selected fill. Every option has the same height,
+       padding and weight, so choosing one never moves its neighbours. */
+    .jb-seg.ant-segmented {
+      padding: 2px; border: 1px solid ${palette.borderStrong}; border-radius: 6px; background: ${palette.panelDim};
+    }
+    .jb-seg.ant-segmented .ant-segmented-item { border-radius: 4px; }
+    .jb-seg.ant-segmented .ant-segmented-item-label {
+      display: flex; align-items: center; justify-content: center;
+      min-height: 18px; line-height: 18px; min-width: 48px; padding: 0 12px; box-sizing: border-box; font-weight: 400;
+    }
+    .jb-seg .ant-segmented-item-selected, .jb-seg .ant-segmented-thumb {
+      background: ${segSelected}; box-shadow: inset 0 0 0 1px ${segSelectedEdge}; border-radius: 4px;
+    }
+    .jb-seg .ant-segmented-item:not(.ant-segmented-item-selected):not(.ant-segmented-item-disabled):hover::after {
+      background-color: ${blend(palette.fg, palette.panelDim, 0.07)};
+    }
+    /* Hairline between two options that are neither selected nor hovered. */
+    .jb-seg .ant-segmented-item + .ant-segmented-item::before {
+      content: ""; position: absolute; left: 0; top: 4px; bottom: 4px; width: 1px;
+      background: ${palette.border}; transition: opacity .12s ease; pointer-events: none;
+    }
+    .jb-seg .ant-segmented-item-selected::before, .jb-seg .ant-segmented-item-selected + .ant-segmented-item::before,
+    .jb-seg .ant-segmented-item:hover::before, .jb-seg .ant-segmented-item:hover + .ant-segmented-item::before { opacity: 0; }
+    .jb-seg .ant-segmented-item-focused { outline: 2px solid ${palette.accent}; outline-offset: 1px; }
+    .jb-seg.ant-segmented:focus-visible { outline: 2px solid ${palette.accent}; outline-offset: 1px; }
 
     /* Sidebar (Sidebar.tsx). Rows, headings, footer and the name all start
        20px in; the icon rail centres everything instead. */
