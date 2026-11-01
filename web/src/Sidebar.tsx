@@ -11,6 +11,7 @@ import {
   MenuUnfoldOutlined,
   PlusOutlined,
   ProjectOutlined,
+  SearchOutlined,
   SettingOutlined,
   TableOutlined,
   ThunderboltOutlined,
@@ -22,6 +23,7 @@ import { ViewIconMark } from "./icons/ViewIconMark";
 import type { View } from "./types";
 import { useInbox } from "./inbox/useInbox";
 import { INBOX_SHORTCUT } from "./inbox/InboxQuickAdd";
+import { SEARCH_SHORTCUT } from "./search/GlobalSearch";
 
 // The left sidebar: views, then the app's own screens, then who is signed
 // in. On wide screens it folds to an icon rail (names in tooltips); under
@@ -32,7 +34,7 @@ const WIDE = 216;
 const RAIL = 56;
 const COLLAPSED_KEY = "jb.sider.collapsed";
 
-export type NavKey = "settings" | "sessions" | "cycle" | "dashboard" | "day" | "states" | "inbox";
+export type NavKey = "settings" | "sessions" | "cycle" | "dashboard" | "day" | "states" | "inbox" | "search";
 
 /** A view's accent when it has no colour of its own: a small, calm set,
  *  picked by id so a view keeps its colour when others are added. */
@@ -105,6 +107,7 @@ export function Sidebar(props: {
       label: heading("Workspace"),
       key: "workspace",
       children: [
+        tool("search", <SearchOutlined />, "Search", `Search (${SEARCH_SHORTCUT})`),
         tool(
           "inbox",
           <InboxOutlined />,

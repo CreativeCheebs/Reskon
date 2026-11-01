@@ -12,6 +12,7 @@ import { Sidebar } from "./Sidebar";
 import { InForceBar } from "./states/InForceBar";
 import { InboxProvider } from "./inbox/useInbox";
 import { InboxQuickAdd } from "./inbox/InboxQuickAdd";
+import { GlobalSearch } from "./search/GlobalSearch";
 
 // Screens opened now and then load on first visit, keeping them out of the
 // bundle every page load parses.
@@ -58,6 +59,7 @@ export function App() {
   const { boot, online, reloadBootstrap } = useApp();
   const { user, logout } = useAuth();
   const [screen, setScreen] = useState<Screen | null>(parseHash);
+  const [searching, setSearching] = useState(false);
 
   useEffect(() => {
     const on = () => setScreen(parseHash());
@@ -101,7 +103,7 @@ export function App() {
         online={online}
         username={user.username}
         onView={(id) => go({ kind: "view", id })}
-        onNav={(kind) => go({ kind })}
+        onNav={(kind) => (kind === "search" ? setSearching(true) : go({ kind }))}
         onNewView={newView}
         onSignOut={logout}
       />
@@ -131,6 +133,7 @@ export function App() {
       {boot.areas.length === 0 && <FirstRun />}
       <ThemeSync />
       <InboxQuickAdd />
+      <GlobalSearch open={searching} onOpenChange={setSearching} />
     </Layout>
     </InboxProvider>
     </EpicsProvider>
