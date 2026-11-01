@@ -20,6 +20,10 @@ type ViewFilter struct {
 	OpenOnly        bool                       `json:"open_only"`         // hide done and cancelled
 	Types           []string                   `json:"types"`             // "task", "epic"
 	Epics           []int64                    `json:"epics"`             // tasks in these epics; 0 means "no epic"
+	Subtasks        bool                       `json:"subtasks"`          // a view shows subtasks as their own cards only when true
+
+	parent       *int64 // the subtasks of one task; never from a view's JSON
+	hideSubtasks bool   // set for views from Subtasks
 }
 
 // customKeyRe limits custom field keys to identifiers, so they can be put
@@ -135,6 +139,7 @@ func (d *DB) ListTasksForView(ctx context.Context, viewID int64, search string) 
 	if err != nil {
 		return nil, err
 	}
+	f.hideSubtasks = !f.Subtasks
 	return d.queryTasks(ctx, f, search, time.Now())
 }
 
@@ -180,6 +185,13 @@ func (d *DB) queryTasks(ctx context.Context, f *ViewFilter, search string, now t
 			conds = []string{"0"}
 		}
 		where = append(where, "("+strings.Join(conds, " OR ")+")")
+	}
+	if f.hideSubtasks {
+		where = append(where, "parent_id IS NULL")
+	}
+	if f.parent != nil {
+		where = append(where, "parent_id = ?")
+		args = append(args, *f.parent)
 	}
 	if words := strings.Fields(search); len(words) > 0 {
 		// Every word must appear in the title, key or description.
@@ -259,17 +271,18 @@ type TaskBrief struct {
 	EnergyTypeID *int64 `json:"energy_type_id"`
 	Difficulty   *int64 `json:"difficulty"`
 	Behaviour    string `json:"behaviour"`
+	ParentID     *int64 `json:"parent_id"`
 }
 
 // ListTaskBriefs returns every task, newest first, for pickers (Log time,
 // capture, bulk attach). A fraction of the size of the full list.
 func (d *DB) ListTaskBriefs(ctx context.Context) ([]*TaskBrief, error) {
-	return collect(ctx, d, `SELECT t.id, t.key, t.title, t.type, t.area_id, t.energy_type_id, t.difficulty, c.behaviour FROM task t
+	return collect(ctx, d, `SELECT t.id, t.key, t.title, t.type, t.area_id, t.energy_type_id, t.difficulty, c.behaviour, t.parent_id FROM task t
 		JOIN status s ON s.id = t.status_id
 		JOIN status_category c ON c.id = s.category_id
 		WHERE t.deleted_at IS NULL ORDER BY t.id DESC`,
 		func(r *sql.Rows) (*TaskBrief, error) {
 			b := &TaskBrief{}
-			return b, r.Scan(&b.ID, &b.Key, &b.Title, &b.Type, &b.AreaID, &b.EnergyTypeID, &b.Difficulty, &b.Behaviour)
+			return b, r.Scan(&b.ID, &b.Key, &b.Title, &b.Type, &b.AreaID, &b.EnergyTypeID, &b.Difficulty, &b.Behaviour, &b.ParentID)
 		})
 }

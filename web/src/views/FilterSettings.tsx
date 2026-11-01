@@ -110,6 +110,9 @@ export function FilterSettings({ view, onClose }: { view: View; onClose: () => v
           <Form.Item label="Open only">
             <Switch checked={!!filter.open_only} onChange={(v) => set("open_only", v)} />
           </Form.Item>
+          <Form.Item label="Subtasks as cards" tooltip="Off: subtasks stay in their task's panel, and its card shows how many are done.">
+            <Switch checked={!!filter.subtasks} onChange={(v) => set("subtasks", v)} />
+          </Form.Item>
         </Space>
         <Form.Item label="Custom fields">
           <CustomFilterEditor

@@ -34,6 +34,8 @@ type TaskDerived struct {
 	EpicDone       *int     `json:"epic_done"`        // epics only: how many of those are done
 	EpicEstimateH  *float64 `json:"epic_estimate_h"`  // epics only: summed estimates of those tasks
 	EpicLoggedH    *float64 `json:"epic_logged_h"`    // epics only: hours logged against its tasks, cancelled included
+	SubtaskCount   int      `json:"subtask_count"`    // its subtasks, cancelled excluded
+	SubtaskDone    int      `json:"subtask_done"`     // how many of those are done
 }
 
 // transitionStep is one transition with the behaviour of the status it
@@ -238,6 +240,10 @@ func (d *DB) derive(ctx context.Context, tasks []*Task, now time.Time) error {
 	if err != nil {
 		return err
 	}
+	subtasks, err := d.subtaskTotals(ctx, ids, in)
+	if err != nil {
+		return err
+	}
 	required, err := d.loadCompleteness(ctx)
 	if err != nil {
 		return err
@@ -253,6 +259,7 @@ func (d *DB) derive(ctx context.Context, tasks []*Task, now time.Time) error {
 			t.EpicTasks, t.EpicDone, t.EpicEstimateH, t.EpicLoggedH = &c.tasks, &c.done, &c.estimateH, &c.loggedH
 		}
 		t.Behaviour = behaviour[t.StatusID]
+		t.SubtaskCount, t.SubtaskDone = subtasks[t.ID][0], subtasks[t.ID][1]
 		if days := alertDays[t.StatusID]; days != nil {
 			t.Stalled = t.TimeInStatusH >= float64(*days)*24
 		}

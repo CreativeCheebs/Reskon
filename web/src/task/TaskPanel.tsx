@@ -10,6 +10,7 @@ import { palette } from "../theme/palette";
 import type { Task } from "../types";
 import { DifficultySlider } from "./DifficultySlider";
 import { EpicTasks } from "./EpicTasks";
+import { ParentField, Subtasks } from "./Subtasks";
 import { TaskExtras } from "./TaskExtras";
 import { TypeIcon, TypeLabel } from "./TypeIcon";
 import { useEpics } from "./useEpics";
@@ -59,7 +60,8 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
   // The fields come up first; sessions, cycle time and dates follow a frame
   // later, so the panel appears without waiting for all of it.
   const [rest, setRest] = useState(false);
-  // An epic's task opened from its table, on top of this panel.
+  // An epic's task or a subtask (or a subtask's parent) opened on top of
+  // this panel.
   const [child, setChild] = useState<number | null>(null);
   const [childVersion, setChildVersion] = useState(0);
   const childChanged = useRef(false);
@@ -157,7 +159,8 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
                   await patch({ type: v });
                   refreshEpics();
                 }}
-                options={(["task", "epic"] as const).map((t) => ({ value: t, label: <TypeLabel type={t} /> }))}
+                // A subtask is always an ordinary task.
+                options={(task.parent_id ? (["task"] as const) : (["task", "epic"] as const)).map((t) => ({ value: t, label: <TypeLabel type={t} /> }))}
               />
             </Descriptions.Item>
             <Descriptions.Item label="Epic">
@@ -165,6 +168,8 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
                 <span style={{ color: palette.muted }}>
                   {task.epic_tasks ? `${task.epic_done}/${task.epic_tasks} done · ${formatHours(task.epic_logged_h)} logged` : "No tasks yet"}
                 </span>
+              ) : task.parent_id ? (
+                <span style={{ color: palette.muted }}>The parent's</span>
               ) : (
                 <Select
                   size="small"
@@ -188,6 +193,11 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
                 />
               )}
             </Descriptions.Item>
+            {task.type === "task" && (
+              <Descriptions.Item label="Parent" span={2}>
+                <ParentField task={task} disabled={ro} onPick={(id) => patch({ parent_id: id })} onOpen={setChild} />
+              </Descriptions.Item>
+            )}
             <Descriptions.Item label="Status">
               <Select size="small" style={{ width: 150 }} disabled={ro} value={task.status_id} onChange={move} options={opt(boot.statuses)} />
             </Descriptions.Item>
@@ -282,6 +292,9 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
           />
 
           {rest && task.type === "epic" && <EpicTasks epic={task} version={childVersion} onOpenTask={setChild} />}
+          {rest && task.type === "task" && !task.parent_id && (
+            <Subtasks parent={task} version={childVersion} onOpenTask={setChild} onChanged={() => load(true)} />
+          )}
           {rest && (
             <>
               <TaskExtras task={task} patch={patch} onTaskChanged={() => load(true)} />

@@ -132,3 +132,10 @@ The model files live in `<data>/models/all-MiniLM-L6-v2/` (`vocab.txt`, `model.s
 
 Setting `task_completeness`: `{"required": ["start_date", "estimate_h", "difficulty", ...]}`, any of `start_date`, `end_date`, `due_at`, `estimate_h`, `difficulty`, `priority_id`, `energy_type_id`, `description`, `epic_id`. Absent or empty means every task is complete. Derived `missing` on each task lists the required fields an open (`todo` / `in_progress`) task of type `task` lacks; it is empty for done, cancelled and epics.
 
+### Migration 013 (subtasks)
+
+| Change | Purpose |
+| --- | --- |
+| `task.parent_id` (new, INTEGER → `task.id`, nullable) | Set on a subtask: the ordinary task it belongs to. Three levels only, after Jira: epic → task → subtask. The parent must be type `task` with no parent of its own; an epic cannot be a subtask; a task with subtasks cannot become a subtask or an epic. A subtask takes its parent's epic, so its own `epic_id` stays NULL. Created without `area_id`, it takes the parent's area. Deleting the parent leaves its subtasks as ordinary tasks. |
+
+Derived on every task: `subtask_count` (its subtasks, cancelled left out) and `subtask_done`. `GET /api/tasks?parent=:id` lists one task's subtasks. A view's filter gains `subtasks` (boolean, default false): views leave subtasks out unless it is true.

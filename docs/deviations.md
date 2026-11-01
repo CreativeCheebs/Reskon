@@ -266,6 +266,10 @@ See [`docs/changes/002-points-follow-edits.md`](changes/002-points-follow-edits.
 - **Ranking**, tuned on 235 real titles: meaning leads (score = max(cos, 0.6·cos + 0.4·words)). Meaning alone matches from 0.5; with the model loaded, shared words count only if the meaning roughly agrees (0.35) or nearly every word matches.
 - **Complete details**: Settings → Complete details chooses fields an open task should have (start date, estimate as "max time", intensity, and so on). Each task's `missing` is derived on the server. Views show **Incomplete** beside Backlog, Cancelled and Snoozed, listing the view's open tasks with what each lacks, and the task panel says what is missing. With nothing chosen (the default) there is no Incomplete button.
 
+## Phase 2.5: subtasks, dependencies, inbox, search, timeline (owner request, 2026-11-01)
+Planned in the "JitterBug — Phase 2.5 and Phase 3 plan" doc; there is no build spec for these.
+- **Subtasks** are full tasks (own key, status, sessions) under one parent, after Jira's three levels. Views hide them unless the filter's **Subtasks as cards** is on; the parent's card shows ☑ done/total and its panel lists them as a checklist (ticking moves to the first done status, unticking to the first to-do status). A task's Parent can be set in its panel.
+
 ## Needs review
 
 Gaps where the spec was silent and the most reversible option was taken. Each is small to change.
@@ -290,4 +294,6 @@ Gaps where the spec was silent and the most reversible option was taken. Each is
 - **Cancelled tasks cannot be snoozed.** The request said "anything not in Done"; cancelled tasks are already off the board, so snoozing them would hide nothing. Allow it by adding `cancelled` to the check in `Snooze` (`internal/db/snooze.go`).
 - **Who counts as incomplete**: only open tasks of type task. Done and cancelled tasks, and epics, are never incomplete. Snoozed tasks are left out of the Incomplete list, as they are out of everything else, until they wake.
 - **Duplicate search uses titles only**, not descriptions: long descriptions drown short titles in both word and meaning matching.
-
+- **Deleting a parent task keeps its subtasks** as ordinary tasks (as deleting an epic keeps its tasks). Jira deletes them instead.
+- **A parent's logged hours and points do not include its subtasks'.** Each subtask is its own task; the parent panel shows each one's hours.
+- **Subtasks have no epic of their own** and so are not counted in the epic's totals or shown in epic grouping; the parent is.

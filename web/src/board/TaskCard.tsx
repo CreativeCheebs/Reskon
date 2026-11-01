@@ -84,6 +84,12 @@ export function TaskCard({
         {task.epic_done}/{task.epic_tasks} done
       </Chip>,
     );
+  if (task.subtask_count > 0)
+    chips.push(
+      <Chip key="subtasks" tip="Subtasks done">
+        ☑ {task.subtask_done}/{task.subtask_count}
+      </Chip>,
+    );
   if (show.time_in_status)
     chips.push(
       <Chip

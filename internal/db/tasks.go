@@ -28,6 +28,7 @@ type Task struct {
 	SnoozedUntil *string         `json:"snoozed_until"` // hidden until this local date; set only by Snooze (see snooze.go)
 	Type         string          `json:"type"`          // "task" or "epic"
 	EpicID       *int64          `json:"epic_id"`       // the epic this task belongs to
+	ParentID     *int64          `json:"parent_id"`     // set on a subtask: the task it belongs to (see subtasks.go)
 	BoardPos     float64         `json:"board_pos"`
 	Custom       json.RawMessage `json:"custom"`
 	CreatedAt    string          `json:"created_at"`
@@ -36,14 +37,14 @@ type Task struct {
 }
 
 const taskCols = `id, key, title, description, area_id, status_id, priority_id, energy_type_id,
-	difficulty, estimate_h, due_at, board_pos, custom, created_at, updated_at, type, epic_id, start_date, end_date, snoozed_until`
+	difficulty, estimate_h, due_at, board_pos, custom, created_at, updated_at, type, epic_id, start_date, end_date, snoozed_until, parent_id`
 
 func scanTask(r interface{ Scan(...any) error }) (*Task, error) {
 	var t Task
 	var custom string
 	err := r.Scan(&t.ID, &t.Key, &t.Title, &t.Description, &t.AreaID, &t.StatusID, &t.PriorityID,
 		&t.EnergyTypeID, &t.Difficulty, &t.EstimateH, &t.DueAt, &t.BoardPos, &custom, &t.CreatedAt, &t.UpdatedAt,
-		&t.Type, &t.EpicID, &t.StartDate, &t.EndDate, &t.SnoozedUntil)
+		&t.Type, &t.EpicID, &t.StartDate, &t.EndDate, &t.SnoozedUntil, &t.ParentID)
 	t.Custom = json.RawMessage(custom)
 	return &t, err
 }
@@ -63,6 +64,7 @@ var taskColumns = columns{
 	"end_date":       kTextNull,
 	"type":           kText,
 	"epic_id":        kIntNull,
+	"parent_id":      kIntNull,
 }
 
 // validateTaskFields checks the rules that column types alone cannot express.
@@ -137,6 +139,14 @@ func (d *DB) CreateTask(ctx context.Context, f Fields) (*Task, error) {
 		return nil, err
 	}
 	if !ok {
+		// A subtask without an area takes its parent's.
+		if areaID, ok, err = d.parentArea(ctx, f); err != nil {
+			return nil, err
+		} else if ok {
+			f["area_id"], _ = json.Marshal(areaID)
+		}
+	}
+	if !ok {
 		return nil, invalid("area_id is required")
 	}
 	statusID, hasStatus, err := f.int64Field("status_id")
@@ -178,6 +188,9 @@ func (d *DB) CreateTask(ctx context.Context, f Fields) (*Task, error) {
 		return nil, err
 	}
 
+	if err := checkParentFields(ctx, tx, 0, "task", nil, f); err != nil {
+		return nil, err
+	}
 	if err := checkEpicFields(ctx, tx, 0, "task", nil, f); err != nil {
 		return nil, err
 	}
@@ -299,6 +312,9 @@ func (d *DB) PatchTask(ctx context.Context, id int64, f Fields) (*Task, error) {
 		}
 		return nil, &ConflictError{Msg: "task changed since you loaded it", Current: current}
 	}
+	if err := checkParentFields(ctx, tx, id, cur.Type, cur.ParentID, f); err != nil {
+		return nil, err
+	}
 	if err := checkEpicFields(ctx, tx, id, cur.Type, cur.EpicID, f); err != nil {
 		return nil, err
 	}
@@ -325,7 +341,8 @@ func (d *DB) PatchTask(ctx context.Context, id int64, f Fields) (*Task, error) {
 }
 
 // DeleteTask soft-deletes a task. Its key stays reserved. If it is an
-// epic, its tasks stay and simply lose the epic.
+// epic, its tasks stay and simply lose the epic; a task's subtasks stay
+// too, as ordinary tasks.
 func (d *DB) DeleteTask(ctx context.Context, id int64) error {
 	now := Now()
 	return d.inTx(ctx, func(tx *sql.Tx) error {
@@ -339,6 +356,10 @@ func (d *DB) DeleteTask(ctx context.Context, id int64) error {
 		}
 		// Deleting an epic leaves its tasks in place, without an epic.
 		_, err = tx.ExecContext(ctx, `UPDATE task SET epic_id = NULL, updated_at = ? WHERE epic_id = ? AND deleted_at IS NULL`, now, id)
+		if err != nil {
+			return err
+		}
+		_, err = tx.ExecContext(ctx, `UPDATE task SET parent_id = NULL, updated_at = ? WHERE parent_id = ? AND deleted_at IS NULL`, now, id)
 		return err
 	})
 }

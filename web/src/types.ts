@@ -63,6 +63,8 @@ export interface ViewFilter {
   open_only?: boolean;
   types?: TaskType[] | null;
   epics?: number[] | null; // 0 = tasks with no epic
+  /** Show subtasks as their own cards; they are left out when false. */
+  subtasks?: boolean;
 }
 
 export type TaskType = "task" | "epic";
@@ -180,6 +182,7 @@ export interface TaskBrief {
   energy_type_id: number | null;
   difficulty: number | null;
   behaviour: Behaviour;
+  parent_id: number | null;
 }
 
 export interface Task {
@@ -201,6 +204,8 @@ export interface Task {
   snoozed_until: string | null;
   type: TaskType;
   epic_id: number | null;
+  /** Set on a subtask: the task it belongs to. */
+  parent_id: number | null;
   board_pos: number;
   custom: Record<string, unknown>;
   created_at: string;
@@ -231,6 +236,8 @@ export interface Task {
   epic_done: number | null;
   epic_estimate_h: number | null; // summed estimates of its tasks
   epic_logged_h: number | null; // hours logged against its tasks
+  subtask_count: number; // its subtasks, cancelled left out
+  subtask_done: number;
 }
 
 export interface Transition {

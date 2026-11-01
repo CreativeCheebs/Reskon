@@ -63,5 +63,6 @@ export function filterOf(view: View): ViewFilter {
     open_only: f.open_only ?? false,
     types: f.types ?? null,
     epics: f.epics ?? null,
+    subtasks: f.subtasks ?? false,
   };
 }
