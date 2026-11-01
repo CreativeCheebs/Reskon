@@ -9,6 +9,7 @@ import { HiddenStatusOverlay } from "../board/HiddenStatusOverlay";
 import { TaskPanel } from "../task/TaskPanel";
 import { useEpics } from "../task/useEpics";
 import { TaskTable } from "./TaskTable";
+import { Timeline } from "../timeline/Timeline";
 import { SnoozedOverlay } from "./SnoozedOverlay";
 import { BlockedOverlay } from "./BlockedOverlay";
 import { IncompleteOverlay } from "./IncompleteOverlay";
@@ -83,6 +84,7 @@ export function ViewScreen({ view }: { view: View }) {
   const update = useCallback((fn: (prev: Task[]) => Task[]) => setTasks((prev) => fn(prev ?? [])), []);
   const replace = useCallback((t: Task) => update((prev) => prev.map((x) => (x.id === t.id ? t : x))), [update]);
   const groupBy: GroupBy = view.board_state?.group_by ?? "none";
+  const timeline = !!view.board_state?.timeline;
   const groupOptions = GROUP_OPTIONS.filter((o) => !(view.layout === "board" && o.tableOnly));
   const filters = activeFilterCount(view);
   // Quick switch for the filter's types: everything, tasks only, epics only.
@@ -221,6 +223,7 @@ export function ViewScreen({ view }: { view: View }) {
           {shown && (
             <div style={{ display: "flex", alignItems: "center", gap: 6, flex: "none", marginLeft: "auto" }}>
               {view.layout === "board" &&
+                !timeline &&
                 hiddenStatuses.map((s) => (
                   <HiddenStatusButton key={s.id} name={s.name} count={shown.filter((t) => t.status_id === s.id).length} onClick={() => setHiddenStatus(s.id)} />
                 ))}
@@ -236,12 +239,15 @@ export function ViewScreen({ view }: { view: View }) {
               size="small"
               className="jb-seg"
               aria-label="Layout"
-              value={view.layout}
+              value={timeline ? "timeline" : view.layout}
               disabled={!online}
-              onChange={(v) => save({ layout: v as View["layout"] })}
+              onChange={(v) =>
+                v === "timeline" ? save({ board_state: { timeline: true } }) : save({ layout: v as View["layout"], board_state: { timeline: false } })
+              }
               options={[
                 { value: "board", label: "Board" },
                 { value: "table", label: "Table" },
+                { value: "timeline", label: "Timeline" },
               ]}
             />
             <Segmented
@@ -258,33 +264,35 @@ export function ViewScreen({ view }: { view: View }) {
               ]}
             />
           </ToolbarGroup>
-          <ToolbarGroup>
-            <Select<GroupBy>
-              size="small"
-              className={groupBy !== "none" ? "jb-active" : undefined}
-              style={{ width: 160 }}
-              disabled={!online}
-              aria-label="Group cards"
-              value={groupOptions.some((o) => o.value === groupBy) ? groupBy : "none"}
-              onChange={(v) => save({ board_state: { group_by: v } })}
-              popupMatchSelectWidth={false}
-              options={groupOptions.map((o) => ({ value: o.value, label: o.value === "none" ? o.label : `Group: ${o.label}` }))}
-            />
-            {view.layout === "board" && (
-              <Select<BoardSort>
+          {!timeline && (
+            <ToolbarGroup>
+              <Select<GroupBy>
                 size="small"
-                className={(view.board_state?.sort ?? "manual") !== "manual" ? "jb-active" : undefined}
+                className={groupBy !== "none" ? "jb-active" : undefined}
                 style={{ width: 160 }}
                 disabled={!online}
-                aria-label="Sort cards"
-                value={view.board_state?.sort ?? "manual"}
-                onChange={(v) => save({ board_state: { sort: v } })}
+                aria-label="Group cards"
+                value={groupOptions.some((o) => o.value === groupBy) ? groupBy : "none"}
+                onChange={(v) => save({ board_state: { group_by: v } })}
                 popupMatchSelectWidth={false}
-                options={SORT_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
-                labelRender={({ value }) => `Sort: ${SORT_OPTIONS.find((o) => o.value === value)?.label.split(",")[0]}`}
+                options={groupOptions.map((o) => ({ value: o.value, label: o.value === "none" ? o.label : `Group: ${o.label}` }))}
               />
-            )}
-          </ToolbarGroup>
+              {view.layout === "board" && (
+                <Select<BoardSort>
+                  size="small"
+                  className={(view.board_state?.sort ?? "manual") !== "manual" ? "jb-active" : undefined}
+                  style={{ width: 160 }}
+                  disabled={!online}
+                  aria-label="Sort cards"
+                  value={view.board_state?.sort ?? "manual"}
+                  onChange={(v) => save({ board_state: { sort: v } })}
+                  popupMatchSelectWidth={false}
+                  options={SORT_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+                  labelRender={({ value }) => `Sort: ${SORT_OPTIONS.find((o) => o.value === value)?.label.split(",")[0]}`}
+                />
+              )}
+            </ToolbarGroup>
+          )}
           <ToolbarGroup right>
             <Badge count={filters} size="small" color={palette.accent} offset={[-2, 2]}>
               <Button size="small" icon={<FilterOutlined />} className={filters ? "jb-active" : undefined} onClick={() => setDrawer("filter")}>
@@ -318,6 +326,13 @@ export function ViewScreen({ view }: { view: View }) {
           ) : (
             <Spin />
           )
+        ) : timeline ? (
+          <Timeline
+            tasks={shown}
+            zoom={view.board_state?.timeline_zoom ?? "months"}
+            onZoom={(z) => save({ board_state: { timeline_zoom: z } })}
+            onOpenTask={setOpenTask}
+          />
         ) : view.layout === "board" ? (
           <Board view={view} tasks={shown} setTasks={update} refetch={refetch} onOpenTask={setOpenTask} />
         ) : (

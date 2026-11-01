@@ -83,6 +83,9 @@ export interface BoardState {
   limits?: Record<string, ColumnLimit>;
   /** Blocked tasks go under the Blocked button instead of the board; absent means true. */
   hide_blocked?: boolean;
+  /** Shows the timeline instead of the layout (view.layout allows only board and table). */
+  timeline?: boolean;
+  timeline_zoom?: "weeks" | "months" | "quarters";
 }
 
 export interface ColumnLimit {

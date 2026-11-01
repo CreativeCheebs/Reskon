@@ -273,6 +273,7 @@ Planned in the "JitterBug — Phase 2.5 and Phase 3 plan" doc; there is no build
 - **Snooze wakes at midnight** already: it stores a date, so nothing changed.
 - **Inbox**: Ctrl/⌘+I anywhere adds a line; Inbox in the sidebar (with a count) lists them. Process opens quick capture on the line; the line leaves the inbox only once capture has saved. Online only: offline saving is Phase 3.
 - **Global search**: `/` (outside a text field) or Search in the sidebar. It uses duplicate search (words and meaning) plus an exact task key, and opens the task's panel over the current screen.
+- **Timeline** is a third option beside Board and Table, kept in `board_state.timeline` because `view.layout` has a CHECK constraint that allows only board and table (widening it would mean rebuilding the table). One row per task under its epic, a bar from start date to end date; a task with only one of start, end or due gets a one-day bar; tasks with none are counted above it. Read-only; no connectors (Phase 3).
 
 ## Needs review
 
@@ -302,3 +303,4 @@ Gaps where the spec was silent and the most reversible option was taken. Each is
 - **A parent's logged hours and points do not include its subtasks'.** Each subtask is its own task; the parent panel shows each one's hours.
 - **Subtasks have no epic of their own** and so are not counted in the epic's totals or shown in epic grouping; the parent is.
 - **Shortcuts**: Ctrl/⌘+I for the inbox (Firefox's Page Info is overridden while JitterBug has focus) and `/` for search, since Ctrl/⌘+K is quick capture.
+- **End dates are cleared by any move into a to-do or in-progress status, creation included** (`applyDateRules`, while `end_auto` is on). That suits an end date that records when work finished, but on the timeline a planned end date disappears as soon as the task is started. Older than Phase 2.5. Options: clear only an end date the rules filled in, or turn off Settings → Task dates → end automatically.

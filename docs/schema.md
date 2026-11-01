@@ -149,7 +149,7 @@ Derived on every task: `subtask_count` (its subtasks, cancelled left out) and `s
 
 Derived: `blocked_by` and `blocks` (lists of `{link_id, id, key, title, status_id, behaviour}`, deleted tasks left out) and `blocked` (any task in `blocked_by` is open). `snoozed` is now also true while `snooze_until_unblocked` is set and the task is blocked and open.
 
-View `board_state` (no migration) gains `hide_blocked` (absent means true: blocked tasks are listed under the toolbar's Blocked button instead of the board or table).
+View `board_state` (no migration) gains `hide_blocked` (absent means true: blocked tasks are listed under the toolbar's Blocked button instead of the board or table), `timeline` (true shows the timeline instead of `layout`) and `timeline_zoom` (`weeks`, `months`, `quarters`).
 
 ### Migration 015 (inbox)
 
