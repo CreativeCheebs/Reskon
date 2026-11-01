@@ -1,5 +1,5 @@
 import { Form, InputNumber, Select } from "antd";
-import { message } from "../theme/feedback";
+import { autosave } from "../theme/feedback";
 import { useApp } from "../store";
 
 // Settings the Phase 2 reflection views read. Defaults are guesses until
@@ -9,7 +9,7 @@ const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
 
 export function ReflectionSettings() {
   const { boot, saveSetting, online } = useApp();
-  const save = (key: string, value: unknown) => saveSetting(key, value).catch((e) => message.error((e as Error).message));
+  const save = (key: string, value: unknown) => autosave(saveSetting(key, value)).catch(() => undefined);
   return (
     <Form layout="vertical" size="small" style={{ maxWidth: 420 }} disabled={!online}>
       <Form.Item label="Weeks start on" extra="Every chart grouped by week follows this.">

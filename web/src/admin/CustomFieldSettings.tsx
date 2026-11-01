@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Form, Input, Modal, Popconfirm, Select, Table, Tag, Typography } from "antd";
-import { message } from "../theme/feedback";
+import { Form, Input, Modal, Popconfirm, Select, Table, Tag } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
+import { autosave, message } from "../theme/feedback";
 import { api } from "../api";
 import { useApp } from "../store";
 import { WriteButton } from "../offline";
@@ -17,11 +18,11 @@ export function CustomFieldSettings() {
 
   const patch = async (id: number, body: Record<string, unknown>) => {
     try {
-      await api.patch(`/custom-fields/${id}`, body);
-      await reloadBootstrap();
-    } catch (e) {
-      message.error((e as Error).message);
+      await autosave(api.patch(`/custom-fields/${id}`, body));
+    } catch {
+      // autosave showed the error.
     }
+    await reloadBootstrap();
   };
   const remove = async (id: number) => {
     try {
@@ -34,10 +35,6 @@ export function CustomFieldSettings() {
 
   return (
     <>
-      <Typography.Paragraph type="secondary">
-        Fields stored on tasks or sessions without a schema change. Filter by them in a view's settings; show them on cards
-        with the view's card configuration.
-      </Typography.Paragraph>
       <Table<CustomField>
         size="small"
         rowKey="id"
@@ -79,9 +76,11 @@ export function CustomFieldSettings() {
           },
         ]}
       />
-      <WriteButton size="small" style={{ marginTop: 8 }} onClick={() => setAdding(true)}>
-        + Add field
-      </WriteButton>
+      <div className="jb-lookup-foot">
+        <WriteButton size="small" icon={<PlusOutlined />} onClick={() => setAdding(true)}>
+          Add field
+        </WriteButton>
+      </div>
       {adding && <AddField onClose={() => setAdding(false)} />}
     </>
   );

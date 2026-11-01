@@ -63,6 +63,34 @@ export function interactionCss(): string {
     .jb-sider .jb-nav-new:not(.ant-menu-item-disabled):hover, .jb-sider .jb-nav-new:not(.ant-menu-item-disabled):hover .jb-nav-icon { color: ${palette.accent} !important; }
     .jb-sider.ant-layout-sider-collapsed .ant-menu-item-group-title { display: none; }
     .jb-sider.ant-layout-sider-collapsed .jb-nav-divider { margin: 8px 12px !important; }
+    /* Settings menu (admin/Settings.tsx): headings and rows share one left
+       edge with the "Settings" title. */
+    .jb-settings-nav .ant-menu-item-group-title { padding: 14px 8px 4px !important; line-height: 16px; }
+    .jb-settings-nav .ant-menu-item-group:first-child .ant-menu-item-group-title { padding-top: 4px !important; }
+    .jb-settings-nav .ant-menu-item { padding-inline: 8px !important; margin-inline: 0 !important; width: 100% !important; }
+    .jb-settings-nav .ant-menu-item-selected { font-weight: 600; color: ${palette.accent} !important; }
+    .jb-settings-nav .ant-menu-item-active:not(:hover):not(.ant-menu-item-selected) { background: transparent !important; }
+    .jb-settings-nav.ant-menu { background: transparent; border-inline-end: none !important; }
+    /* Settings page: menu column and one section, together at most 1120px
+       wide. The menu scrolls on its own when it is taller than the screen. */
+    .jb-settings {
+      display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 32px; align-items: start;
+      width: 100%; max-width: 1120px; padding: 4px 8px 32px; box-sizing: border-box;
+    }
+    .jb-settings-stacked { display: block; }
+    .jb-settings-nav-col { position: sticky; top: 0; max-height: calc(100vh - 28px); overflow-y: auto; padding-bottom: 12px; }
+    .jb-settings-page { font-size: 18px; font-weight: 600; line-height: 28px; color: ${palette.fg}; margin: 0 0 10px 8px; }
+    .jb-settings-head { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+    .jb-settings-head .jb-settings-page { margin: 0; }
+    .jb-settings-body { min-width: 0; max-width: 840px; }
+    .jb-settings-title { font-size: 15px; font-weight: 600; line-height: 28px; color: ${palette.fg}; margin: 0; }
+    .jb-settings-intro { margin: 2px 0 14px; max-width: 72ch; font-size: 13px; line-height: 1.5; color: ${palette.muted}; }
+    .jb-settings-panel { background: ${palette.panel}; border: 1px solid ${palette.border}; border-radius: 8px; padding: 12px 16px 14px; }
+    .jb-settings-subsection { margin-top: 18px; padding-top: 14px; border-top: 1px solid ${palette.border}; }
+    .jb-lookup .ant-table, .jb-lookup .ant-table-thead > tr > th { background: transparent !important; }
+    .jb-lookup .ant-table-thead > tr > th { white-space: nowrap; }
+    .jb-lookup-foot { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+    .jb-swatch { display: inline-block; flex: none; width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 0 1px ${palette.border}; }
     .jb-sider-foot { display: flex; align-items: center; gap: 10px; padding: 10px 10px 10px 20px; border-top: 1px solid ${palette.border}; font-size: 12px; min-height: 52px; box-sizing: border-box; }
     .jb-sider-foot-rail { flex-direction: column; gap: 6px; padding: 10px 0; }
     .jb-sider.ant-layout-sider-zero-width .jb-sider-foot { display: none; }

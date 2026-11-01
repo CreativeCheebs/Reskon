@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Checkbox, Form, Input, Modal, Popconfirm, Switch, Table, Tag, Typography } from "antd";
-import { message } from "../theme/feedback";
+import { Checkbox, Form, Input, Modal, Popconfirm, Switch, Table, Tag } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
+import { autosave, message } from "../theme/feedback";
 import { api } from "../api";
 import { WriteButton } from "../offline";
 import { formatDateTime } from "../format";
@@ -24,19 +25,15 @@ export function UsersSettings() {
 
   const patch = async (u: User, body: Record<string, unknown>) => {
     try {
-      await api.patch(`/users/${u.id}`, body);
-      load();
-    } catch (e) {
-      message.error((e as Error).message);
+      await autosave(api.patch(`/users/${u.id}`, body));
+    } catch {
+      // autosave showed the error.
     }
+    load();
   };
 
   return (
     <>
-      <Typography.Paragraph type="secondary">
-        Everyone has their own separate board, sessions and settings. Nobody, including admins, can see another person's data in
-        the app.
-      </Typography.Paragraph>
       <Table<User>
         size="small"
         rowKey="id"
@@ -87,9 +84,11 @@ export function UsersSettings() {
           },
         ]}
       />
-      <WriteButton size="small" style={{ marginTop: 8 }} onClick={() => setAdding(true)}>
-        + Add person
-      </WriteButton>
+      <div className="jb-lookup-foot">
+        <WriteButton size="small" icon={<PlusOutlined />} onClick={() => setAdding(true)}>
+          Add person
+        </WriteButton>
+      </div>
       {adding && (
         <AddUser
           onClose={() => setAdding(false)}

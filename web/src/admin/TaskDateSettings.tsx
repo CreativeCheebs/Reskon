@@ -1,13 +1,11 @@
 import { useState } from "react";
-import { Form, Select, Space, Switch, Typography } from "antd";
-import { message } from "../theme/feedback";
-import { api } from "../api";
+import { Form, Select, Space, Switch } from "antd";
+import { autosave } from "../theme/feedback";
 import { useApp } from "../store";
-import { WriteButton } from "../offline";
 
 // The `task_dates` setting: which statuses fill in a task's start and end
 // date when a task moves into them. The server applies it, inside the move.
-// An empty list stands for the default, by behaviour.
+// An empty list stands for the default, by behaviour. Each change saves.
 
 interface Rules {
   start_auto: boolean;
@@ -17,7 +15,7 @@ interface Rules {
 }
 
 export function TaskDateSettings() {
-  const { boot, behaviourOf, reloadBootstrap } = useApp();
+  const { boot, behaviourOf, saveSetting, online } = useApp();
   const saved = (boot.settings.task_dates as Partial<Rules> | undefined) ?? {};
   const statuses = [...boot.statuses].sort((a, b) => a.position - b.position);
   const byBehaviour = (...b: string[]) => statuses.filter((s) => b.includes(behaviourOf(s.id) ?? "")).map((s) => s.id);
@@ -27,29 +25,20 @@ export function TaskDateSettings() {
     end_auto: saved.end_auto ?? true,
     end_statuses: saved.end_statuses ?? byBehaviour("done", "cancelled"),
   });
-  const set = (patch: Partial<Rules>) => setRules((r) => ({ ...r, ...patch }));
+  const set = (patch: Partial<Rules>) => {
+    const before = rules;
+    const after = { ...rules, ...patch };
+    setRules(after);
+    autosave(saveSetting("task_dates", after)).catch(() => setRules(before));
+  };
   const options = (ids: number[]) => statuses.filter((s) => ids.includes(s.id)).map((s) => ({ value: s.id, label: s.name }));
   // A task is finished in a done or cancelled status, so only those can end it.
   const endChoices = byBehaviour("done", "cancelled");
   const startChoices = byBehaviour("todo", "in_progress");
 
-  const save = async () => {
-    try {
-      await api.put("/settings/task_dates", rules);
-      await reloadBootstrap();
-      message.success("Saved");
-    } catch (e) {
-      message.error((e as Error).message);
-    }
-  };
-
   return (
     <div style={{ maxWidth: 560 }}>
-      <Typography.Paragraph type="secondary">
-        Start and end dates can always be set by hand in the task panel. Turned on here, a move fills them in with today's date
-        when they are empty. Reopening a finished task clears its end date.
-      </Typography.Paragraph>
-      <Form layout="vertical" size="small">
+      <Form layout="vertical" size="small" disabled={!online}>
         <Form.Item label="Start date">
           <Space direction="vertical" style={{ width: "100%" }}>
             <Space>
@@ -88,9 +77,6 @@ export function TaskDateSettings() {
             )}
           </Space>
         </Form.Item>
-        <WriteButton type="primary" onClick={save}>
-          Save
-        </WriteButton>
       </Form>
     </div>
   );

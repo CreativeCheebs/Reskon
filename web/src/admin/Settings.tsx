@@ -1,7 +1,6 @@
-import { Tabs, Typography } from "antd";
-import { useApp } from "../store";
-import { LookupEditor } from "./LookupEditor";
-import { useReassignDelete } from "./ReassignDialog";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Menu, Select } from "antd";
+import { AreaSettings, EnergyTypeSettings, PrioritySettings, StatusSettings, SubtypeSettings } from "./LookupSettings";
 import { ReflectionSettings } from "./ReflectionSettings";
 import { CaptureSettings } from "./CaptureSettings";
 import { CustomFieldSettings } from "./CustomFieldSettings";
@@ -10,204 +9,196 @@ import { AccountSettings } from "../auth/AccountSettings";
 import { UsersSettings } from "../auth/UsersSettings";
 import { useAuth } from "../auth/AuthGate";
 import { AppearanceSettings } from "../theme/AppearanceSettings";
-import { api } from "../api";
-import { confirm, message } from "../theme/feedback";
-import { PRIORITY_LEVEL_COLORS, priorityLevel } from "../task/LevelIcons";
 
-// Settings: every lookup is a row the user can edit.
+// Settings: sections grouped in a menu on the left, or in a picker above
+// the section when the screen is too narrow for both. The open section is
+// in the URL (#/settings/statuses) so a reload or a link lands on it. Each
+// section is a title, one short intro, and its controls in a panel.
 
-export function Settings() {
-  const { boot, reloadBootstrap, behaviourOf } = useApp();
+interface Section {
+  key: string;
+  label: string;
+  intro?: ReactNode;
+  render: () => ReactNode;
+  adminOnly?: boolean;
+  /** Draws its own cards, so it is not put in a panel. */
+  bare?: boolean;
+}
+
+const GROUPS: { label: string; sections: Section[] }[] = [
+  {
+    label: "Workflow",
+    sections: [
+      {
+        key: "areas",
+        label: "Areas",
+        intro: "Every task belongs to one area, such as Main job, Personal or Freelance.",
+        render: () => <AreaSettings />,
+      },
+      {
+        key: "statuses",
+        label: "Statuses",
+        intro: "The stages a task moves through. Their order is the order of the board's columns.",
+        render: () => <StatusSettings />,
+      },
+      {
+        key: "priorities",
+        label: "Priorities",
+        intro: "How much a task matters. A priority's weight multiplies the points its task earns.",
+        render: () => <PrioritySettings />,
+      },
+      {
+        key: "dates",
+        label: "Task dates",
+        intro:
+          "Start and end dates can always be set by hand in the task panel. Turned on here, a move fills them in with today's date when they are empty. Reopening a finished task clears its end date.",
+        render: () => <TaskDateSettings />,
+      },
+      {
+        key: "custom",
+        label: "Custom fields",
+        intro:
+          "Fields stored on tasks or sessions without a schema change. Filter by them in a view's settings; show them on cards with the view's card configuration.",
+        render: () => <CustomFieldSettings />,
+      },
+    ],
+  },
+  {
+    label: "Time and points",
+    sections: [
+      {
+        key: "energy",
+        label: "Energy types",
+        intro:
+          "Every type is equal and every type earns points: hours × the type's rate × intensity. Types are added up, never set against each other.",
+        render: () => <EnergyTypeSettings />,
+      },
+      {
+        key: "subtypes",
+        label: "Subtypes",
+        intro: "Each subtype belongs to one energy type. The rank weights set how much a session's 1st to 4th subtype count.",
+        render: () => <SubtypeSettings />,
+      },
+      { key: "reflection", label: "Reflection", intro: "What the reflection charts and the Drift widget read.", render: () => <ReflectionSettings /> },
+    ],
+  },
+  {
+    label: "Connections",
+    sections: [
+      {
+        key: "capture",
+        label: "Quick capture",
+        intro: (
+          <>
+            Any OpenAI-compatible endpoint works, local or hosted (for Ollama: <code>http://host:11434/v1</code>). Leave it blank to
+            use the manual form. If the model is down or takes more than 5 seconds, capture falls back to the manual form.
+          </>
+        ),
+        render: () => <CaptureSettings />,
+      },
+    ],
+  },
+  {
+    label: "You",
+    sections: [
+      {
+        key: "appearance",
+        label: "Appearance",
+        intro: "Built-in themes use the exact colours from their published design tokens. Your choice is saved to your account and follows you to other devices.",
+        render: () => <AppearanceSettings />,
+        bare: true,
+      },
+      { key: "account", label: "Account", render: () => <AccountSettings /> },
+    ],
+  },
+  {
+    label: "Admin",
+    sections: [
+      {
+        key: "users",
+        label: "People",
+        intro: "Everyone has their own separate board, sessions and settings. Nobody, including admins, can see another person's data in the app.",
+        render: () => <UsersSettings />,
+        adminOnly: true,
+      },
+    ],
+  },
+];
+
+/** Below this width the menu moves above the section as a picker. */
+const SIDE_BY_SIDE_MIN = 900;
+
+export function Settings({ section, onSection }: { section?: string; onSection: (key: string) => void }) {
   const { user } = useAuth();
-  const statusDelete = useReassignDelete("statuses", false);
-  const priorityDelete = useReassignDelete("priorities", true);
-  const energyOptions = boot.energy_types.map((e) => ({ value: e.id, label: e.name }));
-  const next = (rows: { position: number }[]) => rows.reduce((m, r) => Math.max(m, r.position), -1) + 1;
-  const unique = (base: string, rows: { name: string }[]) => {
-    let name = base;
-    for (let i = 2; rows.some((r) => r.name === name); i++) name = `${base} ${i}`;
-    return name;
-  };
+  const groups = GROUPS.map((g) => ({ ...g, sections: g.sections.filter((s) => !s.adminOnly || user.is_admin) })).filter(
+    (g) => g.sections.length > 0,
+  );
+  const all = groups.flatMap((g) => g.sections);
+  const current = all.find((s) => s.key === section) ?? all[0];
 
-  // Recolours every priority by its rank by weight, replacing chosen colours.
-  const suggestPriorityColours = () =>
-    confirm({
-      title: "Recolour every priority by its rank?",
-      content: "Blue for the lowest, then green, yellow, orange, and red for the highest. Colours you chose are replaced.",
-      onOk: async () => {
-        try {
-          for (const p of boot.priorities)
-            await api.patch(`/priorities/${p.id}`, { color: PRIORITY_LEVEL_COLORS[priorityLevel(p, boot.priorities)] });
-        } catch (e) {
-          message.error((e as Error).message);
-        }
-        await reloadBootstrap();
-      },
-    });
+  const root = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(1200);
+  useEffect(() => {
+    const el = root.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => setWidth(e.contentRect.width));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const stacked = width < SIDE_BY_SIDE_MIN;
 
-  // Recolours every status by its behaviour (and whether it is on the board),
-  // never its name: off-board to-do slate, to-do violet, in progress cyan,
-  // done green, cancelled grey. Replaces chosen colours.
-  const suggestStatusColours = () =>
-    confirm({
-      title: "Recolour every status by what it means?",
-      content: "Backlog-like statuses slate, to do violet, in progress cyan, done green, cancelled grey. Colours you chose are replaced.",
-      onOk: async () => {
-        const by: Record<string, string> = { todo: "#9F8FEF", in_progress: "#6CC3E0", done: "#4BCE97", cancelled: "#738496" };
-        try {
-          for (const s of boot.statuses) {
-            const b = behaviourOf(s.id) ?? "todo";
-            await api.patch(`/statuses/${s.id}`, { color: b === "todo" && !s.on_board ? "#8C9BAB" : by[b] });
-          }
-        } catch (e) {
-          message.error((e as Error).message);
-        }
-        await reloadBootstrap();
-      },
-    });
+  // Keep the chosen entry in view when the menu is taller than the screen.
+  const nav = useRef<HTMLElement>(null);
+  useEffect(() => {
+    nav.current?.querySelector(".ant-menu-item-selected")?.scrollIntoView({ block: "nearest" });
+  }, [current.key, stacked]);
 
-  const tabs = [
-    {
-      key: "areas",
-      label: "Areas",
-      children: (
-        <LookupEditor
-          collection="areas"
-          rows={boot.areas as never}
-          fields={[
-            { key: "name", title: "Name", kind: "text" },
-            { key: "key_prefix", title: "Key prefix", kind: "text", width: 110 },
-            { key: "color", title: "Colour", kind: "color", width: 80 },
-            { key: "default_energy_type_id", title: "Default energy type", kind: "select", options: energyOptions, nullable: true, width: 180 },
-            { key: "position", title: "Order", kind: "number", width: 80 },
-          ]}
-          newRow={() => {
-            const name = unique("New area", boot.areas);
-            return { name, key_prefix: "A" + (boot.areas.length + 1), position: next(boot.areas) };
-          }}
-        />
-      ),
-    },
-    {
-      key: "statuses",
-      label: "Statuses",
-      children: (
-        <>
-          <Typography.Paragraph type="secondary">
-            “On board” off makes a status a header button instead of a column (like Backlog). “Alert after” flags a task red once it
-            has sat in the status that many days. The colour caps the column and tints its count.{" "}
-            <Typography.Link onClick={suggestStatusColours}>Use suggested colours for all</Typography.Link>
-          </Typography.Paragraph>
-          <LookupEditor
-            collection="statuses"
-            rows={boot.statuses as never}
-            fields={[
-              { key: "name", title: "Name", kind: "text" },
-              {
-                key: "category_id",
-                title: "Category",
-                kind: "select",
-                width: 150,
-                options: boot.status_categories.map((c) => ({ value: c.id, label: `${c.name} (${c.behaviour})` })),
-              },
-              { key: "color", title: "Colour", kind: "color", width: 80 },
-              { key: "on_board", title: "On board", kind: "bool", width: 90 },
-              { key: "alert_after_days", title: "Alert after (days)", kind: "number", nullable: true, width: 140 },
-              { key: "position", title: "Order", kind: "number", width: 80 },
-            ]}
-            newRow={() => ({
-              name: unique("New status", boot.statuses),
-              category_id: boot.status_categories[1]?.id ?? 1,
-              position: next(boot.statuses),
-            })}
-            onDelete={(r) => statusDelete.start(r as never)}
+  const body = (
+    <section className="jb-settings-body" aria-labelledby="jb-settings-title">
+      <h2 id="jb-settings-title" className="jb-settings-title">
+        {current.label}
+      </h2>
+      {current.intro && <p className="jb-settings-intro">{current.intro}</p>}
+      {current.bare ? current.render() : <div className="jb-settings-panel">{current.render()}</div>}
+    </section>
+  );
+
+  if (stacked)
+    return (
+      <div ref={root} className="jb-settings jb-settings-stacked">
+        <div className="jb-settings-head">
+          <h1 className="jb-settings-page">Settings</h1>
+          <Select
+            aria-label="Settings section"
+            value={current.key}
+            onChange={onSection}
+            style={{ width: 220 }}
+            options={groups.map((g) => ({ label: g.label, options: g.sections.map((s) => ({ value: s.key, label: s.label })) }))}
           />
-          {statusDelete.dialog}
-        </>
-      ),
-    },
-    {
-      key: "priorities",
-      label: "Priorities",
-      children: (
-        <>
-          <Typography.Paragraph type="secondary">
-            Weight multiplies points. 1.0 is neutral; an unset priority counts as 1.0. A priority with no colour takes one by its
-            rank (blue lowest, red highest).{" "}
-            <Typography.Link onClick={suggestPriorityColours}>Use suggested colours for all</Typography.Link>
-          </Typography.Paragraph>
-          <LookupEditor
-            collection="priorities"
-            rows={boot.priorities as never}
-            fields={[
-              { key: "name", title: "Name", kind: "text" },
-              { key: "color", title: "Colour", kind: "color", width: 80 },
-              { key: "weight", title: "Weight", kind: "number", step: 0.25, width: 100 },
-              { key: "position", title: "Order", kind: "number", width: 80 },
-            ]}
-            newRow={() => ({ name: unique("New priority", boot.priorities), weight: 1, position: next(boot.priorities) })}
-            onDelete={(r) => priorityDelete.start(r as never)}
-          />
-          {priorityDelete.dialog}
-        </>
-      ),
-    },
-    {
-      key: "energy",
-      label: "Energy types",
-      children: (
-        <>
-          <Typography.Paragraph type="secondary">
-            Every type is equal and every type earns points: hours × the type's rate × intensity. A new rate
-            applies to sessions logged after it. Types are added up, never set against each other.
-          </Typography.Paragraph>
-          <LookupEditor
-            collection="energy-types"
-            rows={boot.energy_types as never}
-            fields={[
-              { key: "name", title: "Name", kind: "text" },
-              { key: "points_per_hour", title: "Points / hour", kind: "number", width: 110, step: 0.5 },
-              { key: "color", title: "Colour", kind: "color", width: 80 },
-              { key: "position", title: "Order", kind: "number", width: 80 },
-            ]}
-            newRow={() => ({ name: unique("New energy type", boot.energy_types), points_per_hour: 1, position: next(boot.energy_types) })}
-          />
-        </>
-      ),
-    },
-    {
-      key: "subtypes",
-      label: "Subtypes",
-      children: (
-        <LookupEditor
-          collection="subtypes"
-          rows={boot.subtypes as never}
-          fields={[
-            { key: "name", title: "Name", kind: "text" },
-            { key: "energy_type_id", title: "Energy type", kind: "select", options: energyOptions, width: 180 },
-            { key: "position", title: "Order", kind: "number", width: 80 },
-          ]}
-          newRow={() => ({
-            name: unique("new subtype", boot.subtypes),
-            energy_type_id: boot.energy_types[0]?.id,
-            position: next(boot.subtypes),
-          })}
-        />
-      ),
-    },
-    { key: "dates", label: "Task dates", children: <TaskDateSettings /> },
-    { key: "custom", label: "Custom fields", children: <CustomFieldSettings /> },
-    { key: "capture", label: "Capture & weights", children: <CaptureSettings /> },
-    { key: "reflection", label: "Reflection", children: <ReflectionSettings /> },
-    { key: "appearance", label: "Appearance", children: <AppearanceSettings /> },
-    { key: "account", label: "Account", children: <AccountSettings /> },
-    ...(user.is_admin ? [{ key: "users", label: "People", children: <UsersSettings /> }] : []),
-  ];
+        </div>
+        {body}
+      </div>
+    );
 
   return (
-    <div style={{ maxWidth: 980 }}>
-      <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Settings</div>
-      <Tabs items={tabs} />
+    <div ref={root} className="jb-settings">
+      <nav ref={nav} className="jb-settings-nav-col" aria-label="Settings sections">
+        <h1 className="jb-settings-page">Settings</h1>
+        <Menu
+          theme="dark"
+          mode="inline"
+          className="jb-settings-nav"
+          selectedKeys={[current.key]}
+          onClick={(e) => onSection(e.key)}
+          items={groups.map((g) => ({
+            type: "group" as const,
+            key: g.label,
+            label: <span className="jb-nav-heading">{g.label}</span>,
+            children: g.sections.map((s) => ({ key: s.key, label: s.label })),
+          }))}
+        />
+      </nav>
+      {body}
     </div>
   );
 }

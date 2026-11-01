@@ -18,6 +18,20 @@ export const message: Pick<MessageInstance, "success" | "error" | "info" | "warn
   warning: (...a) => msg.warning(...a),
 };
 
+/** Runs a save that has no Save button and says so in one toast, updated in
+ *  place ("Saving…", then "Saved" or the error) so quick edits never stack. */
+export async function autosave<T>(work: Promise<T>): Promise<T> {
+  msg.open({ key: "autosave", type: "loading", content: "Saving…", duration: 0 });
+  try {
+    const r = await work;
+    msg.open({ key: "autosave", type: "success", content: "Saved", duration: 1.5 });
+    return r;
+  } catch (e) {
+    msg.open({ key: "autosave", type: "error", content: (e as Error).message, duration: 4 });
+    throw e;
+  }
+}
+
 export const confirm = (props: Parameters<HookAPI["confirm"]>[0]) => {
   modal.confirm(props);
 };

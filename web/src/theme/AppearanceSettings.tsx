@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Alert, Button, Popconfirm, Space, Tooltip, Typography, Upload } from "antd";
+import { Alert, Button, Popconfirm, Space, Tooltip, Upload } from "antd";
 import { CheckOutlined, DownloadOutlined, UploadOutlined } from "@ant-design/icons";
 import { api } from "../api";
 import { useApp } from "../store";
 import { WriteButton } from "../offline";
-import { confirm, message } from "./feedback";
+import { autosave, confirm, message } from "./feedback";
 import { blend, contrast, palette, readable } from "./palette";
 import { useTheme } from "./ThemeProvider";
 import { BUILTIN_THEMES, checkContrast, parseTheme, themeTemplate, type Theme } from "./themes";
@@ -25,7 +25,7 @@ export function AppearanceSettings() {
   const choose = async (t: Theme) => {
     setTheme(t);
     try {
-      await api.put("/settings/theme", t.builtin ? { id: t.id } : { name: t.name, colors: t.colors });
+      await autosave(api.put("/settings/theme", t.builtin ? { id: t.id } : { name: t.name, colors: t.colors }));
     } catch (e) {
       message.error(`Theme applied here but not saved to your account: ${(e as Error).message}`);
     }
@@ -88,10 +88,6 @@ export function AppearanceSettings() {
 
   return (
     <div style={{ maxWidth: 980 }}>
-      <Typography.Paragraph type="secondary">
-        Jira and GitHub themes use the exact colours from Atlassian's and GitHub's published design tokens. Your choice is saved
-        to your account and follows you to other devices.
-      </Typography.Paragraph>
       <Space style={{ marginBottom: 12 }} wrap>
         <Upload accept=".json,application/json" showUploadList={false} beforeUpload={(f) => (upload(f), false)} disabled={!online}>
           <WriteButton icon={<UploadOutlined />}>Upload theme</WriteButton>

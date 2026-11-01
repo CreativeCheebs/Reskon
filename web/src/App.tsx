@@ -27,7 +27,7 @@ type Screen =
   | { kind: "view"; id: number }
   | { kind: "dashboard"; id?: number }
   | { kind: "day"; date?: string }
-  | { kind: "settings" }
+  | { kind: "settings"; section?: string }
   | { kind: "sessions" }
   | { kind: "cycle" }
   | { kind: "states" };
@@ -37,7 +37,8 @@ function parseHash(): Screen | null {
   if (parts[0] === "view" && parts[1]) return { kind: "view", id: Number(parts[1]) };
   if (parts[0] === "day") return { kind: "day", date: parts[1] || undefined };
   if (parts[0] === "dashboard") return { kind: "dashboard", id: parts[1] ? Number(parts[1]) : undefined };
-  if (parts[0] === "settings" || parts[0] === "sessions" || parts[0] === "cycle" || parts[0] === "states") return { kind: parts[0] };
+  if (parts[0] === "settings") return { kind: "settings", section: parts[1] || undefined };
+  if (parts[0] === "sessions" || parts[0] === "cycle" || parts[0] === "states") return { kind: parts[0] };
   return null;
 }
 
@@ -45,6 +46,7 @@ function toHash(s: Screen) {
   if (s.kind === "view") return `#/view/${s.id}`;
   if (s.kind === "dashboard") return s.id ? `#/dashboard/${s.id}` : "#/dashboard";
   if (s.kind === "day") return s.date ? `#/day/${s.date}` : "#/day";
+  if (s.kind === "settings") return s.section ? `#/settings/${s.section}` : "#/settings";
   return `#/${s.kind}`;
 }
 
@@ -111,7 +113,7 @@ export function App() {
           {view && <ViewScreen key={view.id} view={view} />}
           {current.kind === "view" && !view && <Alert type="info" message="That view no longer exists." />}
           <Suspense fallback={<Spin style={{ margin: 40 }} />}>
-            {current.kind === "settings" && <Settings />}
+            {current.kind === "settings" && <Settings section={current.section} onSection={(section) => go({ kind: "settings", section })} />}
             {current.kind === "sessions" && <SessionsScreen />}
             {current.kind === "cycle" && <CycleTimeScreen />}
             {current.kind === "states" && <StatesScreen />}
