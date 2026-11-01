@@ -1,14 +1,16 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { api, isOnline, onOnlineChange } from "./api";
 import type { Behaviour, Bootstrap, Status, View } from "./types";
+import { today } from "./format";
 
 // App-wide state: the bootstrap lookups, online/offline, and a reload
-// counter that screens watch to refetch their own data on reconnect.
+// counter that screens watch to refetch their own data on reconnect and
+// when the day changes.
 
 interface AppState {
   boot: Bootstrap;
   online: boolean;
-  /** Bumped on reconnect and after lookup edits; screens refetch when it changes. */
+  /** Bumped on reconnect, at a new day and after lookup edits; screens refetch when it changes. */
   reloadKey: number;
   reloadBootstrap: () => Promise<void>;
   /** Replace one view in the bootstrap without refetching anything. */
@@ -47,6 +49,27 @@ export function AppProvider({ children, fallback }: { children: ReactNode; fallb
     });
     return () => {
       off();
+    };
+  }, [reloadBootstrap]);
+
+  // A new day: everything derived from "today" (snoozes waking, days to
+  // due, the Day screen) is out of date, so reload as on a reconnect. A
+  // sleeping laptop runs no timers, so coming back to the tab checks too.
+  useEffect(() => {
+    let day = today();
+    const check = () => {
+      if (today() === day) return;
+      day = today();
+      reloadBootstrap().catch(() => undefined);
+    };
+    const t = window.setInterval(check, 30_000);
+    const onVisible = () => document.visibilityState === "visible" && check();
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", check);
+    return () => {
+      window.clearInterval(t);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", check);
     };
   }, [reloadBootstrap]);
 

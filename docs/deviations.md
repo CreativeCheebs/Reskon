@@ -273,6 +273,7 @@ Planned in the "JitterBug — Phase 2.5 and Phase 3 plan" doc; there is no build
 - **Snooze wakes at midnight** already: it stores a date, so nothing changed.
 - **Inbox**: Ctrl/⌘+I anywhere adds a line; Inbox in the sidebar (with a count) lists them. Process opens quick capture on the line; the line leaves the inbox only once capture has saved. Online only: offline saving is Phase 3.
 - **Global search**: `/` (outside a text field) or Search in the sidebar. It uses duplicate search (words and meaning) plus an exact task key, and opens the task's panel over the current screen.
+- **A new day reloads everything.** The client checks the local date every 30 s and whenever the tab comes back into view (a sleeping laptop runs no timers). When it has changed, it reloads as on a reconnect: lookups, then every screen's own data, so snoozes wake, days to due move on and the Day screen opens the new day. Not a full page reload, so an open panel or a half-typed line survives.
 - **Timeline** is a third option beside Board and Table, kept in `board_state.timeline` because `view.layout` has a CHECK constraint that allows only board and table (widening it would mean rebuilding the table). One row per task under its epic, a bar from start date to end date; a task with only one of start, end or due gets a one-day bar; tasks with none are counted above it. Read-only; no connectors (Phase 3).
 
 ## Needs review
