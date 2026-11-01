@@ -149,6 +149,9 @@ func (d *DB) moveTx(ctx context.Context, tx *sql.Tx, taskID int64, req MoveReque
 		if err == nil {
 			err = wakeIfFinished(ctx, tx, taskID, req.StatusID)
 		}
+		if err == nil {
+			err = releaseUnblocked(ctx, tx)
+		}
 	}
 	return renumbered, err
 }

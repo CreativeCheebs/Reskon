@@ -12,39 +12,40 @@ import (
 // Task is a task row plus its derived values. Derived values are computed on
 // read (see derive.go) and never stored.
 type Task struct {
-	ID           int64           `json:"id"`
-	Key          string          `json:"key"`
-	Title        string          `json:"title"`
-	Description  *string         `json:"description"`
-	AreaID       int64           `json:"area_id"`
-	StatusID     int64           `json:"status_id"`
-	PriorityID   *int64          `json:"priority_id"`
-	EnergyTypeID *int64          `json:"energy_type_id"`
-	Difficulty   *int64          `json:"difficulty"`
-	EstimateH    *float64        `json:"estimate_h"`
-	DueAt        *string         `json:"due_at"`
-	StartDate    *string         `json:"start_date"` // set by hand or by a move (see taskdates.go)
-	EndDate      *string         `json:"end_date"`
-	SnoozedUntil *string         `json:"snoozed_until"` // hidden until this local date; set only by Snooze (see snooze.go)
-	Type         string          `json:"type"`          // "task" or "epic"
-	EpicID       *int64          `json:"epic_id"`       // the epic this task belongs to
-	ParentID     *int64          `json:"parent_id"`     // set on a subtask: the task it belongs to (see subtasks.go)
-	BoardPos     float64         `json:"board_pos"`
-	Custom       json.RawMessage `json:"custom"`
-	CreatedAt    string          `json:"created_at"`
-	UpdatedAt    string          `json:"updated_at"`
+	ID                   int64           `json:"id"`
+	Key                  string          `json:"key"`
+	Title                string          `json:"title"`
+	Description          *string         `json:"description"`
+	AreaID               int64           `json:"area_id"`
+	StatusID             int64           `json:"status_id"`
+	PriorityID           *int64          `json:"priority_id"`
+	EnergyTypeID         *int64          `json:"energy_type_id"`
+	Difficulty           *int64          `json:"difficulty"`
+	EstimateH            *float64        `json:"estimate_h"`
+	DueAt                *string         `json:"due_at"`
+	StartDate            *string         `json:"start_date"` // set by hand or by a move (see taskdates.go)
+	EndDate              *string         `json:"end_date"`
+	SnoozedUntil         *string         `json:"snoozed_until"`          // hidden until this local date; set only by Snooze (see snooze.go)
+	Type                 string          `json:"type"`                   // "task" or "epic"
+	EpicID               *int64          `json:"epic_id"`                // the epic this task belongs to
+	ParentID             *int64          `json:"parent_id"`              // set on a subtask: the task it belongs to (see subtasks.go)
+	SnoozeUntilUnblocked bool            `json:"snooze_until_unblocked"` // hidden while an open task blocks it; set only by Snooze (see links.go)
+	BoardPos             float64         `json:"board_pos"`
+	Custom               json.RawMessage `json:"custom"`
+	CreatedAt            string          `json:"created_at"`
+	UpdatedAt            string          `json:"updated_at"`
 	TaskDerived
 }
 
 const taskCols = `id, key, title, description, area_id, status_id, priority_id, energy_type_id,
-	difficulty, estimate_h, due_at, board_pos, custom, created_at, updated_at, type, epic_id, start_date, end_date, snoozed_until, parent_id`
+	difficulty, estimate_h, due_at, board_pos, custom, created_at, updated_at, type, epic_id, start_date, end_date, snoozed_until, parent_id, snooze_until_unblocked`
 
 func scanTask(r interface{ Scan(...any) error }) (*Task, error) {
 	var t Task
 	var custom string
 	err := r.Scan(&t.ID, &t.Key, &t.Title, &t.Description, &t.AreaID, &t.StatusID, &t.PriorityID,
 		&t.EnergyTypeID, &t.Difficulty, &t.EstimateH, &t.DueAt, &t.BoardPos, &custom, &t.CreatedAt, &t.UpdatedAt,
-		&t.Type, &t.EpicID, &t.StartDate, &t.EndDate, &t.SnoozedUntil, &t.ParentID)
+		&t.Type, &t.EpicID, &t.StartDate, &t.EndDate, &t.SnoozedUntil, &t.ParentID, &t.SnoozeUntilUnblocked)
 	t.Custom = json.RawMessage(custom)
 	return &t, err
 }
@@ -360,6 +361,10 @@ func (d *DB) DeleteTask(ctx context.Context, id int64) error {
 			return err
 		}
 		_, err = tx.ExecContext(ctx, `UPDATE task SET parent_id = NULL, updated_at = ? WHERE parent_id = ? AND deleted_at IS NULL`, now, id)
-		return err
+		if err != nil {
+			return err
+		}
+		// A deleted task blocks nothing.
+		return releaseUnblocked(ctx, tx)
 	})
 }

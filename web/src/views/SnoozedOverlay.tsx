@@ -3,7 +3,7 @@ import { message } from "../theme/feedback";
 import { useApp } from "../store";
 import { WriteButton } from "../offline";
 import { Lozenge } from "../theme/Lozenge";
-import { formatWakeDate, snoozeTask } from "../task/SnoozeButton";
+import { snoozeTask, wakeLabel } from "../task/SnoozeButton";
 import { useColumnWidths } from "./useColumnWidths";
 import type { Task } from "../types";
 
@@ -48,7 +48,7 @@ export function SnoozedOverlay({ tasks, onClose, onChanged, onOpenTask }: Props)
       width: 110,
       sorter: (a, b) => (a.snoozed_until ?? "").localeCompare(b.snoozed_until ?? ""),
       defaultSortOrder: "ascend",
-      render: (_, t) => (t.snoozed_until ? formatWakeDate(t.snoozed_until) : ""),
+      render: (_, t) => wakeLabel(t),
     },
     {
       title: "",

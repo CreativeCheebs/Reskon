@@ -11,6 +11,7 @@ import type { Task } from "../types";
 import { DifficultySlider } from "./DifficultySlider";
 import { EpicTasks } from "./EpicTasks";
 import { ParentField, Subtasks } from "./Subtasks";
+import { Dependencies } from "./Dependencies";
 import { TaskExtras } from "./TaskExtras";
 import { TypeIcon, TypeLabel } from "./TypeIcon";
 import { useEpics } from "./useEpics";
@@ -295,6 +296,7 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
           {rest && task.type === "task" && !task.parent_id && (
             <Subtasks parent={task} version={childVersion} onOpenTask={setChild} onChanged={() => load(true)} />
           )}
+          {rest && <Dependencies task={task} onOpenTask={setChild} onChanged={() => load(true)} />}
           {rest && (
             <>
               <TaskExtras task={task} patch={patch} onTaskChanged={() => load(true)} />

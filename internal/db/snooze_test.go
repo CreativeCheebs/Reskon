@@ -16,7 +16,7 @@ func TestSnooze(t *testing.T) {
 	tk := mustTask(t, d, a.ID, "x")
 	today := time.Now().Format("2006-01-02")
 
-	got, err := d.Snooze(ctx, tk.ID, 3, today)
+	got, err := d.Snooze(ctx, tk.ID, 3, false, today)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,16 +36,16 @@ func TestSnooze(t *testing.T) {
 	}
 
 	// Past the cap (default 30) and negative are refused.
-	if _, err := d.Snooze(ctx, tk.ID, 31, today); err == nil {
+	if _, err := d.Snooze(ctx, tk.ID, 31, false, today); err == nil {
 		t.Error("31 days accepted with the default cap")
 	}
-	if _, err := d.Snooze(ctx, tk.ID, -1, today); err == nil {
+	if _, err := d.Snooze(ctx, tk.ID, -1, false, today); err == nil {
 		t.Error("negative days accepted")
 	}
 	if err := d.PutSetting(ctx, "snooze", json.RawMessage(`{"max_days":60}`)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := d.Snooze(ctx, tk.ID, 45, today); err != nil {
+	if _, err := d.Snooze(ctx, tk.ID, 45, false, today); err != nil {
 		t.Errorf("45 days with a 60 day cap: %v", err)
 	}
 	if err := d.PutSetting(ctx, "snooze", json.RawMessage(`{"max_days":0}`)); err == nil {
@@ -59,22 +59,22 @@ func TestSnooze(t *testing.T) {
 	}
 
 	// 0 wakes.
-	d.Snooze(ctx, tk.ID, 5, today)
-	if got, err = d.Snooze(ctx, tk.ID, 0, today); err != nil || got.Snoozed || got.SnoozedUntil != nil {
+	d.Snooze(ctx, tk.ID, 5, false, today)
+	if got, err = d.Snooze(ctx, tk.ID, 0, false, today); err != nil || got.Snoozed || got.SnoozedUntil != nil {
 		t.Errorf("wake: %v snoozed=%v until=%v", err, got.Snoozed, got.SnoozedUntil)
 	}
 
 	// Moving into done clears the snooze; done tasks cannot be snoozed.
-	d.Snooze(ctx, tk.ID, 5, today)
+	d.Snooze(ctx, tk.ID, 5, false, today)
 	if got, err = d.Move(ctx, tk.ID, MoveRequest{StatusID: 4, Today: today}); err != nil || got.SnoozedUntil != nil {
 		t.Errorf("into done: %v until=%v", err, got.SnoozedUntil)
 	}
-	if _, err := d.Snooze(ctx, tk.ID, 2, today); err == nil {
+	if _, err := d.Snooze(ctx, tk.ID, 2, false, today); err == nil {
 		t.Error("done task snoozed")
 	}
 	// In progress can be snoozed, and a move between open statuses keeps it.
 	d.Move(ctx, tk.ID, MoveRequest{StatusID: 3, Today: today})
-	if _, err := d.Snooze(ctx, tk.ID, 2, today); err != nil {
+	if _, err := d.Snooze(ctx, tk.ID, 2, false, today); err != nil {
 		t.Errorf("in progress: %v", err)
 	}
 	if got, _ = d.Move(ctx, tk.ID, MoveRequest{StatusID: 2, Today: today}); !got.Snoozed {

@@ -81,6 +81,8 @@ export interface BoardState {
   sort?: BoardSort;
   /** Column limits by status id. */
   limits?: Record<string, ColumnLimit>;
+  /** Blocked tasks go under the Blocked button instead of the board; absent means true. */
+  hide_blocked?: boolean;
 }
 
 export interface ColumnLimit {
@@ -206,6 +208,8 @@ export interface Task {
   epic_id: number | null;
   /** Set on a subtask: the task it belongs to. */
   parent_id: number | null;
+  /** Hidden while an open task blocks it; set only by POST /tasks/:id/snooze. */
+  snooze_until_unblocked: boolean;
   board_pos: number;
   custom: Record<string, unknown>;
   created_at: string;
@@ -238,6 +242,20 @@ export interface Task {
   epic_logged_h: number | null; // hours logged against its tasks
   subtask_count: number; // its subtasks, cancelled left out
   subtask_done: number;
+  /** An open task blocks it. */
+  blocked: boolean;
+  blocked_by: LinkedTask[];
+  blocks: LinkedTask[];
+}
+
+/** The other end of a dependency link. */
+export interface LinkedTask {
+  link_id: number;
+  id: number;
+  key: string;
+  title: string;
+  status_id: number;
+  behaviour: Behaviour;
 }
 
 export interface Transition {

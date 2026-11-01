@@ -84,6 +84,12 @@ export function TaskCard({
         {task.epic_done}/{task.epic_tasks} done
       </Chip>,
     );
+  if (task.blocked)
+    chips.push(
+      <Chip key="blocked" color={palette.warn} tip={`Waiting on ${task.blocked_by.filter((b) => b.behaviour !== "done" && b.behaviour !== "cancelled").map((b) => b.title).join(", ")}`}>
+        Blocked
+      </Chip>,
+    );
   if (task.subtask_count > 0)
     chips.push(
       <Chip key="subtasks" tip="Subtasks done">

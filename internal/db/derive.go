@@ -11,31 +11,34 @@ import (
 // TaskDerived holds values computed on read. None of these are stored.
 // This file is their one implementation; the client never recomputes them.
 type TaskDerived struct {
-	Behaviour      string   `json:"behaviour"`        // behaviour of the current status's category
-	FirstStartedAt *string  `json:"first_started_at"` // earliest move into in_progress
-	LastStartedAt  *string  `json:"last_started_at"`  // latest move into in_progress
-	CompletedAt    *string  `json:"completed_at"`     // start of the current done run; nil if not done
-	CancelledAt    *string  `json:"cancelled_at"`     // start of the current cancelled run; nil if not cancelled
-	LastMovedAt    string   `json:"last_moved_at"`    // latest transition of any kind
-	CreatedAgeH    float64  `json:"created_age_h"`    // now - created_at
-	StartedAgeH    *float64 `json:"started_age_h"`    // now - first_started_at
-	TimeInStatusH  float64  `json:"time_in_status_h"` // now - last_moved_at
-	Stalled        bool     `json:"stalled"`          // time in status passed the status's alert_after_days
-	Points         *float64 `json:"points"`           // difficulty x priority weight
-	LoggedH        float64  `json:"logged_h"`         // sum of session hours against the task
-	ProgressPct    *float64 `json:"progress_pct"`     // logged_h / estimate_h x 100, capped at 100; nil without estimate
-	RemainingH     *float64 `json:"remaining_h"`      // estimate_h - logged_h, below zero once over; nil without estimate
-	DaysToDue      *int     `json:"days_to_due"`      // calendar days from today to due_at: 0 due today, below zero overdue; nil without due date or once finished
-	PaceH          *float64 `json:"pace_h"`           // remaining_h spread over the days left, today and the due day included; nil unless both are known and positive
-	Snoozed        bool     `json:"snoozed"`          // snoozed_until is after today (server's time zone) and the task is open
-	Missing        []string `json:"missing"`          // required fields (setting task_completeness) an open task lacks; empty when complete
-	Subtypes       []string `json:"subtypes"`         // distinct subtypes from the task's sessions
-	EpicTasks      *int     `json:"epic_tasks"`       // epics only: tasks in it, cancelled excluded
-	EpicDone       *int     `json:"epic_done"`        // epics only: how many of those are done
-	EpicEstimateH  *float64 `json:"epic_estimate_h"`  // epics only: summed estimates of those tasks
-	EpicLoggedH    *float64 `json:"epic_logged_h"`    // epics only: hours logged against its tasks, cancelled included
-	SubtaskCount   int      `json:"subtask_count"`    // its subtasks, cancelled excluded
-	SubtaskDone    int      `json:"subtask_done"`     // how many of those are done
+	Behaviour      string       `json:"behaviour"`        // behaviour of the current status's category
+	FirstStartedAt *string      `json:"first_started_at"` // earliest move into in_progress
+	LastStartedAt  *string      `json:"last_started_at"`  // latest move into in_progress
+	CompletedAt    *string      `json:"completed_at"`     // start of the current done run; nil if not done
+	CancelledAt    *string      `json:"cancelled_at"`     // start of the current cancelled run; nil if not cancelled
+	LastMovedAt    string       `json:"last_moved_at"`    // latest transition of any kind
+	CreatedAgeH    float64      `json:"created_age_h"`    // now - created_at
+	StartedAgeH    *float64     `json:"started_age_h"`    // now - first_started_at
+	TimeInStatusH  float64      `json:"time_in_status_h"` // now - last_moved_at
+	Stalled        bool         `json:"stalled"`          // time in status passed the status's alert_after_days
+	Points         *float64     `json:"points"`           // difficulty x priority weight
+	LoggedH        float64      `json:"logged_h"`         // sum of session hours against the task
+	ProgressPct    *float64     `json:"progress_pct"`     // logged_h / estimate_h x 100, capped at 100; nil without estimate
+	RemainingH     *float64     `json:"remaining_h"`      // estimate_h - logged_h, below zero once over; nil without estimate
+	DaysToDue      *int         `json:"days_to_due"`      // calendar days from today to due_at: 0 due today, below zero overdue; nil without due date or once finished
+	PaceH          *float64     `json:"pace_h"`           // remaining_h spread over the days left, today and the due day included; nil unless both are known and positive
+	Snoozed        bool         `json:"snoozed"`          // snoozed_until is after today (server's time zone) and the task is open
+	Missing        []string     `json:"missing"`          // required fields (setting task_completeness) an open task lacks; empty when complete
+	Subtypes       []string     `json:"subtypes"`         // distinct subtypes from the task's sessions
+	EpicTasks      *int         `json:"epic_tasks"`       // epics only: tasks in it, cancelled excluded
+	EpicDone       *int         `json:"epic_done"`        // epics only: how many of those are done
+	EpicEstimateH  *float64     `json:"epic_estimate_h"`  // epics only: summed estimates of those tasks
+	EpicLoggedH    *float64     `json:"epic_logged_h"`    // epics only: hours logged against its tasks, cancelled included
+	SubtaskCount   int          `json:"subtask_count"`    // its subtasks, cancelled excluded
+	SubtaskDone    int          `json:"subtask_done"`     // how many of those are done
+	Blocked        bool         `json:"blocked"`          // an open task blocks it (it may be finished itself)
+	BlockedBy      []LinkedTask `json:"blocked_by"`       // tasks that must finish first
+	Blocks         []LinkedTask `json:"blocks"`           // tasks waiting on this one
 }
 
 // transitionStep is one transition with the behaviour of the status it
@@ -244,6 +247,10 @@ func (d *DB) derive(ctx context.Context, tasks []*Task, now time.Time) error {
 	if err != nil {
 		return err
 	}
+	blockedBy, blocks, err := d.linksOf(ctx, ids, in)
+	if err != nil {
+		return err
+	}
 	required, err := d.loadCompleteness(ctx)
 	if err != nil {
 		return err
@@ -276,7 +283,12 @@ func (d *DB) derive(ctx context.Context, tasks []*Task, now time.Time) error {
 		if t.Behaviour != "done" && t.Behaviour != "cancelled" {
 			t.DaysToDue, t.PaceH = duePace(t.DueAt, t.RemainingH, now)
 		}
-		t.Snoozed = isSnoozed(t.SnoozedUntil, t.Behaviour, now)
+		t.BlockedBy, t.Blocks = orEmpty(blockedBy[t.ID]), orEmpty(blocks[t.ID])
+		for _, b := range t.BlockedBy {
+			t.Blocked = t.Blocked || openBehaviour(b.Behaviour)
+		}
+		t.Snoozed = isSnoozed(t.SnoozedUntil, t.Behaviour, now) ||
+			(t.SnoozeUntilUnblocked && t.Blocked && openBehaviour(t.Behaviour))
 		t.Missing = missingFields(t, required)
 		t.Subtypes = subtypes[t.ID]
 		if t.Subtypes == nil {
@@ -299,4 +311,11 @@ func scanInto(ctx context.Context, q querier, query string, fn func(*sql.Rows) e
 		}
 	}
 	return rows.Err()
+}
+
+func orEmpty[T any](s []T) []T {
+	if s == nil {
+		return []T{}
+	}
+	return s
 }

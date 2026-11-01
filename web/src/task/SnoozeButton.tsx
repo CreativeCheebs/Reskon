@@ -23,9 +23,16 @@ export function formatWakeDate(day: string): string {
   return new Date(`${day}T00:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
 }
 
-/** Snoozes for days, or wakes with 0. Returns the updated task. */
-export function snoozeTask(id: number, days: number): Promise<Task> {
-  return api.post<Task>(`/tasks/${id}/snooze`, { days, today: today() });
+/** Snoozes for days, or wakes with 0; or, with untilUnblocked, while an
+ *  open task blocks it. Returns the updated task. */
+export function snoozeTask(id: number, days: number, untilUnblocked = false): Promise<Task> {
+  return api.post<Task>(`/tasks/${id}/snooze`, { days, until_unblocked: untilUnblocked, today: today() });
+}
+
+/** When a snoozed task shows again, in words. */
+export function wakeLabel(t: Task): string {
+  if (t.snoozed_until && t.snoozed_until > today()) return formatWakeDate(t.snoozed_until);
+  return t.snooze_until_unblocked ? "When unblocked" : "";
 }
 
 export function SnoozeButton({ task, onChanged }: { task: Task; onChanged: (t: Task) => void }) {
@@ -35,11 +42,11 @@ export function SnoozeButton({ task, onChanged }: { task: Task; onChanged: (t: T
   const [days, setDays] = useState<number | null>(Math.min(7, max));
   if (task.behaviour !== "todo" && task.behaviour !== "in_progress") return null;
 
-  const run = async (n: number) => {
+  const run = async (n: number, untilUnblocked = false) => {
     try {
-      onChanged(await snoozeTask(task.id, n));
+      onChanged(await snoozeTask(task.id, n, untilUnblocked));
       setOpen(false);
-      message.success(n === 0 ? "Awake again" : `Snoozed for ${n === 1 ? "a day" : `${n} days`}`);
+      message.success(untilUnblocked ? "Snoozed until its blockers are done" : n === 0 ? "Awake again" : `Snoozed for ${n === 1 ? "a day" : `${n} days`}`);
     } catch (e) {
       message.error((e as Error).message);
     }
@@ -74,6 +81,11 @@ export function SnoozeButton({ task, onChanged }: { task: Task; onChanged: (t: T
           Snooze
         </Button>
       </Space.Compact>
+      {task.blocked && !task.snooze_until_unblocked && (
+        <Button size="small" block onClick={() => run(0, true)}>
+          Until blockers are done
+        </Button>
+      )}
       {task.snoozed && (
         <Button size="small" block onClick={() => run(0)}>
           Wake now
@@ -85,7 +97,7 @@ export function SnoozeButton({ task, onChanged }: { task: Task; onChanged: (t: T
   return (
     <Popover trigger="click" open={open} onOpenChange={setOpen} content={content} title={`Snooze, up to ${max} days`} placement="bottomRight">
       <WriteButton size="small" type={task.snoozed ? "primary" : "default"} ghost={task.snoozed}>
-        {task.snoozed && task.snoozed_until ? `Snoozed until ${formatWakeDate(task.snoozed_until)}` : "Snooze"}
+        {!task.snoozed ? "Snooze" : wakeLabel(task) === "When unblocked" ? "Snoozed until unblocked" : `Snoozed until ${wakeLabel(task)}`}
       </WriteButton>
     </Popover>
   );

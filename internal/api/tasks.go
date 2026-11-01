@@ -18,6 +18,32 @@ func (s *Server) taskRoutes() {
 	m.HandleFunc("POST /api/tasks/{id}/snooze", s.snoozeTask)
 	m.HandleFunc("GET /api/tasks/{id}/transitions", s.taskTransitions)
 	m.HandleFunc("GET /api/cycle-time", s.cycleTime)
+	m.HandleFunc("POST /api/task-links", s.addLink)
+	m.HandleFunc("DELETE /api/task-links/{id}", s.removeLink)
+}
+
+// addLink records that blocker_id must finish before blocked_id; it
+// returns the blocked task.
+func (s *Server) addLink(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		BlockerID int64 `json:"blocker_id"`
+		BlockedID int64 `json:"blocked_id"`
+	}
+	if err := decodeBody(r, &body); err != nil {
+		respond(w, nil, err)
+		return
+	}
+	t, err := dbOf(r.Context()).AddLink(r.Context(), body.BlockerID, body.BlockedID)
+	respond(w, t, err)
+}
+
+func (s *Server) removeLink(w http.ResponseWriter, r *http.Request) {
+	id, err := pathID(r)
+	if err != nil {
+		respond(w, nil, err)
+		return
+	}
+	respond(w, map[string]bool{"ok": true}, dbOf(r.Context()).RemoveLink(r.Context(), id))
 }
 
 func (s *Server) moveTask(w http.ResponseWriter, r *http.Request) {
@@ -60,7 +86,8 @@ func (s *Server) moveTasks(w http.ResponseWriter, r *http.Request) {
 	respond(w, ts, err)
 }
 
-// snoozeTask hides an open task for {days} days from {today}; days 0 wakes it.
+// snoozeTask hides an open task for {days} days from {today}, or with
+// until_unblocked while an open task blocks it; days 0 wakes it.
 func (s *Server) snoozeTask(w http.ResponseWriter, r *http.Request) {
 	id, err := pathID(r)
 	if err != nil {
@@ -68,14 +95,15 @@ func (s *Server) snoozeTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body struct {
-		Days  int    `json:"days"`
-		Today string `json:"today"`
+		Days           int    `json:"days"`
+		UntilUnblocked bool   `json:"until_unblocked"`
+		Today          string `json:"today"`
 	}
 	if err := decodeBody(r, &body); err != nil {
 		respond(w, nil, err)
 		return
 	}
-	t, err := dbOf(r.Context()).Snooze(r.Context(), id, body.Days, body.Today)
+	t, err := dbOf(r.Context()).Snooze(r.Context(), id, body.Days, body.UntilUnblocked, body.Today)
 	respond(w, t, err)
 }
 

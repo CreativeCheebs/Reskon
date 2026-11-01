@@ -269,6 +269,8 @@ See [`docs/changes/002-points-follow-edits.md`](changes/002-points-follow-edits.
 ## Phase 2.5: subtasks, dependencies, inbox, search, timeline (owner request, 2026-11-01)
 Planned in the "JitterBug — Phase 2.5 and Phase 3 plan" doc; there is no build spec for these.
 - **Subtasks** are full tasks (own key, status, sessions) under one parent, after Jira's three levels. Views hide them unless the filter's **Subtasks as cards** is on; the parent's card shows ☑ done/total and its panel lists them as a checklist (ticking moves to the first done status, unticking to the first to-do status). A task's Parent can be set in its panel.
+- **Dependencies**: Blocked by / Blocks in the task panel. Blocked tasks go under a **Blocked** button beside Snoozed, like snoozed ones; its overlay has the switch that shows them on the board again (per view). Snooze offers **Until blockers are done**. The hiding is done in the client from the server's `blocked`, as Snoozed already was.
+- **Snooze wakes at midnight** already: it stores a date, so nothing changed.
 
 ## Needs review
 

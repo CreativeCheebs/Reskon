@@ -58,12 +58,30 @@ func isSnoozed(until *string, behaviour string, now time.Time) bool {
 }
 
 // Snooze hides an open task until today + days. Days 0 wakes it now.
-// today is the client's local date (todayOr).
-func (d *DB) Snooze(ctx context.Context, id int64, days int, today string) (*Task, error) {
+// today is the client's local date (todayOr). untilUnblocked hides it
+// instead until no open task blocks it (see links.go).
+func (d *DB) Snooze(ctx context.Context, id int64, days int, untilUnblocked bool, today string) (*Task, error) {
 	today = todayOr(today)
 	err := d.inTx(ctx, func(tx *sql.Tx) error {
 		cur, err := d.getTask(ctx, tx, id)
 		if err != nil {
+			return err
+		}
+		if untilUnblocked {
+			var behaviour string
+			var blocked bool
+			if err := tx.QueryRowContext(ctx, `SELECT c.behaviour, EXISTS (
+					SELECT 1 FROM task_link l WHERE l.blocked_id = ? AND `+openBlockerSQL+`)
+				FROM status s JOIN status_category c ON c.id = s.category_id WHERE s.id = ?`, id, cur.StatusID).Scan(&behaviour, &blocked); err != nil {
+				return err
+			}
+			if !openBehaviour(behaviour) {
+				return invalid("only open tasks (to do or in progress) can be snoozed")
+			}
+			if !blocked {
+				return invalid("no open task blocks this one")
+			}
+			_, err = tx.ExecContext(ctx, `UPDATE task SET snooze_until_unblocked = 1, updated_at = ? WHERE id = ?`, Now(), id)
 			return err
 		}
 		var until any // NULL wakes the task
@@ -86,7 +104,8 @@ func (d *DB) Snooze(ctx context.Context, id int64, days int, today string) (*Tas
 			t, _ := time.Parse("2006-01-02", today)
 			until = t.AddDate(0, 0, days).Format("2006-01-02")
 		}
-		_, err = tx.ExecContext(ctx, `UPDATE task SET snoozed_until = ?, updated_at = ? WHERE id = ?`, until, Now(), id)
+		// Waking, or a dated snooze, ends a snooze until unblocked.
+		_, err = tx.ExecContext(ctx, `UPDATE task SET snoozed_until = ?, snooze_until_unblocked = 0, updated_at = ? WHERE id = ?`, until, Now(), id)
 		return err
 	})
 	if err != nil {
@@ -98,8 +117,8 @@ func (d *DB) Snooze(ctx context.Context, id int64, days int, today string) (*Tas
 // wakeIfFinished clears the snooze of a task that has just moved into a
 // done or cancelled status, inside the move's transaction.
 func wakeIfFinished(ctx context.Context, tx *sql.Tx, taskID, toStatus int64) error {
-	_, err := tx.ExecContext(ctx, `UPDATE task SET snoozed_until = NULL
-		WHERE id = ? AND snoozed_until IS NOT NULL AND EXISTS (
+	_, err := tx.ExecContext(ctx, `UPDATE task SET snoozed_until = NULL, snooze_until_unblocked = 0
+		WHERE id = ? AND (snoozed_until IS NOT NULL OR snooze_until_unblocked = 1) AND EXISTS (
 			SELECT 1 FROM status s JOIN status_category c ON c.id = s.category_id
 			WHERE s.id = ? AND c.behaviour IN ('done', 'cancelled'))`, taskID, toStatus)
 	return err

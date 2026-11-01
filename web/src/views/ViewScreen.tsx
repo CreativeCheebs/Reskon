@@ -10,6 +10,7 @@ import { TaskPanel } from "../task/TaskPanel";
 import { useEpics } from "../task/useEpics";
 import { TaskTable } from "./TaskTable";
 import { SnoozedOverlay } from "./SnoozedOverlay";
+import { BlockedOverlay } from "./BlockedOverlay";
 import { IncompleteOverlay } from "./IncompleteOverlay";
 import { requiredFields } from "../task/completeness";
 import { FilterSettings, activeFilterCount } from "./FilterSettings";
@@ -38,6 +39,7 @@ export function ViewScreen({ view }: { view: View }) {
   const [error, setError] = useState<string | null>(null);
   const [hiddenStatus, setHiddenStatus] = useState<number | null>(null);
   const [snoozedOpen, setSnoozedOpen] = useState(false);
+  const [blockedOpen, setBlockedOpen] = useState(false);
   const [incompleteOpen, setIncompleteOpen] = useState(false);
   const [openTask, setOpenTask] = useState<number | null>(null);
   const panelChanged = useRef(false); // refetch on close only if the open task changed
@@ -90,8 +92,12 @@ export function ViewScreen({ view }: { view: View }) {
   const hiddenStatuses = boot.statuses.filter((s) => !s.on_board).sort((a, b) => a.position - b.position);
   // Snoozed tasks are hidden from the board, the table and the hidden
   // statuses alike; they are listed under Snoozed until they wake.
-  const shown = useMemo(() => tasks?.filter((t) => !t.snoozed) ?? null, [tasks]);
-  const snoozedCount = tasks ? tasks.length - (shown?.length ?? 0) : 0;
+  // Blocked tasks likewise go under Blocked, unless the view shows them.
+  const hideBlocked = view.board_state?.hide_blocked ?? true;
+  const awake = useMemo(() => tasks?.filter((t) => !t.snoozed) ?? null, [tasks]);
+  const shown = useMemo(() => (hideBlocked ? awake?.filter((t) => !t.blocked) ?? null : awake), [awake, hideBlocked]);
+  const snoozedCount = tasks ? tasks.length - (awake?.length ?? 0) : 0;
+  const blockedCount = awake?.filter((t) => t.blocked).length ?? 0;
   // Only once Settings → Complete details requires something can a task
   // be incomplete; until then there is no button.
   const checksDetails = requiredFields(boot.settings).length > 0;
@@ -219,6 +225,7 @@ export function ViewScreen({ view }: { view: View }) {
                   <HiddenStatusButton key={s.id} name={s.name} count={shown.filter((t) => t.status_id === s.id).length} onClick={() => setHiddenStatus(s.id)} />
                 ))}
               <HiddenStatusButton name="Snoozed" count={snoozedCount} onClick={() => setSnoozedOpen(true)} />
+              {(hideBlocked || blockedCount > 0) && <HiddenStatusButton name="Blocked" count={blockedCount} onClick={() => setBlockedOpen(true)} />}
               {checksDetails && <HiddenStatusButton name="Incomplete" count={incompleteCount} onClick={() => setIncompleteOpen(true)} />}
             </div>
           )}
@@ -332,6 +339,15 @@ export function ViewScreen({ view }: { view: View }) {
         <HiddenStatusOverlay statusId={hiddenStatus} tasks={shown} onClose={() => setHiddenStatus(null)} onMoved={replace} onOpenTask={setOpenTask} />
       )}
       {shown && incompleteOpen && <IncompleteOverlay tasks={shown} onClose={() => setIncompleteOpen(false)} onOpenTask={setOpenTask} />}
+      {awake && blockedOpen && (
+        <BlockedOverlay
+          tasks={awake}
+          hidden={hideBlocked}
+          onHidden={(hide) => save({ board_state: { hide_blocked: hide } })}
+          onClose={() => setBlockedOpen(false)}
+          onOpenTask={setOpenTask}
+        />
+      )}
       {tasks && snoozedOpen && <SnoozedOverlay tasks={tasks} onClose={() => setSnoozedOpen(false)} onChanged={replace} onOpenTask={setOpenTask} />}
       {openTask !== null && (
         <TaskPanel

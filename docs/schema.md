@@ -139,3 +139,14 @@ Setting `task_completeness`: `{"required": ["start_date", "estimate_h", "difficu
 | `task.parent_id` (new, INTEGER → `task.id`, nullable) | Set on a subtask: the ordinary task it belongs to. Three levels only, after Jira: epic → task → subtask. The parent must be type `task` with no parent of its own; an epic cannot be a subtask; a task with subtasks cannot become a subtask or an epic. A subtask takes its parent's epic, so its own `epic_id` stays NULL. Created without `area_id`, it takes the parent's area. Deleting the parent leaves its subtasks as ordinary tasks. |
 
 Derived on every task: `subtask_count` (its subtasks, cancelled left out) and `subtask_done`. `GET /api/tasks?parent=:id` lists one task's subtasks. A view's filter gains `subtasks` (boolean, default false): views leave subtasks out unless it is true.
+
+### Migration 014 (dependencies)
+
+| Change | Purpose |
+| --- | --- |
+| `task_link` (new) | `blocker_id` must finish before `blocked_id` can go ahead (Jira's "blocks / is blocked by"). Unique per live pair; soft-deleted. A link that would make a loop is refused. `POST /api/task-links {blocker_id, blocked_id}` returns the blocked task; `DELETE /api/task-links/:id` removes one. |
+| `task.snooze_until_unblocked` (new, INTEGER 0/1) | Set only by `POST /api/tasks/:id/snooze {until_unblocked: true}`, and only while an open task blocks it. Cleared by waking, by a dated snooze, by finishing the task, and automatically once nothing open blocks it (after a move, a removed link or a deleted task). |
+
+Derived: `blocked_by` and `blocks` (lists of `{link_id, id, key, title, status_id, behaviour}`, deleted tasks left out) and `blocked` (any task in `blocked_by` is open). `snoozed` is now also true while `snooze_until_unblocked` is set and the task is blocked and open.
+
+View `board_state` (no migration) gains `hide_blocked` (absent means true: blocked tasks are listed under the toolbar's Blocked button instead of the board or table).
