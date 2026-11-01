@@ -150,3 +150,9 @@ Derived on every task: `subtask_count` (its subtasks, cancelled left out) and `s
 Derived: `blocked_by` and `blocks` (lists of `{link_id, id, key, title, status_id, behaviour}`, deleted tasks left out) and `blocked` (any task in `blocked_by` is open). `snoozed` is now also true while `snooze_until_unblocked` is set and the task is blocked and open.
 
 View `board_state` (no migration) gains `hide_blocked` (absent means true: blocked tasks are listed under the toolbar's Blocked button instead of the board or table).
+
+### Migration 015 (inbox)
+
+| Change | Purpose |
+| --- | --- |
+| `inbox_item` (new) | A bare line dropped in with Ctrl/⌘+I: `text`, `created_at`, `triaged_at` (it became a task or session through quick capture), `deleted_at` (discarded). `GET /api/inbox` lists open lines oldest first; `POST /api/inbox {text}`; `POST /api/inbox/:id/triage`; `DELETE /api/inbox/:id`. |

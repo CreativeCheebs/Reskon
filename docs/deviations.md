@@ -271,6 +271,7 @@ Planned in the "JitterBug — Phase 2.5 and Phase 3 plan" doc; there is no build
 - **Subtasks** are full tasks (own key, status, sessions) under one parent, after Jira's three levels. Views hide them unless the filter's **Subtasks as cards** is on; the parent's card shows ☑ done/total and its panel lists them as a checklist (ticking moves to the first done status, unticking to the first to-do status). A task's Parent can be set in its panel.
 - **Dependencies**: Blocked by / Blocks in the task panel. Blocked tasks go under a **Blocked** button beside Snoozed, like snoozed ones; its overlay has the switch that shows them on the board again (per view). Snooze offers **Until blockers are done**. The hiding is done in the client from the server's `blocked`, as Snoozed already was.
 - **Snooze wakes at midnight** already: it stores a date, so nothing changed.
+- **Inbox**: Ctrl/⌘+I anywhere adds a line; Inbox in the sidebar (with a count) lists them. Process opens quick capture on the line; the line leaves the inbox only once capture has saved. Online only: offline saving is Phase 3.
 
 ## Needs review
 
@@ -299,3 +300,4 @@ Gaps where the spec was silent and the most reversible option was taken. Each is
 - **Deleting a parent task keeps its subtasks** as ordinary tasks (as deleting an epic keeps its tasks). Jira deletes them instead.
 - **A parent's logged hours and points do not include its subtasks'.** Each subtask is its own task; the parent panel shows each one's hours.
 - **Subtasks have no epic of their own** and so are not counted in the epic's totals or shown in epic grouping; the parent is.
+- **Shortcut**: Ctrl/⌘+I for the inbox (Firefox's Page Info is overridden while JitterBug has focus), since Ctrl/⌘+K is quick capture.

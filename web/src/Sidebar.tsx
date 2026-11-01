@@ -5,6 +5,7 @@ import {
   CalendarOutlined,
   DashboardOutlined,
   FieldTimeOutlined,
+  InboxOutlined,
   LogoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
@@ -19,6 +20,8 @@ import { blend, palette } from "./theme/palette";
 import { CaptureButton } from "./capture/CaptureButton";
 import { ViewIconMark } from "./icons/ViewIconMark";
 import type { View } from "./types";
+import { useInbox } from "./inbox/useInbox";
+import { INBOX_SHORTCUT } from "./inbox/InboxQuickAdd";
 
 // The left sidebar: views, then the app's own screens, then who is signed
 // in. On wide screens it folds to an icon rail (names in tooltips); under
@@ -29,7 +32,7 @@ const WIDE = 216;
 const RAIL = 56;
 const COLLAPSED_KEY = "jb.sider.collapsed";
 
-export type NavKey = "settings" | "sessions" | "cycle" | "dashboard" | "day" | "states";
+export type NavKey = "settings" | "sessions" | "cycle" | "dashboard" | "day" | "states" | "inbox";
 
 /** A view's accent when it has no colour of its own: a small, calm set,
  *  picked by id so a view keeps its colour when others are added. */
@@ -52,6 +55,7 @@ export function Sidebar(props: {
   const [narrow, setNarrow] = useState(() => window.matchMedia?.("(max-width: 767.98px)").matches ?? false);
   const [folded, setFolded] = useState(() => local.get(COLLAPSED_KEY) === "1");
   const [phoneOpen, setPhoneOpen] = useState(false);
+  const { items: inbox } = useInbox();
   const collapsed = narrow ? !phoneOpen : folded;
   const rail = collapsed && !narrow;
 
@@ -76,7 +80,7 @@ export function Sidebar(props: {
     const mark = own ? <ViewIconMark icon={v.icon} color={v.color} /> : v.layout === "table" ? <TableOutlined /> : <ProjectOutlined />;
     return { key, icon: icon(key, mark, viewAccent(v.id)), label: v.name, title: v.name };
   });
-  const tool = (key: NavKey, mark: ReactNode, label: string) => ({ key, icon: icon(key, mark, palette.accent, palette.muted), label, title: label });
+  const tool = (key: NavKey, mark: ReactNode, label: ReactNode, title = String(label)) => ({ key, icon: icon(key, mark, palette.accent, palette.muted), label, title });
 
   const items = [
     {
@@ -101,6 +105,15 @@ export function Sidebar(props: {
       label: heading("Workspace"),
       key: "workspace",
       children: [
+        tool(
+          "inbox",
+          <InboxOutlined />,
+          <span style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+            Inbox
+            {inbox.length > 0 && <span className="jb-nav-count">{inbox.length}</span>}
+          </span>,
+          `Inbox${inbox.length ? ` · ${inbox.length}` : ""} (${INBOX_SHORTCUT} adds)`,
+        ),
         tool("day", <CalendarOutlined />, "Day"),
         tool("dashboard", <DashboardOutlined />, "Dashboards"),
         tool("states", <ThunderboltOutlined />, "Buffs & debuffs"),

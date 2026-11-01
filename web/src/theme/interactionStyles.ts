@@ -189,6 +189,7 @@ export function interactionCss(): string {
     .jb-sider .ant-menu-item-group-title { padding: 14px 16px 6px 20px !important; line-height: 16px; }
     .jb-sider .ant-menu-item-group:first-child .ant-menu-item-group-title { padding-top: 6px !important; }
     .jb-nav-heading { font-size: 11px; font-weight: 600; letter-spacing: .6px; text-transform: uppercase; color: ${palette.subtle}; }
+    .jb-nav-count { min-width: 18px; height: 16px; padding: 0 5px; border-radius: 8px; background: ${palette.accent}; color: #fff; font-size: 11px; line-height: 16px; text-align: center; align-self: center; font-variant-numeric: tabular-nums; }
     .jb-sider .ant-menu-item-divider.jb-nav-divider, .jb-sider .jb-nav-divider { margin: 10px 20px 0 !important; border-color: ${palette.border} !important; }
     .jb-sider:not(.ant-layout-sider-collapsed) .ant-menu-item { padding-left: 12px !important; padding-right: 10px !important; }
     .jb-sider .ant-menu-item { position: relative; transition: background-color .12s ease, color .12s ease; }

@@ -40,9 +40,19 @@ interface Entry {
 
 let nextEntryId = 1;
 
-export function CaptureModal({ onClose, takeEarlyKeys }: { onClose: () => void; takeEarlyKeys: () => string }) {
+interface Props {
+  onClose: () => void;
+  /** Keys typed before the input had focus (the Ctrl/⌘+K route). */
+  takeEarlyKeys?: () => string;
+  /** A line to read straight away, from the inbox. */
+  initialText?: string;
+  /** Everything was saved (called before onClose). */
+  onSaved?: () => void;
+}
+
+export function CaptureModal({ onClose, takeEarlyKeys, initialText, onSaved }: Props) {
   const { boot, online } = useApp();
-  const [text, setText] = useState("");
+  const [text, setText] = useState(initialText ?? "");
   const [parsing, setParsing] = useState(false);
   const [parse, setParse] = useState<CaptureParse | null>(null);
   const [entries, setEntries] = useState<Entry[]>([]);
@@ -66,6 +76,11 @@ export function CaptureModal({ onClose, takeEarlyKeys }: { onClose: () => void; 
   useEffect(() => {
     if (parse) setTimeout(() => saveRef.current?.focus(), 50);
   }, [parse]);
+  // An inbox line is read as soon as the dialog opens.
+  useEffect(() => {
+    if (initialText) runParse();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const idByName = <T extends { id: number; name: string }>(rows: T[], name: string | null) =>
     name ? rows.find((r) => r.name.toLowerCase() === name.toLowerCase())?.id ?? null : null;
@@ -171,6 +186,7 @@ export function CaptureModal({ onClose, takeEarlyKeys }: { onClose: () => void; 
         sessionsLogged ? `${sessionsLogged} session${sessionsLogged > 1 ? "s" : ""} logged` : "",
       ].filter(Boolean);
       message.success(parts.join(", ").replace(/^./, (c) => c.toUpperCase()));
+      onSaved?.();
       onClose();
     } catch (err) {
       const done = tasksAdded + sessionsLogged;
@@ -250,7 +266,7 @@ export function CaptureModal({ onClose, takeEarlyKeys }: { onClose: () => void; 
               onChange={(e) => setText(e.target.value)}
               onPressEnter={runParse}
               onFocus={() => {
-                const typed = takeEarlyKeys();
+                const typed = takeEarlyKeys?.() ?? "";
                 if (typed) setText((t) => typed + t);
               }}
             />

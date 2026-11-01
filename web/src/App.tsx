@@ -10,6 +10,8 @@ import { EpicsProvider } from "./task/useEpics";
 import { ThemeSync } from "./theme/ThemeSync";
 import { Sidebar } from "./Sidebar";
 import { InForceBar } from "./states/InForceBar";
+import { InboxProvider } from "./inbox/useInbox";
+import { InboxQuickAdd } from "./inbox/InboxQuickAdd";
 
 // Screens opened now and then load on first visit, keeping them out of the
 // bundle every page load parses.
@@ -18,6 +20,7 @@ const SessionsScreen = lazy(() => import("./sessions/SessionsScreen").then((m) =
 const CycleTimeScreen = lazy(() => import("./chart/CycleTimeScreen").then((m) => ({ default: m.CycleTimeScreen })));
 const StatesScreen = lazy(() => import("./states/StatesScreen").then((m) => ({ default: m.StatesScreen })));
 const DayScreen = lazy(() => import("./day/DayScreen").then((m) => ({ default: m.DayScreen })));
+const InboxScreen = lazy(() => import("./inbox/InboxScreen").then((m) => ({ default: m.InboxScreen })));
 const DashboardScreen = lazy(() => import("./dashboard/DashboardScreen").then((m) => ({ default: m.DashboardScreen })));
 
 // Screens are addressed by the URL hash (#/view/3, #/settings) so a reload
@@ -30,7 +33,8 @@ type Screen =
   | { kind: "settings"; section?: string }
   | { kind: "sessions" }
   | { kind: "cycle" }
-  | { kind: "states" };
+  | { kind: "states" }
+  | { kind: "inbox" };
 
 function parseHash(): Screen | null {
   const parts = window.location.hash.replace(/^#\/?/, "").split("/");
@@ -38,7 +42,7 @@ function parseHash(): Screen | null {
   if (parts[0] === "day") return { kind: "day", date: parts[1] || undefined };
   if (parts[0] === "dashboard") return { kind: "dashboard", id: parts[1] ? Number(parts[1]) : undefined };
   if (parts[0] === "settings") return { kind: "settings", section: parts[1] || undefined };
-  if (parts[0] === "sessions" || parts[0] === "cycle" || parts[0] === "states") return { kind: parts[0] };
+  if (parts[0] === "sessions" || parts[0] === "cycle" || parts[0] === "states" || parts[0] === "inbox") return { kind: parts[0] };
   return null;
 }
 
@@ -89,6 +93,7 @@ export function App() {
 
   return (
     <EpicsProvider>
+    <InboxProvider>
     <Layout style={{ height: "100vh" }}>
       <Sidebar
         views={views}
@@ -117,6 +122,7 @@ export function App() {
             {current.kind === "sessions" && <SessionsScreen />}
             {current.kind === "cycle" && <CycleTimeScreen />}
             {current.kind === "states" && <StatesScreen />}
+            {current.kind === "inbox" && <InboxScreen />}
             {current.kind === "day" && <DayScreen date={current.date} onDate={(date) => go({ kind: "day", date })} />}
             {current.kind === "dashboard" && <DashboardScreen id={current.id} onOpen={(id) => go({ kind: "dashboard", id })} />}
           </Suspense>
@@ -124,7 +130,9 @@ export function App() {
       </Layout>
       {boot.areas.length === 0 && <FirstRun />}
       <ThemeSync />
+      <InboxQuickAdd />
     </Layout>
+    </InboxProvider>
     </EpicsProvider>
   );
 }
