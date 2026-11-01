@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Badge, Button, Dropdown, Input, Segmented, Select, Spin } from "antd";
 import { confirm, message } from "../theme/feedback";
 import { ControlOutlined, EllipsisOutlined, FilterOutlined, ProjectOutlined, SearchOutlined, TableOutlined } from "@ant-design/icons";
@@ -9,6 +9,9 @@ import { HiddenStatusOverlay } from "../board/HiddenStatusOverlay";
 import { TaskPanel } from "../task/TaskPanel";
 import { useEpics } from "../task/useEpics";
 import { TaskTable } from "./TaskTable";
+import { SnoozedOverlay } from "./SnoozedOverlay";
+import { IncompleteOverlay } from "./IncompleteOverlay";
+import { requiredFields } from "../task/completeness";
 import { FilterSettings, activeFilterCount } from "./FilterSettings";
 import { CardSettings } from "./CardSettings";
 import { GROUP_OPTIONS } from "./grouping";
@@ -20,6 +23,8 @@ import { blend, palette } from "../theme/palette";
 import { ViewIconMark } from "../icons/ViewIconMark";
 import { SurfaceOpacityProvider, surfaceOpacityOf, ViewBackdrop, withAlpha } from "./ViewBackdrop";
 import { lookOf, ViewLookSettings, type ViewLook } from "./ViewLookSettings";
+import { ToolbarGroup } from "../theme/Toolbar";
+import { LoadingDots, SimilarTasksList, useSimilarTasks } from "../task/SimilarTasks";
 
 // Loads a view's tasks (the server resolves the filter and the search) and
 // renders the board or the table, plus the overlays that hang off it.
@@ -32,6 +37,8 @@ export function ViewScreen({ view }: { view: View }) {
   const [tasks, setTasks] = useState<Task[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hiddenStatus, setHiddenStatus] = useState<number | null>(null);
+  const [snoozedOpen, setSnoozedOpen] = useState(false);
+  const [incompleteOpen, setIncompleteOpen] = useState(false);
   const [openTask, setOpenTask] = useState<number | null>(null);
   const panelChanged = useRef(false); // refetch on close only if the open task changed
   const [drawer, setDrawer] = useState<"filter" | "card" | "look" | null>(null);
@@ -40,6 +47,10 @@ export function ViewScreen({ view }: { view: View }) {
   const surface = surfaceOpacityOf(look.background);
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState(""); // debounced search
+  // While the search box has focus, tasks like what is typed from every
+  // view (by words and meaning) drop down under it.
+  const [searchFocus, setSearchFocus] = useState(false);
+  const similar = useSimilarTasks(search, { enabled: searchFocus });
 
   useEffect(() => {
     const t = window.setTimeout(() => setQuery(search.trim()), 150);
@@ -77,6 +88,14 @@ export function ViewScreen({ view }: { view: View }) {
   const typeShown = types.length === 1 ? types[0] : "all";
   // Statuses kept off the board (Backlog, Cancelled ...), opened as overlays.
   const hiddenStatuses = boot.statuses.filter((s) => !s.on_board).sort((a, b) => a.position - b.position);
+  // Snoozed tasks are hidden from the board, the table and the hidden
+  // statuses alike; they are listed under Snoozed until they wake.
+  const shown = useMemo(() => tasks?.filter((t) => !t.snoozed) ?? null, [tasks]);
+  const snoozedCount = tasks ? tasks.length - (shown?.length ?? 0) : 0;
+  // Only once Settings → Complete details requires something can a task
+  // be incomplete; until then there is no button.
+  const checksDetails = requiredFields(boot.settings).length > 0;
+  const incompleteCount = shown?.filter((t) => t.missing.length > 0).length ?? 0;
 
   const rename = () => {
     let name = view.name;
@@ -165,26 +184,46 @@ export function ViewScreen({ view }: { view: View }) {
               </span>
               <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{view.name}</span>
             </h1>
-            <Input
-              size="small"
-              allowClear
-              prefix={<SearchOutlined />}
-              placeholder="Search title, key, description"
-              style={{ flex: "0 1 280px", minWidth: 160 }}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => e.key === "Escape" && setSearch("")}
-            />
+            <div style={{ position: "relative", flex: "0 1 280px", minWidth: 160 }}>
+              <Input
+                size="small"
+                allowClear
+                prefix={<SearchOutlined />}
+                suffix={similar.loading ? <LoadingDots /> : <span />}
+                placeholder="Search title, key, description"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onFocus={() => setSearchFocus(true)}
+                onBlur={() => setSearchFocus(false)}
+                onKeyDown={(e) => e.key === "Escape" && setSearch("")}
+              />
+              {searchFocus && (
+                // mousedown would blur the box and close the list before the click lands.
+                <div style={{ position: "absolute", top: "100%", left: 0, width: "max(100%, 420px)", zIndex: 20 }} onMouseDown={(e) => e.preventDefault()}>
+                  <SimilarTasksList
+                    {...similar}
+                    heading="Similar tasks in every view"
+                    onOpen={(id) => {
+                      setSearchFocus(false);
+                      setOpenTask(id);
+                    }}
+                  />
+                </div>
+              )}
+            </div>
           </div>
-          {view.layout === "board" && tasks && hiddenStatuses.length > 0 && (
+          {shown && (
             <div style={{ display: "flex", alignItems: "center", gap: 6, flex: "none", marginLeft: "auto" }}>
-              {hiddenStatuses.map((s) => (
-                <HiddenStatusButton key={s.id} name={s.name} count={tasks.filter((t) => t.status_id === s.id).length} onClick={() => setHiddenStatus(s.id)} />
-              ))}
+              {view.layout === "board" &&
+                hiddenStatuses.map((s) => (
+                  <HiddenStatusButton key={s.id} name={s.name} count={shown.filter((t) => t.status_id === s.id).length} onClick={() => setHiddenStatus(s.id)} />
+                ))}
+              <HiddenStatusButton name="Snoozed" count={snoozedCount} onClick={() => setSnoozedOpen(true)} />
+              {checksDetails && <HiddenStatusButton name="Incomplete" count={incompleteCount} onClick={() => setIncompleteOpen(true)} />}
             </div>
           )}
         </div>
-        <div className="jb-toolbar" style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px 16px" }}>
+        <div className="jb-toolbar">
           <ToolbarGroup>
             <Segmented
               size="small"
@@ -266,17 +305,17 @@ export function ViewScreen({ view }: { view: View }) {
         </div>
       </div>
       <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
-        {!tasks ? (
+        {!shown ? (
           error ? (
             <Alert type="error" message={error} />
           ) : (
             <Spin />
           )
         ) : view.layout === "board" ? (
-          <Board view={view} tasks={tasks} setTasks={update} refetch={refetch} onOpenTask={setOpenTask} />
+          <Board view={view} tasks={shown} setTasks={update} refetch={refetch} onOpenTask={setOpenTask} />
         ) : (
           <TaskTable
-            tasks={tasks}
+            tasks={shown}
             config={cardConfigOf(view)}
             groupBy={groupBy}
             widthsKey={`view:${view.id}`}
@@ -289,9 +328,11 @@ export function ViewScreen({ view }: { view: View }) {
           />
         )}
       </div>
-      {tasks && hiddenStatus !== null && (
-        <HiddenStatusOverlay statusId={hiddenStatus} tasks={tasks} onClose={() => setHiddenStatus(null)} onMoved={replace} onOpenTask={setOpenTask} />
+      {shown && hiddenStatus !== null && (
+        <HiddenStatusOverlay statusId={hiddenStatus} tasks={shown} onClose={() => setHiddenStatus(null)} onMoved={replace} onOpenTask={setOpenTask} />
       )}
+      {shown && incompleteOpen && <IncompleteOverlay tasks={shown} onClose={() => setIncompleteOpen(false)} onOpenTask={setOpenTask} />}
+      {tasks && snoozedOpen && <SnoozedOverlay tasks={tasks} onClose={() => setSnoozedOpen(false)} onChanged={replace} onOpenTask={setOpenTask} />}
       {openTask !== null && (
         <TaskPanel
           taskId={openTask}
@@ -322,12 +363,6 @@ export function ViewScreen({ view }: { view: View }) {
     </div>
     </SurfaceOpacityProvider>
   );
-}
-
-/** Related toolbar controls that stay on one line when the toolbar wraps.
- *  The right-hand group sits on the right edge. */
-function ToolbarGroup({ right, children }: { right?: boolean; children: React.ReactNode }) {
-  return <div style={{ display: "flex", alignItems: "center", gap: 6, flex: "none", marginLeft: right ? "auto" : undefined }}>{children}</div>;
 }
 
 /** A status kept off the board (Backlog, Cancelled ...) with its count;

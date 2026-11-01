@@ -10,6 +10,7 @@ import type { Task, TaskType, View } from "../types";
 import { TypeIcon } from "../task/TypeIcon";
 import { useEpics } from "../task/useEpics";
 import { today } from "../format";
+import { SimilarTasksList, useSimilarTasks } from "../task/SimilarTasks";
 
 const LAST_AREA = "jitterbug.lastAreaId";
 
@@ -32,6 +33,7 @@ export function Composer({
   onCreated,
   open: openProp,
   onOpenChange,
+  onOpenTask,
 }: {
   statusId: number;
   view: View;
@@ -41,6 +43,8 @@ export function Composer({
   /** Optional control from outside, e.g. a column's empty state. */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** Opens a match from duplicate search. */
+  onOpenTask?: (id: number) => void;
 }) {
   const { online } = useApp();
   const { refresh: refreshEpics } = useEpics();
@@ -52,6 +56,8 @@ export function Composer({
   const [title, setTitle] = useState("");
   const [areaId, setAreaId] = useState<number | undefined>(preselect);
   const [busy, setBusy] = useState(false);
+  // Tasks like the one being typed, so a duplicate is caught before Enter.
+  const similar = useSimilarTasks(title, { enabled: open });
 
   if (!open)
     return (
@@ -113,6 +119,7 @@ export function Composer({
           options={areas.map((a) => ({ value: a.id, label: a.name }))}
         />
       )}
+      <SimilarTasksList {...similar} onOpen={onOpenTask} />
     </Space>
   );
 }

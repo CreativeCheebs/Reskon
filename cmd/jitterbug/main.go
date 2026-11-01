@@ -9,12 +9,14 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"jitterbug/internal/api"
 	"jitterbug/internal/auth"
 	"jitterbug/internal/capture"
 	"jitterbug/internal/db"
+	"jitterbug/internal/embed"
 	"jitterbug/web"
 )
 
@@ -84,6 +86,9 @@ func main() {
 
 	parser := &capture.Parser{Config: captureConfig, Provider: capture.OpenAI{Client: &http.Client{}}}
 	srv := api.New(store, parser, web.Dist())
+	// Duplicate search's model lives beside the data, so the container
+	// keeps it on its volume. JITTERBUG_EMBED_DIR points elsewhere.
+	srv.Semantic = embed.NewService(env("JITTERBUG_EMBED_DIR", filepath.Join(dataDir, "models", embed.ModelName)))
 	log.Printf("jitterbug: data %s, listening on %s", dataDir, addr)
 	log.Fatal(http.ListenAndServe(addr, srv))
 }

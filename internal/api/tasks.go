@@ -15,6 +15,7 @@ func (s *Server) taskRoutes() {
 	m.HandleFunc("DELETE /api/tasks/{id}", s.deleteTask)
 	m.HandleFunc("POST /api/tasks/{id}/move", s.moveTask)
 	m.HandleFunc("POST /api/tasks/move", s.moveTasks)
+	m.HandleFunc("POST /api/tasks/{id}/snooze", s.snoozeTask)
 	m.HandleFunc("GET /api/tasks/{id}/transitions", s.taskTransitions)
 	m.HandleFunc("GET /api/cycle-time", s.cycleTime)
 }
@@ -57,6 +58,25 @@ func (s *Server) moveTasks(w http.ResponseWriter, r *http.Request) {
 	}
 	ts, err := dbOf(r.Context()).MoveMany(r.Context(), body.TaskIDs, body.StatusID, body.Today)
 	respond(w, ts, err)
+}
+
+// snoozeTask hides an open task for {days} days from {today}; days 0 wakes it.
+func (s *Server) snoozeTask(w http.ResponseWriter, r *http.Request) {
+	id, err := pathID(r)
+	if err != nil {
+		respond(w, nil, err)
+		return
+	}
+	var body struct {
+		Days  int    `json:"days"`
+		Today string `json:"today"`
+	}
+	if err := decodeBody(r, &body); err != nil {
+		respond(w, nil, err)
+		return
+	}
+	t, err := dbOf(r.Context()).Snooze(r.Context(), id, body.Days, body.Today)
+	respond(w, t, err)
 }
 
 func (s *Server) taskTransitions(w http.ResponseWriter, r *http.Request) {

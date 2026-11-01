@@ -146,6 +146,9 @@ func (d *DB) moveTx(ctx context.Context, tx *sql.Tx, taskID int64, req MoveReque
 		if err == nil {
 			err = applyDateRules(ctx, tx, taskID, req.StatusID, todayOr(req.Today))
 		}
+		if err == nil {
+			err = wakeIfFinished(ctx, tx, taskID, req.StatusID)
+		}
 	}
 	return renumbered, err
 }

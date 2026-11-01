@@ -130,10 +130,11 @@ export function DashboardScreen({ id, onOpen }: { id?: number; onOpen: (id: numb
           />
         ) : (
           <Segmented
+            size="small"
             value={current?.id}
             onChange={(v) => onOpen(Number(v))}
             options={dashboards.map((d) => ({ value: d.id, label: d.name }))}
-            style={{ maxWidth: "100%", overflowX: "auto" }}
+            style={{ overflowX: "auto" }}
           />
         )}
         <DatesPicker

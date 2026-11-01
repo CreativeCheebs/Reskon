@@ -25,8 +25,9 @@ type Task struct {
 	DueAt        *string         `json:"due_at"`
 	StartDate    *string         `json:"start_date"` // set by hand or by a move (see taskdates.go)
 	EndDate      *string         `json:"end_date"`
-	Type         string          `json:"type"`    // "task" or "epic"
-	EpicID       *int64          `json:"epic_id"` // the epic this task belongs to
+	SnoozedUntil *string         `json:"snoozed_until"` // hidden until this local date; set only by Snooze (see snooze.go)
+	Type         string          `json:"type"`          // "task" or "epic"
+	EpicID       *int64          `json:"epic_id"`       // the epic this task belongs to
 	BoardPos     float64         `json:"board_pos"`
 	Custom       json.RawMessage `json:"custom"`
 	CreatedAt    string          `json:"created_at"`
@@ -35,14 +36,14 @@ type Task struct {
 }
 
 const taskCols = `id, key, title, description, area_id, status_id, priority_id, energy_type_id,
-	difficulty, estimate_h, due_at, board_pos, custom, created_at, updated_at, type, epic_id, start_date, end_date`
+	difficulty, estimate_h, due_at, board_pos, custom, created_at, updated_at, type, epic_id, start_date, end_date, snoozed_until`
 
 func scanTask(r interface{ Scan(...any) error }) (*Task, error) {
 	var t Task
 	var custom string
 	err := r.Scan(&t.ID, &t.Key, &t.Title, &t.Description, &t.AreaID, &t.StatusID, &t.PriorityID,
 		&t.EnergyTypeID, &t.Difficulty, &t.EstimateH, &t.DueAt, &t.BoardPos, &custom, &t.CreatedAt, &t.UpdatedAt,
-		&t.Type, &t.EpicID, &t.StartDate, &t.EndDate)
+		&t.Type, &t.EpicID, &t.StartDate, &t.EndDate, &t.SnoozedUntil)
 	t.Custom = json.RawMessage(custom)
 	return &t, err
 }

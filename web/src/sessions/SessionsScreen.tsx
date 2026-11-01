@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Checkbox, DatePicker, Input, Popconfirm, Select, Space, Table, Tag, Typography } from "antd";
+import { Button, Checkbox, DatePicker, Input, Popconfirm, Segmented, Space, Table, Tag, Typography } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { message } from "../theme/feedback";
@@ -14,6 +14,8 @@ import { SessionModal } from "./SessionModal";
 import { BulkBar } from "./BulkBar";
 import { useColumnWidths } from "../views/useColumnWidths";
 import { DifficultyIcon } from "../task/LevelIcons";
+import { FilterSelect, PageHeader, Toolbar, ToolbarGroup } from "../theme/Toolbar";
+import { KIND_ICON, KindChip } from "./kind";
 
 // Sessions by day, with filters (applied on the server) and selection for
 // bulk changes: tick rows, tick a day to take all of it, or select
@@ -110,7 +112,7 @@ export function SessionsScreen() {
       title: "What",
       render: (_, s) => (s.task_id ? titleOf.get(s.task_id) ?? `task #${s.task_id}` : s.label ?? "–"),
     },
-    { key: "kind", title: "Kind", width: 70, render: (_, s) => (s.kind === "event" ? <Tag>event</Tag> : "work") },
+    { key: "kind", title: "Kind", width: 84, render: (_, s) => <KindChip kind={s.kind} /> },
     {
       key: "energy",
       title: "Energy",
@@ -157,8 +159,14 @@ export function SessionsScreen() {
 
   return (
     <div style={{ maxWidth: 1200 }}>
-      <Space style={{ marginBottom: 10 }} wrap>
-        <div style={{ fontSize: 16, fontWeight: 600 }}>Sessions</div>
+      <PageHeader
+        title="Sessions"
+        end={
+          <WriteButton type="primary" size="small" onClick={() => setModal({})}>
+            Log time
+          </WriteButton>
+        }
+      >
         <DatePicker.RangePicker
           size="small"
           allowClear={false}
@@ -174,98 +182,105 @@ export function SessionsScreen() {
             { label: "Everything", value: [dayjs("2000-01-01"), dayjs("2099-12-31")] },
           ]}
         />
-        <WriteButton type="primary" size="small" onClick={() => setModal({})}>
-          Log time
-        </WriteButton>
-      </Space>
+      </PageHeader>
 
-      <Space wrap style={{ marginBottom: 12 }}>
-        <Input
-          size="small"
-          allowClear
-          prefix={<SearchOutlined />}
-          placeholder="Search label, note, task"
-          style={{ width: 220 }}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <Select
-          size="small"
-          mode="multiple"
-          allowClear
-          placeholder="Energy type"
-          style={{ minWidth: 160 }}
-          value={filters.energy}
-          onChange={(v) => setF("energy", v)}
-          options={boot.energy_types.map((e) => ({ value: e.id, label: e.name }))}
-          maxTagCount="responsive"
-        />
-        <Select
-          size="small"
-          mode="multiple"
-          allowClear
-          placeholder="Area"
-          style={{ minWidth: 140 }}
-          value={filters.areas}
-          onChange={(v) => setF("areas", v)}
-          options={boot.areas.map((a) => ({ value: a.id, label: a.name }))}
-          maxTagCount="responsive"
-        />
-        <Select
-          size="small"
-          style={{ width: 130 }}
-          value={filters.kind}
-          onChange={(v) => setF("kind", v)}
-          options={[
-            { value: "", label: "Work and events" },
-            { value: "task", label: "Work only" },
-            { value: "event", label: "Events only" },
-          ]}
-        />
-        <Select
-          size="small"
-          style={{ width: 150 }}
-          value={filters.hasTask}
-          onChange={(v) => setF("hasTask", v)}
-          options={[
-            { value: "", label: "With or without task" },
-            { value: "true", label: "Attached to a task" },
-            { value: "false", label: "Not attached" },
-          ]}
-        />
-        <Select
-          size="small"
-          style={{ width: 160 }}
-          value={filters.hasDiff}
-          onChange={(v) => setF("hasDiff", v)}
-          options={[
-            { value: "", label: "Any intensity" },
-            { value: "true", label: "Intensity set" },
-            { value: "false", label: "Intensity not set" },
-          ]}
-        />
-        <Select
-          size="small"
-          style={{ width: 160 }}
-          value={filters.hasSubtypes}
-          onChange={(v) => setF("hasSubtypes", v)}
-          options={[
-            { value: "", label: "Any subtypes" },
-            { value: "true", label: "Subtypes set" },
-            { value: "false", label: "No subtypes" },
-          ]}
-        />
-        {filtered && (
-          <a
-            onClick={() => {
-              setFilters(NO_FILTERS);
-              setSearch("");
-            }}
-          >
-            Clear filters
-          </a>
-        )}
-      </Space>
+      {/* Grouped like the board's toolbar: what is searched, which types and
+          areas, then the session's properties. A group wraps whole. */}
+      <Toolbar style={{ marginBottom: 12 }}>
+        <ToolbarGroup>
+          <Input
+            size="small"
+            allowClear
+            prefix={<SearchOutlined />}
+            placeholder="Search label, note, task"
+            style={{ width: 200 }}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <Segmented
+            size="small"
+            aria-label="Work or events"
+            value={filters.kind}
+            onChange={(v) => setF("kind", v as Filters["kind"])}
+            options={[
+              { value: "", label: "All" },
+              { value: "task", label: "Work", icon: KIND_ICON.task },
+              { value: "event", label: "Events", icon: KIND_ICON.event },
+            ]}
+          />
+        </ToolbarGroup>
+        <ToolbarGroup>
+          <FilterSelect
+            mode="multiple"
+            allowClear
+            placeholder="Energy type"
+            style={{ width: 150 }}
+            active={filters.energy.length > 0}
+            value={filters.energy}
+            onChange={(v) => setF("energy", v)}
+            options={boot.energy_types.map((e) => ({ value: e.id, label: e.name }))}
+            maxTagCount="responsive"
+          />
+          <FilterSelect
+            mode="multiple"
+            allowClear
+            placeholder="Area"
+            style={{ width: 130 }}
+            active={filters.areas.length > 0}
+            value={filters.areas}
+            onChange={(v) => setF("areas", v)}
+            options={boot.areas.map((a) => ({ value: a.id, label: a.name }))}
+            maxTagCount="responsive"
+          />
+        </ToolbarGroup>
+        <ToolbarGroup>
+          <FilterSelect
+            style={{ width: 150 }}
+            active={filters.hasTask !== ""}
+            value={filters.hasTask}
+            onChange={(v) => setF("hasTask", v)}
+            options={[
+              { value: "", label: "With or without task" },
+              { value: "true", label: "Attached to a task" },
+              { value: "false", label: "Not attached" },
+            ]}
+          />
+          <FilterSelect
+            style={{ width: 130 }}
+            active={filters.hasDiff !== ""}
+            value={filters.hasDiff}
+            onChange={(v) => setF("hasDiff", v)}
+            options={[
+              { value: "", label: "Any intensity" },
+              { value: "true", label: "Intensity set" },
+              { value: "false", label: "Intensity not set" },
+            ]}
+          />
+          <FilterSelect
+            style={{ width: 130 }}
+            active={filters.hasSubtypes !== ""}
+            value={filters.hasSubtypes}
+            onChange={(v) => setF("hasSubtypes", v)}
+            options={[
+              { value: "", label: "Any subtypes" },
+              { value: "true", label: "Subtypes set" },
+              { value: "false", label: "No subtypes" },
+            ]}
+          />
+          {filtered && (
+            <Button
+              size="small"
+              type="text"
+              onClick={() => {
+                setFilters(NO_FILTERS);
+                setSearch("");
+              }}
+            >
+              Clear filters
+            </Button>
+          )}
+        </ToolbarGroup>
+      </Toolbar>
 
       {sessions.length > 0 && (
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>

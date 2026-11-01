@@ -32,7 +32,7 @@ func init() {
 	})
 	register(&metricDef{
 		Name: "time_in_status", Label: "Time in status", Unit: "hours",
-		Description: "How long open tasks on the board have sat in their current status, longest first. Statuses off the board (Backlog) are left out unless filtered for. The range is ignored.",
+		Description: "How long open tasks on the board have sat in their current status, longest first. Statuses off the board (Backlog) are left out unless filtered for, and snoozed tasks always are. The range is ignored.",
 		Groups:      []string{"task", "status"},
 		Filters:     taskFilters, Reduce: "max",
 		run: (*DB).timeInStatus,
@@ -170,7 +170,8 @@ func (d *DB) timeInStatus(ctx context.Context, r *metricRun) error {
 	}
 	statusFiltered := len(r.q.Filters["status"]) > 0
 	for _, t := range tasks {
-		if !isOpen(t.Behaviour) || (!onBoard[t.StatusID] && !statusFiltered) {
+		// Snoozed tasks are parked on purpose, so they are not stuck.
+		if !isOpen(t.Behaviour) || t.Snoozed || (!onBoard[t.StatusID] && !statusFiltered) {
 			continue
 		}
 		r.add(r.taskKey(t, r.q.Group, false), "", t.TimeInStatusH)

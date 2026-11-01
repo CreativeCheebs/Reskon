@@ -74,6 +74,9 @@ export function Lane(props: Props) {
   const compare = useMemo(() => boardComparator(sort, boot), [sort, boot]);
 
   const byId = useMemo(() => new Map(tasks.map((t) => [t.id, t])), [tasks]);
+  // Stable, so memoised cards skip re-rendering.
+  const onTaskChanged = useCallback((t: Task) => setTasks((prev) => prev.map((x) => (x.id === t.id ? t : x))), [setTasks]);
+  const onTaskDeleted = useCallback((id: number) => setTasks((prev) => prev.filter((x) => x.id !== id)), [setTasks]);
 
   const buildColumns = useCallback((): Columns => {
     const cols: Columns = {};
@@ -245,6 +248,8 @@ export function Lane(props: Props) {
             createDefaults={createDefaults}
             onOpenTask={onOpenTask}
             onCreated={(t) => setTasks((prev) => [...prev, t])}
+            onTaskChanged={onTaskChanged}
+            onTaskDeleted={onTaskDeleted}
           />
         ))}
       </div>

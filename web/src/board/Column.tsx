@@ -10,6 +10,7 @@ import type { CardConfig, ColumnLimit, Status, Task, View } from "../types";
 import { ColumnLimitControl } from "./ColumnLimitControl";
 import { DoneWindow } from "./DoneWindow";
 import { TaskCard } from "./TaskCard";
+import { CardActionRail, CardContextMenu, useCardActions, type CardHandlers } from "./CardActions";
 import { Composer } from "./Composer";
 import { COLLAPSED_W, COL_MIN } from "./useBoardFit";
 import { useSurfaceOpacity, withAlpha } from "../views/ViewBackdrop";
@@ -36,11 +37,30 @@ interface Props {
   createDefaults: Record<string, unknown>;
   onOpenTask: (id: number) => void;
   onCreated: (t: Task) => void;
+  /** A card's quick action changed or deleted its task. */
+  onTaskChanged: (t: Task) => void;
+  onTaskDeleted: (id: number) => void;
 }
 
 export function Column(props: Props) {
-  const { status, taskIds, byId, config, disabled, view, collapsed, onToggleCollapse, limit, onSetLimit, inLane, createDefaults, onOpenTask, onCreated } =
-    props;
+  const {
+    status,
+    taskIds,
+    byId,
+    config,
+    disabled,
+    view,
+    collapsed,
+    onToggleCollapse,
+    limit,
+    onSetLimit,
+    inLane,
+    createDefaults,
+    onOpenTask,
+    onCreated,
+    onTaskChanged,
+    onTaskDeleted,
+  } = props;
   const overLimit = !!limit && limit.use > limit.limit.max;
   const { setNodeRef, isOver } = useDroppable({ id: "col-" + status.id, disabled });
   const { behaviourOf } = useApp();
@@ -154,7 +174,17 @@ export function Column(props: Props) {
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {taskIds.map((id) => {
               const t = byId.get(id);
-              return t ? <SortableCard key={id} task={t} config={config} disabled={disabled} onOpenTask={onOpenTask} /> : null;
+              return t ? (
+                <SortableCard
+                  key={id}
+                  task={t}
+                  config={config}
+                  disabled={disabled}
+                  onOpen={onOpenTask}
+                  onChanged={onTaskChanged}
+                  onDeleted={onTaskDeleted}
+                />
+              ) : null;
             })}
           </div>
         </SortableContext>
@@ -168,6 +198,7 @@ export function Column(props: Props) {
             onCreated={onCreated}
             open={composing}
             onOpenChange={setComposing}
+            onOpenTask={onOpenTask}
           />
         </div>
       )}
@@ -181,29 +212,39 @@ export function Column(props: Props) {
 }
 
 // Memoised: a card re-renders only when its own task (or the card settings)
-// changes, not whenever anything else on the board does.
+// changes, not whenever anything else on the board does. Right-click opens
+// the actions chosen in Settings → Card actions. The context menu wraps the sortable node rather than sitting
+// inside it, so keys and clicks in the menu never reach the drag sensors.
 const SortableCard = memo(function SortableCard({
   task,
   config,
   disabled,
-  onOpenTask,
+  ...handlers
 }: {
   task: Task;
   config: CardConfig;
   disabled: boolean;
-  onOpenTask: (id: number) => void;
-}) {
+} & CardHandlers) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id, disabled });
+  const actions = useCardActions(task, handlers);
   return (
-    <div
-      ref={setNodeRef}
-      className="jb-sortable"
-      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.35 : 1 }}
-      {...attributes}
-      {...listeners}
-    >
-      <TaskCard task={task} config={config} onOpen={() => onOpenTask(task.id)} />
-    </div>
+    <CardContextMenu actions={actions}>
+      <div
+        ref={setNodeRef}
+        className="jb-sortable"
+        style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.35 : 1 }}
+        {...attributes}
+        {...listeners}
+      >
+        <TaskCard
+          task={task}
+          config={config}
+          onOpen={() => handlers.onOpen(task.id)}
+          pinned={actions.pinned}
+          rail={<CardActionRail task={task} actions={actions} onChanged={handlers.onChanged} />}
+        />
+      </div>
+    </CardContextMenu>
   );
 });
 

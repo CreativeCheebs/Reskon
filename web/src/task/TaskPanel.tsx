@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { DatePicker, Descriptions, Divider, Drawer, Input, InputNumber, Popconfirm, Select, Space, Spin, Typography } from "antd";
+import { Alert, DatePicker, Descriptions, Divider, Drawer, Input, InputNumber, Popconfirm, Select, Space, Spin, Typography } from "antd";
 import { message } from "../theme/feedback";
 import dayjs from "dayjs";
 import { api, patchWithRetry } from "../api";
@@ -15,6 +15,8 @@ import { TypeIcon, TypeLabel } from "./TypeIcon";
 import { useEpics } from "./useEpics";
 import { priorityOptions } from "./LevelIcons";
 import { TimeBar } from "./TimeBar";
+import { SnoozeButton } from "./SnoozeButton";
+import { fieldLabel } from "./completeness";
 
 // The task panel: the only place the task key is shown. Every edit is a
 // PATCH carrying the updated_at last seen; status changes go through /move.
@@ -120,11 +122,14 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
       }
       extra={
         task && (
-          <Popconfirm title="Delete this task?" onConfirm={remove}>
-            <WriteButton danger size="small">
-              Delete
-            </WriteButton>
-          </Popconfirm>
+          <Space size={8}>
+            <SnoozeButton task={task} onChanged={apply} />
+            <Popconfirm title="Delete this task?" onConfirm={remove}>
+              <WriteButton danger size="small">
+                Delete
+              </WriteButton>
+            </Popconfirm>
+          </Space>
         )
       }
     >
@@ -259,6 +264,14 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
             </Descriptions.Item>
           </Descriptions>
           <TimeBar task={task} size="panel" />
+          {task.missing.length > 0 && (
+            <Alert
+              type="warning"
+              showIcon
+              style={{ padding: "4px 10px" }}
+              message={`Details missing: ${task.missing.map(fieldLabel).join(", ")}`}
+            />
+          )}
           <Input.TextArea
             placeholder="Description"
             autoSize={{ minRows: 3, maxRows: 12 }}

@@ -10,6 +10,7 @@ import { RankedSubtypes } from "./RankedSubtypes";
 import { CustomFieldsEditor } from "../fields/CustomFieldsEditor";
 import { DurationInput, MAX_HOURS } from "./DurationInput";
 import { EnergyFields } from "./EnergyFields";
+import { KIND_OPTIONS } from "./kind";
 
 // The fields of a session, shared by the manual log form and quick capture.
 // Laid out as a worklog: duration, date and start time first, then a short
@@ -209,14 +210,13 @@ export function SessionFields({
 
   return (
     <Form layout="vertical" size="middle" disabled={disabled} requiredMark>
+      {/* One switch, two equal options: same height, padding and selected fill. */}
       <Segmented
         size="small"
+        className="jb-kind"
         value={draft.kind}
         onChange={(v) => set({ kind: v as SessionDraft["kind"] })}
-        options={[
-          { value: "task", label: "Work" },
-          { value: "event", label: "Event (not work)" },
-        ]}
+        options={KIND_OPTIONS}
         aria-label="Kind"
         style={{ marginBottom: 12 }}
       />

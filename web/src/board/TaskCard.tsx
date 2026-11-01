@@ -15,8 +15,25 @@ import { TimeBar } from "../task/TimeBar";
 // own. The status is never shown — the column says it — and neither is the
 // task key, which lives only in the task panel. A coloured edge appears only
 // when the card needs attention: stalled (red) or overdue (amber).
+// On the board, the quick-action rail (CardActions) floats over the card's
+// upper right corner on hover; it takes no space, so the card's size never
+// changes.
 
-export function TaskCard({ task, config, onOpen }: { task: Task; config: CardConfig; onOpen?: () => void }) {
+export function TaskCard({
+  task,
+  config,
+  onOpen,
+  rail,
+  pinned,
+}: {
+  task: Task;
+  config: CardConfig;
+  onOpen?: () => void;
+  /** The quick-action rail, on board cards only (not while dragged or previewed). */
+  rail?: React.ReactNode;
+  /** Keeps the rail showing while one of its menus is open. */
+  pinned?: boolean;
+}) {
   const { boot } = useApp();
   const { byId: epicsById } = useEpics();
   const epic = task.epic_id ? epicsById.get(task.epic_id) : undefined;
@@ -108,12 +125,14 @@ export function TaskCard({ task, config, onOpen }: { task: Task; config: CardCon
 
   const edge = task.stalled ? palette.danger : overdue ? palette.warn : null;
   const row = { display: "flex", flexWrap: "wrap" as const, alignItems: "center", gap: 4 };
+  const classes = ["jb-card", onOpen && "jb-clickable", pinned && "jb-card-pinned"].filter(Boolean).join(" ");
 
   return (
     <div
       onClick={onOpen}
-      className={onOpen ? "jb-card jb-clickable" : "jb-card"}
+      className={classes}
       style={{
+        position: "relative",
         border: `1px solid ${blend(palette.border, palette.panel, 0.55)}`,
         boxShadow: `0 1px 2px ${palette.shadow}66${edge ? `, inset 3px 0 0 ${edge}` : ""}`,
         borderRadius: 8,
@@ -139,6 +158,7 @@ export function TaskCard({ task, config, onOpen }: { task: Task; config: CardCon
         <div style={{ ...row, gap: "2px 10px", fontSize: 11, lineHeight: "16px", color: palette.subtle, whiteSpace: "nowrap" }}>{details}</div>
       )}
       {bar && <TimeBar task={task} pace={show.pace} />}
+      {rail}
     </div>
   );
 }

@@ -109,3 +109,26 @@ No schema change. Remaps `task.difficulty` and `session.difficulty` from 1/2/4/8
 Setting `task_dates`: `{"start_auto": true, "start_statuses": [ids] | null, "end_auto": true, "end_statuses": [ids] | null}`. Absent or `null` lists mean the defaults by behaviour: start on `in_progress`, end on `done` and `cancelled`. A move into a start status fills an empty start date; a move into an end status fills an empty end date; a move back to a `todo` or `in_progress` status clears the end date (only while `end_auto` is on). Moves carry the client's local date as `today`.
 
 View `board_state` (JSON, no migration) gains `sort` (card order in board columns: `manual`, `priority`, `due`, `difficulty`, `estimate`, `time_in_status`, `newest`, `oldest`) and `limits` (`{status_id: {max, unit: "tasks" | "points" | "hours", hard}}`). View `card_config` gains `icons_only` and `show.start_date` / `show.end_date` / `show.pace`.
+
+### Migration 011 (snooze)
+
+| Change | Purpose |
+| --- | --- |
+| `task.snoozed_until` (new, TEXT `YYYY-MM-DD`, nullable) | The local date a snoozed task shows again. Set only by `POST /api/tasks/:id/snooze` (`{days, today}`: today + days; `days: 0` clears it), never by PATCH. Not a status: no transition is written and the task keeps its status and position. A move into a `done` or `cancelled` status clears it. |
+
+Derived `snoozed` (on read): the task is `todo` or `in_progress` and `snoozed_until` is after today in the server's time zone. From that day on the task simply shows again; the stored date is left in place.
+
+Setting `snooze`: `{"max_days": 30}` (1 to 365; absent means 30). Snoozing for more days is refused.
+
+Setting `card_actions` (no migration; read by the client only): `{"rail": ["log", "snooze"], "menu": ["log", "snooze", "note", "move", "open", "delete"]}`. `rail` lists the board card's hover buttons (up to 3), `menu` its right-click items. Absent means these defaults; unknown keys are ignored.
+
+### Migration 012 (duplicate search cache)
+
+| Change | Purpose |
+| --- | --- |
+| `task_embedding` (new) | One row per task: `model` (`all-MiniLM-L6-v2`), `text_hash` (of the title it was made from) and `vector` (384 little-endian float32). A cache for `GET /api/tasks/similar`, not data: a row whose model or hash no longer matches is made again, and emptying the table loses nothing. |
+
+The model files live in `<data>/models/all-MiniLM-L6-v2/` (`vocab.txt`, `model.safetensors`; override with `JITTERBUG_EMBED_DIR`), shared by every user. An admin downloads them once from Settings → Duplicate search (`POST /api/semantic/download`, pinned revision, SHA-256 checked); after that nothing leaves the server.
+
+Setting `task_completeness`: `{"required": ["start_date", "estimate_h", "difficulty", ...]}`, any of `start_date`, `end_date`, `due_at`, `estimate_h`, `difficulty`, `priority_id`, `energy_type_id`, `description`, `epic_id`. Absent or empty means every task is complete. Derived `missing` on each task lists the required fields an open (`todo` / `in_progress`) task of type `task` lacks; it is empty for done, cancelled and epics.
+

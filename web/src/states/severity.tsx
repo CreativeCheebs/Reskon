@@ -88,8 +88,13 @@ export function StateChip({ s, onClick }: { s: StateRow; onClick?: () => void })
           display: "inline-flex",
           alignItems: "center",
           gap: 6,
-          padding: "2px 8px",
-          borderRadius: 12,
+          // Whole-pixel height (26px), so everything under the bar sits on
+          // whole pixels and stays sharp.
+          height: 26,
+          boxSizing: "border-box",
+          lineHeight: "20px",
+          padding: "0 8px",
+          borderRadius: 13,
           border: `1px solid ${palette.border}`,
           background: palette.panel,
           fontSize: 12,

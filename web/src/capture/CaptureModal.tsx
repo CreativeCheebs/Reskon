@@ -11,6 +11,7 @@ import { emptySession, sessionBody, sessionReady, SessionFields, type SessionDra
 import { priorityOptions } from "../task/LevelIcons";
 import { palette } from "../theme/palette";
 import { today } from "../format";
+import { SimilarTasksList, useSimilarTasks } from "../task/SimilarTasks";
 
 // Quick capture: one line in, filled forms out, nothing written until the
 // user confirms. One line can hold several entries ("6 hours at the
@@ -48,10 +49,19 @@ export function CaptureModal({ onClose, takeEarlyKeys }: { onClose: () => void; 
   const [tasks, setTasks] = useState<TaskBrief[]>([]);
   const [busy, setBusy] = useState(false);
   const saveRef = useRef<HTMLButtonElement>(null);
+  // While the line is typed: tasks like it, so a duplicate shows up first.
+  const similar = useSimilarTasks(text, { enabled: !parse });
   const inputRef = useRef<InputRef>(null);
 
+  // Whether a provider is set up, asked as the dialog opens, so a missing
+  // one is said before anything is typed rather than after.
+  const [noProvider, setNoProvider] = useState(false);
   useEffect(() => {
     api.get<TaskBrief[]>("/tasks?brief=1").then(setTasks).catch(() => undefined);
+    api
+      .get<{ endpoint: string; model: string }>("/capture/config")
+      .then((c) => setNoProvider(!c.endpoint || !c.model))
+      .catch(() => undefined);
   }, []);
   useEffect(() => {
     if (parse) setTimeout(() => saveRef.current?.focus(), 50);
@@ -213,6 +223,22 @@ export function CaptureModal({ onClose, takeEarlyKeys }: { onClose: () => void; 
       <div onKeyDown={onKeyDown}>
         {!parse ? (
           <Spin spinning={parsing} tip="Reading…">
+            {noProvider && (
+              <Alert
+                type="warning"
+                showIcon
+                style={{ marginBottom: 10, padding: "6px 12px" }}
+                message="No capture provider is set up"
+                description={
+                  <>
+                    What you type opens the manual form to fill in by hand.{" "}
+                    <a href="#/settings/capture" onClick={onClose}>
+                      Set one up in Settings → Quick capture
+                    </a>
+                  </>
+                }
+              />
+            )}
             <Input
               ref={inputRef}
               data-capture-input
@@ -231,6 +257,7 @@ export function CaptureModal({ onClose, takeEarlyKeys }: { onClose: () => void; 
             <Typography.Text type="secondary" style={{ fontSize: 11 }}>
               Enter to read it · Esc to close · past tense logs a session, future or imperative makes a task · one line can hold several
             </Typography.Text>
+            <SimilarTasksList {...similar} />
           </Spin>
         ) : (
           <Space direction="vertical" style={{ width: "100%" }}>
@@ -280,10 +307,12 @@ function TaskFields({ draft, onChange }: { draft: TaskDraft; onChange: (d: TaskD
   const { boot } = useApp();
   const set = (p: Partial<TaskDraft>) => onChange({ ...draft, ...p });
   const opt = <T extends { id: number; name: string }>(rows: T[]) => rows.map((r) => ({ value: r.id, label: r.name }));
+  const similar = useSimilarTasks(draft.title);
   return (
     <Form layout="vertical" size="small">
       <Form.Item label="Title" required style={{ marginBottom: 8 }}>
         <Input value={draft.title} onChange={(e) => set({ title: e.target.value })} />
+        <SimilarTasksList {...similar} />
       </Form.Item>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 12px" }}>
         <Form.Item label="Area" required style={{ marginBottom: 8 }}>

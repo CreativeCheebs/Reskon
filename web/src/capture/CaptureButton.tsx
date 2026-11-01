@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Button, Tooltip } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
 import { useApp } from "../store";
 import { OFFLINE_TIP } from "../offline";
 import { CaptureModal } from "./CaptureModal";
@@ -51,8 +52,10 @@ export function CaptureButton() {
           type="primary"
           shape="circle"
           aria-label="Quick capture"
-          icon={<span style={{ fontSize: 18, lineHeight: "18px" }}>+</span>}
-          style={{ width: 28, height: 28, minWidth: 28, opacity: online ? 1 : 0.5 }}
+          // An icon, not a "+" character: a glyph sits on the text baseline,
+          // off centre; the icon is centred in the circle both ways.
+          icon={<PlusOutlined style={{ fontSize: 14 }} />}
+          style={{ width: 28, height: 28, minWidth: 28, padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", opacity: online ? 1 : 0.5 }}
           onClick={() => {
             if (!online) return;
             early.current = "";

@@ -308,6 +308,16 @@ func (d *DB) PutSetting(ctx context.Context, key string, value json.RawMessage) 
 			return err
 		}
 	}
+	if key == "task_completeness" {
+		if err := checkCompleteness(value); err != nil {
+			return err
+		}
+	}
+	if key == "snooze" {
+		if err := checkSnoozeRules(value); err != nil {
+			return err
+		}
+	}
 	_, err := d.ExecContext(ctx, `INSERT INTO setting (key, value) VALUES (?, ?)
 		ON CONFLICT (key) DO UPDATE SET value = excluded.value`, key, string(value))
 	return err

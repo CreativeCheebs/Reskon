@@ -5,6 +5,10 @@ import { ReflectionSettings } from "./ReflectionSettings";
 import { CaptureSettings } from "./CaptureSettings";
 import { CustomFieldSettings } from "./CustomFieldSettings";
 import { TaskDateSettings } from "./TaskDateSettings";
+import { SnoozeSettings } from "./SnoozeSettings";
+import { CardActionSettings } from "./CardActionSettings";
+import { CompletenessSettings } from "./CompletenessSettings";
+import { SemanticSettings } from "./SemanticSettings";
 import { AccountSettings } from "../auth/AccountSettings";
 import { UsersSettings } from "../auth/UsersSettings";
 import { useAuth } from "../auth/AuthGate";
@@ -55,6 +59,27 @@ const GROUPS: { label: string; sections: Section[] }[] = [
         render: () => <TaskDateSettings />,
       },
       {
+        key: "snooze",
+        label: "Snooze",
+        intro:
+          "Snoozing hides an open task (to do or in progress) from boards and tables for some days, without changing its status. Snoozed tasks are listed under Snoozed beside the hidden statuses, and come back on their own.",
+        render: () => <SnoozeSettings />,
+      },
+      {
+        key: "details",
+        label: "Complete details",
+        intro:
+          "The details an open task should have, such as a start date, an estimate or an intensity. This is about a task's information, not whether the work is done. Tasks missing any are listed under Incomplete in each view.",
+        render: () => <CompletenessSettings />,
+      },
+      {
+        key: "card-actions",
+        label: "Card actions",
+        intro:
+          "Quick actions on board cards. Buttons appear when you hover a card or tab to it; the card's More button holds every action that isn't a button. Right-click a card for the menu.",
+        render: () => <CardActionSettings />,
+      },
+      {
         key: "custom",
         label: "Custom fields",
         intro:
@@ -95,6 +120,12 @@ const GROUPS: { label: string; sections: Section[] }[] = [
           </>
         ),
         render: () => <CaptureSettings />,
+      },
+      {
+        key: "search",
+        label: "Duplicate search",
+        intro: "While you type a new task, or search a view, tasks like it are listed so you don't add the same one twice.",
+        render: () => <SemanticSettings />,
       },
     ],
   },

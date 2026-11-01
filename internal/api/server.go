@@ -16,6 +16,7 @@ import (
 	"jitterbug/internal/auth"
 	"jitterbug/internal/capture"
 	"jitterbug/internal/db"
+	"jitterbug/internal/embed"
 )
 
 // Server holds what handlers need. Each request works on the signed-in
@@ -23,7 +24,10 @@ import (
 type Server struct {
 	Auth    *auth.Store
 	Capture *capture.Parser
-	mux     *http.ServeMux
+	// Semantic is the shared embedding model for duplicate search; nil
+	// means word matching only.
+	Semantic *embed.Service
+	mux      *http.ServeMux
 }
 
 // New wires every route. web is the built frontend (may be nil in tests).
@@ -78,6 +82,7 @@ func (s *Server) routes() {
 	m.HandleFunc("PUT /api/settings/{key}", s.putSetting)
 
 	s.taskRoutes()
+	s.similarRoutes()
 	s.lookupRoutes()
 	s.sessionRoutes()
 	s.captureRoutes()

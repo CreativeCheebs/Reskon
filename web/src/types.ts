@@ -197,6 +197,8 @@ export interface Task {
   /** Local dates, set by hand or filled in by a move (Settings → Task dates). */
   start_date: string | null;
   end_date: string | null;
+  /** Local date a snoozed task shows again; set only by POST /tasks/:id/snooze. */
+  snoozed_until: string | null;
   type: TaskType;
   epic_id: number | null;
   board_pos: number;
@@ -220,6 +222,10 @@ export interface Task {
   remaining_h: number | null;
   days_to_due: number | null;
   pace_h: number | null;
+  /** Open and snoozed_until is still ahead: hidden from boards and tables. */
+  snoozed: boolean;
+  /** Fields Settings → Complete details requires that this open task lacks. */
+  missing: string[];
   subtypes: string[];
   epic_tasks: number | null; // epics only
   epic_done: number | null;

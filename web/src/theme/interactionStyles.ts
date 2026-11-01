@@ -1,4 +1,5 @@
 import { blend, palette } from "./palette";
+import { similarStyles } from "../task/SimilarTasks";
 
 // Hover, focus and selection styles that inline styles can't express. Kept
 // short and quiet: 120ms fades and a 1px lift, nothing that bounces or
@@ -11,17 +12,105 @@ export function interactionCss(): string {
   return `
     .jb-card {
       background: ${palette.panel};
-      transition: background-color .12s ease, border-color .12s ease, box-shadow .12s ease, transform .12s ease;
+      transition: background-color .12s ease, border-color .12s ease, box-shadow .12s ease;
     }
-    .jb-card.jb-clickable:hover {
-      background: ${blend(palette.hover, palette.panel, 0.7)};
-      border-color: ${blend(palette.accent, palette.panel, 0.4)} !important;
-      box-shadow: 0 6px 14px ${palette.shadow}59, 0 0 1px ${palette.shadow}80 !important;
-      transform: translateY(-1px);
+    /* Hover brightens the surface and the border a little; the card never
+       moves or changes size. */
+    .jb-card.jb-clickable:hover, .jb-card.jb-card-pinned {
+      background: ${blend(palette.hover, palette.panel, 0.75)};
+      border-color: ${blend(palette.borderStrong, palette.border, 0.6)} !important;
     }
     .jb-sortable { outline: none; border-radius: 8px; }
     .jb-sortable:focus-visible { box-shadow: 0 0 0 2px ${palette.accent}; }
     .jb-sortable:focus-visible .jb-card { border-color: ${palette.accent} !important; }
+
+    /* A board card's quick-action rail: hidden until the card is hovered,
+       focused from the keyboard, or one of the rail's menus is open. It
+       floats over the card's corner on the hovered card's own surface, so
+       the card keeps its size and the title end it covers is masked cleanly. */
+    .jb-card-rail {
+      position: absolute; top: 5px; right: 5px; z-index: 1;
+      display: flex; gap: 3px; padding: 2px; border-radius: 8px;
+      background: ${blend(palette.hover, palette.panel, 0.75)};
+      box-shadow: -8px 0 8px -4px ${blend(palette.hover, palette.panel, 0.75)};
+      opacity: 0; visibility: hidden;
+      transition: opacity .12s ease, visibility 0s linear .12s;
+    }
+    .jb-card:hover .jb-card-rail, .jb-card-pinned .jb-card-rail, .jb-sortable:focus-within .jb-card-rail {
+      opacity: 1; visibility: visible; transition: opacity .12s ease;
+    }
+    .jb-rail-btn {
+      width: 26px; height: 26px; padding: 0; box-sizing: border-box;
+      display: inline-flex; align-items: center; justify-content: center;
+      border-radius: 6px; border: 1px solid ${blend(palette.borderStrong, palette.panel, 0.7)};
+      background: ${blend(palette.overlay, palette.hover, 0.5)}; color: ${palette.muted};
+      font-size: 14px; cursor: pointer;
+      transition: background-color .12s ease, border-color .12s ease, color .12s ease;
+    }
+    .jb-rail-btn:hover, .jb-rail-btn:focus-visible, .jb-rail-btn.ant-popover-open, .jb-rail-btn.ant-dropdown-open {
+      background: ${blend(palette.accent, palette.panel, 0.16)};
+      border-color: ${blend(palette.accent, palette.panel, 0.6)};
+      color: ${palette.fg}; outline: none;
+    }
+    .jb-rail-btn:focus-visible { box-shadow: 0 0 0 2px ${blend(palette.accent, palette.panel, 0.5)}; }
+    .jb-rail-btn:disabled { cursor: not-allowed; opacity: .5; }
+    .jb-rail-danger:hover, .jb-rail-danger:focus-visible {
+      background: ${blend(palette.danger, palette.panel, 0.16)};
+      border-color: ${blend(palette.danger, palette.panel, 0.6)};
+      color: ${palette.danger};
+    }
+
+    /* Card menus (right-click, More, Move to, Snooze): the card's 8px
+       corners, the overlay surface, quiet icons, and rows that light up
+       like the rest of the app's lists. The right-click menu adds the
+       card's title as a header. */
+    .jb-menu .ant-dropdown-menu, .jb-menu-panel {
+      background: ${palette.overlay};
+      border: 1px solid ${palette.border};
+      border-radius: 8px;
+      box-shadow: 0 10px 28px ${palette.shadow}73, 0 0 1px ${palette.shadow}99;
+    }
+    .jb-menu .ant-dropdown-menu { padding: 4px; min-width: 176px; }
+    .jb-menu-panel { overflow: hidden; min-width: 200px; max-width: 280px; }
+    .jb-menu-panel .ant-dropdown-menu { border: none; box-shadow: none; background: transparent; border-radius: 0; padding: 4px; }
+    .jb-menu-head {
+      padding: 8px 12px 7px; font-size: 12px; font-weight: 600; color: ${palette.muted};
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      border-bottom: 1px solid ${palette.border};
+    }
+    .jb-menu .ant-dropdown-menu-item, .jb-menu .ant-dropdown-menu-submenu-title {
+      border-radius: 5px !important; padding: 5px 10px !important; min-height: 30px !important; height: auto !important;
+      font-size: 13px !important; line-height: 20px !important; color: ${palette.fg};
+      display: flex; align-items: center; box-sizing: border-box;
+    }
+    .jb-menu .ant-dropdown-menu-item:not(.ant-dropdown-menu-item-disabled):hover,
+    .jb-menu .ant-dropdown-menu-item-active:not(.ant-dropdown-menu-item-disabled),
+    .jb-menu .ant-dropdown-menu-submenu-title:hover,
+    .jb-menu .ant-dropdown-menu-submenu-open > .ant-dropdown-menu-submenu-title {
+      background: ${palette.hover} !important;
+    }
+    .jb-menu .ant-dropdown-menu-item-icon { font-size: 14px !important; min-width: 14px; color: ${palette.muted}; margin-inline-end: 10px !important; }
+    .jb-menu .ant-dropdown-menu-item:hover .ant-dropdown-menu-item-icon,
+    .jb-menu .ant-dropdown-menu-submenu-title:hover .ant-dropdown-menu-item-icon { color: ${palette.fg}; }
+    .jb-menu .ant-dropdown-menu-item-danger:not(.ant-dropdown-menu-item-disabled) { color: ${palette.danger} !important; }
+    .jb-menu .ant-dropdown-menu-item-danger:not(.ant-dropdown-menu-item-disabled):hover {
+      background: ${blend(palette.danger, palette.overlay, 0.14)} !important; color: ${palette.danger} !important;
+    }
+    .jb-menu .ant-dropdown-menu-item-danger .ant-dropdown-menu-item-icon { color: ${palette.danger}; }
+    .jb-menu .ant-dropdown-menu-item-disabled { color: ${palette.subtle} !important; }
+    .jb-menu .ant-dropdown-menu-item-extra { margin-inline-start: 16px; font-size: 12px !important; color: ${palette.subtle} !important; }
+    .jb-menu .ant-dropdown-menu-item-divider { margin: 4px 6px !important; background-color: ${palette.border} !important; }
+    .jb-menu .ant-dropdown-menu-submenu-expand-icon { color: ${palette.subtle}; }
+    .jb-menu-dot {
+      width: 8px; height: 8px; border-radius: 4px; display: inline-block; flex: none;
+      background: ${palette.muted}; margin-inline: 3px 13px;
+    }
+    /* Touch screens have no hover: only More shows, always, and its menu
+       holds Note and Log time as well. */
+    @media (hover: none) {
+      .jb-card-rail { opacity: 1; visibility: visible; }
+      .jb-rail-primary { display: none; }
+    }
 
     /* Toolbar controls that are doing something (a filter, a sort, a
        grouping) wear the accent tint, so their state shows at a glance. */
@@ -35,33 +124,59 @@ export function interactionCss(): string {
       border-color: ${accentEdge} !important;
       color: ${palette.fg} !important;
     }
-    /* Segmented switches in the view toolbar (Board/Table, All/Tasks/Epics).
-       24px tall like the selects beside them: a 1px border, then a 2px gap
+    /* Every segmented switch (Board/Table, the dashboard's ranges, Work or
+       Event ...) looks like the board toolbar's. 24px tall like the selects
+       beside them: a 1px border, then a 2px gap
        on every side of the selected fill. Every option has the same height,
        padding and weight, so choosing one never moves its neighbours. */
-    .jb-seg.ant-segmented {
+    .ant-segmented.ant-segmented {
       padding: 2px; border: 1px solid ${palette.borderStrong}; border-radius: 6px; background: ${palette.panelDim};
     }
-    .jb-seg.ant-segmented .ant-segmented-item { border-radius: 4px; }
-    .jb-seg.ant-segmented .ant-segmented-item-label {
+    .ant-segmented .ant-segmented-item { border-radius: 4px; }
+    .ant-segmented.ant-segmented .ant-segmented-item-label {
       display: flex; align-items: center; justify-content: center;
       min-height: 18px; line-height: 18px; min-width: 48px; padding: 0 12px; box-sizing: border-box; font-weight: 400;
     }
-    .jb-seg .ant-segmented-item-selected, .jb-seg .ant-segmented-thumb {
+    .ant-segmented .ant-segmented-item-selected, .ant-segmented .ant-segmented-thumb {
       background: ${segSelected}; box-shadow: inset 0 0 0 1px ${segSelectedEdge}; border-radius: 4px;
     }
-    .jb-seg .ant-segmented-item:not(.ant-segmented-item-selected):not(.ant-segmented-item-disabled):hover::after {
+    .ant-segmented .ant-segmented-item:not(.ant-segmented-item-selected):not(.ant-segmented-item-disabled):hover::after {
       background-color: ${blend(palette.fg, palette.panelDim, 0.07)};
     }
     /* Hairline between two options that are neither selected nor hovered. */
-    .jb-seg .ant-segmented-item + .ant-segmented-item::before {
+    .ant-segmented .ant-segmented-item + .ant-segmented-item::before {
       content: ""; position: absolute; left: 0; top: 4px; bottom: 4px; width: 1px;
       background: ${palette.border}; transition: opacity .12s ease; pointer-events: none;
     }
-    .jb-seg .ant-segmented-item-selected::before, .jb-seg .ant-segmented-item-selected + .ant-segmented-item::before,
-    .jb-seg .ant-segmented-item:hover::before, .jb-seg .ant-segmented-item:hover + .ant-segmented-item::before { opacity: 0; }
-    .jb-seg .ant-segmented-item-focused { outline: 2px solid ${palette.accent}; outline-offset: 1px; }
-    .jb-seg.ant-segmented:focus-visible { outline: 2px solid ${palette.accent}; outline-offset: 1px; }
+    .ant-segmented .ant-segmented-item-selected::before, .ant-segmented .ant-segmented-item-selected + .ant-segmented-item::before,
+    .ant-segmented .ant-segmented-item:hover::before, .ant-segmented .ant-segmented-item:hover + .ant-segmented-item::before { opacity: 0; }
+    .ant-segmented .ant-segmented-item-focused { outline: 2px solid ${palette.accent}; outline-offset: 1px; }
+    .ant-segmented:focus-visible { outline: 2px solid ${palette.accent}; outline-offset: 1px; }
+
+    /* Shared controls (theme/Toolbar.tsx). Page header and filter rows: one
+       left edge, 8px between controls in a group, 16px between groups, and
+       a group wraps whole. Heights are whole pixels so 1px outlines stay
+       sharp at any zoom. */
+    .jb-page-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; min-height: 28px; margin-bottom: 10px; }
+    .jb-page-title { margin: 0; font-size: 18px; line-height: 28px; font-weight: 650; letter-spacing: -0.2px; color: ${palette.fg}; white-space: nowrap; }
+    .jb-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; }
+    .jb-toolbar-group { display: flex; align-items: center; gap: 6px; flex: none; }
+    .jb-toolbar-end { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+    /* Small buttons and pickers share the selects' outline and padding. */
+    .ant-btn-sm { padding-inline: 9px; }
+    .ant-btn-sm.ant-btn-icon-only { padding-inline: 0; width: 24px; }
+    .ant-btn .anticon { line-height: 0; }
+    .ant-btn-sm .anticon { font-size: 12px; }
+    .ant-btn-sm.ant-btn-icon-only .anticon { font-size: 14px; }
+    .ant-btn-default:not(:disabled):not(.jb-active):not(.ant-btn-dangerous):not(:hover) { border-color: ${palette.borderStrong}; }
+    .ant-segmented { max-width: 100%; }
+    .ant-segmented .ant-segmented-item-label .anticon { font-size: 12px; margin-inline-end: 5px; }
+    /* Work or Event: two equal options. */
+    .jb-kind .ant-segmented-item { flex: 1 1 0; min-width: 120px; }
+    /* Colour pickers: the swatch centred in its box, one size on every row. */
+    .ant-color-picker-trigger { display: inline-flex !important; align-items: center; justify-content: center; padding: 0 !important; box-sizing: border-box; }
+    .ant-color-picker-trigger-sm { width: 24px; height: 24px; min-width: 24px; }
+    .ant-color-picker-trigger-sm .ant-color-picker-color-block { width: 16px !important; height: 16px !important; border-radius: 4px !important; }
 
     /* Sidebar (Sidebar.tsx). Rows, headings, footer and the name all start
        20px in; the icon rail centres everything instead. */
@@ -115,7 +230,9 @@ export function interactionCss(): string {
     .jb-settings-subsection { margin-top: 18px; padding-top: 14px; border-top: 1px solid ${palette.border}; }
     .jb-lookup .ant-table, .jb-lookup .ant-table-thead > tr > th { background: transparent !important; }
     .jb-lookup .ant-table-thead > tr > th { white-space: nowrap; }
-    .jb-lookup-foot { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+    /* The Add button starts where the rows' controls do (the cells' 8px). */
+    .jb-lookup-foot { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-inline: 8px; }
+    .jb-lookup .ant-table-tbody > tr > td { vertical-align: middle; }
     .jb-swatch { display: inline-block; flex: none; width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 0 1px ${palette.border}; }
     .jb-sider-foot { display: flex; align-items: center; gap: 10px; padding: 10px 10px 10px 20px; border-top: 1px solid ${palette.border}; font-size: 12px; min-height: 52px; box-sizing: border-box; }
     .jb-sider-foot-rail { flex-direction: column; gap: 6px; padding: 10px 0; }
@@ -135,8 +252,10 @@ export function interactionCss(): string {
     .jb-add-task.ant-btn { color: ${palette.muted}; }
     .jb-add-task.ant-btn:not(:disabled):hover { color: ${palette.fg}; background: ${palette.hover}; }
 
+    ${similarStyles()}
+
     @media (prefers-reduced-motion: reduce) {
-      .jb-card, .jb-card.jb-clickable:hover, .jb-sider .ant-menu-item, .jb-nav-icon { transition: none; transform: none; }
+      .jb-card, .jb-card.jb-clickable:hover, .jb-card-rail, .jb-rail-btn, .jb-sider .ant-menu-item, .jb-nav-icon { transition: none; transform: none; }
     }
   `;
 }

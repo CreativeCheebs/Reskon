@@ -27,6 +27,8 @@ type TaskDerived struct {
 	RemainingH     *float64 `json:"remaining_h"`      // estimate_h - logged_h, below zero once over; nil without estimate
 	DaysToDue      *int     `json:"days_to_due"`      // calendar days from today to due_at: 0 due today, below zero overdue; nil without due date or once finished
 	PaceH          *float64 `json:"pace_h"`           // remaining_h spread over the days left, today and the due day included; nil unless both are known and positive
+	Snoozed        bool     `json:"snoozed"`          // snoozed_until is after today (server's time zone) and the task is open
+	Missing        []string `json:"missing"`          // required fields (setting task_completeness) an open task lacks; empty when complete
 	Subtypes       []string `json:"subtypes"`         // distinct subtypes from the task's sessions
 	EpicTasks      *int     `json:"epic_tasks"`       // epics only: tasks in it, cancelled excluded
 	EpicDone       *int     `json:"epic_done"`        // epics only: how many of those are done
@@ -236,6 +238,10 @@ func (d *DB) derive(ctx context.Context, tasks []*Task, now time.Time) error {
 	if err != nil {
 		return err
 	}
+	required, err := d.loadCompleteness(ctx)
+	if err != nil {
+		return err
+	}
 
 	for _, t := range tasks {
 		t.TaskDerived = deriveDates(t.CreatedAt, steps[t.ID], now)
@@ -263,6 +269,8 @@ func (d *DB) derive(ctx context.Context, tasks []*Task, now time.Time) error {
 		if t.Behaviour != "done" && t.Behaviour != "cancelled" {
 			t.DaysToDue, t.PaceH = duePace(t.DueAt, t.RemainingH, now)
 		}
+		t.Snoozed = isSnoozed(t.SnoozedUntil, t.Behaviour, now)
+		t.Missing = missingFields(t, required)
 		t.Subtypes = subtypes[t.ID]
 		if t.Subtypes == nil {
 			t.Subtypes = []string{}
