@@ -39,7 +39,9 @@ var (
 	ErrLastAdmin   = errors.New("cannot remove the last admin")
 	usernameRe     = regexp.MustCompile(`^[a-z0-9][a-z0-9_.-]{1,31}$`)
 	minPasswordLen = 8
-	dummyHash, _   = bcrypt.GenerateFromPassword([]byte("timing-equaliser"), bcrypt.DefaultCost)
+	// bcrypt of "timing-equaliser" at the default cost, written out so start-up
+	// doesn't spend a hash on it (about 100 ms on a phone).
+	dummyHash = []byte("$2a$10$u.BkUSYzsG2Bsemr7UEQtuVmCe0mGgs9rPsgtoNXgKLmLG/lqBGky")
 )
 
 // User is an account. PasswordHash and DBFile never leave the server.
