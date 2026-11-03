@@ -37,3 +37,6 @@ web/dist/*
 !web/dist/.gitkeep
 web/*.tsbuildinfo
 web/src/icons/generated/
+
+# Go core for the Android app (mobile/build.ps1).
+/mobile/build/
