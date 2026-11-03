@@ -27,6 +27,11 @@ jira_*.db
 
 # ---------- build output ----------
 /jitterbug
+# Left by tools/ship/receive.py: the replaced file and unfinished uploads.
+*.prev
+*.part
+# Local-only tools (ship scripts, their shared password, notes).
+/tools/
 web/node_modules/
 web/dist/*
 !web/dist/.gitkeep
