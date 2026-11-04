@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"strconv"
 
 	"jitterbug/internal/db"
 )
@@ -63,10 +64,24 @@ func (s *Server) sync(w http.ResponseWriter, r *http.Request) {
 	// A device that has seen nothing gets a full copy (item 19); otherwise
 	// what changed since its token, less what it sent itself.
 	rows, seq, err := d.ExportSync(r.Context(), req.Token, "", req.Device, req.Token == 0)
+	if err != nil {
+		respond(w, nil, err)
+		return
+	}
 	if rows == nil {
 		rows = []db.SyncRow{}
 	}
-	respond(w, syncResponse{Token: seq, Changes: rows}, err)
+	// The answer is made in full first, so X-Sync-Size can say how big it
+	// is before compression: the phone shows a first download as a percentage.
+	b, err := json.Marshal(syncResponse{Token: seq, Changes: rows})
+	if err != nil {
+		respond(w, nil, err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Sync-Size", strconv.Itoa(len(b)))
+	w.WriteHeader(http.StatusOK)
+	w.Write(b)
 }
 
 // syncOutgoing gives the request a device sends: its own changes since the

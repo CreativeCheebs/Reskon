@@ -187,6 +187,13 @@ The owner compared demos and chose Kotlin + Jetpack Compose + Material 3. The ap
 ### Local first, sync optional (Change 003, 2026-11-04)
 A phone app that needs a server first is useless to someone without one, and on a train for someone with one. So the app works on its own, and a sync server can be added later, with no modes to choose. Devices only sync through a server.
 
+### First start and the first download (owner, 2026-11-04)
+The owner asked for two things. First, a choice at first start: connect to a server now, or use the phone offline and connect later. Second, connecting for the first time should be a full download that the app waits for, with a percentage, rather than a quiet background sync. This replaces "there are no modes; nothing on the phone ever waits". Only the first download waits. Later syncs still run in the background.
+
+- **How the percentage is measured**: the server's answer is compressed on the way, and the phone unpacks it as it reads. So the server sends the size before compression in an `X-Sync-Size` header, and the phone counts unpacked bytes against it. An older server without the header gets a moving bar with no number.
+- **The download is saved in one go** (one database transaction), so an interrupted download leaves nothing half-written. The phone remembers whether the first download finished (`first_done`), and starts it again until it has.
+- **The first download allows 5 minutes** for the server to answer, instead of 15 seconds, for slow links such as Tailscale through a relay.
+
 ### How sync is built
 - **Record IDs** live in one lookup table (`sync_idmap`) instead of a new `uid` column on 17 tables. It means the same thing, changes no existing table, and keeps the ID of a deleted row for its "deleted" marker.
 - **Only the latest change of each field is kept** (`sync_field`), not a growing log of every operation. So there is nothing to trim, and no device ever needs to be "forgotten" after 90 days. A new device gets a full copy straight from the tables.

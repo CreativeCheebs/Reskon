@@ -414,9 +414,12 @@ Areas, statuses, priorities, energy types and subtypes all work the same way, li
 
 ### 13.2 Sync: how the phone and the server stay the same
 
-There are no modes. The app starts on its own, and you can add a sync server later in Settings. Phones only ever sync through a server, never with each other.
+Phones only ever sync through a server, never with each other.
 
-- **When it syncs**: on opening the app, a few seconds after a change, every 5 minutes, and from **Sync now**. A failed sync just waits for the next one. Nothing on the phone ever waits for it.
+- **First start**: the app asks "Do you have a JitterBug server?". **Connect to a server** signs in and downloads everything first. **Offline** asks for the first area, as the web app does, and a server can be added later in Settings. If the server has no areas yet, the phone asks for the first one after the download.
+- **The first download**: right after connecting, whether at first start or later from Settings, everything on the server is downloaded and the phone's own data is sent up. The app shows how far it got (sending, then downloading as a percentage, then saving) and nothing else can be used until it finishes. If it fails, you can **Try again** or **Disconnect**, and the phone's data stays. If the app is closed midway, nothing of the download is kept, and the next start begins it again.
+- **When it syncs after that**: on opening the app, a few seconds after a change, every 5 minutes, and from **Sync now**. A failed sync just waits for the next one. Nothing on the phone waits for it.
+- **Errors say where they happened**: "This phone's data: …", "Can't reach the server: …" or "Server answered …".
 - **Each record has an ID every device agrees on** (a uid). Built-in records (the seeded statuses, energy types, priorities, dashboards…) have the same uid everywhere, so every device's "Backlog" is one record.
 - **What is sent**: for each record, its values plus, for each field, when it last changed and on which device.
 - **Conflicts are settled field by field: the latest change wins.** If the phone renames a task and the web changes its priority, both are kept. If both rename it, the later one wins. "Later" uses a clock that never goes backwards, so a phone with a wrong clock can't win forever. On an exact tie, every device picks the same winner. For data from before sync existed, where nobody knows when it last changed, the server's value wins.
@@ -513,7 +516,7 @@ JSON over HTTP. Every `/api` call except health and sign-in needs the session co
 | `/api/areas`, `/api/statuses`, `/api/status-categories`, `/api/priorities`, `/api/energy-types`, `/api/subtypes`, `/api/custom-fields`, `/api/views` | Your lists. DELETE takes `?reassign_to=:id` (and `?clear=true` for priorities). |
 | `PUT /api/settings/:key` | Save a setting. |
 | `POST /api/images`, `GET /api/images/:id` | Background images. |
-| `POST /api/sync` | Sync: a device sends its changes and gets back what it hasn't seen. |
+| `POST /api/sync` | Sync: a device sends its changes and gets back what it hasn't seen. The `X-Sync-Size` header gives the answer's size before compression, for the phone's progress bar. |
 | `POST /api/sync/outgoing`, `POST /api/sync/incoming` | Used by the phone's built-in core: get the request to send, apply the answer. |
 
 ---

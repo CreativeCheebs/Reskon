@@ -149,7 +149,8 @@ private fun Root(activity: MainActivity) {
     }
     LaunchedEffect(App.version) { if (ready) App.reloadInbox() }
     // Sync with the server, if there is one: on opening, a few seconds after
-    // a change here, and every five minutes. Never blocks a screen.
+    // a change here, and every five minutes. Never blocks a screen. The first
+    // download after connecting is FirstSyncScreen's, not this loop's.
     LaunchedEffect(ready) {
         if (!ready) return@LaunchedEffect
         var last = 0L
@@ -157,7 +158,8 @@ private fun Root(activity: MainActivity) {
         while (true) {
             val now = System.currentTimeMillis()
             val poked = Sync.pokedAt > lastPoke && now - Sync.pokedAt > 4000
-            if (Sync.state(activity).server != null && (last == 0L || poked || now - last > 5 * 60_000)) {
+            val st = Sync.state(activity)
+            if (st.server != null && st.firstDone && (last == 0L || poked || now - last > 5 * 60_000)) {
                 lastPoke = Sync.pokedAt
                 last = now
                 Sync.syncNow(activity.applicationContext)
@@ -173,6 +175,7 @@ private fun Root(activity: MainActivity) {
         when {
             error != null -> Empty("Could not open the data: $error")
             !ready || boot == null -> {}
+            (Sync.live ?: Sync.state(activity)).let { it.server != null && !it.firstDone } -> FirstSyncScreen()
             boot.areas.isEmpty() -> FirstRunScreen()
             else -> Screen(App.route)
         }
