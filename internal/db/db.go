@@ -30,6 +30,10 @@ func Open(path string) (*DB, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err := installSyncTriggers(context.Background(), sqldb); err != nil {
+		sqldb.Close()
+		return nil, err
+	}
 	return &DB{sqldb}, nil
 }
 

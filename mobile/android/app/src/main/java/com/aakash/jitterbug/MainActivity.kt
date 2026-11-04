@@ -90,6 +90,7 @@ object App {
     /** After a write: reload what every screen shows. */
     fun changed() {
         version++
+        Sync.pokedAt = System.currentTimeMillis()
     }
 
     fun say(msg: String) {
@@ -144,6 +145,24 @@ private fun Root(activity: MainActivity) {
         }
     }
     LaunchedEffect(App.version) { if (ready) App.reloadInbox() }
+    // Sync with the server, if there is one: on opening, a few seconds after
+    // a change here, and every five minutes. Never blocks a screen.
+    LaunchedEffect(ready) {
+        if (!ready) return@LaunchedEffect
+        var last = 0L
+        var lastPoke = 0L
+        while (true) {
+            val now = System.currentTimeMillis()
+            val poked = Sync.pokedAt > lastPoke && now - Sync.pokedAt > 4000
+            if (Sync.state(activity).server != null && (last == 0L || poked || now - last > 5 * 60_000)) {
+                lastPoke = Sync.pokedAt
+                last = now
+                Sync.syncNow(activity.applicationContext)
+                if (App.version > 0) App.reloadBoot()
+            }
+            delay(1000)
+        }
+    }
     BackHandler(enabled = App.stack.size > 1) { App.back() }
 
     Box(Modifier.fillMaxSize().background(Palette.bg).imePadding()) {
