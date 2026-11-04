@@ -50,15 +50,25 @@ export function severityBand(severity: number, kind: StateRow["kind"] = "debuff"
   return steps[i];
 }
 
-export const KIND_COLOR: Record<StateRow["kind"], () => string> = {
-  debuff: () => palette.epic,
-  buff: () => palette.success,
-  modifier: () => palette.accent,
-};
+// Colour by kind and how strong it is: a debuff is a warning, yellow when
+// mild and red when severe; a buff goes from blue (mild) to green (strong);
+// a modifier is neither good nor bad, so it stays the accent blue.
+function mix(a: string, b: string, t: number): string {
+  const ch = (h: string, i: number) => parseInt(h.slice(1 + i * 2, 3 + i * 2), 16);
+  const v = [0, 1, 2].map((i) => Math.round(ch(a, i) + (ch(b, i) - ch(a, i)) * t));
+  return "#" + v.map((x) => x.toString(16).padStart(2, "0")).join("");
+}
+
+export function severityColor(kind: StateRow["kind"], severity: number): string {
+  const t = Math.min(1, Math.max(0, severity / SEVERITY_MAX));
+  if (kind === "debuff") return mix(palette.warn, palette.danger, t);
+  if (kind === "buff") return mix(palette.accent, palette.success, t);
+  return palette.accent;
+}
 
 /** A ring in the kind's colour, filled clockwise by severity out of 5. */
 export function SeverityIcon({ kind, severity, size = 14 }: { kind: StateRow["kind"]; severity: number; size?: number }) {
-  const color = KIND_COLOR[kind]();
+  const color = severityColor(kind, severity);
   const f = Math.min(1, Math.max(0, severity / SEVERITY_MAX));
   const r = 4.6;
   let fill = null;

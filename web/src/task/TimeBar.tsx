@@ -13,8 +13,9 @@ export function TimeBar({ task, size = "card", pace = true }: { task: Task; size
   if (task.progress_pct === null || task.estimate_h === null || task.remaining_h === null) return null;
   const over = task.remaining_h < 0;
   const done = task.behaviour === "done" || task.behaviour === "cancelled";
-  const fill = over ? palette.warn : palette.accent;
-  const left = over ? `${formatHM(-task.remaining_h)} over` : `${formatHM(task.remaining_h)} left`;
+  // Over the estimate: the bar turns red and says by how much.
+  const fill = over ? palette.danger : palette.accent;
+  const left = over ? `${formatHM(-task.remaining_h)} over (${Math.round(task.progress_pct)}%)` : `${formatHM(task.remaining_h)} left`;
   const big = size === "panel";
   const paceLine = pace && !done ? <PaceLine task={task} /> : null;
   const bar = (
@@ -36,7 +37,7 @@ export function TimeBar({ task, size = "card", pace = true }: { task: Task; size
         </div>
         <span style={{ flex: "none", whiteSpace: "nowrap", color: palette.muted }}>
           <span style={{ color: palette.fg, fontWeight: 500 }}>{formatHM(task.logged_h)}</span> / {formatHM(task.estimate_h)}
-          {!done && <span style={{ color: over ? palette.warn : palette.subtle }}> · {left}</span>}
+          {(!done || over) && <span style={{ color: over ? palette.danger : palette.subtle }}> · {left}</span>}
         </span>
       </div>
     </Tooltip>

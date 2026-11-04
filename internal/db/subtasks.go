@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"time"
 )
 
 // Subtasks follow Jira's three levels: epic → task → subtask. A subtask is
@@ -110,5 +109,5 @@ func (d *DB) subtaskTotals(ctx context.Context, ids []any, in string) (map[int64
 
 // ListSubtasks returns a task's subtasks, in board order.
 func (d *DB) ListSubtasks(ctx context.Context, parentID int64) ([]*Task, error) {
-	return d.queryTasks(ctx, &ViewFilter{parent: &parentID}, "", time.Now())
+	return d.queryTasks(ctx, &ViewFilter{parent: &parentID}, "", d.Now(ctx))
 }

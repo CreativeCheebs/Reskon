@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"time"
 )
 
 // Lookup rows. All are user-editable; code branches on
@@ -316,6 +317,15 @@ func (d *DB) PutSetting(ctx context.Context, key string, value json.RawMessage) 
 	if key == "snooze" {
 		if err := checkSnoozeRules(value); err != nil {
 			return err
+		}
+	}
+	if key == "time_zone" {
+		var name string
+		if json.Unmarshal(value, &name) != nil {
+			return invalid("time_zone must be a zone name such as \"Asia/Kolkata\"")
+		}
+		if _, err := time.LoadLocation(name); err != nil || name == "" {
+			return invalid("time_zone %q is not a known time zone", name)
 		}
 	}
 	_, err := d.ExecContext(ctx, `INSERT INTO setting (key, value) VALUES (?, ?)

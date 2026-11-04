@@ -4,20 +4,32 @@ import { message } from "../theme/feedback";
 import { api, ApiError } from "../api";
 import { useApp } from "../store";
 
-// Deleting a status or priority that tasks still use: pick where those
-// tasks go (or, for priorities, clear it). A status with no tasks skips the
-// dialog — the first DELETE simply succeeds.
+// Deleting something that is still in use (a status, priority, area,
+// energy type or subtype): the server refuses and says what uses it, and
+// this asks where those should move (or, for priorities, clear it). The
+// same for every kind, as in Jira. Something nothing uses is deleted
+// straight away: the first DELETE simply succeeds.
+
+type Collection = "statuses" | "priorities" | "areas" | "energy-types" | "subtypes";
+
+const NOUN: Record<Collection, string> = {
+  statuses: "status",
+  priorities: "priority",
+  areas: "area",
+  "energy-types": "energy type",
+  subtypes: "subtype",
+};
 
 interface Props {
-  collection: "statuses" | "priorities";
+  collection: Collection;
   row: { id: number; name: string };
   allowClear: boolean;
   onDone: () => void;
 }
 
-export function useReassignDelete(collection: "statuses" | "priorities", allowClear: boolean) {
+export function useReassignDelete(collection: Collection, allowClear: boolean) {
   const { reloadBootstrap } = useApp();
-  const [pending, setPending] = useState<{ id: number; name: string; count: number } | null>(null);
+  const [pending, setPending] = useState<{ id: number; name: string; count: number; usedBy?: string } | null>(null);
 
   const start = async (row: { id: number; name: string }) => {
     try {
@@ -25,8 +37,8 @@ export function useReassignDelete(collection: "statuses" | "priorities", allowCl
       await reloadBootstrap();
     } catch (e) {
       if (e instanceof ApiError && e.status === 409 && e.current) {
-        const count = (e.current as { task_count: number }).task_count;
-        setPending({ ...row, count });
+        const cur = e.current as { task_count: number; used_by?: string };
+        setPending({ ...row, count: cur.task_count, usedBy: cur.used_by });
       } else {
         message.error((e as Error).message);
       }
@@ -38,6 +50,7 @@ export function useReassignDelete(collection: "statuses" | "priorities", allowCl
       collection={collection}
       row={pending}
       count={pending.count}
+      usedBy={pending.usedBy}
       allowClear={allowClear}
       onDone={() => setPending(null)}
     />
@@ -45,9 +58,16 @@ export function useReassignDelete(collection: "statuses" | "priorities", allowCl
   return { start, dialog };
 }
 
-function ReassignDialog({ collection, row, count, allowClear, onDone }: Props & { count: number }) {
+function ReassignDialog({ collection, row, count, usedBy, allowClear, onDone }: Props & { count: number; usedBy?: string }) {
   const { boot, reloadBootstrap } = useApp();
-  const rows = (collection === "statuses" ? boot.statuses : boot.priorities).filter((r) => r.id !== row.id);
+  const all: { id: number; name: string }[] = {
+    statuses: boot.statuses,
+    priorities: boot.priorities,
+    areas: boot.areas,
+    "energy-types": boot.energy_types,
+    subtypes: boot.subtypes,
+  }[collection];
+  const rows = all.filter((r) => r.id !== row.id);
   const [mode, setMode] = useState<"move" | "clear">("move");
   const [target, setTarget] = useState<number | undefined>(rows[0]?.id);
   const [busy, setBusy] = useState(false);
@@ -70,13 +90,15 @@ function ReassignDialog({ collection, row, count, allowClear, onDone }: Props & 
     <Modal
       open
       title={`Delete “${row.name}”`}
-      okText="Delete and move tasks"
+      okText="Delete and move them"
       okButtonProps={{ danger: true, loading: busy, disabled: mode === "move" && !target }}
       onOk={confirm}
       onCancel={onDone}
     >
       <p>
-        {count} task{count === 1 ? "" : "s"} {count === 1 ? "uses" : "use"} this {collection === "statuses" ? "status" : "priority"}.
+        {usedBy
+          ? `This ${NOUN[collection]} is used by ${usedBy}. Pick where they should move.`
+          : `${count} task${count === 1 ? "" : "s"} ${count === 1 ? "uses" : "use"} this ${NOUN[collection]}.`}
         {collection === "statuses" && " Each move is written to the task's history and its time in status restarts."}
       </p>
       <Space direction="vertical">

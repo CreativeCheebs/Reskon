@@ -23,7 +23,8 @@ type TaskDerived struct {
 	Stalled        bool         `json:"stalled"`          // time in status passed the status's alert_after_days
 	Points         *float64     `json:"points"`           // difficulty x priority weight
 	LoggedH        float64      `json:"logged_h"`         // sum of session hours against the task
-	ProgressPct    *float64     `json:"progress_pct"`     // logged_h / estimate_h x 100, capped at 100; nil without estimate
+	LoggedTotalH   float64      `json:"logged_total_h"`   // logged_h plus its subtasks' hours
+	ProgressPct    *float64     `json:"progress_pct"`     // logged_h / estimate_h x 100, past 100 when over; nil without estimate
 	RemainingH     *float64     `json:"remaining_h"`      // estimate_h - logged_h, below zero once over; nil without estimate
 	DaysToDue      *int         `json:"days_to_due"`      // calendar days from today to due_at: 0 due today, below zero overdue; nil without due date or once finished
 	PaceH          *float64     `json:"pace_h"`           // remaining_h spread over the days left, today and the due day included; nil unless both are known and positive
@@ -149,7 +150,8 @@ func progressPct(logged float64, estimate *float64) *float64 {
 	if estimate == nil || *estimate <= 0 {
 		return nil
 	}
-	p := math.Min(100, logged / *estimate * 100)
+	// Not capped: logging more than the estimate shows as over 100%.
+	p := logged / *estimate * 100
 	return &p
 }
 
@@ -225,6 +227,20 @@ func (d *DB) derive(ctx context.Context, tasks []*Task, now time.Time) error {
 		return err
 	}
 
+	// Hours logged on each task's subtasks, for logged_total_h.
+	childLogged := map[int64]float64{}
+	if err := scanInto(ctx, d, fmt.Sprintf(`SELECT t.parent_id, SUM(s.hours) FROM session s
+		JOIN task t ON t.id = s.task_id
+		WHERE s.deleted_at IS NULL AND t.deleted_at IS NULL AND t.parent_id IN (%s) GROUP BY t.parent_id`, in), func(r *sql.Rows) error {
+		var id int64
+		var h float64
+		err := r.Scan(&id, &h)
+		childLogged[id] = h
+		return err
+	}, ids...); err != nil {
+		return err
+	}
+
 	subtypes := map[int64][]string{}
 	if err := scanInto(ctx, d, fmt.Sprintf(`SELECT DISTINCT s.task_id, st.name FROM session s
 		JOIN session_subtype ss ON ss.session_id = s.id
@@ -278,6 +294,7 @@ func (d *DB) derive(ctx context.Context, tasks []*Task, now time.Time) error {
 		}
 		t.Points = taskPoints(t.Difficulty, w)
 		t.LoggedH = logged[t.ID]
+		t.LoggedTotalH = t.LoggedH + childLogged[t.ID]
 		t.ProgressPct = progressPct(t.LoggedH, t.EstimateH)
 		t.RemainingH = remainingH(t.LoggedH, t.EstimateH)
 		if t.Behaviour != "done" && t.Behaviour != "cancelled" {

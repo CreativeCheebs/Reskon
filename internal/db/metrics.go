@@ -101,7 +101,10 @@ type metricDef struct {
 	Filters     []string `json:"filters"`
 	Reduce      string   `json:"reduce"` // default reduction
 	Ranged      bool     `json:"ranged"` // false: the range is ignored (current state)
-	run         func(*DB, context.Context, *metricRun) error
+	// Unfinished is left out of the catalog, so no new widget can use it,
+	// while the code stays for when it is designed (owner, 2026-11-04).
+	Unfinished bool `json:"-"`
+	run        func(*DB, context.Context, *metricRun) error
 }
 
 var timeGroups = map[string]bool{"day": true, "week": true, "month": true}
@@ -132,7 +135,9 @@ func (d *DB) MetricCatalog() *MetricCatalog {
 		"kind": {"task", "event", "buff", "debuff", "modifier"},
 	}}
 	for _, m := range metricRegistry {
-		out.Metrics = append(out.Metrics, m)
+		if !m.Unfinished {
+			out.Metrics = append(out.Metrics, m)
+		}
 	}
 	sort.Slice(out.Metrics, func(i, j int) bool { return metricOrder(out.Metrics[i].Name) < metricOrder(out.Metrics[j].Name) })
 	return out

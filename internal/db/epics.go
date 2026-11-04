@@ -109,10 +109,13 @@ func (d *DB) epicTotalsOf(ctx context.Context, ids []any, in string) (map[int64]
 	if err != nil {
 		return nil, err
 	}
-	err = scanInto(ctx, d, `SELECT t.epic_id, SUM(s.hours) FROM session s
+	// Hours on a task's subtasks count for its epic too: a subtask has no
+	// epic of its own, it belongs to its parent's.
+	err = scanInto(ctx, d, `SELECT COALESCE(t.epic_id, p.epic_id) AS epic, SUM(s.hours) FROM session s
 		JOIN task t ON t.id = s.task_id
-		WHERE s.deleted_at IS NULL AND t.deleted_at IS NULL AND t.epic_id IN (`+in+`)
-		GROUP BY t.epic_id`, func(r *sql.Rows) error {
+		LEFT JOIN task p ON p.id = t.parent_id AND p.deleted_at IS NULL
+		WHERE s.deleted_at IS NULL AND t.deleted_at IS NULL AND COALESCE(t.epic_id, p.epic_id) IN (`+in+`)
+		GROUP BY epic`, func(r *sql.Rows) error {
 		var id int64
 		var h float64
 		err := r.Scan(&id, &h)

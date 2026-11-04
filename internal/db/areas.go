@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"regexp"
@@ -84,19 +83,6 @@ func (d *DB) PatchArea(ctx context.Context, id int64, f Fields) (*Area, error) {
 		return nil, err
 	}
 	return d.GetArea(ctx, id)
-}
-
-// DeleteArea soft-deletes an area. An area that still has tasks cannot be
-// deleted: every task needs exactly one area.
-func (d *DB) DeleteArea(ctx context.Context, id int64) error {
-	var n int
-	if err := d.QueryRowContext(ctx, `SELECT COUNT(*) FROM task WHERE area_id = ? AND deleted_at IS NULL`, id).Scan(&n); err != nil {
-		return err
-	}
-	if n > 0 {
-		return &ConflictError{Msg: fmt.Sprintf("area has %d tasks; move them to another area first", n)}
-	}
-	return d.inTx(ctx, func(tx *sql.Tx) error { return softDeleteNamed(ctx, tx, "area", id) })
 }
 
 // patchRow applies f to one non-deleted row of table. Table names are

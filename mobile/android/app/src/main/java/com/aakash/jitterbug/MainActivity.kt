@@ -137,6 +137,9 @@ private fun Root(activity: MainActivity) {
         try {
             val ms = Core.start(activity.applicationContext)
             App.reloadBoot()
+            // The server works out "today" in your time zone; tell it this phone's.
+            val zone = java.util.TimeZone.getDefault().id
+            if (App.boot?.settings?.optString("time_zone") != zone) runCatching { Api.put("/settings/time_zone", zone); App.reloadBoot() }
             App.reloadInbox()
             Log.i("JBPERF", "core ready in $ms ms")
             ready = true
@@ -208,6 +211,13 @@ private fun Screen(r: Route) {
                 "llm" -> CaptureSettingsScreen()
                 "sync" -> SyncScreen()
                 "data" -> DataScreen()
+                "taskdates" -> TaskDatesScreen()
+                "snoozeset" -> SnoozeSettingsScreen()
+                "complete" -> CompletenessScreen()
+                "cardactions" -> CardActionsScreen()
+                "fields" -> CustomFieldsScreen()
+                "reflection" -> ReflectionScreen()
+                "duplicates" -> DuplicateSearchScreen()
                 else -> { App.back(); Empty("No screen called ${r.name}") }
             }
         }

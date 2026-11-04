@@ -8,6 +8,7 @@ import { useApp } from "../store";
 import { WriteButton } from "../offline";
 import { ColorField } from "../theme/ColorField";
 import { palette } from "../theme/palette";
+import { useReassignDelete } from "./ReassignDialog";
 
 // A small editable table for one lookup collection. Each cell saves on its
 // own (PATCH /api/<collection>/<id>) when it changes or loses focus. Rows
@@ -80,14 +81,9 @@ export function LookupEditor({ collection, rows, fields, noun, newRow, onDelete,
     }
   };
 
-  const del = async (row: Row) => {
-    try {
-      await api.del(`/${collection}/${row.id}`);
-      await reloadBootstrap();
-    } catch (e) {
-      message.error((e as Error).message);
-    }
-  };
+  // Anything still in use asks where its users should move (ReassignDialog).
+  const reassign = useReassignDelete(collection as never, false);
+  const del = (row: Row) => reassign.start(row as never);
 
   const columns: ColumnsType<Row> = fields.map((f) => ({
     title: f.help ? (
@@ -157,6 +153,7 @@ export function LookupEditor({ collection, rows, fields, noun, newRow, onDelete,
 
   return (
     <>
+      {reassign.dialog}
       <Table<Row>
         className="jb-lookup"
         size="small"

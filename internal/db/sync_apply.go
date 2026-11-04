@@ -25,7 +25,15 @@ func (d *DB) ApplySync(ctx context.Context, rows []SyncRow, server bool) error {
 	for i, t := range syncTables {
 		order[t.name] = i
 	}
-	sort.SliceStable(rows, func(i, j int) bool { return order[rows[i].Table] < order[rows[j].Table] })
+	// Tables in dependency order; within one, deletes first, so a row made
+	// again (a custom field key used anew) doesn't meet its old self.
+	deleted := func(r SyncRow) bool { _, ok := r.Stamps["_deleted"]; return ok }
+	sort.SliceStable(rows, func(i, j int) bool {
+		if order[rows[i].Table] != order[rows[j].Table] {
+			return order[rows[i].Table] < order[rows[j].Table]
+		}
+		return deleted(rows[i]) && !deleted(rows[j])
+	})
 
 	a := &applier{ctx: ctx, tx: tx, server: server, tasks: map[int64]bool{}}
 	for _, r := range rows {

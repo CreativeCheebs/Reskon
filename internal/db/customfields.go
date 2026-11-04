@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"math"
 )
 
@@ -156,14 +157,92 @@ func (d *DB) CreateCustomField(ctx context.Context, f Fields) (*CustomField, err
 	if err := checkOptions(f); err != nil {
 		return nil, err
 	}
+	// A deleted field with the same key is removed for good, with its stored
+	// values, so the new field starts empty (owner, 2026-11-04).
+	entity, _, _ := f.stringField("entity")
+	if err := d.purgeDeletedField(ctx, entity, key); err != nil {
+		return nil, err
+	}
 	id, err := d.insertRow(ctx, "custom_field", f, customFieldColumns)
 	if err != nil {
 		if _, ok := err.(*ConflictError); ok {
-			return nil, &ConflictError{Msg: "that key is already used (perhaps by a deleted field, whose data is kept)"}
+			return nil, &ConflictError{Msg: "that key is already used by another field"}
 		}
 		return nil, err
 	}
+	if err := customFieldIndex(ctx, d, entity, key); err != nil {
+		return nil, err
+	}
 	return d.getCustomField(ctx, id)
+}
+
+// customExpr is how a custom field's value is read in SQL. Its index
+// (customFieldIndex) is built on exactly this text, so filters use it.
+func customExpr(key string) string {
+	return fmt.Sprintf(`json_extract(custom, '$.%s')`, key)
+}
+
+func customTable(entity string) string {
+	if entity == "session" {
+		return "session"
+	}
+	return "task"
+}
+
+// customFieldIndex makes one index per custom field, so filtering and
+// sorting on it stays fast however many tasks there are.
+func customFieldIndex(ctx context.Context, q txq, entity, key string) error {
+	if !customKeyRe.MatchString(key) {
+		return nil
+	}
+	_, err := q.ExecContext(ctx, fmt.Sprintf(`CREATE INDEX IF NOT EXISTS cf_%s_%s ON %s (%s)`,
+		customTable(entity), key, customTable(entity), customExpr(key)))
+	return err
+}
+
+// customFieldIndexes makes sure every field has its index (run on open).
+func customFieldIndexes(ctx context.Context, q txq) error {
+	rows, err := q.QueryContext(ctx, `SELECT entity, key FROM custom_field WHERE deleted_at IS NULL`)
+	if err != nil {
+		return err
+	}
+	var fields [][2]string
+	for rows.Next() {
+		var e, k string
+		if err := rows.Scan(&e, &k); err != nil {
+			rows.Close()
+			return err
+		}
+		fields = append(fields, [2]string{e, k})
+	}
+	rows.Close()
+	for _, f := range fields {
+		if err := customFieldIndex(ctx, q, f[0], f[1]); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (d *DB) purgeDeletedField(ctx context.Context, entity, key string) error {
+	if !customKeyRe.MatchString(key) {
+		return nil
+	}
+	return d.inTx(ctx, func(tx *sql.Tx) error {
+		res, err := tx.ExecContext(ctx, `DELETE FROM custom_field WHERE entity = ? AND key = ? AND deleted_at IS NOT NULL`, entity, key)
+		if err != nil {
+			return err
+		}
+		if n, _ := res.RowsAffected(); n == 0 {
+			return nil
+		}
+		if _, err := tx.ExecContext(ctx, fmt.Sprintf(`DROP INDEX IF EXISTS cf_%s_%s`, customTable(entity), key)); err != nil {
+			return err
+		}
+		_, err = tx.ExecContext(ctx, fmt.Sprintf(`UPDATE %s SET custom = json_remove(custom, '$.%s') WHERE %s IS NOT NULL`,
+			customTable(entity), key, customExpr(key)))
+		return err
+	})
 }
 
 // PatchCustomField may change label, options and position. Key and type

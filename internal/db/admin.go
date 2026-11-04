@@ -325,12 +325,6 @@ func (d *DB) PatchEnergyType(ctx context.Context, id int64, f Fields) (*EnergyTy
 	return d.getEnergyType(ctx, id)
 }
 
-// DeleteEnergyType soft-deletes. Tasks and sessions keep their reference, so
-// history stays intact; the type just stops being offered.
-func (d *DB) DeleteEnergyType(ctx context.Context, id int64) error {
-	return d.inTx(ctx, func(tx *sql.Tx) error { return softDeleteNamed(ctx, tx, "energy_type", id) })
-}
-
 func (d *DB) getSubtype(ctx context.Context, id int64) (*Subtype, error) {
 	var s Subtype
 	err := d.QueryRowContext(ctx, `SELECT id, name, energy_type_id, position FROM subtype
@@ -354,10 +348,6 @@ func (d *DB) PatchSubtype(ctx context.Context, id int64, f Fields) (*Subtype, er
 		return nil, err
 	}
 	return d.getSubtype(ctx, id)
-}
-
-func (d *DB) DeleteSubtype(ctx context.Context, id int64) error {
-	return d.inTx(ctx, func(tx *sql.Tx) error { return softDeleteNamed(ctx, tx, "subtype", id) })
 }
 
 // ---------- helpers ----------

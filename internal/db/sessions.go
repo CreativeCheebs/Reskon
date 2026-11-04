@@ -26,6 +26,7 @@ type Session struct {
 	Note         *string          `json:"note"`
 	Custom       json.RawMessage  `json:"custom"`
 	CreatedAt    string           `json:"created_at"`
+	UpdatedAt    *string          `json:"updated_at"`
 	Subtypes     []SessionSubtype `json:"subtypes"`
 	Energies     []SessionEnergy  `json:"energies"` // at least one; see sessions_energy.go
 }
@@ -39,13 +40,13 @@ type SessionSubtype struct {
 }
 
 const sessionCols = `id, task_id, label, area_id, kind, energy_type_id, hours, points, difficulty,
-	started_at, logged_for, note, custom, created_at`
+	started_at, logged_for, note, custom, created_at, updated_at`
 
 func scanSession(r interface{ Scan(...any) error }) (*Session, error) {
 	var s Session
 	var custom string
 	err := r.Scan(&s.ID, &s.TaskID, &s.Label, &s.AreaID, &s.Kind, &s.EnergyTypeID, &s.Hours, &s.Points, &s.Difficulty,
-		&s.StartedAt, &s.LoggedFor, &s.Note, &custom, &s.CreatedAt)
+		&s.StartedAt, &s.LoggedFor, &s.Note, &custom, &s.CreatedAt, &s.UpdatedAt)
 	s.Custom = json.RawMessage(custom)
 	return &s, err
 }
@@ -375,7 +376,7 @@ func fillPoints(ctx context.Context, q querier, f Fields) error {
 }
 
 // PatchSession updates a session. The session table has no updated_at, so
-// edits are last-write-wins (see docs/deviations.md). Points are worked out
+// edits are last-write-wins (see SPEC.md 4.15). Points are worked out
 // again, at today's rates, when an edit changes what they depend on: hours,
 // intensity, energy types or shares, or task (Change 002). Otherwise they
 // stay as stored, even if a rate has changed since, unless the patch says

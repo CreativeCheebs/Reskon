@@ -112,7 +112,7 @@ func (d *DB) GetTask(ctx context.Context, id int64) (*Task, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := d.derive(ctx, []*Task{t}, time.Now()); err != nil {
+	if err := d.derive(ctx, []*Task{t}, d.Now(ctx)); err != nil {
 		return nil, err
 	}
 	return t, nil
@@ -341,12 +341,23 @@ func (d *DB) PatchTask(ctx context.Context, id int64, f Fields) (*Task, error) {
 	return d.GetTask(ctx, id)
 }
 
-// DeleteTask soft-deletes a task. Its key stays reserved. If it is an
-// epic, its tasks stay and simply lose the epic; a task's subtasks stay
-// too, as ordinary tasks.
+// DeleteTask soft-deletes a task, keeping its subtasks as ordinary tasks.
 func (d *DB) DeleteTask(ctx context.Context, id int64) error {
+	return d.DeleteTaskWith(ctx, id, false)
+}
+
+// DeleteTaskWith soft-deletes a task. Its key stays reserved. If it is an
+// epic, its tasks stay and simply lose the epic. Its subtasks are deleted
+// with it when withSubtasks is set; otherwise they stay, as ordinary tasks.
+func (d *DB) DeleteTaskWith(ctx context.Context, id int64, withSubtasks bool) error {
 	now := Now()
 	return d.inTx(ctx, func(tx *sql.Tx) error {
+		if withSubtasks {
+			if _, err := tx.ExecContext(ctx, `UPDATE task SET deleted_at = ?, updated_at = ? WHERE parent_id = ? AND deleted_at IS NULL`,
+				now, now, id); err != nil {
+				return err
+			}
+		}
 		res, err := tx.ExecContext(ctx, `UPDATE task SET deleted_at = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL`,
 			now, now, id)
 		if err != nil {

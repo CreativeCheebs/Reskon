@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -131,4 +132,21 @@ func TestCompleteness(t *testing.T) {
 func raw(v any) json.RawMessage {
 	b, _ := json.Marshal(v)
 	return b
+}
+
+// A task whose description, not title, has the words is found too.
+func TestSimilarSearchesDescriptions(t *testing.T) {
+	ctx := context.Background()
+	d := openTest(t)
+	tk := mustTask(t, d, mustArea(t, d, "Home", "HM").ID, "Kitchen")
+	if _, err := d.PatchTask(ctx, tk.ID, fields(t, fmt.Sprintf(`{"description":"call the plumber about the leaking tap","updated_at":%q}`, tk.UpdatedAt))); err != nil {
+		t.Fatal(err)
+	}
+	res, err := d.SimilarTasks(ctx, "leaking tap", nil, 5, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Results) != 1 || !res.Results[0].InDescription {
+		t.Fatalf("description match not found: %+v", res.Results)
+	}
 }

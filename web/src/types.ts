@@ -230,6 +230,9 @@ export interface Task {
   stalled: boolean;
   points: number | null;
   logged_h: number;
+  /** logged_h plus the hours on its subtasks. */
+  logged_total_h: number;
+  /** Past 100 once more is logged than estimated. */
   progress_pct: number | null;
   remaining_h: number | null;
   days_to_due: number | null;

@@ -260,10 +260,13 @@ fun TaskCard(t: JSONObject, onLongPress: (JSONObject) -> Unit = {}) {
         t.num("progress_pct")?.let { pct ->
             if (t.num("estimate_h") != null && t.optDouble("logged_h") > 0) {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    val over = (t.num("remaining_h") ?: 0.0) < 0
                     BoxWithConstraints(Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)).background(Palette.dim)) {
-                        Box(Modifier.width(maxWidth * (pct / 100).toFloat().coerceIn(0f, 1f)).fillMaxHeight().background(Palette.accent))
+                        Box(Modifier.width(maxWidth * (pct / 100).toFloat().coerceIn(0f, 1f)).fillMaxHeight().background(if (over) Palette.red else Palette.accent))
                     }
-                    T("${hm(t.optDouble("logged_h"))} of ${hm(t.num("estimate_h"))} · ${hm(t.num("remaining_h"))} left", Palette.muted, 12.sp)
+                    T("${hm(t.optDouble("logged_h"))} of ${hm(t.num("estimate_h"))} · " +
+                        if (over) "${hm(-(t.num("remaining_h") ?: 0.0))} over" else "${hm(t.num("remaining_h"))} left",
+                        if (over) Palette.red else Palette.muted, 12.sp)
                 }
             }
         }

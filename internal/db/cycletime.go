@@ -59,7 +59,7 @@ func (d *DB) TaskCycle(ctx context.Context, taskID int64) ([]Transition, []Segme
 	if err != nil {
 		return nil, nil, err
 	}
-	return trs, segments(trs, time.Now()), nil
+	return trs, segments(trs, d.Now(ctx)), nil
 }
 
 // CycleTimeForView builds the chart for every task in a view.
@@ -90,7 +90,7 @@ func (d *DB) CycleTimeForView(ctx context.Context, viewID int64) (*CycleTime, er
 	if err != nil {
 		return nil, err
 	}
-	now := time.Now()
+	now := d.Now(ctx)
 	for _, t := range tasks {
 		ts := TaskSegments{TaskID: t.ID, Title: t.Title, Segments: segments(byTask[t.ID], now), StatusHours: map[int64]float64{}}
 		for _, s := range ts.Segments {

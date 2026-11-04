@@ -3,7 +3,6 @@ package api
 import (
 	"net/http"
 	"strings"
-	"time"
 
 	"jitterbug/internal/db"
 )
@@ -37,7 +36,7 @@ func (s *Server) getMetric(w http.ResponseWriter, r *http.Request) {
 		if v.Get("from") != "" || v.Get("to") != "" {
 			q.Range, q.From, q.To = "", v.Get("from"), v.Get("to")
 		}
-		res, err := dbOf(r.Context()).Metric(r.Context(), q, time.Now())
+		res, err := dbOf(r.Context()).Metric(r.Context(), q, dbOf(r.Context()).Now(r.Context()))
 		respond(w, res, err)
 		return
 	}
@@ -62,6 +61,6 @@ func (s *Server) getMetric(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	res, err := dbOf(r.Context()).Metric(r.Context(), q, time.Now())
+	res, err := dbOf(r.Context()).Metric(r.Context(), q, dbOf(r.Context()).Now(r.Context()))
 	respond(w, res, err)
 }

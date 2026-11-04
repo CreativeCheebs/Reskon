@@ -32,6 +32,7 @@ func init() {
 		Description: "The current run of low days (under the threshold, counting the energy types chosen in Settings), set beside the break the morning plans intended. Elapsed as fact.",
 		Groups:      []string{"now"},
 		Reduce:      "last",
+		Unfinished:  true, // how Drift works is decided in the next phase
 		run:         (*DB).drift,
 	})
 }

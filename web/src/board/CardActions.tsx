@@ -9,11 +9,12 @@ import {
   MoonOutlined,
   SwapRightOutlined,
 } from "@ant-design/icons";
-import { confirm, message } from "../theme/feedback";
+import { message } from "../theme/feedback";
 import { api, patchWithRetry } from "../api";
 import { useApp } from "../store";
 import { today } from "../format";
 import { SessionModal } from "../sessions/SessionModal";
+import { deleteTaskAsking } from "../task/deleteTask";
 import { formatWakeDate, snoozeMaxDays, snoozeTask } from "../task/SnoozeButton";
 import type { Task } from "../types";
 
@@ -115,17 +116,7 @@ export function useCardActions(task: Task, { onOpen, onChanged, onDeleted }: Car
       onChanged(await snoozeTask(task.id, days));
       message.success(`Snoozed for ${days === 1 ? "a day" : `${days} days`}`);
     });
-  const remove = () =>
-    confirm({
-      title: `Delete “${task.title}”?`,
-      okText: "Delete",
-      okButtonProps: { danger: true },
-      onOk: () =>
-        run(async () => {
-          await api.del(`/tasks/${task.id}`);
-          onDeleted(task.id);
-        }),
-    });
+  const remove = () => deleteTaskAsking(task, onDeleted, (e) => message.error(e.message));
   // Logging time changes the card's logged hours and time bar.
   const reload = () => run(async () => onChanged(await api.get<Task>(`/tasks/${task.id}`)));
 

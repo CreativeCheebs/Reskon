@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Alert, DatePicker, Descriptions, Divider, Drawer, Input, InputNumber, Popconfirm, Select, Space, Spin, Typography } from "antd";
+import { deleteTaskAsking } from "./deleteTask";
+import { Alert, DatePicker, Descriptions, Divider, Drawer, Input, InputNumber, Select, Space, Spin, Typography } from "antd";
 import { message } from "../theme/feedback";
 import dayjs from "dayjs";
 import { api, patchWithRetry } from "../api";
@@ -97,15 +98,9 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
     }
   };
 
-  const remove = async () => {
+  const remove = () => {
     if (!task) return;
-    try {
-      await api.del(`/tasks/${task.id}`);
-      onDeleted(task.id);
-      onClose();
-    } catch (e) {
-      message.error((e as Error).message);
-    }
+    deleteTaskAsking(task, (id) => { onDeleted(id); onClose(); }, (e) => message.error(e.message));
   };
 
   const ro = !online;
@@ -127,11 +122,9 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
         task && (
           <Space size={8}>
             <SnoozeButton task={task} onChanged={apply} />
-            <Popconfirm title="Delete this task?" onConfirm={remove}>
-              <WriteButton danger size="small">
-                Delete
-              </WriteButton>
-            </Popconfirm>
+            <WriteButton danger size="small" onClick={remove}>
+              Delete
+            </WriteButton>
           </Space>
         )
       }
@@ -316,6 +309,9 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
                 <Descriptions.Item label="Cancelled">{formatDateTime(task.cancelled_at)}</Descriptions.Item>
                 <Descriptions.Item label="Points">{task.points ?? "–"}</Descriptions.Item>
                 <Descriptions.Item label="Logged">{formatHours(task.logged_h)}</Descriptions.Item>
+                {task.subtask_count > 0 && (
+                  <Descriptions.Item label="With subtasks">{formatHours(task.logged_total_h)}</Descriptions.Item>
+                )}
               </Descriptions>
               <Typography.Text type="secondary" style={{ fontSize: 11 }}>
                 Updated {formatDateTime(task.updated_at)}

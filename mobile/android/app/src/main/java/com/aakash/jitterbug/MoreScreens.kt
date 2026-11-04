@@ -98,7 +98,6 @@ fun SettingsScreen() {
     val boot = App.boot ?: return
     val ctx = LocalContext.current
     val sync = remember { Sync.state(ctx) }
-    fun web() = App.say("Set this on the web app; it reaches the phone with sync (Change 003).")
     Column(Modifier.fillMaxSize()) {
         TopBar("Settings", onBack = { App.back() })
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -107,19 +106,22 @@ fun SettingsScreen() {
                 ListRow("Areas", "${boot.areas.size} ${if (boot.areas.size == 1) "area" else "areas"}") { App.go("lookup", "kind" to "areas") }
                 Line(); ListRow("Statuses", boot.statuses.joinToString(", ") { it.name }) { App.go("lookup", "kind" to "statuses") }
                 Line(); ListRow("Priorities", boot.priorities.joinToString(", ") { it.name }) { App.go("lookup", "kind" to "priorities") }
-                Line(); ListRow("Task dates", "Start, end and due · on the web app") { web() }
-                Line(); ListRow("Snooze, complete details, card actions", "On the web app") { web() }
-                Line(); ListRow("Custom fields", "On the web app") { web() }
+                Line(); ListRow("Task dates", "Start, end and due") { App.go("taskdates") }
+                Line(); ListRow("Snooze", "Longest snooze") { App.go("snoozeset") }
+                Line(); ListRow("Complete details", "Fields an open task should have") { App.go("complete") }
+                Line(); ListRow("Card actions", "Buttons and menu on web cards") { App.go("cardactions") }
+                Line(); ListRow("Custom fields", "Extra fields on tasks and sessions") { App.go("fields") }
             }
             SectionTitle("Time and points")
             Card {
                 ListRow("Energy types", "Rates and colours for all ${boot.energyTypes.size}") { App.go("lookup", "kind" to "energy-types") }
                 Line(); ListRow("Subtypes", "${boot.subtypes.size} subtypes") { App.go("lookup", "kind" to "subtypes") }
-                Line(); ListRow("Reflection", "What the reflection charts and Drift read · on the web app") { web() }
+                Line(); ListRow("Reflection", "When weeks start") { App.go("reflection") }
             }
             SectionTitle("Connections")
             Card {
                 ListRow("Quick capture", "Parser and model") { App.go("llm") }
+                Line(); ListRow("Duplicate search", "Match tasks by meaning") { App.go("duplicates") }
                 Line(); ListRow("Sync server", sync.server ?: "Not set · everything stays on this phone") { App.go("sync") }
             }
             SectionTitle("Data")
@@ -147,6 +149,7 @@ fun LookupScreen(r: Route) {
     }
     var editing by remember { mutableStateOf<JSONObject?>(null) }
     var adding by remember { mutableStateOf(false) }
+    var moving by remember { mutableStateOf<Pair<JSONObject, String>?>(null) }
     val scope = rememberCoroutineScope()
     fun run(what: String, f: suspend () -> Unit) = scope.launch { attempt(what) { f(); App.reloadBoot(); App.changed() } }
 
@@ -200,11 +203,31 @@ fun LookupScreen(r: Route) {
             },
             dismissButton = {
                 Row {
-                    if (!o.optBoolean("is_builtin")) TextButton({ editing = null; run("Not deleted") { Api.del("/$kind/${o.getLong("id")}") } }) { T("Delete", Palette.red, 15.sp) }
+                    if (!o.optBoolean("is_builtin")) TextButton({
+                        editing = null
+                        scope.launch {
+                            try {
+                                Api.del("/$kind/${o.getLong("id")}")
+                                App.reloadBoot(); App.changed()
+                            } catch (e: ApiError) {
+                                // In use: ask where its tasks and sessions should move (as in Jira).
+                                val cur = e.body?.optJSONObject("current")
+                                if (e.status == 409 && cur != null) moving = o to (cur.optString("used_by").ifBlank { "${cur.optInt("task_count")} tasks" })
+                                else App.say("Not deleted: ${e.message}")
+                            }
+                        }
+                    }) { T("Delete", Palette.red, 15.sp) }
                     TextButton({ editing = null }) { T("Cancel", Palette.muted, 15.sp) }
                 }
             },
         )
+    }
+    moving?.let { (o, usedBy) ->
+        val others = rows.filter { it.getLong("id") != o.getLong("id") }.map { it.getLong("id") to it.optString("name") }
+        PickSheet("\"${o.optString("name")}\" is used by $usedBy. Move them to:", others, { moving = null }) { to ->
+            moving = null
+            run("Not deleted") { Api.del("/$kind/${o.getLong("id")}?reassign_to=$to") }
+        }
     }
     if (adding) {
         var name by remember { mutableStateOf("") }

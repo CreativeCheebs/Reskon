@@ -39,6 +39,10 @@ type SimilarTask struct {
 	Score     float64 `json:"score"`
 	Words     bool    `json:"words"`
 	Meaning   bool    `json:"meaning"`
+	// InDescription: the words matched the description, not the title.
+	InDescription bool `json:"in_description"`
+
+	description string
 }
 
 // SimilarResult is the matches plus how far meaning search has got:
@@ -63,7 +67,8 @@ const (
 	wordStrongMin   = 0.85
 	meaningMatchMin = 0.5
 	meaningAgreeMin = 0.35
-	embedInline     = 8 // missing vectors made during the request; more go to the background
+	embedInline     = 8   // missing vectors made during the request; more go to the background
+	descWeight      = 0.9 // a match in the description ranks just below the same match in a title
 )
 
 // indexing marks databases with a background run going.
@@ -77,12 +82,12 @@ func (d *DB) SimilarTasks(ctx context.Context, q string, m Embedder, limit int, 
 	if len([]rune(q)) < 3 {
 		return out, nil
 	}
-	rows, err := collect(ctx, d, `SELECT t.id, t.key, t.title, t.type, t.status_id, c.behaviour FROM task t
+	rows, err := collect(ctx, d, `SELECT t.id, t.key, t.title, t.type, t.status_id, c.behaviour, COALESCE(t.description, '') FROM task t
 		JOIN status s ON s.id = t.status_id JOIN status_category c ON c.id = s.category_id
 		WHERE t.deleted_at IS NULL AND t.id <> ?`,
 		func(r *sql.Rows) (*SimilarTask, error) {
 			s := &SimilarTask{}
-			return s, r.Scan(&s.ID, &s.Key, &s.Title, &s.Type, &s.StatusID, &s.Behaviour)
+			return s, r.Scan(&s.ID, &s.Key, &s.Title, &s.Type, &s.StatusID, &s.Behaviour, &s.description)
 		}, exclude)
 	if err != nil {
 		return nil, err
@@ -127,6 +132,14 @@ func (d *DB) SimilarTasks(ctx context.Context, q string, m Embedder, limit int, 
 	qw := wordsOf(q)
 	for _, t := range rows {
 		ws, exact := wordScore(qw, wordsOf(t.Title))
+		// The description counts too, scored on its own so a long one can't
+		// drown the title, and a little below a title match.
+		if t.description != "" {
+			if ds, dexact := wordScore(qw, wordsOf(t.description)); dexact && ds*descWeight > ws {
+				ws, exact = ds*descWeight, dexact
+				t.InDescription = true
+			}
+		}
 		t.Words = ws >= wordMatchMin && exact
 		score := ws
 		if v, ok := vecs[t.ID]; ok && qv != nil {

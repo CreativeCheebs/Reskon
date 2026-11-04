@@ -225,5 +225,7 @@ func (s *Server) deleteTask(w http.ResponseWriter, r *http.Request) {
 		respond(w, nil, err)
 		return
 	}
-	respond(w, map[string]bool{"ok": true}, dbOf(r.Context()).DeleteTask(r.Context(), id))
+	// ?subtasks=delete deletes its subtasks too; by default they stay as tasks.
+	withSubtasks := r.URL.Query().Get("subtasks") == "delete"
+	respond(w, map[string]bool{"ok": true}, dbOf(r.Context()).DeleteTaskWith(r.Context(), id, withSubtasks))
 }

@@ -34,6 +34,10 @@ func Open(path string) (*DB, error) {
 		sqldb.Close()
 		return nil, err
 	}
+	if err := customFieldIndexes(context.Background(), sqldb); err != nil {
+		sqldb.Close()
+		return nil, err
+	}
 	return &DB{sqldb}, nil
 }
 

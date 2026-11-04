@@ -9,7 +9,7 @@ import type { HookAPI } from "antd/es/modal/useModal";
 let msg: MessageInstance = staticMessage;
 // Until the bridge mounts (a split second at start-up) fall back to the
 // unthemed static versions.
-let modal: { confirm: (props: Parameters<HookAPI["confirm"]>[0]) => unknown } = { confirm: StaticModal.confirm };
+let modal: { confirm: (props: Parameters<HookAPI["confirm"]>[0]) => { destroy: () => void } } = { confirm: StaticModal.confirm };
 
 export const message: Pick<MessageInstance, "success" | "error" | "info" | "warning"> = {
   success: (...a) => msg.success(...a),
@@ -32,9 +32,8 @@ export async function autosave<T>(work: Promise<T>): Promise<T> {
   }
 }
 
-export const confirm = (props: Parameters<HookAPI["confirm"]>[0]) => {
-  modal.confirm(props);
-};
+// Returns a handle whose destroy() closes the dialog (for custom buttons).
+export const confirm = (props: Parameters<HookAPI["confirm"]>[0]) => modal.confirm(props);
 
 export function FeedbackBridge() {
   const app = App.useApp();

@@ -59,9 +59,14 @@ func parseFilter(raw []byte) (*ViewFilter, error) {
 // equality; an object may carry "gte" and/or "lte" bounds (for dates and
 // numbers); null means the key is unset.
 func customCondition(key string, raw json.RawMessage) (string, []any, error) {
-	path := fmt.Sprintf(`$."%s"`, key)
+	if !customKeyRe.MatchString(key) {
+		return "", nil, invalid("filter: custom %q is not a field key", key)
+	}
+	// The key is written into the SQL (it can only be letters, digits and
+	// _), so the query matches the field's index (customFieldIndexes).
+	expr := customExpr(key)
 	if isNull(raw) {
-		return `json_extract(custom, ?) IS NULL`, []any{path}, nil
+		return expr + ` IS NULL`, nil, nil
 	}
 	var bounds map[string]json.RawMessage
 	if json.Unmarshal(raw, &bounds) == nil {
@@ -76,8 +81,8 @@ func customCondition(key string, raw json.RawMessage) (string, []any, error) {
 			if err != nil {
 				return "", nil, invalid("filter: custom %s: %v", key, err)
 			}
-			conds = append(conds, `json_extract(custom, ?) `+sqlOp+` ?`)
-			args = append(args, path, v)
+			conds = append(conds, expr+` `+sqlOp+` ?`)
+			args = append(args, v)
 		}
 		if len(conds) == 0 {
 			return "1", nil, nil // an empty range constrains nothing
@@ -88,7 +93,7 @@ func customCondition(key string, raw json.RawMessage) (string, []any, error) {
 	if err != nil {
 		return "", nil, invalid("filter: custom %s: %v", key, err)
 	}
-	return `json_extract(custom, ?) = ?`, []any{path, v}, nil
+	return expr + ` = ?`, []any{v}, nil
 }
 
 // jsonScalar converts a JSON scalar to the value json_extract would return:
@@ -112,7 +117,7 @@ func jsonScalar(raw json.RawMessage) (any, error) {
 
 // ListTasks returns every non-deleted task with derived values.
 func (d *DB) ListTasks(ctx context.Context) ([]*Task, error) {
-	return d.queryTasks(ctx, &ViewFilter{}, "", time.Now())
+	return d.queryTasks(ctx, &ViewFilter{}, "", d.Now(ctx))
 }
 
 // ListTasksOfType returns every task of one type ("task" or "epic").
@@ -120,12 +125,12 @@ func (d *DB) ListTasksOfType(ctx context.Context, typ string) ([]*Task, error) {
 	if typ != "task" && typ != "epic" {
 		return nil, invalid("type must be task or epic")
 	}
-	return d.queryTasks(ctx, &ViewFilter{Types: []string{typ}}, "", time.Now())
+	return d.queryTasks(ctx, &ViewFilter{Types: []string{typ}}, "", d.Now(ctx))
 }
 
 // ListEpicTasks returns the tasks that belong to one epic.
 func (d *DB) ListEpicTasks(ctx context.Context, epicID int64) ([]*Task, error) {
-	return d.queryTasks(ctx, &ViewFilter{Epics: []int64{epicID}}, "", time.Now())
+	return d.queryTasks(ctx, &ViewFilter{Epics: []int64{epicID}}, "", d.Now(ctx))
 }
 
 // ListTasksForView resolves a view's filter server-side, narrowed by an
@@ -140,7 +145,7 @@ func (d *DB) ListTasksForView(ctx context.Context, viewID int64, search string) 
 		return nil, err
 	}
 	f.hideSubtasks = !f.Subtasks
-	return d.queryTasks(ctx, f, search, time.Now())
+	return d.queryTasks(ctx, f, search, d.Now(ctx))
 }
 
 func (d *DB) queryTasks(ctx context.Context, f *ViewFilter, search string, now time.Time) ([]*Task, error) {

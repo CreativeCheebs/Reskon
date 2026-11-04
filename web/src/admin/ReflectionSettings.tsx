@@ -1,4 +1,4 @@
-import { Form, InputNumber, Select } from "antd";
+import { Form, Select } from "antd";
 import { autosave } from "../theme/feedback";
 import { useApp } from "../store";
 
@@ -19,27 +19,8 @@ export function ReflectionSettings() {
           options={DAYS.map((d, i) => ({ value: i + 1, label: d }))}
         />
       </Form.Item>
-      <Form.Item label="Drift counts" extra="The energy types whose hours Drift adds up for a day. Any type can be in or out.">
-        <Select
-          mode="multiple"
-          placeholder="None"
-          value={(Array.isArray(boot.settings.drift_energy_types) ? (boot.settings.drift_energy_types as number[]) : []).filter((id) =>
-            boot.energy_types.some((e) => e.id === id),
-          )}
-          onChange={(v: number[]) => save("drift_energy_types", v)}
-          options={boot.energy_types.map((e) => ({ value: e.id, label: e.name }))}
-        />
-      </Form.Item>
-      <Form.Item label="Low day, for Drift" extra="A day with fewer hours than this, across the types above, counts towards the Drift widget's run.">
-        <InputNumber
-          min={0}
-          max={24}
-          step={0.5}
-          addonAfter="hours"
-          value={Number(boot.settings.drift_low_hours ?? 1)}
-          onChange={(v) => v !== null && save("drift_low_hours", v)}
-        />
-      </Form.Item>
+      {/* Drift's settings (drift_energy_types, drift_low_hours) are hidden
+          until Drift is designed in the next phase; the stored values stay. */}
     </Form>
   );
 }

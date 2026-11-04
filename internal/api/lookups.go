@@ -11,8 +11,10 @@ func (s *Server) lookupRoutes() {
 	s.crud("areas", crudOps{
 		create: func(ctx context.Context, f db.Fields) (any, error) { return dbOf(ctx).CreateArea(ctx, f) },
 		patch:  func(ctx context.Context, id int64, f db.Fields) (any, error) { return dbOf(ctx).PatchArea(ctx, id, f) },
-		delete: func(ctx context.Context, id int64, r *http.Request) error { return dbOf(ctx).DeleteArea(ctx, id) },
-		list:   func(ctx context.Context, r *http.Request) (any, error) { return dbOf(ctx).ListAreas(ctx) },
+		delete: func(ctx context.Context, id int64, r *http.Request) error {
+			return reassignDelete(ctx, r, id, dbOf(ctx).DeleteArea)
+		},
+		list: func(ctx context.Context, r *http.Request) (any, error) { return dbOf(ctx).ListAreas(ctx) },
 	})
 	s.crud("statuses", crudOps{
 		create: func(ctx context.Context, f db.Fields) (any, error) { return dbOf(ctx).CreateStatus(ctx, f) },
@@ -64,16 +66,20 @@ func (s *Server) lookupRoutes() {
 		patch: func(ctx context.Context, id int64, f db.Fields) (any, error) {
 			return dbOf(ctx).PatchEnergyType(ctx, id, f)
 		},
-		delete: func(ctx context.Context, id int64, r *http.Request) error { return dbOf(ctx).DeleteEnergyType(ctx, id) },
-		list:   func(ctx context.Context, r *http.Request) (any, error) { return dbOf(ctx).ListEnergyTypes(ctx) },
+		delete: func(ctx context.Context, id int64, r *http.Request) error {
+			return reassignDelete(ctx, r, id, dbOf(ctx).DeleteEnergyType)
+		},
+		list: func(ctx context.Context, r *http.Request) (any, error) { return dbOf(ctx).ListEnergyTypes(ctx) },
 	})
 	s.crud("subtypes", crudOps{
 		create: func(ctx context.Context, f db.Fields) (any, error) { return dbOf(ctx).CreateSubtype(ctx, f) },
 		patch: func(ctx context.Context, id int64, f db.Fields) (any, error) {
 			return dbOf(ctx).PatchSubtype(ctx, id, f)
 		},
-		delete: func(ctx context.Context, id int64, r *http.Request) error { return dbOf(ctx).DeleteSubtype(ctx, id) },
-		list:   func(ctx context.Context, r *http.Request) (any, error) { return dbOf(ctx).ListSubtypes(ctx) },
+		delete: func(ctx context.Context, id int64, r *http.Request) error {
+			return reassignDelete(ctx, r, id, dbOf(ctx).DeleteSubtype)
+		},
+		list: func(ctx context.Context, r *http.Request) (any, error) { return dbOf(ctx).ListSubtypes(ctx) },
 	})
 	s.crud("custom-fields", crudOps{
 		create: func(ctx context.Context, f db.Fields) (any, error) { return dbOf(ctx).CreateCustomField(ctx, f) },
@@ -139,4 +145,17 @@ func (s *Server) crud(name string, ops crudOps) {
 		}
 		respond(w, map[string]bool{"ok": true}, ops.delete(r.Context(), id, r))
 	})
+}
+
+// reassignDelete passes ?reassign_to=N, if given, to a delete that moves
+// what uses the row first (see internal/db/reassign.go).
+func reassignDelete(ctx context.Context, r *http.Request, id int64, del func(context.Context, int64, *int64) error) error {
+	to, ok, err := queryID(r, "reassign_to")
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return del(ctx, id, nil)
+	}
+	return del(ctx, id, &to)
 }

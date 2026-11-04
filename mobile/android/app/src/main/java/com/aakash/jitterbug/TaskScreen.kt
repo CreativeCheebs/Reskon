@@ -104,13 +104,16 @@ fun TaskScreen(r: Route) {
 
             // Progress, all from the server: logged, estimate, remaining, pace.
             if (t.num("estimate_h") != null) Card(pad = 16.dp) {
+                // Over the estimate, the bar turns red and says by how much.
+                val over = (t.num("remaining_h") ?: 0.0) < 0
                 Row {
                     T("${hm(t.optDouble("logged_h"))} of ${hm(t.num("estimate_h"))}", Palette.fg, 15.sp, FontWeight.SemiBold, Modifier.weight(1f))
-                    T("${hm(t.num("remaining_h"))} left", Palette.muted, 14.sp)
+                    if (over) T("${hm(-(t.num("remaining_h") ?: 0.0))} over (${Math.round(t.num("progress_pct") ?: 0.0)}%)", Palette.red, 14.sp, FontWeight.SemiBold)
+                    else T("${hm(t.num("remaining_h"))} left", Palette.muted, 14.sp)
                 }
                 Gap(8)
                 BoxWithConstraints(Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)).background(Palette.dim)) {
-                    Box(Modifier.width(maxWidth * ((t.num("progress_pct") ?: 0.0) / 100).toFloat().coerceIn(0f, 1f)).fillMaxHeight().background(Palette.accent))
+                    Box(Modifier.width(maxWidth * ((t.num("progress_pct") ?: 0.0) / 100).toFloat().coerceIn(0f, 1f)).fillMaxHeight().background(if (over) Palette.red else Palette.accent))
                 }
                 t.str("due_at")?.let { due ->
                     Gap(8)
@@ -141,6 +144,8 @@ fun TaskScreen(r: Route) {
 
             T(t.str("description") ?: "+ Add a description", if (t.str("description") == null) Palette.accent else Palette.fg, 15.sp,
                 modifier = Modifier.clickable { editText = "description" to (t.str("description") ?: "") })
+
+            TaskCustomFields(t) { change(it) }
 
             if (t.optString("type") != "epic") {
                 SectionTitle("Subtasks · ${t.optInt("subtask_done")} of ${t.optInt("subtask_count")}")
@@ -188,6 +193,7 @@ fun TaskScreen(r: Route) {
                 listOf(
                     "Points" to num(t.num("points")),
                     "Logged" to hrs(t.optDouble("logged_h")),
+                    *(if (t.optInt("subtask_count") > 0) arrayOf("With subtasks" to hrs(t.optDouble("logged_total_h"))) else emptyArray()),
                     "First started" to (t.str("first_started_at")?.let { shortDate(it) } ?: "–"),
                     "Created" to "${age(t.num("created_age_h"))} ago",
                     "Started age" to age(t.num("started_age_h")),
@@ -284,18 +290,34 @@ fun TaskScreen(r: Route) {
             dismissButton = { TextButton({ editText = null }) { T("Cancel", Palette.muted, 15.sp) } },
         )
     }
-    if (confirmDelete) AlertDialog(
-        onDismissRequest = { confirmDelete = false }, containerColor = Palette.raised,
-        title = { T("Delete this task?", Palette.fg, 18.sp, FontWeight.SemiBold) },
-        text = { T("Its sessions stay, without a task.", Palette.muted, 14.sp) },
-        confirmButton = {
-            TextButton({
-                confirmDelete = false
-                scope.launch { attempt("Not deleted") { Api.del("/tasks/$id"); App.changed(); App.back(); App.say("Task deleted") } }
-            }) { T("Delete", Palette.red, 15.sp, FontWeight.SemiBold) }
-        },
-        dismissButton = { TextButton({ confirmDelete = false }) { T("Cancel", Palette.muted, 15.sp) } },
-    )
+    if (confirmDelete) {
+        val subs = t.optInt("subtask_count")
+        fun delete(withSubtasks: Boolean) {
+            confirmDelete = false
+            scope.launch {
+                attempt("Not deleted") {
+                    Api.del("/tasks/$id" + if (withSubtasks) "?subtasks=delete" else "")
+                    App.changed(); App.back(); App.say("Task deleted")
+                }
+            }
+        }
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false }, containerColor = Palette.raised,
+            title = { T("Delete this task?", Palette.fg, 18.sp, FontWeight.SemiBold) },
+            text = {
+                T(if (subs == 0) "Its sessions stay, without a task."
+                  else "It has $subs ${if (subs == 1) "subtask" else "subtasks"}. Delete ${if (subs == 1) "it" else "them"} too, or keep ${if (subs == 1) "it as a normal task" else "them as normal tasks"}? Sessions stay either way.",
+                  Palette.muted, 14.sp)
+            },
+            confirmButton = {
+                Column(horizontalAlignment = Alignment.End) {
+                    if (subs > 0) TextButton({ delete(true) }) { T("Delete with subtasks", Palette.red, 15.sp, FontWeight.SemiBold) }
+                    TextButton({ delete(false) }) { T(if (subs > 0) "Delete, keep subtasks" else "Delete", if (subs > 0) Palette.fg else Palette.red, 15.sp, FontWeight.SemiBold) }
+                }
+            },
+            dismissButton = { TextButton({ confirmDelete = false }) { T("Cancel", Palette.muted, 15.sp) } },
+        )
+    }
 }
 
 /** New task: POST /api/tasks. Opened from the board's + button. */

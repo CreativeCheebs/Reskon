@@ -104,7 +104,7 @@ const GROUPS: { label: string; sections: Section[] }[] = [
         intro: "Each subtype belongs to one energy type. The rank weights set how much a session's 1st to 4th subtype count.",
         render: () => <SubtypeSettings />,
       },
-      { key: "reflection", label: "Reflection", intro: "What the reflection charts and the Drift widget read.", render: () => <ReflectionSettings /> },
+      { key: "reflection", label: "Reflection", intro: "How the reflection charts group weeks.", render: () => <ReflectionSettings /> },
     ],
   },
   {

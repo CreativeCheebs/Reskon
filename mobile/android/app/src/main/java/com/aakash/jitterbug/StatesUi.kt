@@ -20,10 +20,22 @@ fun severityName(sev: Double, kind: String): String {
     return steps[Math.round(sev * 2).toInt().coerceIn(0, steps.size - 1)].lowercase()
 }
 
-fun kindColor(kind: String): Color = when (kind) {
-    "buff" -> Palette.green
-    "modifier" -> Palette.accent
-    else -> Palette.purple
+/** The kind's colour at full strength, for pickers. */
+fun kindColor(kind: String): Color = severityColor(kind, 5.0)
+
+/**
+ * Colour by kind and strength, as the web app: a debuff is a warning,
+ * yellow when mild and red when severe; a buff goes from blue (mild) to
+ * green (strong); a modifier stays the accent blue.
+ */
+fun severityColor(kind: String, severity: Double): Color {
+    val t = (severity / 5).coerceIn(0.0, 1.0).toFloat()
+    fun mix(a: Color, b: Color) = Color(a.red + (b.red - a.red) * t, a.green + (b.green - a.green) * t, a.blue + (b.blue - a.blue) * t)
+    return when (kind) {
+        "debuff" -> mix(Palette.yellow, Palette.red)
+        "buff" -> mix(Palette.accent, Palette.green)
+        else -> Palette.accent
+    }
 }
 
 /** "2.5 (from 3)" when decay has moved it, else "3". Display only. */
@@ -42,7 +54,7 @@ fun stateDetail(s: JSONObject): String {
 /** A ring in the kind's colour, filled clockwise by severity out of 5. */
 @Composable
 fun SeverityRing(kind: String, severity: Double, size: Int = 16) {
-    val c = kindColor(kind)
+    val c = severityColor(kind, severity)
     Canvas(Modifier.size(size.dp)) {
         val w = this.size.width
         drawCircle(c, radius = w * 7 / 16, style = Stroke(w * 1.5f / 16))

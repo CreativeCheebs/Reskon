@@ -8,7 +8,7 @@ import { useApp } from "../store";
 import { WriteButton } from "../offline";
 import { palette } from "../theme/palette";
 import { severityText, type StateRow } from "../day/types";
-import { KIND_COLOR, SeverityIcon, severityBand } from "./severity";
+import { severityColor, SeverityIcon, severityBand } from "./severity";
 import { STATES_CHANGED } from "./InForceBar";
 import { DecaySketch } from "./DecaySketch";
 import { StateForm } from "./StateForm";
@@ -88,7 +88,7 @@ export function StatesScreen() {
             key: "kind",
             title: "Kind",
             width: 90,
-            render: (_, s) => <Tag bordered={false} style={{ color: KIND_COLOR[s.kind](), background: `${KIND_COLOR[s.kind]()}22` }}>{s.kind}</Tag>,
+            render: (_, s) => <Tag bordered={false} style={{ color: severityColor(s.kind, s.effective_severity), background: `${severityColor(s.kind, s.effective_severity)}22` }}>{s.kind}</Tag>,
           },
           {
             key: "sev",
@@ -124,7 +124,7 @@ export function StatesScreen() {
             width: 130,
             render: (_, s) => (
               <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <DecaySketch points={shapes[s.decay]} width={44} height={16} color={KIND_COLOR[s.kind]()} />
+                <DecaySketch points={shapes[s.decay]} width={44} height={16} color={severityColor(s.kind, s.effective_severity)} />
                 <span style={{ color: palette.muted }}>{s.decay}</span>
               </span>
             ),

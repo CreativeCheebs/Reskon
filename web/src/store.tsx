@@ -38,6 +38,10 @@ export function AppProvider({ children, fallback }: { children: ReactNode; fallb
     const b = await api.get<Bootstrap>("/bootstrap");
     setBoot(b);
     setReloadKey((k) => k + 1);
+    // The server works out "today" (due dates, snoozes, charts) in your own
+    // time zone; tell it which one this browser is in.
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (zone && b.settings.time_zone !== zone) api.put("/settings/time_zone", zone).catch(() => undefined);
   }, []);
 
   useEffect(() => {

@@ -28,7 +28,12 @@ var syncTables = []syncTable{
 	{name: "priority"},
 	{name: "status", refs: map[string]string{"category_id": "status_category"}},
 	{name: "area", refs: map[string]string{"default_energy_type_id": "energy_type"}},
-	{name: "custom_field", uidSQL: `'cf-' || NEW.entity || '-' || NEW.key`},
+	// A custom field's entity and key are its uid, so two devices adding the
+	// same field get one record; a key used again after a delete gets a
+	// fresh uid, since the old one is a tombstone.
+	{name: "custom_field", uidSQL: `CASE WHEN EXISTS (SELECT 1 FROM sync_idmap WHERE tbl = 'custom_field'
+		AND uid = 'cf-' || NEW.entity || '-' || NEW.key) THEN lower(hex(randomblob(16)))
+		ELSE 'cf-' || NEW.entity || '-' || NEW.key END`},
 	{name: "view"},
 	{name: "dashboard"},
 	{name: "widget", refs: map[string]string{"dashboard_id": "dashboard"}},
