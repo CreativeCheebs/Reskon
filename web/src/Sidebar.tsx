@@ -132,7 +132,7 @@ export function Sidebar(props: {
       <Button
         size="small"
         type="text"
-        className="jb-nav-fold"
+        className="jb-nav-fold jb-hit"
         aria-label={rail ? "Expand sidebar" : "Collapse sidebar"}
         icon={rail ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
         onClick={() => fold(!folded)}
@@ -188,7 +188,7 @@ export function Sidebar(props: {
           </span>
         )}
         <Tooltip title={rail ? "Sign out" : undefined} placement="right">
-          <Button size="small" type="text" className="jb-nav-signout" aria-label="Sign out" icon={rail ? <LogoutOutlined /> : undefined} onClick={props.onSignOut}>
+          <Button size="small" type="text" className="jb-nav-signout jb-hit" aria-label="Sign out" icon={rail ? <LogoutOutlined /> : undefined} onClick={props.onSignOut}>
             {rail ? null : "Sign out"}
           </Button>
         </Tooltip>

@@ -198,7 +198,7 @@ export function ViewScreen({ view }: { view: View }) {
                 allowClear
                 prefix={<SearchOutlined />}
                 suffix={similar.loading ? <LoadingDots /> : <span />}
-                placeholder="Search title, key, description"
+                placeholder="Filter this view: title, key, description"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 onFocus={() => setSearchFocus(true)}
@@ -398,9 +398,12 @@ export function ViewScreen({ view }: { view: View }) {
 
 /** A status kept off the board (Backlog, Cancelled ...) with its count;
  *  quieter than the toolbar, opens the status as an overlay. */
+// An outlined button, so it reads as something to click; none at zero,
+// since an empty list has nothing to open.
 function HiddenStatusButton({ name, count, onClick }: { name: string; count: number; onClick: () => void }) {
+  if (count === 0) return null;
   return (
-    <Button size="small" type="text" onClick={onClick} aria-label={`${name}: ${count} tasks`} style={{ color: palette.muted, paddingInline: 8, gap: 6 }}>
+    <Button size="small" onClick={onClick} aria-label={`${name}: ${count} tasks`} style={{ color: palette.muted, paddingInline: 8, gap: 6 }}>
       {name}
       <span
         style={{

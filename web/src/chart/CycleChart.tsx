@@ -244,7 +244,7 @@ function RowTip({ row, unit, colors }: { row: CycleRow; unit: Unit; colors: Map<
   return (
     <div style={{ fontSize: 12 }}>
       <div style={{ fontWeight: 600, marginBottom: 2 }}>{row.title}</div>
-      <div style={{ opacity: 0.75, marginBottom: 6 }}>
+      <div style={{ color: palette.muted, marginBottom: 6 }}>
         {formatSpan(row.total_h, unit)} since {formatDateTime(row.segments[0]?.from)}
         {now && ` · now ${statusById.get(now.status_id)?.name ?? "deleted status"}`}
       </div>
@@ -254,12 +254,12 @@ function RowTip({ row, unit, colors }: { row: CycleRow; unit: Unit; colors: Map<
             <Swatch color={colors.get(id) ?? palette.borderStrong} />
             <span>{statusById.get(id)?.name ?? "deleted status"}</span>
             <span style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{formatSpan(row.status_hours[id] ?? 0, unit)}</span>
-            <span style={{ textAlign: "right", opacity: 0.6, fontVariantNumeric: "tabular-nums" }}>{pct(row.status_hours[id] ?? 0, row.total_h)}</span>
+            <span style={{ textAlign: "right", color: palette.muted, fontVariantNumeric: "tabular-nums" }}>{pct(row.status_hours[id] ?? 0, row.total_h)}</span>
           </Fragment>
         ))}
       </div>
       {row.segments.length > 1 && (
-        <div style={{ opacity: 0.6, marginTop: 6 }}>
+        <div style={{ color: palette.muted, marginTop: 6 }}>
           {row.segments.length - 1} status {row.segments.length === 2 ? "change" : "changes"} · click for the full history
         </div>
       )}

@@ -119,7 +119,7 @@ export function Column(props: Props) {
         maxHeight: inLane ? undefined : "100%",
       }}
     >
-      <div style={{ padding: "7px 6px 7px 12px", display: "flex", alignItems: "center", gap: 8, minHeight: 38, boxSizing: "border-box" }}>
+      <div style={{ padding: "3px 4px 3px 12px", display: "flex", alignItems: "center", gap: 8, minHeight: 38, boxSizing: "border-box" }}>
         {dot}
         <span
           style={{
@@ -157,7 +157,7 @@ export function Column(props: Props) {
         <span style={{ flex: 1 }} />
         <ColumnLimitControl statusName={status.name} limit={limit?.limit} use={limit?.use ?? 0} disabled={disabled} onChange={onSetLimit} />
         <Tooltip title="Collapse column" mouseEnterDelay={0.5}>
-          <Button size="small" type="text" onClick={onToggleCollapse} aria-label={`Collapse ${status.name}`} style={{ color: palette.muted }}>
+          <Button size="small" type="text" className="jb-hit" onClick={onToggleCollapse} aria-label={`Collapse ${status.name}`} style={{ color: palette.muted }}>
             ⇤
           </Button>
         </Tooltip>

@@ -55,7 +55,7 @@ export function CaptureButton() {
           // An icon, not a "+" character: a glyph sits on the text baseline,
           // off centre; the icon is centred in the circle both ways.
           icon={<PlusOutlined style={{ fontSize: 14 }} />}
-          style={{ width: 28, height: 28, minWidth: 28, padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", opacity: online ? 1 : 0.5 }}
+          style={{ width: 32, height: 32, minWidth: 32, padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", opacity: online ? 1 : 0.5 }}
           onClick={() => {
             if (!online) return;
             early.current = "";

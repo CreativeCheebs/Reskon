@@ -7,7 +7,7 @@ import { DIFFICULTY_LABELS, type CardConfig, type Task } from "../types";
 import { TypeIcon } from "../task/TypeIcon";
 import { DifficultyIcon, PriorityIcon, priorityColor } from "../task/LevelIcons";
 import { useEpics } from "../task/useEpics";
-import { TimeBar } from "../task/TimeBar";
+import { paceChip, TimeBar } from "../task/TimeBar";
 
 // A board card, title first. Under it: labels (epic, area ...), then the
 // signals as tinted chips (priority, intensity, time in status, due), then
@@ -75,7 +75,7 @@ export function TaskCard({
         icon={<DifficultyIcon level={task.difficulty} size={12} tip={false} />}
         tip={`Intensity ${task.difficulty} of 5 · ${DIFFICULTY_LABELS[task.difficulty]}`}
       >
-        {task.difficulty}
+        {DIFFICULTY_LABELS[task.difficulty]}
       </Chip>,
     );
   if (task.type === "epic" && task.epic_tasks)
@@ -93,7 +93,7 @@ export function TaskCard({
   if (task.subtask_count > 0)
     chips.push(
       <Chip key="subtasks" tip="Subtasks done">
-        ☑ {task.subtask_done}/{task.subtask_count}
+        {task.subtask_done}/{task.subtask_count} subtasks
       </Chip>,
     );
   if (show.time_in_status)
@@ -117,6 +117,9 @@ export function TaskCard({
   const details: React.ReactNode[] = [];
   // The time bar already says both, so neither is repeated beside it.
   const bar = show.progress_bar && task.progress_pct !== null;
+  // The pace rides in the chip row rather than as a line under the bar.
+  const pace = bar && show.pace ? paceChip(task) : null;
+  if (pace) chips.push(pace);
   if (show.estimate && task.estimate_h !== null && !bar) details.push(<span key="est" title="Estimate">{formatHours(task.estimate_h)} est.</span>);
   if (show.logged && task.logged_h > 0 && !bar) details.push(<span key="logged" title="Logged">⏱ {formatHours(task.logged_h)}</span>);
   if (show.created_age) details.push(<span key="cage" title="Created age">created {formatAge(task.created_age_h)}</span>);
@@ -167,9 +170,9 @@ export function TaskCard({
       {labels.length > 0 && <div style={row}>{labels}</div>}
       {chips.length > 0 && <div style={row}>{chips}</div>}
       {details.length > 0 && (
-        <div style={{ ...row, gap: "2px 10px", fontSize: 11, lineHeight: "16px", color: palette.subtle, whiteSpace: "nowrap" }}>{details}</div>
+        <div style={{ ...row, gap: "2px 10px", fontSize: 12, lineHeight: "17px", color: palette.subtle, whiteSpace: "nowrap" }}>{details}</div>
       )}
-      {bar && <TimeBar task={task} pace={show.pace} />}
+      {bar && <TimeBar task={task} pace={false} />}
       {rail}
     </div>
   );

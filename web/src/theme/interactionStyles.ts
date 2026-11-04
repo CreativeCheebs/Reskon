@@ -40,7 +40,7 @@ export function interactionCss(): string {
       opacity: 1; visibility: visible; transition: opacity .12s ease;
     }
     .jb-rail-btn {
-      width: 26px; height: 26px; padding: 0; box-sizing: border-box;
+      width: 32px; height: 32px; padding: 0; box-sizing: border-box;
       display: inline-flex; align-items: center; justify-content: center;
       border-radius: 6px; border: 1px solid ${blend(palette.borderStrong, palette.panel, 0.7)};
       background: ${blend(palette.overlay, palette.hover, 0.5)}; color: ${palette.muted};
@@ -184,6 +184,9 @@ export function interactionCss(): string {
     .jb-sider-top { display: flex; align-items: center; gap: 6px; padding: 12px 10px 10px 20px; min-height: 52px; box-sizing: border-box; }
     .jb-sider-top-rail { flex-direction: column; gap: 8px; padding: 12px 0 10px; }
     .jb-sider-name { flex: 1; min-width: 0; font-weight: 700; font-size: 15px; letter-spacing: .2px; color: ${palette.fg}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    /* Small icon buttons get a click area of at least 32 x 32 px, even
+       where the glyph inside is tiny. */
+    .jb-hit.ant-btn { min-width: 32px; min-height: 32px; }
     .jb-nav-fold.ant-btn { color: ${palette.subtle}; }
     .jb-nav-fold.ant-btn:not(:disabled):hover { color: ${palette.fg}; background: ${blend(palette.fg, palette.panel, 0.06)}; }
     .jb-sider .ant-menu-item-group-title { padding: 14px 16px 6px 20px !important; line-height: 16px; }

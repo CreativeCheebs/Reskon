@@ -76,6 +76,22 @@ const HEX = /^#[0-9a-fA-F]{6}$/;
  *  file can never inject anything else into styles. */
 export function applyPalette(colors: Palette) {
   for (const k of PALETTE_KEYS) palette[k] = HEX.test(colors[k]) ? colors[k] : DEFAULT_COLORS[k];
+  // Secondary text (muted, subtle) must stay readable (WCAG AA, 4.5:1) on
+  // every surface it sits on, whatever the theme says. A too-dim colour is
+  // moved toward the main text colour just far enough; a passing one is
+  // left exactly as the theme has it.
+  const surfaces = [palette.bg, palette.panel, palette.panelDim, palette.overlay, palette.hover];
+  for (const k of ["muted", "subtle"] as const) palette[k] = readableOnAll(palette[k], palette.fg, surfaces);
+}
+
+/** color, blended toward `toward` only as far as needed to reach `min`
+ *  contrast on every surface. If even `toward` falls short, `toward`. */
+function readableOnAll(color: string, toward: string, surfaces: string[], min = 4.5): string {
+  for (let step = 0; step <= 20; step++) {
+    const c = blend(toward, color, step / 20);
+    if (surfaces.every((s) => contrast(c, s) >= min)) return c;
+  }
+  return toward;
 }
 
 

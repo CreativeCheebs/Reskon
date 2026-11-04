@@ -59,7 +59,7 @@ export function DoneWindow({ view, disabled }: { view: View; disabled: boolean }
         </div>
       }
     >
-      <Button size="small" type="text" block disabled={disabled} style={{ color: palette.subtle, fontSize: 11, height: 22 }}>
+      <Button size="small" type="text" block disabled={disabled} style={{ color: palette.subtle, fontSize: 12, height: 24 }}>
         {days === null ? "Finished tasks stay shown" : days === 0 ? "Finished tasks are hidden" : `Hidden ${days} day${days === 1 ? "" : "s"} after done`}
       </Button>
     </Popover>

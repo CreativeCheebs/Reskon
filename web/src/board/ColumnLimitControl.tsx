@@ -118,26 +118,32 @@ export function ColumnLimitControl({
           title={`${formatLimit(use, limit.unit)} of ${formatLimit(limit.max, limit.unit)} · ${limit.hard ? "asks before going over" : "soft limit"}. Click to change.`}
           mouseEnterDelay={0.4}
         >
+          {/* The pill stays small; the button around it is the 32px click area. */}
           <Button
             size="small"
             type="text"
+            className="jb-hit"
             aria-label={`${statusName} limit: ${formatLimit(use, limit.unit)} of ${formatLimit(limit.max, limit.unit)}`}
-            style={{
-              fontSize: 11,
-              height: 18,
-              padding: "0 5px",
-              borderRadius: 3,
-              color: over || full ? palette.bg : color,
-              background: over || full ? color : "transparent",
-              border: `1px solid ${over || full ? color : palette.border}`,
-            }}
+            style={{ padding: "0 4px" }}
           >
-            {formatLimit(use, limit.unit).replace(" pts", "")}/{formatLimit(limit.max, limit.unit)}
+            <span
+              style={{
+                fontSize: 11,
+                lineHeight: "16px",
+                padding: "0 5px",
+                borderRadius: 3,
+                color: over || full ? palette.bg : color,
+                background: over || full ? color : "transparent",
+                border: `1px solid ${over || full ? color : palette.border}`,
+              }}
+            >
+              {formatLimit(use, limit.unit).replace(" pts", "")}/{formatLimit(limit.max, limit.unit)}
+            </span>
           </Button>
         </Tooltip>
       ) : (
         <Tooltip title="Set a limit for this column" mouseEnterDelay={0.5}>
-          <Button size="small" type="text" disabled={disabled} aria-label={`Set a limit for ${statusName}`} style={{ color: palette.subtle, padding: "0 4px" }}>
+          <Button size="small" type="text" disabled={disabled} className="jb-hit" aria-label={`Set a limit for ${statusName}`} style={{ color: palette.subtle, padding: "0 4px" }}>
             ≤
           </Button>
         </Tooltip>

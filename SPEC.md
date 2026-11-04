@@ -80,7 +80,7 @@ Every task gets a key when it is created, made of its area's prefix and a number
 
 - Seeded statuses: **Backlog**, **To do**, **In progress**, **Done**, **Cancelled**. All five are built in: they can be renamed and recoloured, but not deleted.
 - Each status has a colour, a position and a behaviour (*to do*, *in progress*, *done*, *cancelled*). You can add your own statuses.
-- A status can be **hidden from the board** (Backlog and Cancelled are). Hidden statuses open from small buttons next to the search box, as a list over the board. Taking a task out of the backlog puts it in the first visible *to do* status.
+- A status can be **hidden from the board** (Backlog and Cancelled are). Hidden statuses open from small buttons next to the search box, as a list over the board. These buttons (and Snoozed, Blocked, Incomplete) show only when they have at least one task. Taking a task out of the backlog puts it in the first visible *to do* status.
 - A status can have **"alert after N days"**: a task that has sat in it longer is marked as stalled (a red edge on its card). Empty means never.
 
 ### 4.4 Moving a task
@@ -109,13 +109,13 @@ These are never stored. They are worked out every time a task is read, from the 
 - **Start date** and **end date** are stored dates you can set by hand. A move can fill them in (Settings › Task dates): by default, moving into *in progress* fills an empty start date, and moving into *done* or *cancelled* fills an empty end date. Moving back to *to do* or *in progress* clears an end date the rules filled in. Each rule can be turned off or set to other statuses.
 - Tasks that were already in progress before start dates existed got the date they first moved into progress.
 - **Due date**: set by hand.
-- From the due date the app works out **days to due** (0 = today, negative = overdue) and **pace**: the hours a day you need to finish in time ("about 2h 15m a day to finish by Tue"). Pace is empty once the task is finished.
+- From the due date the app works out **days to due** (0 = today, negative = overdue) and **pace**: the hours a day you need to finish in time ("about 2h 15m a day to finish by Tue"). Pace is empty once the task is finished. On board cards the pace is a small chip beside the other chips ("≈ 2h 15m/day by Tue", or "3h to do today" in amber), so it never adds a line and cards keep an even rhythm; an overdue card shows only its "Overdue" chip. The task panel and tables keep it as a line under the time bar.
 
 ### 4.7 Estimate and progress
 
 - **Estimate** is the hours you expect the task to take.
 - **Logged** is the hours of all sessions on the task.
-- **Progress** = logged ÷ estimate. It can go past 100%. When you've logged more than estimated, the bar turns red and says by how much ("2h over (120%)").
+- **Progress** = logged ÷ estimate. It can go past 100%. When you've logged more than estimated, the bar turns red, a warning sign appears, and it says by how much in red ("⚠ 6h / 2h · +4h over"). The tooltip adds the percentage ("300% of the estimate"). A done task that stayed within its estimate shows a full green bar and how much under it came in ("2h / 4h · done, 2h under"); a cancelled one shows a full grey bar.
 - **Remaining** = estimate − logged. It goes negative once you're over.
 - A task with subtasks shows its own logged hours and, below, **the total including its subtasks**.
 
@@ -135,7 +135,7 @@ These are never stored. They are worked out every time a task is read, from the 
 
 - Three levels, like Jira: epic → task → subtask. A subtask is a full task (own key, status, sessions) with a parent. A subtask can't have subtasks. An epic can't be a subtask.
 - **A subtask has no epic of its own.** It belongs to its parent's epic, and its hours count in that epic's total.
-- Views leave subtasks out unless the filter's "Subtasks as cards" is on. The parent's card shows ☑ done/total, and its panel lists them as a checklist. Ticking moves a subtask to the first *done* status; unticking moves it to the first *to do* status.
+- Views leave subtasks out unless the filter's "Subtasks as cards" is on. The parent's card shows "2/5 subtasks" (done of total), and its panel lists them as a checklist. Ticking moves a subtask to the first *done* status; unticking moves it to the first *to do* status.
 - **Deleting a task with subtasks asks** whether to delete the subtasks too, or keep them as normal tasks.
 
 ### 4.11 Dependencies
@@ -178,7 +178,7 @@ A **view** is a saved way of looking at tasks: a filter, card settings, a layout
 
 ### 5.2 Card settings: what a card shows
 
-Per view: area, created age, started age, time in status, intensity, priority, energy type, subtypes (of sessions logged on the task), estimate, time bar with pace, due, start, end, epic, logged time, and chosen custom fields. Density: compact or comfortable. Lists can show priority and intensity as symbols only. Board cards never show the status (the column already does). Changing these changes that view only.
+Per view: area, created age, started age, time in status, intensity, priority, energy type, subtypes (of sessions logged on the task), estimate, time bar with pace, due, start, end, epic, logged time, and chosen custom fields. Density: compact or comfortable. Lists can show priority and intensity as symbols only. Board cards never show the status (the column already does). A task's symbol is a blue page and an epic's a purple bolt; neither is a tick-box, so nothing on a card looks done unless it is. Changing these changes that view only.
 
 ### 5.3 Board
 
@@ -187,7 +187,7 @@ Per view: area, created age, started age, time in status, intensity, priority, e
 - **Sorting**: manual (default), priority, due, intensity, estimate, time in status, newest, oldest. While sorted, you can still move cards between columns.
 - **Collapsed columns** are shared by every lane and still accept drops.
 - **Column limits** per status: a maximum in tasks, points or estimate hours. A soft limit colours the header. A hard limit asks "Move anyway?" before a drag takes the column over. Limits are stored with the view and sync.
-- Cards show priority, intensity, time in status and due date as small chips with text. A coloured edge marks stalled (red) or overdue (amber) cards.
+- Cards show priority, intensity, time in status and due date as small chips with text (the intensity chip says its name, such as "Intense", beside its symbol). A coloured edge marks stalled (red) or overdue (amber) cards.
 - **Card actions**: Log time, Snooze, Note, Move to, Open task, Delete. Settings › Card actions chooses which are buttons on a hovered card (up to 3; default Log time and Snooze) and which are in the right-click menu (default all). On the phone, long-press a card to move it.
 
 ### 5.4 List (table)
@@ -373,7 +373,7 @@ See decisions. In short: it would be a second program to run, embedding it secur
 | Time and points | Energy types (name, colour, points per hour), subtypes, subtype rank weights, reflection (week start) |
 | Connections | Quick capture model, duplicate search model, sync server (phone) |
 | Data | Download database (phone) |
-| You | Appearance (themes: Default, Jira, Jira high contrast, GitHub Dark, GitHub Dark Dimmed; download one as a file, edit it, upload it), account |
+| You | Appearance (themes: Default, Jira, Jira high contrast, GitHub Dark, GitHub Dark Dimmed; download one as a file, edit it, upload it; in any theme, grey secondary text is lightened just enough to be readable, at least 4.5:1 on every surface), account |
 | Admin | People |
 
 ### 12.1 Deleting something that is in use
