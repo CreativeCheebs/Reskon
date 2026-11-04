@@ -201,6 +201,9 @@ Newer Android phones use 16 KB memory pages, and Google Play requires native lib
 ### The phone's own account "me"
 The built-in Go code needs an account to sign in to, so the phone has one called "me" with a hidden random password. Connecting a sync server copies the phone's data into your server account. Several accounts per app aren't needed (owner, 2026-11-04).
 
+### Scratch data stays in memory (2026-11-04)
+SQLite sometimes needs a scratch file, for example to sort a big result or to undo part of a large change. On a computer it puts that in the temp folder. Android has no temp folder that SQLite can find, so on the test phone creating a task failed with "disk I/O error" (code 6410, `SQLITE_IOERR_GETTEMPPATH`), and a first sync could fail the same way. Every database is now opened with `temp_store = MEMORY`, so scratch data is kept in memory instead. The server does the same. Its data is small, and memory is faster than a file anyway.
+
 ### Download database
 A clean copy is made with SQLite's `VACUUM INTO`, so changes still waiting in the write-ahead log are included, which a plain file copy could miss.
 

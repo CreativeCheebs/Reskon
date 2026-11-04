@@ -46,12 +46,15 @@ func Open(path string) (*DB, error) {
 func OpenMigrated(path string, fsys fs.FS, dir string) (*sql.DB, error) {
 	// _txlock=immediate makes every transaction take the write lock up front,
 	// so two concurrent "read max key, insert next" transactions serialise
-	// instead of deadlocking or racing.
+	// instead of deadlocking or racing. temp_store(MEMORY) keeps SQLite's
+	// scratch data in memory: Android has no temp folder SQLite can find,
+	// and a big sort or transaction failed there with disk I/O error 6410.
 	dsn := fmt.Sprintf("file:%s?_txlock=immediate"+
 		"&_pragma=journal_mode(WAL)"+
 		"&_pragma=foreign_keys(1)"+
 		"&_pragma=busy_timeout(5000)"+
-		"&_pragma=synchronous(NORMAL)", path)
+		"&_pragma=synchronous(NORMAL)"+
+		"&_pragma=temp_store(MEMORY)", path)
 	sqldb, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, err
