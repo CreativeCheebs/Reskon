@@ -192,7 +192,8 @@ A phone app that needs a server first is useless to someone without one, and on 
 - **Only the latest change of each field is kept** (`sync_field`), not a growing log of every operation. So there is nothing to trim, and no device ever needs to be "forgotten" after 90 days. A new device gets a full copy straight from the tables.
 - **Changes are recorded by database rules (triggers)** made by the Go code from one table list on every start. That catches every write from every code path, and a new column needs no extra work.
 - **Built-in records have fixed IDs**, so every device's "Backlog" is the same record. Built-in widgets are named by dashboard and title, because three migrations added them and their row numbers differ between databases.
-- **On an exact tie** (for example built-in rows retired by a migration at slightly different moments), every device keeps the greater value, so they still agree.
+- **Nobody knows when it changed: the server wins.** Rows from before sync existed have no "last changed" time on any side. When the two sides disagree on one of these, the server's value wins, on the server and on every device. Before this rule (2026-11-04), the "greater" value won instead, and a new phone's untouched defaults replaced the owner's "Job" view settings and Today widget layout on the live server (`TestSyncServerWinsUnstampedBuiltIns`).
+- **On an exact tie with a known time** (for example built-in rows retired by a migration at slightly different moments), every device keeps the greater value, so they still agree.
 - **The phone's networking is in Kotlin.** The Go code produces what to send and applies the answer, and Kotlin carries it over the network. That avoids Go networking inside an Android app.
 
 ### The 16 KB fix for the phone library

@@ -175,3 +175,39 @@ func mustUID(t *testing.T, d *DB, table string, id int64) string {
 	}
 	return uid
 }
+
+// A built-in row the owner changed before sync existed has no stamp on
+// either side. A new phone's untouched default must not replace it: the
+// server's value wins, on both sides (what happened on 2026-11-04 to the
+// owner's "Job" view and Today widgets).
+func TestSyncServerWinsUnstampedBuiltIns(t *testing.T) {
+	ctx := context.Background()
+	srv, phone := openTest(t), openTest(t)
+	// Changed while the triggers are quiet, as before migration 016.
+	for _, q := range []string{
+		`UPDATE sync_meta SET value = '1' WHERE key = 'applying'`,
+		`UPDATE view SET layout = 'board', color = '#7C3AED', name = 'Job' WHERE id = 1`,
+		`UPDATE sync_meta SET value = '0' WHERE key = 'applying'`,
+	} {
+		if _, err := srv.ExecContext(ctx, q); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := phone.ExecContext(ctx, `UPDATE view SET layout = 'table' WHERE id = 1`); err != nil {
+		t.Fatal(err)
+	}
+	// The phone's edit above is stamped, so undo its stamps: an untouched phone.
+	if _, err := phone.ExecContext(ctx, `DELETE FROM sync_field WHERE tbl = 'view'`); err != nil {
+		t.Fatal(err)
+	}
+	syncOnce(t, phone, srv)
+	syncOnce(t, phone, srv)
+	for _, d := range []*DB{srv, phone} {
+		var layout, name string
+		var color *string
+		d.QueryRowContext(ctx, `SELECT layout, name, color FROM view WHERE id = 1`).Scan(&layout, &name, &color)
+		if layout != "board" || name != "Job" || color == nil || *color != "#7C3AED" {
+			t.Errorf("view 1 = %s %q %v, want the server's board \"Job\" #7C3AED", layout, name, color)
+		}
+	}
+}

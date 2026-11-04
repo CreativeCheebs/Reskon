@@ -419,7 +419,7 @@ There are no modes. The app starts on its own, and you can add a sync server lat
 - **When it syncs**: on opening the app, a few seconds after a change, every 5 minutes, and from **Sync now**. A failed sync just waits for the next one. Nothing on the phone ever waits for it.
 - **Each record has an ID every device agrees on** (a uid). Built-in records (the seeded statuses, energy types, priorities, dashboards…) have the same uid everywhere, so every device's "Backlog" is one record.
 - **What is sent**: for each record, its values plus, for each field, when it last changed and on which device.
-- **Conflicts are settled field by field: the latest change wins.** If the phone renames a task and the web changes its priority, both are kept. If both rename it, the later one wins. "Later" uses a clock that never goes backwards, so a phone with a wrong clock can't win forever. On an exact tie, every device picks the same winner.
+- **Conflicts are settled field by field: the latest change wins.** If the phone renames a task and the web changes its priority, both are kept. If both rename it, the later one wins. "Later" uses a clock that never goes backwards, so a phone with a wrong clock can't win forever. On an exact tie, every device picks the same winner. For data from before sync existed, where nobody knows when it last changed, the server's value wins.
 - **A delete wins.** An old copy can't bring a deleted record back.
 - **Status follows moves.** Moves (transition log rows) from every device are all kept. A task's status is the one its latest move went to.
 - **Sessions** travel with their energy-type parts and subtypes as one record.

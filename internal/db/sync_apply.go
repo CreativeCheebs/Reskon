@@ -273,17 +273,25 @@ func (a *applier) update(t *syncTable, r SyncRow, key string, local map[string]S
 			if rs != ls {
 				continue
 			}
-			// The same stamp (e.g. both never changed since before sync) with
-			// different values: every device keeps the greater, so they agree.
-			if mine == nil {
-				own, _, err := exportRow(a.ctx, a.tx, t.name, key)
-				if err != nil {
-					return err
-				}
-				mine = own.Values
-			}
-			if fmt.Sprint(v) <= fmt.Sprint(mine[c]) {
+			// Neither side has changed it since sync began (rows from before
+			// migration 016): the server's value wins, so a device's defaults
+			// never replace what the owner set up on the server.
+			if rs.Clock == 0 && a.server {
 				continue
+			}
+			if rs.Clock != 0 {
+				// The same stamp with different values: every device keeps
+				// the greater, so they agree.
+				if mine == nil {
+					own, _, err := exportRow(a.ctx, a.tx, t.name, key)
+					if err != nil {
+						return err
+					}
+					mine = own.Values
+				}
+				if fmt.Sprint(v) <= fmt.Sprint(mine[c]) {
+					continue
+				}
 			}
 		}
 		if c == "_energies" || c == "_subtypes" {
