@@ -1,6 +1,7 @@
 package jbcore
 
 import (
+	"database/sql"
 	"encoding/json"
 	"testing"
 )
@@ -41,5 +42,20 @@ func TestStartCallCookie(t *testing.T) {
 	}
 	if Cookie() != kept {
 		t.Fatal("kept cookie was not reused")
+	}
+
+	// Export: a clean copy that holds the area written above.
+	path, err := Export(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	copyDB, err := sql.Open("sqlite", "file:"+path+"?mode=ro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer copyDB.Close()
+	var n int
+	if err := copyDB.QueryRow(`SELECT COUNT(*) FROM area WHERE name = 'Personal'`).Scan(&n); err != nil || n != 1 {
+		t.Fatalf("exported copy: %d areas, %v", n, err)
 	}
 }

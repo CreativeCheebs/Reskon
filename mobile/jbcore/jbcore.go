@@ -34,6 +34,7 @@ var (
 	store   *auth.Store
 	cookie  string
 	user    credentials
+	dataDir string
 )
 
 type credentials struct {
@@ -46,7 +47,7 @@ type credentials struct {
 // Cookie); when it is empty or has expired, Start signs in, creating the
 // account on first run. Signing in checks a bcrypt hash, slow on purpose, so
 // a launch with a kept cookie skips it.
-func Start(dataDir, tz, username, password, saved string) error {
+func Start(dir, tz, username, password, saved string) error {
 	t0 := time.Now()
 	mu.Lock()
 	defer mu.Unlock()
@@ -57,13 +58,14 @@ func Start(dataDir, tz, username, password, saved string) error {
 		time.Local = loc
 	}
 	var err error
-	store, err = auth.Open(dataDir, filepath.Join(dataDir, "none.db"))
+	store, err = auth.Open(dir, filepath.Join(dir, "none.db"))
 	if err != nil {
 		return err
 	}
 	parser := &capture.Parser{Config: captureConfig, Provider: capture.OpenAI{Client: &http.Client{}}}
 	handler = api.New(store, parser, fstest.MapFS{})
 	user = credentials{username, password}
+	dataDir = dir
 	log.Printf("jbcore: open %v", time.Since(t0))
 	cookie = saved
 	if cookie != "" {
@@ -94,6 +96,28 @@ func Stop() {
 		store.Close()
 	}
 	store, handler, cookie = nil, nil, ""
+}
+
+// Export writes a clean copy of the signed-in user's database into destDir,
+// which must not hold a file of the same name, and returns its path. It uses
+// VACUUM INTO, so writes still in the WAL are included, unlike a file copy.
+func Export(destDir string) (string, error) {
+	mu.Lock()
+	defer mu.Unlock()
+	if store == nil {
+		return "", fmt.Errorf("not started")
+	}
+	written, err := auth.Backup(dataDir, destDir)
+	if err != nil {
+		return "", err
+	}
+	want := strings.ToLower(user.Username) + ".db"
+	for _, f := range written {
+		if filepath.Base(f) == want {
+			return f, nil
+		}
+	}
+	return "", fmt.Errorf("no database for %s", user.Username)
 }
 
 // Cookie is the current sign-in, for the app to keep and pass to Start.

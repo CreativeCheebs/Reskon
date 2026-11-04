@@ -13,7 +13,7 @@ if (-not $env:ANDROID_NDK_HOME) {
 New-Item -ItemType Directory -Force (Split-Path $Out) | Out-Null
 Push-Location $PSScriptRoot
 try {
-    gomobile bind -target android/arm64 -androidapi 26 -trimpath -ldflags "-s -w" -o $Out ./jbcore
+    gomobile bind -target android/arm64 -androidapi 26 -trimpath -ldflags "-s -w -extldflags=-Wl,-z,max-page-size=16384" -o $Out ./jbcore
     if ($LASTEXITCODE -ne 0) { throw "gomobile bind failed" }
     Write-Host "built $Out"
 } finally { Pop-Location }
