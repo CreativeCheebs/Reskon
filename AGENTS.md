@@ -1,7 +1,7 @@
 # AGENTS.md — read first
 
 **What this is:** JitterBug, a self-hosted task board and time log. Several people can sign in to one server; each has a completely separate database.
-**The spec:** [`build_spec_phase_1.md`](build_spec_phase_1.md) and [`build_spec_phase_2.md`](build_spec_phase_2.md) are authoritative on *what* and *why*, as amended by the change docs in [`docs/changes/`](docs/changes/) (a change doc wins where they differ). You cannot edit the specs. Where the code differs, append to [`docs/deviations.md`](docs/deviations.md) and say so in your handoff.
+**The spec:** [`SPEC.md`](SPEC.md) says what the app does, in plain English. [`docs/decisions.md`](docs/decisions.md) says why, and lists the open questions. These are the only two docs besides this file and the README. When you change what the app does, update `SPEC.md` in the same commit (and `docs/decisions.md` if a choice was made). The owner decides what the app does: a change of behaviour needs their yes. Write docs in plain English, with examples, for a reader who is new to web and database terms.
 
 ## Stack
 
@@ -24,7 +24,7 @@ Before calling a step done: run its acceptance check for real, `make test` passe
 
 ## Rules that are easy to break
 
-- **Schema:** migration 001 is the full schema. After first run, only additive migrations (`002_*.sql`, ...). Update `docs/schema.md` with each.
+- **Schema:** migration 001 is the full schema. After first run, only additive migrations (`002_*.sql`, ...). Update `SPEC.md` section 15 (how the data is stored) with each.
 - **Derived values** (ages, first started, completed, time in status, points, progress, segments, weighted subtype hours, effective severity) are computed on read in `internal/db` (mostly `derive.go`), returned by the API, and **never** stored or recomputed in the client.
 - **Status changes** only through `db.Move` / `POST /api/tasks/:id/move` (or status deletion), which writes the `status_transition` row in the same transaction. The log is append-only.
 - **Code branches on `status_category.behaviour`**, never on a status or type name.
@@ -42,7 +42,7 @@ Before calling a step done: run its acceptance check for real, `make test` passe
 
 Boring over clever. Plain SQL, no ORM or query builder. Split files by feature; split any file passing ~400 lines. Use the spec's vocabulary: area, session, subtype, energy type, state, transition. One commit per step; never mix a refactor with a feature; don't reformat files you didn't change.
 
-When the spec is silent: stop and ask. If working unattended and blocked, take the most reversible option, build the smallest version, and record it under **Needs review** in `docs/deviations.md`.
+When the spec is silent: stop and ask. If working unattended and blocked, take the most reversible option, build the smallest version, and add it to **Open questions** in `docs/decisions.md`.
 
 ## Where things are
 

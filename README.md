@@ -1,7 +1,7 @@
 # JitterBug
 
 Self-hosted task board and time log. One Go binary. Several people can share a server; each person's data lives in their own SQLite file.
-The build contract is [`build_spec_phase_1.md`](build_spec_phase_1.md); where the code differs, see [`docs/deviations.md`](docs/deviations.md).
+What the app does is described in [`SPEC.md`](SPEC.md); why it works that way is in [`docs/decisions.md`](docs/decisions.md).
 
 ## Build
 
@@ -67,7 +67,7 @@ JITTERBUG_DATA=data ./jitterbug import-jira jira_old_data.db <username> --dry-ru
 JITTERBUG_DATA=data ./jitterbug import-jira jira_old_data.db <username>
 ```
 
-Keys, epics, areas (from labels), status history, worklogs and comments come across; see `docs/deviations.md` for the exact mapping. It refuses to import the same export twice.
+Keys, epics, areas (from labels), status history, worklogs and comments come across; see `SPEC.md` section 12.3 for the mapping. It refuses to import the same export twice.
 
 Jira labels map to areas named Main job / Personal / Freelance (created if missing). To use an area you already have, map the label: `--area MainJob="Day Job"` (repeatable).
 
@@ -100,5 +100,5 @@ internal/db/        migrations (embedded), every SQL query, all derived values, 
 internal/api/       HTTP handlers: decode, call db, encode
 internal/capture/   quick-capture parsing: provider interface, OpenAI-compatible client, validation
 web/                React + Vite app; web/dist is embedded into the binary
-docs/               decisions, schema, deviations
+docs/               decisions (why things are the way they are)
 ```

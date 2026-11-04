@@ -7,7 +7,7 @@ import { CaptureModal } from "./CaptureModal";
 
 // Round button in the sidebar header, on every screen, plus Ctrl/⌘+K
 // anywhere. It sits outside the content area so it never covers a column,
-// a card or a scrollbar (see docs/deviations.md).
+// a card or a scrollbar (see docs/decisions.md).
 
 export function CaptureButton() {
   const { online } = useApp();
