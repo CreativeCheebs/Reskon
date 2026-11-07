@@ -291,8 +291,7 @@ func (d *DB) PatchTask(ctx context.Context, id int64, f Fields) (*Task, error) {
 	if err := validateTaskFields(f); err != nil {
 		return nil, err
 	}
-	cols, vals, err := f.decode(taskColumns)
-	if err != nil {
+	if _, _, err := f.decode(taskColumns); err != nil { // reject bad fields before touching the database
 		return nil, err
 	}
 
@@ -317,6 +316,12 @@ func (d *DB) PatchTask(ctx context.Context, id int64, f Fields) (*Task, error) {
 		return nil, err
 	}
 	if err := checkEpicFields(ctx, tx, id, cur.Type, cur.EpicID, f); err != nil {
+		return nil, err
+	}
+	// The checks above may have changed f (a subtask takes its parent's epic,
+	// an epic leaves its old one), so the columns are read again.
+	cols, vals, err := f.decode(taskColumns)
+	if err != nil {
 		return nil, err
 	}
 	if hasCustom {

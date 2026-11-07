@@ -129,7 +129,9 @@ var dashboardColumns = columns{"name": kText, "position": kInt}
 func (d *DB) CreateDashboard(ctx context.Context, f Fields) (*Dashboard, error) {
 	if _, ok := f["position"]; !ok {
 		var next int64
-		d.QueryRowContext(ctx, `SELECT COALESCE(MAX(position), -1) + 1 FROM dashboard WHERE deleted_at IS NULL`).Scan(&next)
+		if err := d.QueryRowContext(ctx, `SELECT COALESCE(MAX(position), -1) + 1 FROM dashboard WHERE deleted_at IS NULL`).Scan(&next); err != nil {
+			return nil, err
+		}
 		f["position"], _ = json.Marshal(next)
 	}
 	id, err := d.insertRow(ctx, "dashboard", f, dashboardColumns)
@@ -210,12 +212,16 @@ func (d *DB) CreateWidget(ctx context.Context, f Fields) (*Widget, error) {
 	// A new widget goes below everything else unless placed.
 	if _, ok := f["y"]; !ok {
 		var bottom int64
-		d.QueryRowContext(ctx, `SELECT COALESCE(MAX(y + h), 0) FROM widget WHERE dashboard_id = ? AND deleted_at IS NULL`, dash).Scan(&bottom)
+		if err := d.QueryRowContext(ctx, `SELECT COALESCE(MAX(y + h), 0) FROM widget WHERE dashboard_id = ? AND deleted_at IS NULL`, dash).Scan(&bottom); err != nil {
+			return nil, err
+		}
 		f["y"], _ = json.Marshal(bottom)
 	}
 	if _, ok := f["position"]; !ok {
 		var next int64
-		d.QueryRowContext(ctx, `SELECT COALESCE(MAX(position), -1) + 1 FROM widget WHERE dashboard_id = ? AND deleted_at IS NULL`, dash).Scan(&next)
+		if err := d.QueryRowContext(ctx, `SELECT COALESCE(MAX(position), -1) + 1 FROM widget WHERE dashboard_id = ? AND deleted_at IS NULL`, dash).Scan(&next); err != nil {
+			return nil, err
+		}
 		f["position"], _ = json.Marshal(next)
 	}
 	id, err := d.insertRow(ctx, "widget", f, widgetColumns)

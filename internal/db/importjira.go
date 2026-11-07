@@ -68,7 +68,7 @@ func readJiraExport(ctx context.Context, path string) (*jiraExport, error) {
 		var rj struct {
 			Fields map[string]any `json:"fields"`
 		}
-		json.Unmarshal([]byte(raw), &rj)
+		_ = json.Unmarshal([]byte(raw), &rj)                      // a row without readable fields just has no rank
 		if v, ok := rj.Fields["customfield_10019"].(string); ok { // Rank (Jira's board order)
 			i.Rank = v
 		}
@@ -139,7 +139,7 @@ func jiraTime(s string) (string, error) {
 // jiraLabel is the first label, lower-cased ("MainJob" -> "mainjob").
 func jiraLabel(labels string) string {
 	var l []string
-	json.Unmarshal([]byte(labels), &l)
+	_ = json.Unmarshal([]byte(labels), &l) // unreadable labels count as none
 	if len(l) == 0 {
 		return ""
 	}

@@ -176,10 +176,17 @@ func (d *DB) PatchState(ctx context.Context, id int64, f Fields, on string) (*St
 	if err != nil {
 		return nil, err
 	}
-	for i, c := range cols {
-		if _, err := d.ExecContext(ctx, `UPDATE state SET `+c+` = ? WHERE id = ?`, vals[i], id); err != nil {
-			return nil, uniqueAsConflict(err, "conflict")
+	// One change: if a later field is refused, the earlier ones are not kept.
+	err = d.inTx(ctx, func(tx *sql.Tx) error {
+		for i, c := range cols {
+			if _, err := tx.ExecContext(ctx, `UPDATE state SET `+c+` = ? WHERE id = ?`, vals[i], id); err != nil {
+				return uniqueAsConflict(err, "conflict")
+			}
 		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	return d.GetState(ctx, id, on)
 }

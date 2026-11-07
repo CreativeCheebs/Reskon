@@ -61,10 +61,13 @@ func (o OpenAI) Complete(ctx context.Context, cfg Config, text string, l Lookups
 	if cfg.APIKey != "" {
 		hreq.Header.Set("Authorization", "Bearer "+cfg.APIKey)
 	}
-	client := o.Client
-	if client == nil {
-		client = http.DefaultClient
+	// Never follow a redirect: the address is whatever the user typed, and a
+	// redirect is another way to reach somewhere they should not.
+	client := http.Client{}
+	if o.Client != nil {
+		client = *o.Client
 	}
+	client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
 	res, err := client.Do(hreq)
 	if err != nil {
 		return nil, err
@@ -75,7 +78,9 @@ func (o OpenAI) Complete(ctx context.Context, cfg Config, text string, l Lookups
 		return nil, err
 	}
 	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("HTTP %d: %s", res.StatusCode, truncate(string(data), 200))
+		// The status only: the body came from an address the user chose, and
+		// quoting it back would let them read whatever that address answers.
+		return nil, fmt.Errorf("HTTP %d from the model endpoint", res.StatusCode)
 	}
 	var out struct {
 		Choices []struct {
@@ -85,7 +90,7 @@ func (o OpenAI) Complete(ctx context.Context, cfg Config, text string, l Lookups
 		} `json:"choices"`
 	}
 	if err := json.Unmarshal(data, &out); err != nil || len(out.Choices) == 0 {
-		return nil, fmt.Errorf("unexpected response: %s", truncate(string(data), 200))
+		return nil, fmt.Errorf("the model endpoint did not answer in the expected format")
 	}
 	return decodeContent(out.Choices[0].Message.Content)
 }
@@ -133,13 +138,6 @@ func decodeObject(obj []byte, depth int) (*Result, error) {
 		}
 	}
 	return nil, fmt.Errorf("model reply has none of the contract's fields")
-}
-
-func truncate(s string, n int) string {
-	if len(s) <= n {
-		return s
-	}
-	return s[:n] + "…"
 }
 
 func systemPrompt(l Lookups) string {

@@ -49,7 +49,9 @@ func checkTarget(ctx context.Context, tx *sql.Tx, table string, id int64, to *in
 		return invalid("reassign_to must be a different one")
 	}
 	var n int
-	tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM `+table+` WHERE id = ? AND deleted_at IS NULL`, *to).Scan(&n)
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM `+table+` WHERE id = ? AND deleted_at IS NULL`, *to).Scan(&n); err != nil {
+		return err
+	}
 	if n == 0 {
 		return invalid("reassign_to does not exist")
 	}
@@ -93,9 +95,12 @@ func (d *DB) DeleteEnergyType(ctx context.Context, id int64, reassignTo *int64) 
 		var u usage
 		for _, c := range [][2]string{
 			{"tasks", `SELECT COUNT(*) FROM task WHERE energy_type_id = ? AND deleted_at IS NULL`},
-			{"sessions", `SELECT COUNT(DISTINCT session_id) FROM session_energy JOIN session s ON s.id = session_id
-				WHERE session_energy.energy_type_id = ? AND s.deleted_at IS NULL`},
+			// A session counts if it has a part of this type or is logged under it
+			// directly (a one-type session has no parts rows).
+			{"sessions", `SELECT COUNT(*) FROM session s WHERE s.deleted_at IS NULL AND (s.energy_type_id = ?1
+				OR s.id IN (SELECT session_id FROM session_energy WHERE energy_type_id = ?1))`},
 			{"subtypes", `SELECT COUNT(*) FROM subtype WHERE energy_type_id = ? AND deleted_at IS NULL`},
+			{"area defaults", `SELECT COUNT(*) FROM area WHERE default_energy_type_id = ? AND deleted_at IS NULL`},
 		} {
 			if err := u.add(ctx, tx, c[0], c[1], id); err != nil {
 				return err

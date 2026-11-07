@@ -81,7 +81,7 @@ func Start(dir, tz, username, password, saved string) error {
 
 // signedIn reports whether the current cookie still names a user.
 func signedIn() bool {
-	_, body, _ := serve("GET", "/api/auth/status", "")
+	_, body, _ := serve(handler, cookie, "GET", "/api/auth/status", "")
 	var st struct {
 		User *struct{} `json:"user"`
 	}
@@ -93,7 +93,7 @@ func Stop() {
 	mu.Lock()
 	defer mu.Unlock()
 	if store != nil {
-		store.Close()
+		_ = store.Close()
 	}
 	store, handler, cookie = nil, nil, ""
 }
@@ -131,7 +131,7 @@ func signIn() error {
 	var st struct {
 		SetupNeeded bool `json:"setup_needed"`
 	}
-	code, body, _ := serve("GET", "/api/auth/status", "")
+	code, body, _ := serve(handler, cookie, "GET", "/api/auth/status", "")
 	if code != 200 {
 		return fmt.Errorf("auth status: %d %s", code, body)
 	}
@@ -141,7 +141,7 @@ func signIn() error {
 		path = "/api/auth/setup"
 	}
 	b, _ := json.Marshal(user)
-	code, body, set := serve("POST", path, string(b))
+	code, body, set := serve(handler, cookie, "POST", path, string(b))
 	if code != 200 {
 		return fmt.Errorf("sign in: %d %s", code, body)
 	}
@@ -149,17 +149,19 @@ func signIn() error {
 	return nil
 }
 
-func serve(method, path, body string) (int, string, string) {
+// serve runs one request through handler with the given cookie. It touches
+// no shared state, so it can run without holding mu.
+func serve(h http.Handler, ck, method, path, body string) (int, string, string) {
 	req := httptest.NewRequest(method, path, strings.NewReader(body))
 	req.RemoteAddr = "127.0.0.1:1"
 	if body != "" {
 		req.Header.Set("Content-Type", "application/json")
 	}
-	if cookie != "" {
-		req.Header.Set("Cookie", cookie)
+	if ck != "" {
+		req.Header.Set("Cookie", ck)
 	}
 	rec := httptest.NewRecorder()
-	handler.ServeHTTP(rec, req)
+	h.ServeHTTP(rec, req)
 	set := ""
 	for _, c := range rec.Result().Cookies() {
 		set = c.Name + "=" + c.Value
@@ -169,23 +171,48 @@ func serve(method, path, body string) (int, string, string) {
 
 // Call runs one API request, e.g. Call("GET", "/api/tasks?view=1", "").
 // It returns the JSON body, or an error carrying the status and body.
+//
+// mu is held only to read or change the shared state, never while a request
+// runs: a quick-capture request can wait five seconds for the language model,
+// and every other screen must still be answered meanwhile.
 func Call(method, path, body string) (string, error) {
-	mu.Lock()
-	defer mu.Unlock()
-	if handler == nil {
+	h, ck := current()
+	if h == nil {
 		return "", fmt.Errorf("not started")
 	}
-	code, out, _ := serve(method, path, body)
+	code, out, _ := serve(h, ck, method, path, body)
 	if code == http.StatusUnauthorized {
-		if err := signIn(); err != nil {
+		if err := refreshSignIn(h); err != nil {
 			return "", err
 		}
-		code, out, _ = serve(method, path, body)
+		h, ck = current()
+		if h == nil {
+			return "", fmt.Errorf("not started")
+		}
+		code, out, _ = serve(h, ck, method, path, body)
 	}
 	if code >= 400 {
 		return "", fmt.Errorf("%d %s", code, out)
 	}
 	return out, nil
+}
+
+// current is the handler and sign-in to use for the next request.
+func current() (http.Handler, string) {
+	mu.Lock()
+	defer mu.Unlock()
+	return handler, cookie
+}
+
+// refreshSignIn signs in again after the server said 401, unless Stop and
+// Start have replaced the handler the failed request used.
+func refreshSignIn(failedWith http.Handler) error {
+	mu.Lock()
+	defer mu.Unlock()
+	if handler == nil || handler != failedWith {
+		return nil // another call already signed in again, or the core restarted
+	}
+	return signIn()
 }
 
 // captureConfig: the user's LLM settings, as on the server (no env fallback on a phone).

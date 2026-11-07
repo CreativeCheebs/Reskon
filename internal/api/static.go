@@ -29,7 +29,7 @@ type staticFile struct {
 // so it goes out with no-cache and an ETag; a reload then costs a 304.
 func spa(web fs.FS) http.Handler {
 	files := map[string]*staticFile{}
-	fs.WalkDir(web, ".", func(p string, d fs.DirEntry, err error) error {
+	_ = fs.WalkDir(web, ".", func(p string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return err
 		}
@@ -45,8 +45,8 @@ func spa(web fs.FS) http.Handler {
 		if compressible(f.ctype) && len(body) > 1024 {
 			var buf bytes.Buffer
 			zw, _ := gzip.NewWriterLevel(&buf, gzip.BestCompression)
-			zw.Write(body)
-			zw.Close()
+			_, _ = zw.Write(body) // writing to a buffer cannot fail
+			_ = zw.Close()
 			if buf.Len() < len(body) {
 				f.gz = buf.Bytes()
 			}
@@ -142,7 +142,7 @@ func (g *gzipJSON) Write(b []byte) (int, error) {
 
 func (g *gzipJSON) close() {
 	if g.zw != nil {
-		g.zw.Close()
+		_ = g.zw.Close()
 		gzipPool.Put(g.zw)
 	}
 }

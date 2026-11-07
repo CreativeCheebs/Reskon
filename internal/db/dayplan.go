@@ -102,7 +102,10 @@ func (d *DB) PatchDay(ctx context.Context, day string, f Fields) (*Day, error) {
 				return nil, invalid("ceiling_feedback must be {energy_type_id: answer}")
 			}
 			var current string
-			d.QueryRowContext(ctx, `SELECT ceiling_feedbacks FROM day_plan WHERE day = ?`, day).Scan(&current)
+			// No plan row yet is fine: there is no earlier feedback to merge with.
+			if err := d.QueryRowContext(ctx, `SELECT ceiling_feedbacks FROM day_plan WHERE day = ?`, day).Scan(&current); err != nil && err != sql.ErrNoRows {
+				return nil, err
+			}
 			merged := parseFeedback(current)
 			for id, v := range answers {
 				if _, err := strconv.ParseInt(id, 10, 64); err != nil {
@@ -215,7 +218,7 @@ func (d *DB) suggest(ctx context.Context, day string) (*Suggested, error) {
 // skipped.
 func parseFeedback(raw string) map[string]string {
 	var m map[string]string
-	json.Unmarshal([]byte(raw), &m)
+	_ = json.Unmarshal([]byte(raw), &m) // unreadable feedback counts as none
 	out := map[string]string{}
 	for k, v := range m {
 		if ceilingFeedback[v] {

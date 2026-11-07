@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"testing"
 )
 
@@ -115,5 +116,31 @@ func TestDeletePriorityReassignOrClear(t *testing.T) {
 	got, _ := d.GetTask(ctx, tk.ID)
 	if got.PriorityID != nil {
 		t.Errorf("priority not cleared: %v", *got.PriorityID)
+	}
+}
+
+// A patch with several fields is one change: if a later field is refused,
+// the earlier ones must not have been saved.
+func TestPatchStatusCategoryIsAllOrNothing(t *testing.T) {
+	ctx := context.Background()
+	d := openTest(t)
+	mine, err := d.CreateStatusCategory(ctx, fields(t, `{"name":"Mine","behaviour":"todo"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	first, err := d.getStatusCategory(ctx, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Fields apply in name order: "behaviour" saves, then "name" clashes with category 1.
+	if _, err := d.PatchStatusCategory(ctx, mine.ID, fields(t, fmt.Sprintf(`{"behaviour":"in_progress","name":%q}`, first.Name))); err == nil {
+		t.Fatal("a duplicate name was accepted")
+	}
+	got, err := d.getStatusCategory(ctx, mine.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Behaviour != "todo" {
+		t.Fatalf("behaviour changed to %q although the patch failed", got.Behaviour)
 	}
 }

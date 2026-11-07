@@ -131,6 +131,13 @@ func (d *DB) DeleteStatus(ctx context.Context, id int64, reassignTo *int64) erro
 			if err := applyDateRules(ctx, tx, tid, *reassignTo, todayOr("")); err != nil {
 				return err
 			}
+			// The same follow-ups as a move (transitions.go).
+			if err := wakeIfFinished(ctx, tx, tid, *reassignTo); err != nil {
+				return err
+			}
+		}
+		if err := releaseUnblocked(ctx, tx); err != nil {
+			return err
 		}
 	}
 	if err := softDeleteNamed(ctx, tx, "status", id); err != nil {
@@ -155,10 +162,17 @@ func (d *DB) PatchStatusCategory(ctx context.Context, id int64, f Fields) (*Stat
 	if err != nil {
 		return nil, err
 	}
-	for i, c := range cols {
-		if _, err := d.ExecContext(ctx, `UPDATE status_category SET `+c+` = ? WHERE id = ?`, vals[i], id); err != nil {
-			return nil, uniqueAsConflict(err, "that name is already in use")
+	// One change: if a later field is refused, the earlier ones are not kept.
+	err = d.inTx(ctx, func(tx *sql.Tx) error {
+		for i, c := range cols {
+			if _, err := tx.ExecContext(ctx, `UPDATE status_category SET `+c+` = ? WHERE id = ?`, vals[i], id); err != nil {
+				return uniqueAsConflict(err, "that name is already in use")
+			}
 		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	return d.getStatusCategory(ctx, id)
 }
@@ -175,7 +189,9 @@ func (d *DB) DeleteStatusCategory(ctx context.Context, id int64) error {
 		return &ConflictError{Msg: "built-in categories cannot be deleted"}
 	}
 	var n int
-	d.QueryRowContext(ctx, `SELECT COUNT(*) FROM status WHERE category_id = ?`, id).Scan(&n)
+	if err := d.QueryRowContext(ctx, `SELECT COUNT(*) FROM status WHERE category_id = ?`, id).Scan(&n); err != nil {
+		return err
+	}
 	if n > 0 {
 		return &ConflictError{Msg: fmt.Sprintf("%d statuses use this category", n)}
 	}

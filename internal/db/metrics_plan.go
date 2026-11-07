@@ -54,7 +54,7 @@ func (d *DB) planCeilings(ctx context.Context, from, to string) (map[string]map[
 // parseCeilings reads {"<energy_type_id>": hours}; anything else is skipped.
 func parseCeilings(raw string) map[int64]float64 {
 	var m map[string]float64
-	json.Unmarshal([]byte(raw), &m)
+	_ = json.Unmarshal([]byte(raw), &m) // unreadable ceilings count as none
 	out := map[int64]float64{}
 	for k, v := range m {
 		if id, err := strconv.ParseInt(k, 10, 64); err == nil {
@@ -186,12 +186,18 @@ func (d *DB) ceilingVsActual(ctx context.Context, r *metricRun) error {
 // types' ceilings adding up to under the same line). Facts only.
 func (d *DB) drift(ctx context.Context, r *metricRun) error {
 	low := 1.0
-	d.Setting(ctx, "drift_low_hours", &low)
+	if _, err := d.Setting(ctx, "drift_low_hours", &low); err != nil {
+		return err
+	}
 	var counted []int64
-	d.Setting(ctx, "drift_energy_types", &counted)
+	if _, err := d.Setting(ctx, "drift_energy_types", &counted); err != nil {
+		return err
+	}
 	types := idSet(counted)
 	var plans int
-	d.QueryRowContext(ctx, `SELECT COUNT(*) FROM day_plan`).Scan(&plans)
+	if err := d.QueryRowContext(ctx, `SELECT COUNT(*) FROM day_plan`).Scan(&plans); err != nil {
+		return err
+	}
 	from := addDays(r.today, -365)
 	hours, err := d.hoursByDay(ctx, from, r.today)
 	if err != nil {

@@ -21,7 +21,7 @@ func captureWords(text string) []string {
 	var out []string
 	seen := map[string]bool{}
 	for _, w := range strings.FieldsFunc(strings.ToLower(text), func(r rune) bool {
-		return !(r >= 'a' && r <= 'z' || r >= '0' && r <= '9')
+		return (r < 'a' || r > 'z') && (r < '0' || r > '9')
 	}) {
 		if len(w) < 3 || stopwords[w] || seen[w] {
 			continue
@@ -31,6 +31,10 @@ func captureWords(text string) []string {
 	}
 	return out
 }
+
+// maxCaptureWords is how many distinct words of a note are used to look for
+// similar open tasks.
+const maxCaptureWords = 40
 
 // CaptureLookups gathers what the model may answer with, including the open
 // tasks whose titles share the most words with text (matching happens here,
@@ -65,6 +69,11 @@ func (d *DB) CaptureLookups(ctx context.Context, text string, limit int) (captur
 	words := captureWords(text)
 	if len(words) == 0 {
 		return l, nil
+	}
+	// The query has one term per word, and SQLite refuses very large
+	// expressions. The first words of a note say what it is about.
+	if len(words) > maxCaptureWords {
+		words = words[:maxCaptureWords]
 	}
 	// Score = number of distinct words found in the title.
 	var score []string

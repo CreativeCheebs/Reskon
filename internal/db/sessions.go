@@ -161,7 +161,8 @@ func resolveSessionDefaults(ctx context.Context, q querier, f Fields) error {
 			return err
 		} else if ok {
 			var energy sql.NullInt64
-			q.QueryRowContext(ctx, `SELECT default_energy_type_id FROM area WHERE id = ?`, areaID).Scan(&energy)
+			// An area that cannot be read just gives no default type.
+			_ = q.QueryRowContext(ctx, `SELECT default_energy_type_id FROM area WHERE id = ?`, areaID).Scan(&energy)
 			if energy.Valid {
 				f["energy_type_id"], _ = json.Marshal(energy.Int64)
 			}
@@ -246,7 +247,7 @@ func (d *DB) CreateSession(ctx context.Context, f Fields) (*Session, error) {
 	var energyPoints []float64
 	if len(energies) >= 2 {
 		var hours float64
-		json.Unmarshal(f["hours"], &hours)
+		_ = json.Unmarshal(f["hours"], &hours) // a bad value is rejected by the checks below
 		taskID, total, err := taskAndPoints(f)
 		if err != nil {
 			return nil, err
@@ -287,186 +288,6 @@ func (d *DB) CreateSession(ctx context.Context, f Fields) (*Session, error) {
 	}
 	if err := writeEnergies(ctx, tx, id, energies, energyPoints); err != nil {
 		return nil, err
-	}
-	if err := tx.Commit(); err != nil {
-		return nil, err
-	}
-	return d.GetSession(ctx, id)
-}
-
-// sessionPoints is what a session earns when it is logged: hours x its
-// energy type's points rate x difficulty, where difficulty is the
-// session's, else its task's, else 1. Every energy type earns points. The
-// result is stored on the session, so a later change to this formula or
-// to a rate never rewrites history.
-func sessionPoints(rate, hours float64, difficulty, taskDifficulty *int64) *float64 {
-	d := int64(1)
-	switch {
-	case difficulty != nil:
-		d = *difficulty
-	case taskDifficulty != nil:
-		d = *taskDifficulty
-	}
-	p := hours * rate * float64(d)
-	return &p
-}
-
-// storedPoints looks up what sessionPoints needs for a session about to be
-// written: its energy type's rate and its task's difficulty.
-func storedPoints(ctx context.Context, q querier, energyTypeID int64, hours float64, difficulty, taskID *int64) (*float64, error) {
-	var rate float64
-	err := q.QueryRowContext(ctx, `SELECT points_per_hour FROM energy_type WHERE id = ?`, energyTypeID).Scan(&rate)
-	if err == sql.ErrNoRows {
-		return nil, invalid("energy type %d does not exist", energyTypeID)
-	}
-	if err != nil {
-		return nil, err
-	}
-	var taskDiff *int64
-	if taskID != nil {
-		if err := q.QueryRowContext(ctx, `SELECT difficulty FROM task WHERE id = ?`, *taskID).Scan(&taskDiff); err != nil && err != sql.ErrNoRows {
-			return nil, err
-		}
-	}
-	return sessionPoints(rate, hours, difficulty, taskDiff), nil
-}
-
-// taskAndPoints reads task_id and an explicit points value from f.
-func taskAndPoints(f Fields) (taskID *int64, points *float64, err error) {
-	if n, ok, err := f.int64Field("task_id"); err != nil {
-		return nil, nil, err
-	} else if ok {
-		taskID = &n
-	}
-	if raw, ok := f["points"]; ok && !isNull(raw) {
-		var p float64
-		if err := json.Unmarshal(raw, &p); err != nil {
-			return nil, nil, invalid("points must be a number")
-		}
-		points = &p
-	}
-	return taskID, points, nil
-}
-
-// fillPoints sets f["points"] for a new session from its other fields.
-func fillPoints(ctx context.Context, q querier, f Fields) error {
-	energy, _, err := f.int64Field("energy_type_id")
-	if err != nil {
-		return err
-	}
-	var hours float64
-	json.Unmarshal(f["hours"], &hours)
-	var difficulty, taskID *int64
-	if n, ok, err := f.int64Field("difficulty"); err != nil {
-		return err
-	} else if ok {
-		difficulty = &n
-	}
-	if n, ok, err := f.int64Field("task_id"); err != nil {
-		return err
-	} else if ok {
-		taskID = &n
-	}
-	p, err := storedPoints(ctx, q, energy, hours, difficulty, taskID)
-	if err != nil {
-		return err
-	}
-	f["points"], _ = json.Marshal(p)
-	return nil
-}
-
-// PatchSession updates a session. The session table has no updated_at, so
-// edits are last-write-wins (see SPEC.md 4.15). Points are worked out
-// again, at today's rates, when an edit changes what they depend on: hours,
-// intensity, energy types or shares, or task (Change 002). Otherwise they
-// stay as stored, even if a rate has changed since, unless the patch says
-// "recalculate": true. Points sent explicitly are stored as sent.
-func (d *DB) PatchSession(ctx context.Context, id int64, f Fields) (*Session, error) {
-	subtypes, hasSubtypes, err := parseSubtypes(f)
-	if err != nil {
-		return nil, err
-	}
-	energies, hasEnergies, err := parseEnergies(f)
-	if err != nil {
-		return nil, err
-	}
-	recalcAsked := takeRecalculate(f)
-	_, typeSet := f["energy_type_id"]
-	_, diffSet := f["difficulty"]
-	_, pointsSet := f["points"]
-	customPatch, hasCustom := f["custom"]
-	delete(f, "custom")
-	delete(f, "updated_at") // tolerated from clients that send it everywhere
-	if err := validateSessionFields(f); err != nil {
-		return nil, err
-	}
-	cols, vals, err := f.decode(sessionColumns)
-	if err != nil {
-		return nil, err
-	}
-	tx, err := d.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback()
-	cur, err := scanSession(tx.QueryRowContext(ctx, `SELECT `+sessionCols+` FROM session WHERE id = ? AND deleted_at IS NULL`, id))
-	if err == sql.ErrNoRows {
-		return nil, ErrNotFound
-	}
-	if err != nil {
-		return nil, err
-	}
-	if err := loadEnergies(ctx, tx, []*Session{cur}); err != nil {
-		return nil, err
-	}
-	if hasCustom {
-		merged, err := d.mergeCustom(ctx, tx, "session", string(cur.Custom), customPatch)
-		if err != nil {
-			return nil, err
-		}
-		cols, vals = append(cols, "custom"), append(vals, merged)
-	}
-
-	// What the energy parts become, and whether anything points depend on
-	// changed.
-	next := energies
-	if !hasEnergies {
-		next = nextParts(cur, f, typeSet, diffSet)
-	}
-	energyChanged := partsDiffer(cur.Energies, next)
-	changed := energyChanged || hoursChanged(cur, f) || taskChanged(cur, f)
-
-	if len(cols) > 0 {
-		sets := make([]string, len(cols))
-		for i, c := range cols {
-			sets[i] = c + " = ?"
-		}
-		if _, err := tx.ExecContext(ctx, `UPDATE session SET `+strings.Join(sets, ", ")+` WHERE id = ?`,
-			append(vals, id)...); err != nil {
-			return nil, uniqueAsConflict(err, "conflict")
-		}
-	}
-	if hasSubtypes {
-		if err := writeSubtypes(ctx, tx, id, subtypes); err != nil {
-			return nil, err
-		}
-	}
-	if energyChanged {
-		if err := writeEnergies(ctx, tx, id, next, nil); err != nil {
-			return nil, err
-		}
-	}
-	switch {
-	case pointsSet:
-		var total *float64
-		tx.QueryRowContext(ctx, `SELECT points FROM session WHERE id = ?`, id).Scan(&total)
-		if err := rescaleEnergyPoints(ctx, tx, id, total); err != nil {
-			return nil, err
-		}
-	case changed || recalcAsked:
-		if err := recalcPoints(ctx, tx, id); err != nil {
-			return nil, err
-		}
 	}
 	if err := tx.Commit(); err != nil {
 		return nil, err

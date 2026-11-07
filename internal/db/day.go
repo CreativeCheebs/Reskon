@@ -16,16 +16,16 @@ type Day struct {
 	Suggested     *Suggested     `json:"suggested"` // what the morning plan offers
 	Readout       []ReadoutRow   `json:"readout"`   // hours per energy type against the saved ceiling
 	Totals        []EnergyTotal  `json:"totals"`    // hours per energy type
-	InForce       []*State       `json:"in_force"` // states in force that day, shown not entered
+	InForce       []*State       `json:"in_force"`  // states in force that day, shown not entered
 	SubtypeTotals []SubtypeTotal `json:"subtype_totals"`
 	Sessions      []*Session     `json:"sessions"`
 }
 
 type DayPlan struct {
-	Saved           bool            `json:"saved"` // a plan row exists for the day
-	Focus           json.RawMessage `json:"focus"`
-	Ceilings        json.RawMessage `json:"ceilings"`
-	Note            *string         `json:"note"`
+	Saved           bool              `json:"saved"` // a plan row exists for the day
+	Focus           json.RawMessage   `json:"focus"`
+	Ceilings        json.RawMessage   `json:"ceilings"`
+	Note            *string           `json:"note"`
 	CeilingFeedback map[string]string `json:"ceiling_feedback"` // energy type id -> about_right, too_high, too_low
 }
 
@@ -98,13 +98,15 @@ func (d *DB) GetDay(ctx context.Context, day string) (*Day, error) {
 		return nil, err
 	}
 	names := map[int64]string{}
-	scanInto(ctx, d, `SELECT id, name FROM subtype`, func(r *sql.Rows) error {
+	if err := scanInto(ctx, d, `SELECT id, name FROM subtype`, func(r *sql.Rows) error {
 		var id int64
 		var n string
 		err := r.Scan(&id, &n)
 		names[id] = n
 		return err
-	})
+	}); err != nil {
+		return nil, err
+	}
 	totals := map[int64]float64{}
 	var order []int64
 	for _, s := range out.Sessions {

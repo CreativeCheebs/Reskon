@@ -101,7 +101,7 @@ func todayOr(s string) string {
 func localDate(f Fields) string {
 	var s string
 	if raw, ok := f["today"]; ok {
-		json.Unmarshal(raw, &s)
+		_ = json.Unmarshal(raw, &s) // an unreadable "today" falls back to the server's date
 		delete(f, "today")
 	}
 	return todayOr(s)

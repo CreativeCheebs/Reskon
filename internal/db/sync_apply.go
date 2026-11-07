@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"sort"
 	"strconv"
 	"strings"
@@ -43,7 +44,9 @@ func (d *DB) ApplySync(ctx context.Context, rows []SyncRow, server bool) error {
 	}
 	for _, p := range a.later {
 		if id, ok := idOf(ctx, tx, "task", p.uid); ok {
-			tx.ExecContext(ctx, `UPDATE task SET `+p.col+` = ? WHERE id = ?`, id, p.task)
+			if _, err := tx.ExecContext(ctx, `UPDATE task SET `+p.col+` = ? WHERE id = ?`, id, p.task); err != nil {
+				return err
+			}
 		}
 	}
 	// A task's status is the one its latest transition went to (item 6).
@@ -140,17 +143,26 @@ func (a *applier) row(r SyncRow) error {
 	if t.natural != "" {
 		keyCol = t.natural
 		var n int
-		a.tx.QueryRowContext(a.ctx, `SELECT COUNT(*) FROM `+t.name+` WHERE `+keyCol+` = ?`, key).Scan(&n)
+		if err := a.tx.QueryRowContext(a.ctx, `SELECT COUNT(*) FROM `+t.name+` WHERE `+keyCol+` = ?`, key).Scan(&n); err != nil {
+			return err
+		}
 		exists = n > 0
 	} else if id, ok := idOf(a.ctx, a.tx, t.name, r.UID); ok {
 		key = strconv.FormatInt(id, 10)
 		var n int
-		a.tx.QueryRowContext(a.ctx, `SELECT COUNT(*) FROM `+t.name+` WHERE id = ?`, id).Scan(&n)
+		if err := a.tx.QueryRowContext(a.ctx, `SELECT COUNT(*) FROM `+t.name+` WHERE id = ?`, id).Scan(&n); err != nil {
+			return err
+		}
 		exists = n > 0
 		if !exists && t.natural == "" {
 			// Known uid, row gone: deleted here, and a delete wins.
 			return nil
 		}
+	}
+	// The move log is only ever added to: a move already here is never
+	// changed or deleted by another device (SPEC.md, "History is kept").
+	if _, wantsDelete := r.Stamps["_deleted"]; t.name == "status_transition" && (exists || wantsDelete) {
+		return nil
 	}
 	local, err := rowStamps(a.ctx, a.tx, t.name, key)
 	if err != nil {
@@ -163,6 +175,7 @@ func (a *applier) row(r SyncRow) error {
 		if exists {
 			// A row still referenced elsewhere stays; nothing else is lost.
 			if _, err := a.tx.ExecContext(a.ctx, `DELETE FROM `+t.name+` WHERE `+keyCol+` = ?`, key); err != nil {
+				log.Printf("sync: kept %s %s, which is still in use: %v", t.name, r.UID, err)
 				return nil
 			}
 			return a.stamp(t.name, key, "_deleted", del)
@@ -218,7 +231,9 @@ func (a *applier) insert(t *syncTable, r SyncRow) error {
 	ph := strings.TrimSuffix(strings.Repeat("?, ", len(names)), ", ")
 	res, err := a.tx.ExecContext(a.ctx, `INSERT INTO `+t.name+` (`+strings.Join(names, ", ")+`) VALUES (`+ph+`)`, args...)
 	if err != nil {
-		return nil // e.g. a reference this device doesn't have; skipped, not fatal
+		// e.g. a reference this device doesn't have: skipped, not fatal, but said.
+		log.Printf("sync: skipped new %s %s: %v", t.name, r.UID, err)
+		return nil
 	}
 	key := r.UID
 	if t.natural == "" {
@@ -263,9 +278,24 @@ func (a *applier) update(t *syncTable, r SyncRow, key string, local map[string]S
 	if t.natural != "" {
 		keyCol = t.natural
 	}
+	// Column names come from the sending device, so only names this table
+	// really has may reach the SQL below. A name this version lacks (a newer
+	// device) is skipped, which is also what keeps older phones syncing.
+	cols, err := tableColumns(a.ctx, a.tx, t.name)
+	if err != nil {
+		return err
+	}
+	known := map[string]bool{}
+	for _, c := range cols {
+		known[c] = true
+	}
 	var mine map[string]any // this row as it would be sent, read only if needed
 	for c, v := range r.Values {
 		if c == "id" || t.skips(c) {
+			continue
+		}
+		isPart := t.name == "session" && (c == "_energies" || c == "_subtypes")
+		if !isPart && !known[c] {
 			continue
 		}
 		rs, ls := fieldStamp(r.Stamps, c), fieldStamp(local, c)
@@ -294,7 +324,7 @@ func (a *applier) update(t *syncTable, r SyncRow, key string, local map[string]S
 				}
 			}
 		}
-		if c == "_energies" || c == "_subtypes" {
+		if isPart {
 			if err := a.sessionParts(key, map[string]any{c: v}); err != nil {
 				return err
 			}
@@ -304,7 +334,9 @@ func (a *applier) update(t *syncTable, r SyncRow, key string, local map[string]S
 				lv = nil
 			}
 			if _, err := a.tx.ExecContext(a.ctx, `UPDATE `+t.name+` SET `+c+` = ? WHERE `+keyCol+` = ?`, lv, key); err != nil {
-				continue // a column this version lacks, or a constraint: the rest still applies
+				// A constraint here: skip this field, the rest still applies, but say so.
+				log.Printf("sync: skipped %s.%s of %s: %v", t.name, c, r.UID, err)
+				continue
 			}
 		}
 		if err := a.stamp(t.name, key, c, rs); err != nil {

@@ -60,3 +60,35 @@ func TestDeleteAreaMovesTasks(t *testing.T) {
 		t.Fatalf("task: area %d key %s, want area %d and the key kept", got.AreaID, got.Key, b.ID)
 	}
 }
+
+// A session logged with one energy type has no parts rows, and an area can
+// name a default type. Both count as "in use": deleting the type must ask
+// where they go, not leave them pointing at a deleted row.
+func TestDeleteEnergyTypeCountsOneTypeSessionsAndAreaDefaults(t *testing.T) {
+	ctx := context.Background()
+	d := openTest(t)
+	s, err := d.CreateSession(ctx, fields(t, `{"hours":1,"energy_type_id":3,"difficulty":2,"logged_for":"2026-11-04"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var c *ConflictError
+	if err := d.DeleteEnergyType(ctx, 3, nil); !errors.As(err, &c) {
+		t.Fatalf("a type used by a one-type session was deleted without a target: %v", err)
+	}
+	to := int64(1)
+	if err := d.DeleteEnergyType(ctx, 3, &to); err != nil {
+		t.Fatal(err)
+	}
+	var et int64
+	if err := d.QueryRowContext(ctx, `SELECT energy_type_id FROM session WHERE id = ?`, s.ID).Scan(&et); err != nil || et != 1 {
+		t.Fatalf("session type = %d (%v), want 1", et, err)
+	}
+
+	a := mustArea(t, d, "Home", "HM")
+	if _, err := d.ExecContext(ctx, `UPDATE area SET default_energy_type_id = 2 WHERE id = ?`, a.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.DeleteEnergyType(ctx, 2, nil); !errors.As(err, &c) {
+		t.Fatalf("a type that is an area's default was deleted without a target: %v", err)
+	}
+}

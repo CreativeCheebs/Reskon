@@ -63,7 +63,9 @@ func (d *DB) CreateArea(ctx context.Context, f Fields) (*Area, error) {
 	id, _ := res.LastInsertId()
 
 	var name string
-	tx.QueryRowContext(ctx, `SELECT name FROM area WHERE id = ?`, id).Scan(&name)
+	if err := tx.QueryRowContext(ctx, `SELECT name FROM area WHERE id = ?`, id).Scan(&name); err != nil {
+		return nil, err
+	}
 	filter := fmt.Sprintf(`{"areas":[%d],"statuses":null,"difficulty_min":null,"custom":null,"include_done_days":7}`, id)
 	if _, err := tx.ExecContext(ctx, `INSERT INTO view (name, layout, filter, card_config, position)
 		VALUES (?, 'board', ?, '{}', ?)`, name, filter, id); err != nil {

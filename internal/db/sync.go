@@ -41,7 +41,7 @@ type txq interface {
 
 func syncMetaGet(ctx context.Context, q txq, key string) string {
 	var v string
-	q.QueryRowContext(ctx, `SELECT value FROM sync_meta WHERE key = ?`, key).Scan(&v)
+	_ = q.QueryRowContext(ctx, `SELECT value FROM sync_meta WHERE key = ?`, key).Scan(&v) // no row: the empty string
 	return v
 }
 

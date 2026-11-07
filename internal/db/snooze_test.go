@@ -81,3 +81,34 @@ func TestSnooze(t *testing.T) {
 		t.Error("move to To do woke the task")
 	}
 }
+
+// Deleting a status moves its tasks like any other move would: a task that
+// lands in Done wakes from its snooze.
+func TestDeleteStatusIntoDoneWakesSnoozedTasks(t *testing.T) {
+	ctx := context.Background()
+	d := openTest(t)
+	a := mustArea(t, d, "Personal", "PER")
+	tk := mustTask(t, d, a.ID, "x")
+	today := time.Now().Format("2006-01-02")
+	review, err := d.CreateStatus(ctx, fields(t, `{"name":"Review","category_id":2}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.Move(ctx, tk.ID, MoveRequest{StatusID: review.ID, Today: today}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.Snooze(ctx, tk.ID, 5, false, today); err != nil {
+		t.Fatal(err)
+	}
+	done := int64(4)
+	if err := d.DeleteStatus(ctx, review.ID, &done); err != nil {
+		t.Fatal(err)
+	}
+	got, err := d.GetTask(ctx, tk.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Snoozed || got.SnoozedUntil != nil {
+		t.Errorf("a task moved to Done by a status delete is still snoozed until %v", got.SnoozedUntil)
+	}
+}

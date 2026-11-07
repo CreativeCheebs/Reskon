@@ -47,7 +47,9 @@ func validateCustomValue(f CustomField, raw json.RawMessage) error {
 			return invalid("%s must be one of its options", f.Key)
 		}
 		var opts []string
-		json.Unmarshal(f.Options, &opts)
+		if err := json.Unmarshal(f.Options, &opts); err != nil {
+			return invalid("%s has options that are not a list", f.Key)
+		}
 		for _, o := range opts {
 			if o == s {
 				return nil

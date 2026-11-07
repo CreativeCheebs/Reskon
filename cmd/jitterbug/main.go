@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"jitterbug/internal/api"
 	"jitterbug/internal/auth"
@@ -54,7 +55,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("open data directory %s: %v", dataDir, err)
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	// `jitterbug import-jira <export.db> <username> [--dry-run] [--area label=Name ...]`
 	// loads a Jira export into that person's data. --dry-run does
@@ -89,8 +90,35 @@ func main() {
 	// Duplicate search's model lives beside the data, so the container
 	// keeps it on its volume. JITTERBUG_EMBED_DIR points elsewhere.
 	srv.Semantic = embed.NewService(env("JITTERBUG_EMBED_DIR", filepath.Join(dataDir, "models", embed.ModelName)))
+	srv.SetupToken = os.Getenv("JITTERBUG_SETUP_TOKEN")
+	srv.TrustProxy = os.Getenv("JITTERBUG_BEHIND_PROXY") == "1"
+	srv.SecureCookie = os.Getenv("JITTERBUG_SECURE_COOKIE") == "1"
+	if need, err := store.NeedsSetup(context.Background()); err == nil && need && srv.SetupToken == "" {
+		log.Printf("jitterbug: no account exists yet, and anyone who can reach %s can create the first one. Set JITTERBUG_SETUP_TOKEN to require a secret.", addr)
+	}
+	go purgeSessions(store)
 	log.Printf("jitterbug: data %s, listening on %s", dataDir, addr)
-	log.Fatal(http.ListenAndServe(addr, srv))
+	// Slow clients may not hold a connection open forever. There is no read
+	// or write timeout: a phone's first sync sends and receives many MB.
+	server := &http.Server{
+		Addr:              addr,
+		Handler:           srv,
+		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       2 * time.Minute,
+	}
+	log.Fatal(server.ListenAndServe())
+}
+
+// purgeSessions deletes expired login sessions once an hour.
+func purgeSessions(store *auth.Store) {
+	for {
+		if n, err := store.PurgeExpiredSessions(context.Background(), time.Now()); err != nil {
+			log.Printf("purge sessions: %v", err)
+		} else if n > 0 {
+			log.Printf("purged %d expired login sessions", n)
+		}
+		time.Sleep(time.Hour)
+	}
 }
 
 func importJira(store *auth.Store, path, username string, dry bool, areas map[string]string) error {
@@ -140,20 +168,45 @@ func importJira(store *auth.Store, path, username string, dry bool, areas map[st
 // start.
 func captureConfig(ctx context.Context) capture.Config {
 	d := db.FromContext(ctx)
-	get := func(key, envName string) string {
+	setting := func(key string) string {
 		var v string
 		if d != nil {
-			if ok, err := d.Setting(ctx, key, &v); ok && err == nil && v != "" {
+			if ok, err := d.Setting(ctx, key, &v); ok && err == nil {
 				return v
 			}
 		}
-		return os.Getenv(envName)
+		return ""
+	}
+	return mergeCaptureConfig(setting, os.Getenv)
+}
+
+// mergeCaptureConfig combines one user's settings with the server's
+// environment. The server-wide API key only goes with the server's own
+// endpoint: if a user points capture at a different address, they must bring
+// their own key, or any signed-in user could send the operator's key to a
+// host of their choosing.
+func mergeCaptureConfig(setting, env func(string) string) capture.Config {
+	pick := func(key, envName string) string {
+		if v := setting(key); v != "" {
+			return v
+		}
+		return env(envName)
+	}
+	endpoint := pick("llm_endpoint", "JITTERBUG_LLM_ENDPOINT")
+	key := setting("llm_api_key")
+	if key == "" && sameEndpoint(endpoint, env("JITTERBUG_LLM_ENDPOINT")) {
+		key = env("JITTERBUG_LLM_API_KEY")
 	}
 	return capture.Config{
-		Endpoint: get("llm_endpoint", "JITTERBUG_LLM_ENDPOINT"),
-		Model:    get("llm_model", "JITTERBUG_LLM_MODEL"),
-		APIKey:   get("llm_api_key", "JITTERBUG_LLM_API_KEY"),
+		Endpoint: endpoint,
+		Model:    pick("llm_model", "JITTERBUG_LLM_MODEL"),
+		APIKey:   key,
 
-		ReasoningEffort: os.Getenv("JITTERBUG_LLM_REASONING_EFFORT"),
+		ReasoningEffort: env("JITTERBUG_LLM_REASONING_EFFORT"),
 	}
+}
+
+// sameEndpoint compares two addresses ignoring a trailing slash.
+func sameEndpoint(a, b string) bool {
+	return strings.TrimRight(a, "/") == strings.TrimRight(b, "/")
 }

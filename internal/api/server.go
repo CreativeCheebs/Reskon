@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 
 	"jitterbug/internal/auth"
 	"jitterbug/internal/capture"
@@ -27,7 +28,18 @@ type Server struct {
 	// Semantic is the shared embedding model for duplicate search; nil
 	// means word matching only.
 	Semantic *embed.Service
-	mux      *http.ServeMux
+	// SetupToken, when set, must be sent with the first-run account setup, so
+	// only whoever started the server can claim it (JITTERBUG_SETUP_TOKEN).
+	SetupToken string
+	// TrustProxy says the server sits behind a reverse proxy that sets
+	// X-Forwarded-For, so the client address for sign-in limits comes from
+	// it (JITTERBUG_BEHIND_PROXY=1). Off, only the connection's address is used.
+	TrustProxy bool
+	// SecureCookie marks the session cookie Secure even when the request
+	// does not look like HTTPS (JITTERBUG_SECURE_COOKIE=1).
+	SecureCookie bool
+	warnProxy    sync.Once
+	mux          *http.ServeMux
 }
 
 // New wires every route. web is the built frontend (may be nil in tests).
@@ -48,6 +60,11 @@ func New(a *auth.Store, p *capture.Parser, web fs.FS) *Server {
 // /api/health and the sign-in endpoints are reachable signed out; the web
 // app itself is public so it can show the login page.
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h := w.Header()
+	h.Set("X-Content-Type-Options", "nosniff")
+	h.Set("X-Frame-Options", "DENY")
+	h.Set("Referrer-Policy", "same-origin")
+	h.Set("Content-Security-Policy", "frame-ancestors 'none'")
 	if !sameOrigin(r) {
 		writeError(w, http.StatusForbidden, "forbidden", "cross-origin request refused")
 		return
@@ -114,7 +131,7 @@ func (s *Server) putSetting(w http.ResponseWriter, r *http.Request) {
 func writeJSON(w http.ResponseWriter, code int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(v)
+	_ = json.NewEncoder(w).Encode(v) // the client may have gone; nothing to do about it
 }
 
 // writeError sends the spec's error shape: {error, detail}.
@@ -142,7 +159,8 @@ func respond(w http.ResponseWriter, v any, err error) {
 		})
 	default:
 		log.Printf("error: %v", err)
-		writeError(w, http.StatusInternalServerError, "internal error", err.Error())
+		// The details (SQL, file paths) stay in the log, not in the reply.
+		writeError(w, http.StatusInternalServerError, "internal error", "something went wrong on the server; the details are in its log")
 	}
 }
 

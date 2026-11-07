@@ -16,23 +16,23 @@ import (
 // repeated failures lock the username out for a while.
 func (s *Store) Login(ctx context.Context, username, password, userAgent string) (*User, string, error) {
 	username = strings.ToLower(strings.TrimSpace(username))
-	if s.locked(username) {
+	if s.locked(ctx, username) {
 		return nil, "", ErrLocked
 	}
 	u, err := scanUser(s.sql.QueryRowContext(ctx, `SELECT `+userCols+` FROM user WHERE username = ?`, username))
 	if err == db.ErrNotFound {
-		bcrypt.CompareHashAndPassword(dummyHash, []byte(password))
-		s.recordFailure(username)
+		_ = bcrypt.CompareHashAndPassword(dummyHash, []byte(password)) // same work as a real check, so timing does not reveal the name
+		s.recordFailure(ctx, username)
 		return nil, "", ErrBadLogin
 	}
 	if err != nil {
 		return nil, "", err
 	}
 	if bcrypt.CompareHashAndPassword([]byte(u.hash), []byte(password)) != nil || u.DisabledAt != nil {
-		s.recordFailure(username)
+		s.recordFailure(ctx, username)
 		return nil, "", ErrBadLogin
 	}
-	s.clearFailures(username)
+	s.clearFailures(ctx, username)
 	token, err := s.newSession(ctx, u.ID, userAgent)
 	return u, token, err
 }
@@ -63,7 +63,7 @@ func (s *Store) SessionUser(ctx context.Context, token string) (*User, error) {
 	}
 	now := time.Now()
 	if exp, err := db.ParseTime(expires); err != nil || now.After(exp) {
-		s.sql.ExecContext(ctx, `DELETE FROM login_session WHERE token_hash = ?`, h)
+		_, _ = s.sql.ExecContext(ctx, `DELETE FROM login_session WHERE token_hash = ?`, h) // tidy-up only; the session is refused either way
 		return nil, ErrNoSession
 	}
 	u, err := s.GetUser(ctx, userID)
@@ -72,7 +72,8 @@ func (s *Store) SessionUser(ctx context.Context, token string) (*User, error) {
 	}
 	// Slide the expiry at most once an hour, to avoid a write per request.
 	if exp, _ := db.ParseTime(expires); exp.Sub(now) < SessionTTL-time.Hour {
-		s.sql.ExecContext(ctx, `UPDATE login_session SET expires_at = ? WHERE token_hash = ?`,
+		// If this fails the session simply keeps its old expiry.
+		_, _ = s.sql.ExecContext(ctx, `UPDATE login_session SET expires_at = ? WHERE token_hash = ?`,
 			db.FormatTime(now.Add(SessionTTL)), h)
 	}
 	return u, nil
@@ -90,9 +91,17 @@ func (s *Store) ChangePassword(ctx context.Context, userID int64, current, next,
 	if err != nil {
 		return err
 	}
+	// Guessing the current password from a signed-in session is limited the
+	// same way as guessing at sign-in.
+	guess := "password:" + u.Username
+	if s.locked(ctx, guess) {
+		return ErrLocked
+	}
 	if bcrypt.CompareHashAndPassword([]byte(u.hash), []byte(current)) != nil {
+		s.recordFailure(ctx, guess)
 		return &db.InvalidError{Msg: "current password is wrong"}
 	}
+	s.clearFailures(ctx, guess)
 	return s.setPassword(ctx, userID, next, keepToken)
 }
 
@@ -166,8 +175,10 @@ func (s *Store) keepAnAdmin(ctx context.Context, userID int64) error {
 // ---------- lockout ----------
 
 const (
-	maxFailures  = 5
-	lockoutAfter = 15 * time.Minute
+	maxFailures       = 5                // wrong passwords for one name from one client
+	maxClientFailures = 30               // wrong passwords from one client, any names
+	lockoutAfter      = 15 * time.Minute // how long failures are remembered
+	maxTracked        = 5000             // most failure records kept in memory
 )
 
 type failures struct {
@@ -175,33 +186,99 @@ type failures struct {
 	first time.Time
 }
 
-func (s *Store) locked(username string) bool {
+type clientKey struct{}
+
+// WithClient says where a request came from (an IP address), so a lockout
+// affects the one who failed rather than everyone using that name. "" (a
+// phone's own core, tests) is a single anonymous client.
+func WithClient(ctx context.Context, client string) context.Context {
+	return context.WithValue(ctx, clientKey{}, client)
+}
+
+func clientOf(ctx context.Context) string {
+	c, _ := ctx.Value(clientKey{}).(string)
+	return c
+}
+
+func nameKey(ctx context.Context, name string) string { return name + "|" + clientOf(ctx) }
+func clientOnlyKey(ctx context.Context) string        { return "|" + clientOf(ctx) }
+
+func (s *Store) locked(ctx context.Context, username string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	f := s.fails[username]
+	if s.overLocked(nameKey(ctx, username), maxFailures) {
+		return true
+	}
+	return clientOf(ctx) != "" && s.overLocked(clientOnlyKey(ctx), maxClientFailures)
+}
+
+// overLocked reports whether key has used up its failures, forgetting it if
+// the memory has run out.
+func (s *Store) overLocked(key string, limit int) bool {
+	f := s.fails[key]
 	if f == nil {
 		return false
 	}
 	if time.Since(f.first) > lockoutAfter {
-		delete(s.fails, username)
+		delete(s.fails, key)
 		return false
 	}
-	return f.count >= maxFailures
+	return f.count >= limit
 }
 
-func (s *Store) recordFailure(username string) {
+func (s *Store) recordFailure(ctx context.Context, username string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	f := s.fails[username]
+	s.bump(nameKey(ctx, username))
+	if clientOf(ctx) != "" {
+		s.bump(clientOnlyKey(ctx))
+	}
+	if len(s.fails) > maxTracked {
+		s.forget()
+	}
+}
+
+func (s *Store) bump(key string) {
+	f := s.fails[key]
 	if f == nil || time.Since(f.first) > lockoutAfter {
 		f = &failures{first: time.Now()}
-		s.fails[username] = f
+		s.fails[key] = f
 	}
 	f.count++
 }
 
-func (s *Store) clearFailures(username string) {
+// forget drops records that have expired, and if that is not enough, the
+// oldest, so random names cannot grow the map without limit.
+func (s *Store) forget() {
+	for k, f := range s.fails {
+		if time.Since(f.first) > lockoutAfter {
+			delete(s.fails, k)
+		}
+	}
+	for len(s.fails) > maxTracked {
+		var oldestKey string
+		var oldest time.Time
+		for k, f := range s.fails {
+			if oldestKey == "" || f.first.Before(oldest) {
+				oldestKey, oldest = k, f.first
+			}
+		}
+		delete(s.fails, oldestKey)
+	}
+}
+
+func (s *Store) clearFailures(ctx context.Context, username string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	delete(s.fails, username)
+	delete(s.fails, nameKey(ctx, username))
+}
+
+// PurgeExpiredSessions deletes login sessions that ended before now. Without
+// it a session nobody uses again would stay in auth.db for ever.
+func (s *Store) PurgeExpiredSessions(ctx context.Context, now time.Time) (int64, error) {
+	res, err := s.sql.ExecContext(ctx, `DELETE FROM login_session WHERE expires_at < ?`, db.FormatTime(now))
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
 }

@@ -2,9 +2,13 @@ package api
 
 import (
 	"context"
+	"crypto/subtle"
 	"errors"
+	"log"
+	"net"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"jitterbug/internal/auth"
@@ -70,7 +74,34 @@ func sameOrigin(r *http.Request) bool {
 	return err == nil && u.Host == r.Host
 }
 
-func setSessionCookie(w http.ResponseWriter, r *http.Request, token string, maxAge time.Duration) {
+// clientIP is where a sign-in attempt came from, for the failed-attempt
+// limits. Behind a trusted proxy it is the last address the proxy added to
+// X-Forwarded-For; otherwise the connection's own address.
+func (s *Server) clientIP(r *http.Request) string {
+	if !s.TrustProxy && r.Header.Get("X-Forwarded-For") != "" {
+		// A proxy is in front but was not declared, so every client would look like the
+		// proxy's one address. Count nobody by address (the per-name limit still applies)
+		// rather than let one person's wrong guesses lock everyone out.
+		s.warnProxy.Do(func() {
+			log.Printf("sign-in limits: requests carry X-Forwarded-For, but JITTERBUG_BEHIND_PROXY=1 is not set, so failed attempts are counted per name only")
+		})
+		return ""
+	}
+	if s.TrustProxy {
+		if parts := strings.Split(r.Header.Get("X-Forwarded-For"), ","); len(parts) > 0 {
+			if ip := strings.TrimSpace(parts[len(parts)-1]); ip != "" {
+				return ip
+			}
+		}
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
+}
+
+func (s *Server) setSessionCookie(w http.ResponseWriter, r *http.Request, token string, maxAge time.Duration) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     cookieName,
 		Value:    token,
@@ -78,7 +109,7 @@ func setSessionCookie(w http.ResponseWriter, r *http.Request, token string, maxA
 		MaxAge:   int(maxAge.Seconds()),
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
-		Secure:   r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https",
+		Secure:   s.SecureCookie || r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https",
 	})
 }
 
@@ -94,7 +125,7 @@ func (s *Server) authStatus(w http.ResponseWriter, r *http.Request) {
 	if u, _, err := s.signedIn(r); err == nil {
 		user = u
 	}
-	respond(w, map[string]any{"setup_needed": need, "user": user}, nil)
+	respond(w, map[string]any{"setup_needed": need, "setup_token_required": need && s.SetupToken != "", "user": user}, nil)
 }
 
 type credentials struct {
@@ -103,9 +134,17 @@ type credentials struct {
 }
 
 func (s *Server) authSetup(w http.ResponseWriter, r *http.Request) {
-	var c credentials
-	if err := decodeBody(r, &c); err != nil {
+	var body struct {
+		credentials
+		SetupToken string `json:"setup_token"`
+	}
+	if err := decodeBody(r, &body); err != nil {
 		respond(w, nil, err)
+		return
+	}
+	c := body.credentials
+	if s.SetupToken != "" && subtle.ConstantTimeCompare([]byte(body.SetupToken), []byte(s.SetupToken)) != 1 {
+		writeError(w, http.StatusForbidden, "forbidden", "this server needs its setup token (JITTERBUG_SETUP_TOKEN) to create the first account")
 		return
 	}
 	if _, err := s.Auth.Setup(r.Context(), c.Username, c.Password); err != nil {
@@ -129,7 +168,8 @@ func (s *Server) authLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) login(w http.ResponseWriter, r *http.Request, c credentials) {
-	u, token, err := s.Auth.Login(r.Context(), c.Username, c.Password, r.UserAgent())
+	ctx := auth.WithClient(r.Context(), s.clientIP(r))
+	u, token, err := s.Auth.Login(ctx, c.Username, c.Password, r.UserAgent())
 	switch {
 	case errors.Is(err, auth.ErrBadLogin):
 		writeError(w, http.StatusUnauthorized, "unauthenticated", err.Error())
@@ -141,15 +181,17 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request, c credentials) {
 		respond(w, nil, err)
 		return
 	}
-	setSessionCookie(w, r, token, auth.SessionTTL)
+	s.setSessionCookie(w, r, token, auth.SessionTTL)
 	respond(w, map[string]any{"user": u}, nil)
 }
 
 func (s *Server) authLogout(w http.ResponseWriter, r *http.Request) {
 	if c, err := r.Cookie(cookieName); err == nil {
-		s.Auth.Logout(r.Context(), c.Value)
+		if err := s.Auth.Logout(r.Context(), c.Value); err != nil {
+			log.Printf("sign out: could not end the session: %v", err)
+		}
 	}
-	setSessionCookie(w, r, "", -time.Second)
+	s.setSessionCookie(w, r, "", -time.Second)
 	respond(w, map[string]bool{"ok": true}, nil)
 }
 
@@ -163,7 +205,12 @@ func (s *Server) authChangePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	c, _ := r.Cookie(cookieName)
-	err := s.Auth.ChangePassword(r.Context(), userOf(r.Context()).ID, body.Current, body.New, c.Value)
+	ctx := auth.WithClient(r.Context(), s.clientIP(r))
+	err := s.Auth.ChangePassword(ctx, userOf(r.Context()).ID, body.Current, body.New, c.Value)
+	if errors.Is(err, auth.ErrLocked) {
+		writeError(w, http.StatusTooManyRequests, "locked", err.Error())
+		return
+	}
 	respond(w, map[string]bool{"ok": true}, err)
 }
 

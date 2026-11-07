@@ -72,7 +72,7 @@ type Store struct {
 // exists when the first admin is created, it becomes the admin's database
 // so no data is orphaned. It may be "".
 func Open(dataDir, legacyDB string) (*Store, error) {
-	if err := os.MkdirAll(filepath.Join(dataDir, "users"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(dataDir, "users"), 0o700); err != nil {
 		return nil, err
 	}
 	sqldb, err := db.OpenMigrated(filepath.Join(dataDir, "auth.db"), migrationFS, "migrations")
