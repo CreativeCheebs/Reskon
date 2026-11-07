@@ -1,7 +1,7 @@
 # AGENTS.md — read first
 
 **What this is:** JitterBug, a self-hosted task board and time log. Several people can sign in to one server; each has a completely separate database.
-**The spec:** [`SPEC.md`](SPEC.md) says what the app does, in plain English. [`docs/decisions.md`](docs/decisions.md) says why, and lists the open questions. These are the only two docs besides this file and the README. When you change what the app does, update `SPEC.md` in the same commit (and `docs/decisions.md` if a choice was made). The owner decides what the app does: a change of behaviour needs their yes. Write docs in plain English, with examples, for a reader who is new to web and database terms.
+**The spec:** [`SPEC.md`](SPEC.md) says what the app does, in plain English. [`docs/decisions.md`](docs/decisions.md) says why, and lists the open questions. These are the only two docs besides this file, the README, [`docs/next-phase.md`](docs/next-phase.md) (the open to-do list) and [`docs/engineering-toolchain.md`](docs/engineering-toolchain.md). When you change what the app does, update `SPEC.md` in the same commit (and `docs/decisions.md` if a choice was made). The owner decides what the app does: a change of behaviour needs their yes. Write docs in plain English, with examples, for a reader who is new to web and database terms.
 
 ## Stack
 
