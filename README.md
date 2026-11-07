@@ -9,7 +9,8 @@ Needs Go 1.27+ and Node 22+. No cgo, no C toolchain.
 
 ```sh
 make build        # npm ci + vite build into web/dist, then go build -> ./jitterbug
-make test         # go vet, go test, TypeScript typecheck
+make test         # gofmt check, go vet, go test (server and phone core), TypeScript typecheck, ESLint, component tests
+make check        # all of that plus golangci-lint, race tests and govulncheck (race tests need a C compiler)
 ```
 
 By hand: `cd web && npm ci && npm run build && cd .. && CGO_ENABLED=0 go build -o jitterbug ./cmd/jitterbug`.
@@ -32,6 +33,9 @@ The first time you open it, it asks you to create the **admin** account. After t
 | `JITTERBUG_LLM_ENDPOINT` | — | OpenAI-compatible base URL for quick capture, e.g. `http://ollama:11434/v1` |
 | `JITTERBUG_LLM_MODEL` | — | Model name |
 | `JITTERBUG_LLM_API_KEY` | — | Bearer token, if the endpoint needs one |
+| `JITTERBUG_SETUP_TOKEN` | — | If set, the first-run screen must be given this word before it creates the admin account. Recommended on any server others can reach. |
+| `JITTERBUG_BEHIND_PROXY` | — | `1` when a reverse proxy sits in front: sign-in limits then use the address the proxy puts last in `X-Forwarded-For`. |
+| `JITTERBUG_SECURE_COOKIE` | — | `1` to always mark the session cookie Secure (HTTPS only). |
 | `JITTERBUG_LLM_REASONING_EFFORT` | — | `low`, `medium` or `high`; sent only when set. Use `low` for reasoning models (e.g. gpt-oss) so capture answers inside its 5 seconds |
 
 The LLM values can also be set per person in **Settings → Capture & weights**, which take precedence. Without them, capture uses the manual form. The app never needs the LLM to start.
@@ -102,3 +106,7 @@ internal/capture/   quick-capture parsing: provider interface, OpenAI-compatible
 web/                React + Vite app; web/dist is embedded into the binary
 docs/               decisions (why things are the way they are)
 ```
+
+## Engineering checks
+
+The repository's quality-tool recommendations, local commands, Go-to-Android bridge checks, and release gates are documented in [`docs/engineering-toolchain.md`](docs/engineering-toolchain.md). Claude Code reads [`AGENTS.md`](AGENTS.md) as the project-specific source of truth; optional review agents and slash skills live under `.claude/`. Start a focused feature task with `/go-quality`, `/web-ui-quality`, or `/android-go-bridge`, then request a read-only specialist review when useful.

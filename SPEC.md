@@ -53,10 +53,11 @@ There is also an Android app. It works completely on its own, with no server and
 ## 3. People and signing in
 
 - The first person to open a new server creates the **admin** account. After that there is no open sign-up: only an admin adds people (Settings › People).
+- A server can ask for a **setup token** before it makes that first account. The person who starts the server sets `JITTERBUG_SETUP_TOKEN` and types the same word on the first-run screen. Without it, anyone who can reach a brand-new server could claim it, so the server writes a warning to its log while no account exists and no token is set.
 - An admin can reset a password, make someone admin, or disable an account. A disabled person can't sign in, and their data stays. Accounts are never deleted. The last admin can't be demoted or disabled.
 - Everyone can change their own password (Settings › Account). Changing it signs you out on your other devices.
 - **Each person has their own database file** on the server. One person's data can never show up in another person's screens. This is how the code is built, not just a filter.
-- Signing in keeps you signed in for 30 days, renewed while you use it. Five wrong passwords lock that username for 15 minutes.
+- Signing in keeps you signed in for 30 days, renewed while you use it. Five wrong passwords for a username **from the same computer** lock that name for that computer for 15 minutes, so someone else's wrong guesses cannot lock you out. Thirty wrong passwords from one computer, whatever names it tries, lock that computer out for 15 minutes. Changing your password (it asks for the current one) is limited the same way.
 - Settings (capture model, subtype weights and so on) belong to each person, because they are stored in that person's database.
 
 ---
@@ -182,7 +183,7 @@ Per view: area, created age, started age, time in status, intensity, priority, e
 
 ### 5.3 Board
 
-- Columns are the visible statuses. Drag cards to move or reorder them.
+- Columns are the visible statuses. Drag cards to move or reorder them. From the keyboard, Tab to a card, **Enter opens it**, **Space picks it up**, the arrow keys move it, Space drops it and Escape cancels; a screen reader announces the task title and the column it is over.
 - **Grouping** makes swimlanes (by epic, priority, area, energy type, intensity, type or status). Cards move between columns inside their lane, not between lanes. A task created in a lane gets that lane's value.
 - **Sorting**: manual (default), priority, due, intensity, estimate, time in status, newest, oldest. While sorted, you can still move cards between columns.
 - **Collapsed columns** are shared by every lane and still accept drops.
@@ -192,7 +193,7 @@ Per view: area, created age, started age, time in status, intensity, priority, e
 
 ### 5.4 List (table)
 
-The same view as a table, with the same filter and the same field choices as columns. Rows start sorted by time in status, longest first (the "aging" list). Rows can be grouped (including by status) and ticked for bulk moves. Column widths can be dragged and are remembered in that browser only.
+The same view as a table, with the same filter and the same field choices as columns. Rows start sorted by time in status, longest first (the "aging" list). Tab reaches each row and Enter or Space opens it. Sorting by area sorts by the area's name. Rows can be grouped (including by status) and ticked for bulk moves. Column widths can be dragged and are remembered in that browser only.
 
 ### 5.5 Timeline
 
@@ -215,7 +216,7 @@ A view has an icon (emoji, or an icon from Fluent UI or PrimeIcons), a colour, a
 - **Hours** (more than 0, at most 24), the **date** it was for, and optionally a **start time**.
 - **Description** (shown as the session's title), an optional **task**, an **area**, and **work or event**.
 - **Energy types**: one, or up to four with shares in whole percents that add up to 100% ("70% Engineering, 30% Admin"). Each part has its own intensity. An hour is never counted twice, so a day can't pass 24 hours.
-- **Subtypes**: up to four, ranked by dragging. Rank weights are a setting (default 100%, 50%, 25%, 25%). Percentages are never typed.
+- **Subtypes**: up to four, ranked by dragging, or with the keyboard (focus the handle, Space, arrow keys). Each has a Remove button. Rank weights are a setting (default 100%, 50%, 25%, 25%). Percentages are never typed.
 - A **note**, and custom fields.
 - Points (below), and when it was created and last changed.
 
@@ -257,9 +258,9 @@ Choosing a task also fills in its intensity, unless you set one yourself. You ca
 - **The AI decides whether the line is a task or a session.** Until it does (or when there is no AI), nothing is picked and you choose.
 - **Nothing is saved until you confirm.** The answer becomes a filled-in form you can change. One line can become up to 6 entries ("6 hours at the hospital, work was only 1 of them" → a 1-hour work session and a 5-hour other session). Saving goes one by one; if one fails, only the unsaved ones stay.
 - The model writes a short title; the line as typed is kept in the session's note. It sets intensity when the line says how it felt, and an area only when the line makes it clear. A task without an area gets the last area used.
-- **Capture never fails because the AI is down.** With no model set, or one that is slow (over 5 seconds) or broken, it falls back to the plain form with your line in it, and says why.
+- **Capture never fails because the AI is down.** Only the first 40 different words of a long note are used to look for similar open tasks, so even a pasted page works. With no model set, or one that is slow (over 5 seconds) or broken, it falls back to the plain form with your line in it, and says why.
 - The line and the AI's answer are kept on the saved session or task (in `custom._capture`), so a wrong answer can be checked later.
-- The model is any OpenAI-compatible service, set per person in Settings › Quick capture (endpoint, model, key). The server's `JITTERBUG_LLM_*` settings are used when a person hasn't set their own. The key is never sent back to the screen.
+- The model is any OpenAI-compatible service, set per person in Settings › Quick capture (endpoint, model, key). The server's `JITTERBUG_LLM_*` settings are used when a person hasn't set their own. **The server's key only goes with the server's own endpoint:** a person who types a different endpoint must also give their own key, so no one can send the server's key to an address of their choosing. The server does not follow redirects from the endpoint, and when it fails the message shows only the status number, not what the endpoint answered. The key is never sent back to the screen.
 
 ### 7.2 The inbox
 
@@ -410,6 +411,9 @@ Areas, statuses, priorities, energy types and subtypes all work the same way, li
 - Screens: Today (plan and readout), Log session, Quick capture, Sessions, Inbox, Board / List / Timeline, Task, New task, Search, Buffs and debuffs, Dashboards, Cycle time, More, and Settings (everything in section 12, plus Sync server and Download database).
 - **The phone's own account.** The built-in Go code needs an account, so the phone has one called "me" with a hidden password nobody types. Connecting a sync server copies the phone's data into your server account.
 - **Download database** saves a clean copy of everything as one SQLite file, for moving data without a server or for a backup.
+- **Nothing goes into Google's backup or a phone-to-phone transfer.** The app's database holds all of a person's data and its settings hold the sync sign-in, so Android is told to leave them out. To move to a new phone, use Download database or sync with the server.
+- **Other apps and web pages cannot open the app's screens.** The `jitterbug://` links used for testing over adb still work from adb, but a web page can no longer launch them, and turning the phone does not open the same screen again.
+- **Disconnecting during a sync sticks.** If you disconnect (or connect to another server) while a sync or check is running, its result is thrown away instead of bringing the old connection back.
 - The phone tells the server its time zone (see section 14).
 
 ### 13.2 Sync: how the phone and the server stay the same
@@ -424,7 +428,7 @@ Phones only ever sync through a server, never with each other.
 - **What is sent**: for each record, its values plus, for each field, when it last changed and on which device.
 - **Conflicts are settled field by field: the latest change wins.** If the phone renames a task and the web changes its priority, both are kept. If both rename it, the later one wins. "Later" uses a clock that never goes backwards, so a phone with a wrong clock can't win forever. On an exact tie, every device picks the same winner. For data from before sync existed, where nobody knows when it last changed, the server's value wins.
 - **A delete wins.** An old copy can't bring a deleted record back.
-- **Status follows moves.** Moves (transition log rows) from every device are all kept. A task's status is the one its latest move went to.
+- **Status follows moves.** Moves (transition log rows) from every device are all kept, and a move that is already on a device is never changed or deleted by another device's sync. A task's status is the one its latest move went to.
 - **Sessions** travel with their energy-type parts and subtypes as one record.
 - **Task keys can clash**: two devices offline can both make `PR-2`. The server keeps the first and gives the second the next free number. That change is sent back.
 - **A new device** gets a full copy first, then only changes.
@@ -439,6 +443,7 @@ Phones only ever sync through a server, never with each other.
 - Dates you pick (logged for, due, start, end) are plain calendar days. Times (created, moved, changed) are stored in UTC.
 - **A new day reloads everything.** The web app checks the date every 30 seconds and when you come back to the tab, and reloads its data (not the page) when it changes, so snoozes wake and the day screen moves on.
 - **The web app needs the server.** When the connection drops, what is on screen stays, read only, with a banner. Buttons are greyed out with an explanation, not hidden. On reconnect everything reloads. Nothing is queued while offline. (The phone is the offline app.)
+- **When a screen can't load, it says so.** A board, table or session list that fails to load while the server is reachable (an error from the server, not a dropped connection) shows what went wrong with a **Retry** button. If older data is already on screen it stays, under a warning that it may be out of date. A slow answer for a view, range or filter you have already left never replaces what you are looking at.
 
 ---
 
