@@ -134,7 +134,7 @@ export function StatesScreen() {
             title: "",
             width: 200,
             render: (_, s) => (
-              <span onClick={(e) => e.stopPropagation()} style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "flex-end" }}>
+              <span role="presentation" onClick={(e) => e.stopPropagation()} style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "flex-end" }}>
                 {s.cleared_on ? (
                   <span style={{ color: palette.subtle }}>cleared {dayjs(s.cleared_on).format("D MMM")}</span>
                 ) : (

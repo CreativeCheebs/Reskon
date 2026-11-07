@@ -14,6 +14,7 @@ import { CardActionRail, CardContextMenu, useCardActions, type CardHandlers } fr
 import { Composer } from "./Composer";
 import { COLLAPSED_W, COL_MIN } from "./useBoardFit";
 import { useSurfaceOpacity, withAlpha } from "../views/ViewBackdrop";
+import { pressable } from "../a11y";
 
 // Columns sit half way between the page and the sunken well, with a faint
 // outline, so a mostly empty column reads as space rather than a dark slab.
@@ -94,7 +95,7 @@ export function Column(props: Props) {
           maxHeight: inLane ? 240 : "100%",
           cursor: "pointer",
         }}
-        onClick={onToggleCollapse}
+        {...pressable(onToggleCollapse, `Expand ${status.name}`)}
         title={`Expand ${status.name}`}
       >
         {dot}
@@ -235,6 +236,17 @@ const SortableCard = memo(function SortableCard({
         style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.35 : 1 }}
         {...attributes}
         {...listeners}
+        role="button" // dnd-kit sets the same role and tabIndex; stated here for readers and the linter
+        tabIndex={0}
+        aria-label={task.title}
+        onKeyDown={(e) => {
+          // Enter opens the task. Space picks the card up to move it (the keyboard sensor).
+          if (e.key === "Enter" && e.target === e.currentTarget) {
+            handlers.onOpen(task.id);
+            return;
+          }
+          listeners?.onKeyDown?.(e);
+        }}
       >
         <TaskCard
           task={task}

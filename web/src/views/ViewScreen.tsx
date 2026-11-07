@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Badge, Button, Dropdown, Input, Segmented, Select, Spin } from "antd";
+import { Badge, Button, Dropdown, Input, Segmented, Select, Spin } from "antd";
 import { confirm, message } from "../theme/feedback";
 import { ControlOutlined, EllipsisOutlined, FilterOutlined, ProjectOutlined, SearchOutlined, TableOutlined } from "@ant-design/icons";
+import { LoadError } from "./LoadError";
 import { api } from "../api";
 import { useApp } from "../store";
 import { Board } from "../board/Board";
@@ -60,16 +61,23 @@ export function ViewScreen({ view }: { view: View }) {
     return () => window.clearTimeout(t);
   }, [search]);
 
+  // Only the newest request may change the screen: an older, slower answer
+  // (for a view or search the user has already left) must not overwrite it.
+  const fetchSeq = useRef(0);
   const refetch = useCallback(() => {
+    const seq = ++fetchSeq.current;
     const q = query ? `&q=${encodeURIComponent(query)}` : "";
     api
       .get<Task[]>(`/tasks?view=${view.id}${q}`)
       .then((t) => {
+        if (seq !== fetchSeq.current) return;
         setTasks(t);
         setError(null);
       })
-      // Offline: keep showing the last loaded data.
-      .catch((e) => setError((e as Error).message));
+      // Keep showing the last loaded data, but say it could not be refreshed.
+      .catch((e) => {
+        if (seq === fetchSeq.current) setError((e as Error).message);
+      });
   }, [view.id, query]);
 
   // Saving layout or grouping hands back a new view object with an equal
@@ -207,7 +215,7 @@ export function ViewScreen({ view }: { view: View }) {
               />
               {searchFocus && (
                 // mousedown would blur the box and close the list before the click lands.
-                <div style={{ position: "absolute", top: "100%", left: 0, width: "max(100%, 420px)", zIndex: 20 }} onMouseDown={(e) => e.preventDefault()}>
+                <div role="presentation" style={{ position: "absolute", top: "100%", left: 0, width: "max(100%, 420px)", zIndex: 20 }} onMouseDown={(e) => e.preventDefault()}>
                   <SimilarTasksList
                     {...similar}
                     heading="Similar tasks in every view"
@@ -320,9 +328,10 @@ export function ViewScreen({ view }: { view: View }) {
         </div>
       </div>
       <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
+        {error && shown && online && <LoadError message={error} onRetry={refetch} stale />}
         {!shown ? (
           error ? (
-            <Alert type="error" message={error} />
+            <LoadError message={error} onRetry={refetch} />
           ) : (
             <Spin />
           )

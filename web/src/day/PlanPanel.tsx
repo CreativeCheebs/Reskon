@@ -76,7 +76,7 @@ export function PlanPanel({ data, onSave }: { data: DayData; onSave: (patch: Rec
                 </span>
                 <Button size="small" icon={<PlusOutlined />} disabled={!online} onClick={() => setCeiling(e.id, v === undefined ? STEP * 2 : v + STEP)} aria-label={`Raise ${e.name} ceiling`} />
                 <Tooltip title="No ceiling">
-                  <Button size="small" type="text" icon={<CloseOutlined />} disabled={!online || v === undefined} onClick={() => setCeiling(e.id, null)} />
+                  <Button size="small" type="text" icon={<CloseOutlined />} disabled={!online || v === undefined} onClick={() => setCeiling(e.id, null)} aria-label={`Clear the ${e.name} ceiling`} />
                 </Tooltip>
               </div>
               {held && (

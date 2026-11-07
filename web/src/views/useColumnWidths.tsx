@@ -78,6 +78,7 @@ function ResizableTitle({ onResize, children, style, ...rest }: ThHTMLAttributes
     <th style={{ ...style, position: "relative" }} {...rest}>
       {children}
       <span
+        role="presentation"
         onPointerDown={start}
         // Sorting is on header click; a click on the handle must not sort.
         onClick={(e) => e.stopPropagation()}

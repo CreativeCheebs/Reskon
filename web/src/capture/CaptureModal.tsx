@@ -236,7 +236,7 @@ export function CaptureModal({ onClose, takeEarlyKeys, initialText, onSaved }: P
         ) : null
       }
     >
-      <div onKeyDown={onKeyDown}>
+      <div role="presentation" onKeyDown={onKeyDown}>
         {!parse ? (
           <Spin spinning={parsing} tip="Reading…">
             {noProvider && (

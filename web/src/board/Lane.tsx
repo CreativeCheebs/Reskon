@@ -12,6 +12,7 @@ import {
   type DragOverEvent,
   type DragStartEvent,
   type CollisionDetection,
+  type Announcements,
 } from "@dnd-kit/core";
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { message } from "../theme/feedback";
@@ -95,7 +96,11 @@ export function Lane(props: Props) {
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+      // Enter is for opening the task, so only Space picks a card up.
+      keyboardCodes: { start: ["Space"], cancel: ["Escape"], end: ["Space", "Enter"] },
+    }),
   );
 
   // Container ids are "col-<statusId>"; card ids are task ids (numbers).
@@ -106,6 +111,17 @@ export function Lane(props: Props) {
   };
 
   const onDragStart = (e: DragStartEvent) => setActiveId(Number(e.active.id));
+
+  // What a screen reader says while a card is moved with the keyboard. Without
+  // this it would read internal ids ("col-3") instead of titles and statuses.
+  const titleOf = (id: string | number) => byId.get(Number(id))?.title ?? "the task";
+  const placeOf = (id: string | number) => boardStatuses.find((st) => st.id === containerOf(id))?.name ?? "the board";
+  const announcements: Announcements = {
+    onDragStart: ({ active }) => `Picked up ${titleOf(active.id)}.`,
+    onDragOver: ({ active, over }) => (over ? `${titleOf(active.id)} is over ${placeOf(over.id)}.` : undefined),
+    onDragEnd: ({ active, over }) => (over ? `${titleOf(active.id)} dropped in ${placeOf(over.id)}.` : `${titleOf(active.id)} dropped where it was.`),
+    onDragCancel: ({ active }) => `Moving ${titleOf(active.id)} cancelled.`,
+  };
 
   // Moving across columns while dragging, so the card previews in place.
   const onDragOver = (e: DragOverEvent) => {
@@ -221,6 +237,12 @@ export function Lane(props: Props) {
   return (
     <DndContext
         sensors={sensors}
+        accessibility={{
+          announcements,
+          screenReaderInstructions: {
+            draggable: "Press Space to pick up this task, the arrow keys to move it, Space to drop it and Escape to cancel. Press Enter to open it.",
+          },
+        }}
         collisionDetection={collision}
         onDragStart={onDragStart}
         onDragOver={onDragOver}

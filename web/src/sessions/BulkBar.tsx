@@ -69,6 +69,7 @@ export function BulkBar({
       <Select
         size="small"
         placeholder="Energy type…"
+        aria-label="Set the energy type of the selected sessions"
         style={{ width: 150 }}
         value={null}
         disabled={busy}
@@ -78,6 +79,7 @@ export function BulkBar({
       <Select
         size="small"
         placeholder="Kind…"
+        aria-label="Set the kind of the selected sessions"
         style={{ width: 120 }}
         value={null}
         disabled={busy}
@@ -90,6 +92,7 @@ export function BulkBar({
       <Select
         size="small"
         placeholder="Area…"
+        aria-label="Set the area of the selected sessions"
         style={{ width: 130 }}
         value={null}
         disabled={busy}
@@ -144,6 +147,7 @@ export function BulkBar({
         size="small"
         showSearch
         placeholder="Attach to task…"
+        aria-label="Attach the selected sessions to a task"
         style={{ width: 220 }}
         value={null}
         disabled={busy}

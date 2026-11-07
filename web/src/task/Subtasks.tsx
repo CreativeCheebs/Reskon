@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Checkbox, Divider, Input, Select, Spin, Typography } from "antd";
+import { Button, Checkbox, Divider, Input, Select, Spin, Typography } from "antd";
 import { message } from "../theme/feedback";
 import { api } from "../api";
 import { useApp } from "../store";
 import { formatHours, today } from "../format";
 import { palette } from "../theme/palette";
 import type { Task, TaskBrief } from "../types";
+import { pressable } from "../a11y";
 
 // A task's subtasks, as a checklist under its fields. Each is a full task
 // (its own status, key and sessions); ticking one moves it to the first
@@ -91,9 +92,10 @@ export function Subtasks({ parent, version, onOpenTask, onChanged }: Props) {
                   onChange={(e) => tick(t, e.target.checked)}
                   aria-label={`Mark ${t.title} done`}
                 />
-                <a
-                  onClick={() => onOpenTask(t.id)}
+                <span
+                  {...pressable(() => onOpenTask(t.id))}
                   style={{
+                    cursor: "pointer",
                     flex: 1,
                     minWidth: 0,
                     overflow: "hidden",
@@ -104,7 +106,7 @@ export function Subtasks({ parent, version, onOpenTask, onChanged }: Props) {
                   }}
                 >
                   {t.title}
-                </a>
+                </span>
                 {t.logged_h > 0 && <span style={{ color: palette.muted, fontSize: 12 }}>⏱ {formatHours(t.logged_h)}</span>}
                 <span style={{ color: palette.muted, fontSize: 12 }}>{status?.name}</span>
               </div>
@@ -163,9 +165,9 @@ export function ParentField({ task, disabled, onPick, onOpen }: { task: Task; di
           .map((b) => ({ value: b.id, search: b.title.toLowerCase(), label: b.title }))}
       />
       {parent && (
-        <a onClick={() => onOpen(parent.id)} style={{ fontSize: 12 }}>
+        <Button type="link" size="small" onClick={() => onOpen(parent.id)} style={{ fontSize: 12 }}>
           Open
-        </a>
+        </Button>
       )}
     </span>
   );

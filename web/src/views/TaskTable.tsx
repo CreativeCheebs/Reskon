@@ -14,6 +14,7 @@ import { groupTasks } from "./grouping";
 import { useColumnWidths } from "./useColumnWidths";
 import { useSurfaceOpacity, withAlpha } from "./ViewBackdrop";
 import { TaskBulkBar } from "./TaskBulkBar";
+import { checkboxLabel } from "../a11y";
 
 // Table layout: same filter, columns from the same `show` config as cards.
 // Default sort is time in status, descending — the aging list.
@@ -88,7 +89,7 @@ export function TaskTable({
       title: "Area",
       width: 120,
       render: (_, t) => byId(boot.areas, t.area_id)?.name,
-      sorter: (a, b) => a.area_id - b.area_id,
+      sorter: (a, b) => (byId(boot.areas, a.area_id)?.name ?? "").localeCompare(byId(boot.areas, b.area_id)?.name ?? ""),
     });
   if (show.status)
     cols.push({
@@ -123,8 +124,8 @@ export function TaskTable({
   if (show.difficulty)
     cols.push({
       key: "diff",
-      title: "Int.",
-      width: iconsOnly ? 48 : 60,
+      title: iconsOnly ? "Int." : "Intensity",
+      width: iconsOnly ? 48 : 90,
       render: (_, t) =>
         t.difficulty &&
         (iconsOnly ? (
@@ -232,6 +233,7 @@ export function TaskTable({
       rowSelection={
         onMoved && {
           columnWidth: 36,
+          getCheckboxProps: (t) => checkboxLabel(`Select ${t.title}`),
           selectedRowKeys: data.filter((t) => picked.has(t.id)).map((t) => t.id),
           onChange: (keys) =>
             setPicked((sel) => {
@@ -245,6 +247,14 @@ export function TaskTable({
         // A click on the tick box selects the row; anywhere else opens it.
         onClick: (e) => !(e.target as HTMLElement).closest(".ant-table-selection-column") && onOpenTask(t.id),
         style: { cursor: "pointer" },
+        // The same from the keyboard: Tab to a row, Enter or Space opens it.
+        tabIndex: 0,
+        onKeyDown: (e) => {
+          if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
+            e.preventDefault();
+            onOpenTask(t.id);
+          }
+        },
       })}
     />
   );

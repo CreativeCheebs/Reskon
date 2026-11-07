@@ -42,7 +42,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
       headers: body === undefined || body instanceof Blob ? undefined : { "Content-Type": "application/json" },
       body: body === undefined ? undefined : body instanceof Blob ? body : JSON.stringify(body),
     });
-  } catch (e) {
+  } catch {
     setOnline(false);
     throw new ApiError(0, "offline", "The server cannot be reached.");
   }
@@ -53,7 +53,8 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     window.dispatchEvent(new Event("jitterbug:signed-out"));
   }
   if (!res.ok) {
-    throw new ApiError(res.status, data.error ?? "error", data.detail ?? "", data.current);
+    // A proxy in front of the server may answer with a page that is not JSON; then the status is all there is.
+    throw new ApiError(res.status, data.error ?? "error", data.detail ?? (data.error ? "" : `The server answered HTTP ${res.status}.`), data.current);
   }
   return data as T;
 }
@@ -101,8 +102,10 @@ export async function patchWithRetry<T extends { updated_at: string }>(
   try {
     return await api.patch<T>(path, { ...changes, updated_at: seen });
   } catch (e) {
-    if (e instanceof ApiError && e.status === 409 && e.current) {
-      const cur = e.current as T;
+    // Only a 409 that carries the row as it is now can be retried; other 409s
+    // (an epic that still has tasks, say) carry something else.
+    const cur = e instanceof ApiError && e.status === 409 ? (e.current as Partial<T> | undefined) : undefined;
+    if (cur && typeof cur.updated_at === "string") {
       return await api.patch<T>(path, { ...changes, updated_at: cur.updated_at });
     }
     throw e;

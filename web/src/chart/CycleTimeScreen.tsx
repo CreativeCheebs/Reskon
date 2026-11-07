@@ -79,7 +79,7 @@ export function CycleTimeScreen() {
           />
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", rowGap: 8, marginLeft: "auto" }}>
-          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: palette.subtle }}>
+          <div role="group" aria-label="Scale" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: palette.subtle }}>
             Scale
             <Segmented<Scale>
               size="small"
@@ -90,7 +90,7 @@ export function CycleTimeScreen() {
                 { value: "each", label: "Each bar full width" },
               ]}
             />
-          </label>
+          </div>
           <Select<Order>
             size="small"
             style={{ width: 160 }}

@@ -6,11 +6,11 @@ import type { User } from "./AuthGate";
 
 // Sign in, or on a brand-new server create the first (admin) account.
 
-export function LoginPage({ setup, onSignedIn }: { setup: boolean; onSignedIn: (u: User) => void }) {
+export function LoginPage({ setup, tokenRequired = false, onSignedIn }: { setup: boolean; tokenRequired?: boolean; onSignedIn: (u: User) => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const submit = async (v: { username: string; password: string; confirm?: string }) => {
+  const submit = async (v: { username: string; password: string; confirm?: string; setup_token?: string }) => {
     setError(null);
     if (setup && v.password !== v.confirm) {
       setError("The passwords don't match.");
@@ -21,6 +21,7 @@ export function LoginPage({ setup, onSignedIn }: { setup: boolean; onSignedIn: (
       const r = await api.post<{ user: User }>(setup ? "/auth/setup" : "/auth/login", {
         username: v.username,
         password: v.password,
+        ...(setup && tokenRequired ? { setup_token: v.setup_token } : {}),
       });
       onSignedIn(r.user);
     } catch (e) {
@@ -50,6 +51,11 @@ export function LoginPage({ setup, onSignedIn }: { setup: boolean; onSignedIn: (
         </Typography.Paragraph>
         {error && <Alert type="error" message={error} style={{ marginBottom: 12 }} showIcon />}
         <Form layout="vertical" onFinish={submit} requiredMark={false}>
+          {setup && tokenRequired && (
+            <Form.Item name="setup_token" label="Setup token" extra="The word set as JITTERBUG_SETUP_TOKEN when this server was started." rules={[{ required: true }]}>
+              <Input.Password autoComplete="off" />
+            </Form.Item>
+          )}
           <Form.Item name="username" label="Username" rules={[{ required: true }]}>
             <Input autoFocus autoComplete="username" autoCapitalize="none" />
           </Form.Item>

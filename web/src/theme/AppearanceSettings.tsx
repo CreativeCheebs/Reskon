@@ -151,6 +151,8 @@ function ThemeCard({
         background: palette.panel,
         cursor: "pointer",
       }}
+      // Mouse click only: the name below is the keyboard way to choose this theme.
+      role="presentation"
       onClick={onChoose}
     >
       {/* Preview drawn in the theme's own colours. */}
@@ -181,7 +183,19 @@ function ThemeCard({
         </div>
       </div>
       <div style={{ padding: "8px 10px", display: "flex", alignItems: "center", gap: 6 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div
+          style={{ flex: 1, minWidth: 0 }}
+          role="button"
+          tabIndex={0}
+          aria-pressed={active}
+          aria-label={`Use the ${theme.name} theme`}
+          onKeyDown={(e) => {
+            if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
+              e.preventDefault();
+              onChoose();
+            }
+          }}
+        >
           <div style={{ fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
             {active && <CheckOutlined style={{ color: palette.accent }} />}
             {theme.name}

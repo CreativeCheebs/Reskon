@@ -76,7 +76,6 @@ export function ThemeProvider({ children }: { children: () => ReactNode }) {
     setThemeState(t);
   }, []);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const antTheme = useMemo(makeAntTheme, [theme]);
 
   return (

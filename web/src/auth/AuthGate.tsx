@@ -27,7 +27,7 @@ export function useAuth(): AuthState {
   return v;
 }
 
-type Status = { setup_needed: boolean; user: User | null };
+type Status = { setup_needed: boolean; setup_token_required?: boolean; user: User | null };
 
 export function AuthGate({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<Status | null>(null);
@@ -70,7 +70,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
       </div>
     );
 
-  if (!status.user) return <LoginPage setup={status.setup_needed} onSignedIn={(user) => setStatus({ setup_needed: false, user })} />;
+  if (!status.user) return <LoginPage setup={status.setup_needed} tokenRequired={status.setup_token_required} onSignedIn={(user) => setStatus({ setup_needed: false, user })} />;
 
   return (
     <Ctx.Provider value={{ user: status.user, logout }}>

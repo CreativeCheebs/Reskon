@@ -6,6 +6,7 @@ import { api } from "../api";
 import { useApp } from "../store";
 import { palette } from "../theme/palette";
 import type { LinkedTask, Task, TaskBrief } from "../types";
+import { pressable } from "../a11y";
 
 // Dependencies in the task panel, after Jira: what this task is blocked by
 // and what it blocks. Whether it is blocked is the server's (task.blocked);
@@ -55,12 +56,12 @@ export function Dependencies({ task, onOpenTask, onChanged }: Props) {
           const finished = l.behaviour === "done" || l.behaviour === "cancelled";
           return (
             <div key={l.link_id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "2px 4px" }}>
-              <a
-                onClick={() => onOpenTask(l.id)}
-                style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: finished ? palette.muted : palette.fg, textDecoration: finished ? "line-through" : undefined }}
+              <span
+                {...pressable(() => onOpenTask(l.id))}
+                style={{ cursor: "pointer", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: finished ? palette.muted : palette.fg, textDecoration: finished ? "line-through" : undefined }}
               >
                 {l.title}
-              </a>
+              </span>
               <StatusName id={l.status_id} />
               <Button size="small" type="text" icon={<CloseOutlined />} disabled={!online} onClick={() => remove(l)} aria-label={`Remove the link to ${l.title}`} />
             </div>

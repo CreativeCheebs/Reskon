@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Button, Checkbox, DatePicker, Input, Popconfirm, Segmented, Space, Table, Tag, Typography } from "antd";
-import { SearchOutlined } from "@ant-design/icons";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Button, Checkbox, DatePicker, Input, Popconfirm, Segmented, Space, Spin, Table, Tag, Tooltip, Typography } from "antd";
+import { DeleteOutlined, SearchOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { message } from "../theme/feedback";
 import { api } from "../api";
@@ -10,12 +10,15 @@ import { formatHours, today } from "../format";
 import { palette } from "../theme/palette";
 import { Lozenge } from "../theme/Lozenge";
 import type { Session } from "../types";
+import { DIFFICULTY_LABELS } from "../types";
 import { SessionModal } from "./SessionModal";
 import { BulkBar } from "./BulkBar";
 import { useColumnWidths } from "../views/useColumnWidths";
 import { DifficultyIcon } from "../task/LevelIcons";
 import { FilterSelect, PageHeader, Toolbar, ToolbarGroup } from "../theme/Toolbar";
 import { KIND_ICON, KindChip } from "./kind";
+import { LoadError } from "../views/LoadError";
+import { checkboxLabel } from "../a11y";
 
 // Sessions by day, with filters (applied on the server) and selection for
 // bulk changes: tick rows, tick a day to take all of it, or select
@@ -48,6 +51,10 @@ export function SessionsScreen() {
   const [modal, setModal] = useState<{ editing?: Session } | null>(null);
   const [tasks, setTasks] = useState<{ id: number; title: string; key: string }[]>([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [loadState, setLoadState] = useState<{ loading: boolean; error: string | null }>({ loading: true, error: null });
+  // Only the newest load may change the screen; a slow older one (for a range or filter
+  // already left behind) is dropped.
+  const loadSeq = useRef(0);
 
   useEffect(() => {
     const t = window.setTimeout(() => setFilters((f) => ({ ...f, q: search.trim() })), 250);
@@ -55,6 +62,8 @@ export function SessionsScreen() {
   }, [search]);
 
   const load = useCallback(async () => {
+    const seq = ++loadSeq.current;
+    setLoadState((st) => ({ ...st, loading: true }));
     const p = new URLSearchParams({ from: range[0], to: range[1] });
     if (filters.energy.length) p.set("energy_type", filters.energy.join(","));
     if (filters.areas.length) p.set("area", filters.areas.join(","));
@@ -65,14 +74,19 @@ export function SessionsScreen() {
     if (filters.q) p.set("q", filters.q);
     try {
       const s = await api.get<Session[]>(`/sessions?${p}`);
+      if (seq !== loadSeq.current) return;
       setSessions(s);
       // Only act on what is visible: drop selected rows the filters now hide.
       const visible = new Set(s.map((x) => x.id));
       setSelected((sel) => new Set([...sel].filter((id) => visible.has(id))));
       const uniqueDays = [...new Set(s.map((x) => x.logged_for))];
       const totals = await Promise.all(uniqueDays.map((d) => api.get<DayTotals>(`/day/${d}`)));
+      if (seq !== loadSeq.current) return;
       setDays(Object.fromEntries(totals.map((t) => [t.day, t])));
+      setLoadState({ loading: false, error: null });
     } catch (e) {
+      if (seq !== loadSeq.current) return;
+      setLoadState({ loading: false, error: (e as Error).message });
       message.error((e as Error).message);
     }
   }, [range, filters]);
@@ -106,11 +120,21 @@ export function SessionsScreen() {
   const setF = <K extends keyof Filters>(k: K, v: Filters[K]) => setFilters((f) => ({ ...f, [k]: v }));
 
   // One set of columns for every day's table; widths are kept in this browser.
+  // Subtypes and Note only take a column while some shown session has them.
+  const showSubtypes = sessions.some((s) => s.subtypes.length > 0);
+  const showNote = sessions.some((s) => s.note);
   const sessionCols = useColumnWidths<Session>("sessions", [
     {
       key: "what",
       title: "What",
-      render: (_, s) => (s.task_id ? titleOf.get(s.task_id) ?? `task #${s.task_id}` : s.label ?? "–"),
+      render: (_, s) => (
+        <span>
+          {s.task_id ? titleOf.get(s.task_id) ?? `task #${s.task_id}` : s.label ?? "–"}
+          {s.started_at && (
+            <span style={{ color: palette.subtle, fontSize: 11 }}> · {dayjs(s.started_at).format("HH:mm")}</span>
+          )}
+        </span>
+      ),
     },
     { key: "kind", title: "Kind", width: 84, render: (_, s) => <KindChip kind={s.kind} /> },
     {
@@ -127,30 +151,53 @@ export function SessionsScreen() {
     { key: "points", title: "Points", width: 64, render: (_, s) => (s.points === null ? "" : Number(s.points.toFixed(2))) },
     {
       key: "diff",
-      title: "Int.",
-      width: 50,
-      render: (_, s) => s.difficulty && <DifficultyIcon level={s.difficulty} />,
-    },
-    {
-      key: "subtypes",
-      title: "Subtypes",
+      title: (
+        <Tooltip title="Intensity, 1 Light to 5 Extreme. The shape and number say it too, not just the colour.">
+          Intensity
+        </Tooltip>
+      ),
+      width: 92,
       render: (_, s) =>
-        s.subtypes.map((st) => (
-          <Tag key={st.rank} bordered={false}>
-            {subtype(st.subtype_id)} {formatHours(st.weighted_h)}
-          </Tag>
-        )),
+        s.difficulty && (
+          <Tooltip title={`Intensity ${s.difficulty} of 5 · ${DIFFICULTY_LABELS[s.difficulty] ?? ""}`}>
+            <span
+              role="img"
+              aria-label={`Intensity ${s.difficulty} of 5${DIFFICULTY_LABELS[s.difficulty] ? `, ${DIFFICULTY_LABELS[s.difficulty]}` : ""}`}
+              style={{ display: "inline-flex", alignItems: "center", gap: 6, fontVariantNumeric: "tabular-nums" }}
+            >
+              <DifficultyIcon level={s.difficulty} tip={false} />
+              {s.difficulty}
+            </span>
+          </Tooltip>
+        ),
     },
-    { key: "note", title: "Note", dataIndex: "note", ellipsis: true },
+    ...(showSubtypes
+      ? [
+          {
+            key: "subtypes",
+            title: "Subtypes",
+            render: (_: unknown, s: Session) =>
+              s.subtypes.map((st) => (
+                <Tag key={st.rank} bordered={false}>
+                  {subtype(st.subtype_id)} {formatHours(st.weighted_h)}
+                </Tag>
+              )),
+          },
+        ]
+      : []),
+    ...(showNote ? [{ key: "note", title: "Note", dataIndex: "note", ellipsis: true }] : []),
     {
       title: "",
-      width: 70,
+      width: 44,
       render: (_, s) => (
-        <span onClick={(e) => e.stopPropagation()}>
-          <Popconfirm title="Delete this session?" onConfirm={() => remove(s.id)}>
-            <WriteButton size="small" type="text" danger>
-              Delete
-            </WriteButton>
+        <span className="jb-rowdel" role="presentation" onClick={(e) => e.stopPropagation()}>
+          <Popconfirm
+            title="Delete this session?"
+            okText="Delete"
+            okButtonProps={{ danger: true }}
+            onConfirm={() => remove(s.id)}
+          >
+            <Button size="small" type="text" icon={<DeleteOutlined />} aria-label={`Delete session: ${s.task_id ? titleOf.get(s.task_id) ?? `task #${s.task_id}` : s.label ?? "no task"} on ${s.logged_for}`} />
           </Popconfirm>
         </span>
       ),
@@ -167,6 +214,7 @@ export function SessionsScreen() {
           </WriteButton>
         }
       >
+        <span role="group" aria-label="Date range">
         <DatePicker.RangePicker
           size="small"
           allowClear={false}
@@ -182,6 +230,7 @@ export function SessionsScreen() {
             { label: "Everything", value: [dayjs("2000-01-01"), dayjs("2099-12-31")] },
           ]}
         />
+        </span>
       </PageHeader>
 
       {/* Grouped like the board's toolbar: what is searched, which types and
@@ -194,6 +243,8 @@ export function SessionsScreen() {
             prefix={<SearchOutlined />}
             placeholder="Search label, note, task"
             style={{ width: 200 }}
+            className={search ? "jb-active" : undefined}
+            aria-label="Search sessions"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -208,12 +259,25 @@ export function SessionsScreen() {
               { value: "event", label: "Events", icon: KIND_ICON.event },
             ]}
           />
+          {filtered && (
+            <Button
+              size="small"
+              type="text"
+              onClick={() => {
+                setFilters(NO_FILTERS);
+                setSearch("");
+              }}
+            >
+              Reset filters
+            </Button>
+          )}
         </ToolbarGroup>
         <ToolbarGroup>
           <FilterSelect
             mode="multiple"
             allowClear
             placeholder="Energy type"
+            aria-label="Filter by energy type"
             style={{ width: 150 }}
             active={filters.energy.length > 0}
             value={filters.energy}
@@ -225,6 +289,7 @@ export function SessionsScreen() {
             mode="multiple"
             allowClear
             placeholder="Area"
+            aria-label="Filter by area"
             style={{ width: 130 }}
             active={filters.areas.length > 0}
             value={filters.areas}
@@ -236,6 +301,7 @@ export function SessionsScreen() {
         <ToolbarGroup>
           <FilterSelect
             style={{ width: 150 }}
+            aria-label="Filter by whether a task is attached"
             active={filters.hasTask !== ""}
             value={filters.hasTask}
             onChange={(v) => setF("hasTask", v)}
@@ -247,6 +313,7 @@ export function SessionsScreen() {
           />
           <FilterSelect
             style={{ width: 130 }}
+            aria-label="Filter by whether intensity is set"
             active={filters.hasDiff !== ""}
             value={filters.hasDiff}
             onChange={(v) => setF("hasDiff", v)}
@@ -258,6 +325,7 @@ export function SessionsScreen() {
           />
           <FilterSelect
             style={{ width: 130 }}
+            aria-label="Filter by whether subtypes are set"
             active={filters.hasSubtypes !== ""}
             value={filters.hasSubtypes}
             onChange={(v) => setF("hasSubtypes", v)}
@@ -267,18 +335,6 @@ export function SessionsScreen() {
               { value: "false", label: "No subtypes" },
             ]}
           />
-          {filtered && (
-            <Button
-              size="small"
-              type="text"
-              onClick={() => {
-                setFilters(NO_FILTERS);
-                setSearch("");
-              }}
-            >
-              Clear filters
-            </Button>
-          )}
         </ToolbarGroup>
       </Toolbar>
 
@@ -299,7 +355,9 @@ export function SessionsScreen() {
         <BulkBar ids={[...selected]} tasks={tasks} onDone={load} onClear={() => setSelected(new Set())} />
       )}
 
-      {byDay.length === 0 && (
+      {loadState.error && <LoadError message={loadState.error} onRetry={load} stale={sessions.length > 0} />}
+      {byDay.length === 0 && loadState.loading && !loadState.error && <Spin />}
+      {byDay.length === 0 && !loadState.loading && !loadState.error && (
         <Typography.Paragraph type="secondary">{filtered ? "No sessions match these filters." : "No sessions in this range."}</Typography.Paragraph>
       )}
       {byDay.map((day) => {
@@ -327,7 +385,8 @@ export function SessionsScreen() {
               dataSource={rows}
               // The header checkbox selects this whole day.
               rowSelection={{
-                selectedRowKeys: rows.filter((r) => selected.has(r.id)).map((r) => r.id),
+                getCheckboxProps: (r) => checkboxLabel(`Select session: ${r.task_id ? titleOf.get(r.task_id) ?? `task #${r.task_id}` : r.label ?? "no task"}`),
+              selectedRowKeys: rows.filter((r) => selected.has(r.id)).map((r) => r.id),
                 onChange: (keys) =>
                   setSelected((sel) => {
                     const next = new Set([...sel].filter((id) => !rows.some((r) => r.id === id)));
@@ -335,7 +394,18 @@ export function SessionsScreen() {
                     return next;
                   }),
               }}
-              onRow={(s) => ({ onClick: () => setModal({ editing: s }), style: { cursor: "pointer" } })}
+              onRow={(s) => ({
+                onClick: () => setModal({ editing: s }),
+                style: { cursor: "pointer" },
+                // The same from the keyboard: Tab to a row, Enter or Space opens it.
+                tabIndex: 0,
+                onKeyDown: (e) => {
+                  if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
+                    e.preventDefault();
+                    setModal({ editing: s });
+                  }
+                },
+              })}
               tableLayout="fixed"
               columns={sessionCols.columns}
               components={sessionCols.components}

@@ -144,6 +144,8 @@ export function TaskCard({
 
   return (
     <div
+      // Mouse click only: the focusable wrapper around the card (Column.tsx) opens it from the keyboard.
+      role="presentation"
       onClick={onOpen}
       className={classes}
       style={{

@@ -93,7 +93,7 @@ export function SimilarTasksList({
   const rows = result?.results ?? [];
   if (!loading && rows.length === 0) return null;
   return (
-    <div className="jb-similar" onPointerDown={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+    <div className="jb-similar" role="presentation" onPointerDown={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
       <div className="jb-similar-head">
         <span>{rows.length ? heading : "Looking for similar tasks"}</span>
         {loading && <LoadingDots />}

@@ -124,6 +124,36 @@ export function interactionCss(): string {
       border-color: ${accentEdge} !important;
       color: ${palette.fg} !important;
     }
+    /* A search box with words in it wears the same tint as an active
+       filter, so it reads as applied rather than a placeholder. */
+    .jb-active.ant-input, .jb-active.ant-input-affix-wrapper {
+      background: ${accentTint} !important;
+      border-color: ${accentEdge} !important;
+    }
+    .jb-active.ant-input-affix-wrapper .ant-input {
+      background: transparent !important;
+      color: ${palette.fg} !important;
+    }
+    .jb-active.ant-input-affix-wrapper .anticon { color: ${palette.fg}; }
+
+    /* Sessions tables: each row's Delete is an icon button that appears
+       on hover or keyboard focus, so rows read as data instead of a wall
+       of red. Red stays on the confirmation's Delete button. Touch
+       screens have no hover, so it always shows there. */
+    .jb-rowdel { display: inline-flex; opacity: 0; }
+    tr:hover .jb-rowdel, tr:focus-within .jb-rowdel { opacity: 1; }
+    .jb-rowdel .ant-btn { color: ${palette.muted}; }
+    .jb-rowdel .ant-btn:not(:disabled):hover { color: ${palette.danger} !important; }
+    @media (hover: none) {
+      .jb-rowdel { opacity: 1; }
+    }
+
+    /* Table row checkboxes keep their 16px box but take a 24px click
+       target (WCAG 2.5.8), header checkbox included. */
+    .ant-table-selection-column .ant-checkbox {
+      width: 24px; height: 24px;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
     /* Every segmented switch (Board/Table, the dashboard's ranges, Work or
        Event ...) looks like the board toolbar's. 24px tall like the selects
        beside them: a 1px border, then a 2px gap
@@ -192,7 +222,7 @@ export function interactionCss(): string {
     .jb-sider .ant-menu-item-group-title { padding: 14px 16px 6px 20px !important; line-height: 16px; }
     .jb-sider .ant-menu-item-group:first-child .ant-menu-item-group-title { padding-top: 6px !important; }
     .jb-nav-heading { font-size: 11px; font-weight: 600; letter-spacing: .6px; text-transform: uppercase; color: ${palette.subtle}; }
-    .jb-nav-count { min-width: 18px; height: 16px; padding: 0 5px; border-radius: 8px; background: ${palette.accent}; color: #fff; font-size: 11px; line-height: 16px; text-align: center; align-self: center; font-variant-numeric: tabular-nums; }
+    .jb-nav-count { min-width: 18px; height: 16px; padding: 0 5px; border-radius: 8px; background: ${palette.accent}; color: ${palette.bg}; font-size: 11px; line-height: 16px; text-align: center; align-self: center; font-variant-numeric: tabular-nums; }
     .jb-sider .ant-menu-item-divider.jb-nav-divider, .jb-sider .jb-nav-divider { margin: 10px 20px 0 !important; border-color: ${palette.border} !important; }
     .jb-sider:not(.ant-layout-sider-collapsed) .ant-menu-item { padding-left: 12px !important; padding-right: 10px !important; }
     .jb-sider .ant-menu-item { position: relative; transition: background-color .12s ease, color .12s ease; }

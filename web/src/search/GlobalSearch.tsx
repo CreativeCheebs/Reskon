@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Input, Modal, Typography, type InputRef } from "antd";
+import { Button, Input, Modal, Typography, type InputRef } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
 import { api } from "../api";
 import { useApp } from "../store";
@@ -88,9 +88,9 @@ export function GlobalSearch({ open, onOpenChange }: { open: boolean; onOpenChan
           onPressEnter={() => first && show(first)}
         />
         {byKey && (
-          <a onClick={() => show(byKey.id)} style={{ display: "block", padding: "8px 6px 0" }}>
+          <Button type="link" onClick={() => show(byKey.id)} style={{ display: "block", height: "auto", padding: "8px 6px 0", textAlign: "left" }}>
             {byKey.key} · {byKey.title}
-          </a>
+          </Button>
         )}
         <SimilarTasksList {...similar} heading="Tasks" onOpen={show} />
         <Typography.Text type="secondary" style={{ fontSize: 11 }}>

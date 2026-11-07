@@ -1,6 +1,7 @@
 import { Tooltip } from "antd";
 import { palette } from "../theme/palette";
 import type { StateRow } from "../day/types";
+import { pressable } from "../a11y";
 
 // Words and a symbol for the severity scale. Severity is a number on the
 // server; the form offers 0 to 5 in half steps, and each step has a name
@@ -80,7 +81,7 @@ export function SeverityIcon({ kind, severity, size = 14 }: { kind: StateRow["ki
     fill = <path d={`M8 8V${8 - r}A${r} ${r} 0 ${f > 0.5 ? 1 : 0} 1 ${x} ${y}Z`} fill={color} />;
   }
   return (
-    <svg width={size} height={size} viewBox="0 0 16 16" aria-label={`Severity ${severity}`} style={{ flex: "none", display: "block" }}>
+    <svg width={size} height={size} viewBox="0 0 16 16" role="img" aria-label={`Severity ${Math.round(severity * 10) / 10}`} style={{ flex: "none", display: "block" }}>
       <circle cx="8" cy="8" r="7" fill="none" stroke={color} strokeWidth="1.5" />
       {fill}
     </svg>
@@ -93,7 +94,7 @@ export function StateChip({ s, onClick }: { s: StateRow; onClick?: () => void })
   return (
     <Tooltip title={`${s.kind} · ${Math.round(s.effective_severity * 10) / 10} of 5 · ${band.hint}${s.ended ? " · ended, not cleared" : ""}`}>
       <span
-        onClick={onClick}
+        {...pressable(onClick, `${s.kind}: ${s.name}, ${band.name}`)}
         style={{
           display: "inline-flex",
           alignItems: "center",

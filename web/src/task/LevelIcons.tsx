@@ -15,7 +15,7 @@ export function DifficultyIcon({ level, size = 14, tip = true }: { level: number
   const color = palette[`difficulty${i}` as "difficulty1"];
   const sides = DIFFICULTY_SIDES[i - 1];
   const icon = (
-    <svg width={size} height={size} viewBox="0 0 16 16" aria-label={`Intensity ${i}`} style={{ flex: "none", display: "block" }}>
+    <svg width={size} height={size} viewBox="0 0 16 16" role="img" aria-label={`Intensity ${i}`} style={{ flex: "none", display: "block" }}>
       <circle cx="8" cy="8" r="7" fill="none" stroke={color} strokeWidth="1.5" />
       {sides === 0 ? <circle cx="8" cy="8" r="3" fill={color} /> : <polygon points={polygon(sides, 3.9)} fill={color} />}
     </svg>
@@ -77,7 +77,7 @@ export function PriorityIcon({ priority, all, size = 14, tip = true }: { priorit
   else if (Math.abs(level) === 1) d = chevron(level > 0 ? 7 : 9, level > 0);
   else d = level > 0 ? chevron(5, true) + chevron(10, true) : chevron(6, false) + chevron(11, false);
   const icon = (
-    <svg width={size} height={size} viewBox="0 0 16 16" aria-label={`Priority ${priority.name}`} style={{ flex: "none", display: "block" }}>
+    <svg width={size} height={size} viewBox="0 0 16 16" role="img" aria-label={`Priority ${priority.name}`} style={{ flex: "none", display: "block" }}>
       <path d={d} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );

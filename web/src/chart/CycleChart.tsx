@@ -191,6 +191,13 @@ export function CycleRows({
         <div
           key={r.task_id}
           role="row"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
+              e.preventDefault();
+              onOpen(r.task_id);
+            }
+          }}
           onMouseEnter={() => setHover(r.task_id)}
           onMouseLeave={() => setHover((h) => (h === r.task_id ? null : h))}
           onClick={() => onOpen(r.task_id)}

@@ -5,6 +5,7 @@ import { useEpics } from "../task/useEpics";
 import { blend, palette } from "../theme/palette";
 import { today } from "../format";
 import type { Task } from "../types";
+import { pressable } from "../a11y";
 
 // A simple timeline, after Jira's: one row per task with a bar from its
 // start date to its end date, grouped under epics. Read-only; dates are
@@ -134,7 +135,7 @@ export function Timeline({ tasks, zoom, onZoom, onOpenTask }: Props) {
     return (
       <div
         className="jb-clickable"
-        onClick={() => onOpenTask(s.task.id)}
+        {...pressable(() => onOpenTask(s.task.id), s.task.title)}
         title={`${s.task.title} · ${dateOf(s.from).toISOString().slice(0, 10)} → ${dateOf(s.to).toISOString().slice(0, 10)}${status ? ` · ${status.name}` : ""}`}
         style={{
           position: "absolute",
@@ -212,7 +213,10 @@ export function Timeline({ tasks, zoom, onZoom, onOpenTask }: Props) {
               <div key={r.kind === "task" ? `t${r.span!.task.id}` : `g${r.group.key}`} style={{ display: "flex", height: ROW, borderTop: i ? `1px solid ${blend(palette.border, palette.bg, 0.5)}` : undefined }}>
                 <div
                   className={r.kind === "none" ? undefined : "jb-clickable"}
-                  onClick={() => (r.kind === "task" ? onOpenTask(r.span!.task.id) : r.group.epic && onOpenTask(r.group.epic.id))}
+                  {...pressable(
+                    r.kind === "none" ? undefined : () => (r.kind === "task" ? onOpenTask(r.span!.task.id) : r.group.epic && onOpenTask(r.group.epic.id)),
+                    label ?? undefined,
+                  )}
                   title={label ?? undefined}
                   style={{
                     position: "sticky",
