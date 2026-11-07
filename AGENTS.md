@@ -15,12 +15,26 @@
 
 ```sh
 make build    # frontend then binary
-make test     # go vet + go test + tsc
+make test     # gofmt check, go vet + go test (server and mobile/), tsc, eslint, vitest
+make check    # test + golangci-lint + race tests + govulncheck (race needs a C compiler: run on a Linux build machine)
 ./jitterbug   # :8080, ./data  (env: JITTERBUG_DATA, JITTERBUG_DB (legacy), JITTERBUG_ADDR, JITTERBUG_LLM_*)
 docker build -t jitterbug .
 ```
 
 Before calling a step done: run its acceptance check for real, `make test` passes, docs updated if schema/behaviour changed, the app starts from an empty DB **and** an existing one, bare **and** in the container.
+
+### Where things run (read before starting anything)
+
+This Windows PC (`X:\Personal\JitterBug`) is **for building and editing only**. The JitterBug server **never runs here**: do not start `./jitterbug`, run the container (`docker run`), or open or launch Docker Desktop (if the daemon is off, leave it off, and report the check as blocked).
+
+What is fine here: `go vet`, `go test`, `tsc`, `vite build`, the Gradle/Android build, `gomobile`, and `gitleaks`.
+
+Anything that needs the server running, the container started, or the app opened on an empty or existing database goes to the Linux server (192.168.0.8) with the tool in `tools/` (local only, not in git; read `tools/README.md`):
+
+- `python tools/ship/deploy_test.py` sends a build to the **test** server (`~/JitterBug-perf`, port 8097) and checks it. Any AI may run it.
+- `python tools/ship/deploy_live.py --live` is the **real** server (port 8080). Only when the owner asks.
+
+Think of `tools/ship` as a remote control for that Linux machine. So "starts from an empty and an existing database" is checked there, not here. `docker build` and the container run also belong on that machine; if the Linux server can't do it yet, ask the owner instead of using Docker on this PC.
 
 ## Rules that are easy to break
 

@@ -5,3 +5,17 @@ jitterbug
 jitterbug.db*
 *.db-wal
 *.db-shm
+.env
+.env.*
+data
+**/*.db
+**/*.zip
+.claude
+.github
+.vscode
+.VSCodeCounter
+tools
+mobile
+docs
+web/test-results
+web/playwright-report

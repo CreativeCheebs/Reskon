@@ -1,0 +1,2 @@
+# Go files are stored and checked out with LF so `gofmt -l` is clean on Windows too.
+*.go text eol=lf

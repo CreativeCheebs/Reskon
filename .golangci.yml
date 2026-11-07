@@ -1,0 +1,34 @@
+# golangci-lint v2. The default "standard" set: errcheck, govet, ineffassign,
+# staticcheck, unused. Plain, no style opinions.
+version: "2"
+
+linters:
+  default: standard
+  settings:
+    errcheck:
+      # Calls whose failure nobody can act on: closing after reading, rolling
+      # back after an error, a client that hung up mid-response.
+      exclude-functions:
+        - (*database/sql.Tx).Rollback
+        - (*database/sql.Rows).Close
+        - (*database/sql.DB).Close
+        - (net/http.ResponseWriter).Write
+        - (io.Closer).Close
+        - (io.ReadCloser).Close
+        - (*os.File).Close
+        - os.Remove
+  exclusions:
+    rules:
+      # Tests set up data with calls whose errors would only repeat the
+      # assertion that follows; a failed set-up fails the test anyway.
+      - path: _test\.go
+        linters:
+          - errcheck
+
+formatters:
+  enable:
+    - gofmt
+
+issues:
+  max-same-issues: 0
+  max-issues-per-linter: 0

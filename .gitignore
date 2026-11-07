@@ -40,3 +40,10 @@ web/src/icons/generated/
 
 # Go core for the Android app (mobile/build.ps1).
 /mobile/build/
+.VSCodeCounter/
+
+# Archives and exports kept beside the code (e.g. Claude Code history).
+*.zip
+web/test-results/
+web/playwright-report/
+.claude/scheduled_tasks.lock
