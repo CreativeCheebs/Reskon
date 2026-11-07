@@ -72,3 +72,40 @@ for (const [name, open] of [
     expect(results.violations.map((v) => `${v.id}: ${v.help} (${v.nodes.length})`)).toEqual([]);
   });
 }
+
+// The sidebar items are named with their icon ("calendar Day"), so match the end.
+const dayItem = (page: Page) => page.getByRole("menuitem", { name: /Day$/ });
+
+// The switch moves at once and saves after, so wait for the save before going on.
+async function flipDay(page: Page) {
+  const saved = page.waitForResponse((r) => r.url().includes("/api/settings/show_day_screen") && r.request().method() === "PUT");
+  await page.getByRole("switch", { name: "Day screen" }).click();
+  expect((await saved).ok()).toBe(true);
+}
+
+test("the Day screen is offered only while Settings > Screens has it on", async ({ page }) => {
+  await signIn(page);
+  await page.goto("/#/settings/screens");
+  const day = page.getByRole("switch", { name: "Day screen" });
+  await expect(day).toBeVisible();
+  if (await day.isChecked()) await flipDay(page); // start from off, the default
+  await expect(day).not.toBeChecked();
+  await expect(dayItem(page)).toHaveCount(0);
+
+  // An old link to the Day screen lands on a normal screen instead.
+  await page.goto("/#/day");
+  await expect(page.getByRole("button", { name: "Previous day" })).toHaveCount(0);
+  await expect(page).not.toHaveURL(/#\/day/);
+
+  // Switch it on: the sidebar offers it and it opens.
+  await page.goto("/#/settings/screens");
+  await flipDay(page);
+  await expect(day).toBeChecked();
+  await dayItem(page).click();
+  await expect(page.getByRole("button", { name: "Previous day" })).toBeVisible();
+
+  // Leave it as found: off.
+  await page.goto("/#/settings/screens");
+  await flipDay(page);
+  await expect(day).not.toBeChecked();
+});

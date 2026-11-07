@@ -50,24 +50,25 @@ data class Route(val name: String, val args: Map<String, String> = emptyMap()) {
     fun long(k: String) = args[k]?.toLongOrNull()
 }
 
-val TABS = listOf("today" to "Today", "board" to "Board", "sessions" to "Sessions", "inbox" to "Inbox", "more" to "More")
-private val TAB_ICONS = listOf(Icons.today, Icons.board, Icons.sessions, Icons.inbox, Icons.more)
+private val TAB_ICONS = mapOf("today" to Icons.today, "board" to Icons.board, "sessions" to Icons.sessions, "inbox" to Icons.inbox, "more" to Icons.more)
 
 /** App-wide state: the back stack, the lookups, and a counter screens reload on. */
 object App {
-    val stack = mutableStateListOf(Route("today"))
+    /** The screen the app starts on. Today replaces it once the settings are loaded, if the Day screen is on. */
+    private val first = Route("board")
+    val stack = mutableStateListOf(first)
     var boot by mutableStateOf<Boot?>(null)
     var inboxCount by mutableIntStateOf(0)
     /** Bumped after every write, so open screens load again. */
     var version by mutableIntStateOf(0)
     var toast by mutableStateOf<String?>(null)
     /** The tab a screen belongs to, for the nav bar. */
-    var tab by mutableStateOf("today")
+    var tab by mutableStateOf("board")
 
     val route get() = stack.last()
 
     fun go(r: Route) {
-        if (TABS.any { it.first == r.name }) {
+        if (ALL_TABS.any { it.first == r.name }) {
             tab = r.name
             stack.clear()
         }
@@ -84,6 +85,14 @@ object App {
 
     suspend fun reloadBoot() {
         boot = Boot(Api.obj("/bootstrap"))
+    }
+
+    /** Opens the home screen: Today when the Day screen is on, else Board. */
+    fun home() = go(Route(startRoute(boot?.let { showsDay(it.settings) } == true)))
+
+    /** At start-up: if nothing has been opened yet (no link, no tap), go to Today when the Day screen is on. */
+    fun openStartScreen() {
+        if (stack.size == 1 && stack[0] === first && boot?.let { showsDay(it.settings) } == true) go(Route("today"))
     }
 
     suspend fun reloadInbox() {
@@ -144,6 +153,7 @@ private fun Root(activity: MainActivity) {
         try {
             val ms = Core.start(activity.applicationContext)
             App.reloadBoot()
+            App.openStartScreen()
             // The server works out "today" in your time zone; tell it this phone's.
             val zone = java.util.TimeZone.getDefault().id
             if (App.boot?.settings?.optString("time_zone") != zone) runCatching { Api.put("/settings/time_zone", zone); App.reloadBoot() }
@@ -201,6 +211,13 @@ private fun Root(activity: MainActivity) {
 
 @Composable
 private fun Screen(r: Route) {
+    // If the Day screen is switched off (here, on the web, or by a sync) while it is open, leave it.
+    val dayOn = App.boot?.let { showsDay(it.settings) } == true
+    var wasOn by remember { mutableStateOf(dayOn) }
+    LaunchedEffect(dayOn) {
+        if (wasOn && !dayOn && r.name == "today") App.home()
+        wasOn = dayOn
+    }
     val withNav = r.name in setOf("today", "board", "sessions", "inbox", "more", "states", "dashboards", "cycle")
     Column(Modifier.fillMaxSize()) {
         Box(Modifier.weight(1f)) {
@@ -245,7 +262,7 @@ fun NavBar() {
         Row(
             Modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.navigationBars).heightIn(min = 80.dp).padding(top = 8.dp, bottom = 12.dp),
         ) {
-            TABS.forEachIndexed { i, (key, name) ->
+            visibleTabs(App.boot?.let { showsDay(it.settings) } == true).forEach { (key, name) ->
                 val on = App.tab == key
                 Column(
                     Modifier.weight(1f).selectable(selected = on, role = Role.Tab, onClick = { App.go(Route(key)) }),
@@ -255,7 +272,7 @@ fun NavBar() {
                         Modifier.width(56.dp).height(32.dp).clip(RoundedCornerShape(16.dp)).background(if (on) Palette.selected else Palette.panel),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Icon(TAB_ICONS[i], if (on) Palette.accent else Palette.muted)
+                        Icon(TAB_ICONS.getValue(key), if (on) Palette.accent else Palette.muted)
                         if (key == "inbox" && App.inboxCount > 0) {
                             Box(
                                 Modifier.align(Alignment.TopEnd).padding(end = 8.dp).size(18.dp).clip(RoundedCornerShape(9.dp)).background(Palette.accent),

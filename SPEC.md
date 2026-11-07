@@ -273,6 +273,8 @@ Choosing a task also fills in its intensity, unless you set one yourself. You ca
 
 A fixed screen with two halves, because its job is the same every day.
 
+**It is offered only while it is switched on.** Settings › Screens (web) and Settings › Screens (phone) have one **Day screen** switch, saved on your account so both agree and syncing like any other setting. It is off until someone turns it on. Off removes Day from the web sidebar and the phone's Today tab, an old `#/day` web link opens the first view instead, and the phone opens on Board; if it is switched off while the phone is on Today, the phone moves to Board. Nothing is deleted, and turning it on again brings everything back.
+
 ### 8.1 Morning: the plan
 
 1. **Focus**: which areas today is for.
@@ -374,7 +376,7 @@ See decisions. In short: it would be a second program to run, embedding it secur
 | Time and points | Energy types (name, colour, points per hour), subtypes, subtype rank weights, reflection (week start) |
 | Connections | Quick capture model, duplicate search model, sync server (phone) |
 | Data | Download database (phone) |
-| You | Appearance (themes: Default, Jira, Jira high contrast, GitHub Dark, GitHub Dark Dimmed; download one as a file, edit it, upload it; in any theme, grey secondary text is lightened just enough to be readable, at least 4.5:1 on every surface), account |
+| You | Screens (the Day screen switch), Appearance (themes: Default, Jira, Jira high contrast, GitHub Dark, GitHub Dark Dimmed; download one as a file, edit it, upload it; in any theme, grey secondary text is lightened just enough to be readable, at least 4.5:1 on every surface), account |
 | Admin | People |
 
 ### 12.1 Deleting something that is in use
@@ -408,7 +410,7 @@ Areas, statuses, priorities, energy types and subtypes all work the same way, li
 
 - A Kotlin and Jetpack Compose app (Material 3, the web app's dark colours) in `mobile/android`.
 - **It works fully on its own.** It runs JitterBug's own Go code inside the app (built as a library, `mobile/jbcore`), with its own database file on the phone. Every screen reads and writes through it, so everything works offline and every number is worked out by the same code as the server.
-- Screens: Today (plan and readout), Log session, Quick capture, Sessions, Inbox, Board / List / Timeline, Task, New task, Search, Buffs and debuffs, Dashboards, Cycle time, More, and Settings (everything in section 12, plus Sync server and Download database).
+- Screens: Today (plan and readout, only while the Day screen is switched on; the app opens on Board otherwise), Log session, Quick capture, Sessions, Inbox, Board / List / Timeline, Task, New task, Search, Buffs and debuffs, Dashboards, Cycle time, More, and Settings (everything in section 12, plus Sync server and Download database; Settings › Screens has the Day screen switch).
 - **Snoozed and blocked tasks on the phone work as on the web.** A snoozed task is not in the Board, List or Timeline until it wakes. A blocked task is left out too while the view hides blocked tasks (the default, and the view's own choice, shared with the web). Views that never made that choice now hide blocked tasks too, so after updating, blocked tasks leave the phone's lists and sit under **Blocked**. A done task that still has an open blocker counts as blocked as well, as on the web.
 - **Snoozed, Blocked and Incomplete are three joined buttons** under the header, each shown only when it has tasks, with its count (the counts follow the current search). Each opens a list; tap a task to open it. **Snoozed** lists tasks with the day each comes back (or what it waits for), those waiting on a blocker first, and a **Wake now** button. **Blocked** says what each is waiting on and has the "hide them from this view" switch. **Incomplete** says what each lacks, once Settings › Complete details asks for something. A list closes by itself when its last task leaves. The buttons stay big enough to tap at any text size by scrolling sideways.
 - **A new day wakes snoozed tasks on the phone.** Snoozes are worked out from the date, so the phone reloads its lists when the date changes while the app is open.

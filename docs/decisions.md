@@ -215,6 +215,12 @@ Two things the owner should know. (1) After updating, blocked tasks leave the ph
 
 The owner approved the first touch-target fix with this change (2026-11-07): the choice sheets (Snooze, Move to, Views, Pick a task) have rows at least 48 dp tall. The test that checks 48 dp reads a control's own size, not the touch area Compose widens around small controls, and a test proves it fails for a 24 dp control. The rest of the touch-target work still waits for the agreed mockups.
 
+### The Day screen is optional (owner, 2026-11-07)
+
+The owner rarely uses the Day screen. One account setting, `show_day_screen`, decides whether it is offered: a switch in Settings › Screens on the web and on the phone, off by default for everyone, synced like any setting so both agree. The server only checks that it is `true` or `false` (`internal/db/screens.go`). Off hides Day from the web sidebar and the phone's Today tab; nothing is deleted. After updating, Day disappears for existing accounts until switched on. An old `#/day` link opens the first view. The phone opens on Board, and leaves Today if the setting is turned off while it is open.
+
+Checked end to end on the test server and spare phone: switching it on or off on the phone reaches the server, and switching it on or off on the server reaches the phone on its next sync.
+
 ### The 16 KB fix for the phone library
 Newer Android phones use 16 KB memory pages, and Google Play requires native libraries laid out for them. The Go library is now built that way (one linker option in `mobile/build.ps1`). It changes nothing about how the app works.
 

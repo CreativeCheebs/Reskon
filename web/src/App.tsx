@@ -8,6 +8,7 @@ import { FirstRun } from "./admin/FirstRun";
 import { useAuth } from "./auth/AuthGate";
 import { EpicsProvider } from "./task/useEpics";
 import { ThemeSync } from "./theme/ThemeSync";
+import { showDayScreen } from "./day/enabled";
 import { Sidebar } from "./Sidebar";
 import { InForceBar } from "./states/InForceBar";
 import { InboxProvider } from "./inbox/useInbox";
@@ -57,6 +58,7 @@ function toHash(s: Screen) {
 
 export function App() {
   const { boot, online, reloadBootstrap } = useApp();
+  const dayOn = showDayScreen(boot.settings);
   const { user, logout } = useAuth();
   const [screen, setScreen] = useState<Screen | null>(parseHash);
   const [searching, setSearching] = useState(false);
@@ -73,7 +75,14 @@ export function App() {
   };
 
   const views = [...boot.views].sort((a, b) => a.position - b.position);
-  const current = screen ?? (views[0] ? { kind: "view" as const, id: views[0].id } : { kind: "settings" as const });
+  // With the Day screen switched off, an old #/day link lands on the first view like an empty address.
+  const open = screen && !(screen.kind === "day" && !dayOn) ? screen : null;
+  useEffect(() => {
+    // Also tidy the address, so the bar does not keep saying #/day.
+    if (screen && !open) window.location.hash = views[0] ? toHash({ kind: "view", id: views[0].id }) : "#/settings";
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screen?.kind, dayOn]);
+  const current = open ?? (views[0] ? { kind: "view" as const, id: views[0].id } : { kind: "settings" as const });
   const view = current.kind === "view" ? views.find((v) => v.id === current.id) : undefined;
 
   const newView = async () => {
@@ -101,6 +110,7 @@ export function App() {
         views={views}
         selectedKey={selectedKey}
         online={online}
+        showDay={dayOn}
         username={user.username}
         onView={(id) => go({ kind: "view", id })}
         onNav={(kind) => (kind === "search" ? setSearching(true) : go({ kind }))}

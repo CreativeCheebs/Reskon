@@ -13,6 +13,7 @@ import { AccountSettings } from "../auth/AccountSettings";
 import { UsersSettings } from "../auth/UsersSettings";
 import { useAuth } from "../auth/AuthGate";
 import { AppearanceSettings } from "../theme/AppearanceSettings";
+import { ScreensSettings } from "./ScreensSettings";
 
 // Settings: sections grouped in a menu on the left, or in a picker above
 // the section when the screen is too narrow for both. The open section is
@@ -132,6 +133,12 @@ const GROUPS: { label: string; sections: Section[] }[] = [
   {
     label: "You",
     sections: [
+      {
+        key: "screens",
+        label: "Screens",
+        intro: "Choose which screens are offered. The phone follows the same choice.",
+        render: () => <ScreensSettings />,
+      },
       {
         key: "appearance",
         label: "Appearance",

@@ -47,6 +47,8 @@ export function Sidebar(props: {
   views: View[];
   selectedKey: string;
   online: boolean;
+  /** Settings › Screens: whether the Day screen has a place here. */
+  showDay: boolean;
   username: string;
   onView: (id: number) => void;
   onNav: (key: NavKey) => void;
@@ -117,7 +119,7 @@ export function Sidebar(props: {
           </span>,
           `Inbox${inbox.length ? ` · ${inbox.length}` : ""} (${INBOX_SHORTCUT} adds)`,
         ),
-        tool("day", <CalendarOutlined />, "Day"),
+        ...(props.showDay ? [tool("day", <CalendarOutlined />, "Day")] : []),
         tool("dashboard", <DashboardOutlined />, "Dashboards"),
         tool("states", <ThunderboltOutlined />, "Buffs & debuffs"),
         tool("sessions", <FieldTimeOutlined />, "Sessions"),

@@ -83,7 +83,7 @@ private fun FirstArea(connected: Boolean, onBack: (() -> Unit)?) {
                 attempt("Not created") {
                     Api.post("/areas", jsonOf("name" to name.trim(), "key_prefix" to prefix))
                     App.reloadBoot()
-                    App.go("today")
+                    App.home()
                 }
             }
         }

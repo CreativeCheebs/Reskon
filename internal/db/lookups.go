@@ -319,6 +319,11 @@ func (d *DB) PutSetting(ctx context.Context, key string, value json.RawMessage) 
 			return err
 		}
 	}
+	if boolSettings[key] {
+		if err := checkBoolSetting(key, value); err != nil {
+			return err
+		}
+	}
 	if key == "time_zone" {
 		var name string
 		if json.Unmarshal(value, &name) != nil {

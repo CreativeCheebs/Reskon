@@ -62,9 +62,12 @@ private fun SettingPage(title: String, content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun SwitchRow(label: String, on: Boolean, onChange: (Boolean) -> Unit) {
-    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(value = on, role = Role.Switch, onValueChange = onChange), verticalAlignment = Alignment.CenterVertically) {
-        T(label, Palette.fg, 15.sp, FontWeight.Medium, Modifier.weight(1f))
+fun SwitchRow(label: String, on: Boolean, hint: String? = null, onChange: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(value = on, role = Role.Switch, onValueChange = onChange), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            T(label, Palette.fg, 15.sp, FontWeight.Medium)
+            hint?.let { T(it, Palette.muted, 13.sp) }
+        }
         Switch(on, null)
     }
 }

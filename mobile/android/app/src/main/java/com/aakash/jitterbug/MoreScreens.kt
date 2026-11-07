@@ -96,11 +96,18 @@ fun MoreScreen() {
 @Composable
 fun SettingsScreen() {
     val boot = App.boot ?: return
+    val scope = rememberCoroutineScope()
     val ctx = LocalContext.current
     val sync = remember { Sync.state(ctx) }
     Column(Modifier.fillMaxSize()) {
         TopBar("Settings", onBack = { App.back() })
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            SectionTitle("Screens")
+            Card(pad = 16.dp) {
+                SwitchRow("Day screen", showsDay(boot.settings), "The morning plan and evening readout, with its own tab. Off hides it here and on the web. Nothing is deleted.") {
+                    scope.launch { attempt("Not saved") { saveSetting("show_day_screen", it) } }
+                }
+            }
             SectionTitle("Workflow")
             Card {
                 ListRow("Areas", "${boot.areas.size} ${if (boot.areas.size == 1) "area" else "areas"}") { App.go("lookup", "kind" to "areas") }
