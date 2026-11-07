@@ -251,7 +251,7 @@ fun TaskScreen(r: Route) {
             sheet = null
             scope.launch {
                 attempt("Not snoozed") {
-                    Api.post("/tasks/$id/snooze", jsonOf("days" to v.coerceAtLeast(0).toInt(), "until_unblocked" to (v == -1L), "today" to today()))
+                    snoozeTask(id, v.coerceAtLeast(0).toInt(), v == -1L)
                     App.changed()
                 }
             }

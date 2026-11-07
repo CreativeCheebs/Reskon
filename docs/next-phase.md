@@ -33,7 +33,8 @@ Where a choice is recorded, it is in [`decisions.md`](decisions.md) (the "Open q
 
 ### 2.2 Touch targets on the phone — **Decided: mockups first**
 - **What:** pills, tags and some icon buttons are smaller than Android's 48 dp guide (Pill 36 dp, Tag 22 dp, icon buttons 40–44 dp, the "+" in the subtype box 32 dp).
-- **How:** draw mockups of the affected screens (Board, Log session, Sessions, Task), agree them, then change the sizes. Do not resize in code before that.
+- **Measured on the phone (7 Nov 2026):** most pills and buttons already answer taps in a 48 dp area (Compose widens them), so the real gaps are few: the Board search button (44 wide), the Task screen's property and custom-field rows (43 tall), and the first Area pill in Log session (44 tall). Done already: the choice sheets' rows (Snooze, Move to, Views, Pick a task) are 48 dp.
+- **How:** show the owner the measured list, then fix the remaining gaps and add the Compose check (`assertTapAreaAtLeast48`) to each screen.
 - **Done when:** every tappable control is at least 48 dp tall and wide (or has an invisible 48 dp touch area), checked with the Compose test for minimum touch size.
 
 ### 2.3 Theme colours — **Decided: fix inside each theme**
@@ -101,4 +102,4 @@ Where a choice is recorded, it is in [`decisions.md`](decisions.md) (the "Open q
 
 ## 8. Test result history
 
-Last full pass (see the end of the `phase-2` commits): Go format, vet, tests, race, lint, govulncheck clean for both Go modules; web typecheck, ESLint (0 errors), 20 component tests, 11 browser tests; Android lint 0 errors, 8 unit tests, 5 on-device tests, 16 KB alignment; Trivy file scan, base image and built image clean; container built, started empty, restarted on its data and signed in.
+Last full pass (see the end of the `phase-2` commits): Go format, vet, tests, race, lint, govulncheck clean for both Go modules; web typecheck, ESLint (0 errors), 20 component tests, 11 browser tests; Android lint 0 errors, 27 unit tests, 19 on-device tests, 16 KB alignment; Trivy file scan, base image and built image clean; container built, started empty, restarted on its data and signed in.

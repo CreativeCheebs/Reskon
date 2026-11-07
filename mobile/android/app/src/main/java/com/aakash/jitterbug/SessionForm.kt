@@ -7,6 +7,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -381,7 +383,7 @@ fun PickSheet(title: String, options: List<Pair<Long, String>>, onDismiss: () ->
         if (options.isEmpty()) Empty("Nothing to choose.")
         LazyColumn {
             items(options, key = { it.first }) { (id, name) ->
-                T(name, Palette.fg, modifier = Modifier.fillMaxWidth().clickable { onPick(id) }.padding(horizontal = 20.dp, vertical = 14.dp))
+                Box(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button) { onPick(id) }.padding(horizontal = 20.dp), contentAlignment = Alignment.CenterStart) { T(name, Palette.fg) }
             }
         }
         Spacer(Modifier.height(24.dp))
@@ -405,10 +407,10 @@ fun TaskPicker(onDismiss: () -> Unit, allowNone: Boolean = true, onPick: (JSONOb
             val shown = tasks.orEmpty().filter { (query.isBlank() || it.optString("title").contains(query, true)) && it.optString("behaviour") != "cancelled" }
             LazyColumn {
                 if (allowNone && query.isBlank()) item {
-                    T("No task", Palette.muted, modifier = Modifier.fillMaxWidth().clickable { onPick(null) }.padding(horizontal = 16.dp, vertical = 14.dp))
+                    Box(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button) { onPick(null) }.padding(horizontal = 16.dp), contentAlignment = Alignment.CenterStart) { T("No task", Palette.muted) }
                 }
                 items(shown, key = { it.getLong("id") }) { t ->
-                    Row(Modifier.fillMaxWidth().clickable { onPick(t) }.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button) { onPick(t) }.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                         T(t.optString("title"), if (t.optString("behaviour") == "done") Palette.subtle else Palette.fg, oneLine = true, modifier = Modifier.weight(1f))
                         App.boot?.area(t.id("area_id"))?.let { T(it.name, Palette.subtle, 12.sp) }
                     }

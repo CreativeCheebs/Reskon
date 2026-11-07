@@ -1,5 +1,8 @@
 package com.aakash.jitterbug
 
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -60,9 +63,9 @@ private fun SettingPage(title: String, content: @Composable () -> Unit) {
 
 @Composable
 private fun SwitchRow(label: String, on: Boolean, onChange: (Boolean) -> Unit) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(value = on, role = Role.Switch, onValueChange = onChange), verticalAlignment = Alignment.CenterVertically) {
         T(label, Palette.fg, 15.sp, FontWeight.Medium, Modifier.weight(1f))
-        Switch(on, onChange)
+        Switch(on, null)
     }
 }
 
@@ -120,10 +123,13 @@ fun SnoozeSettingsScreen() {
     }
 }
 
-private val COMPLETENESS = listOf(
+/** The fields Settings › Complete details can ask for, with their names (also used to say what a task lacks). */
+internal val COMPLETENESS = listOf(
     "start_date" to "Start date", "end_date" to "End date", "due_at" to "Due date", "estimate_h" to "Estimate (max time)",
     "difficulty" to "Intensity", "priority_id" to "Priority", "energy_type_id" to "Energy type", "description" to "Description", "epic_id" to "Epic",
 )
+
+fun fieldLabel(key: String): String = COMPLETENESS.firstOrNull { it.first == key }?.second ?: key
 
 /** Settings › Complete details: fields an open task should have. */
 @OptIn(ExperimentalLayoutApi::class)

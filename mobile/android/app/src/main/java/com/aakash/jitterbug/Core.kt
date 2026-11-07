@@ -43,7 +43,7 @@ object Core {
         } catch (e: Exception) {
             throw ApiError.from(e.message ?: "")
         } finally {
-            Log.i("JBCALL", "$method $path ${(System.nanoTime() - t0) / 100_000 / 10.0} ms")
+            Log.i("JBCALL", "$method ${path.substringBefore('?')} ${(System.nanoTime() - t0) / 100_000 / 10.0} ms")
         }
     }
 
@@ -77,6 +77,10 @@ object Api {
 }
 
 fun today(): String = LocalDate.now().toString()
+
+/** Snoozes a task for [days] days, or wakes it with 0; with [untilUnblocked], while an open task blocks it. */
+suspend fun snoozeTask(id: Long, days: Int, untilUnblocked: Boolean = false): JSONObject =
+    Api.post("/tasks/$id/snooze", jsonOf("days" to days, "until_unblocked" to untilUnblocked, "today" to today()))
 
 // Small JSON helpers; the API's shapes are documented in web/src/types.ts.
 fun JSONObject.str(k: String): String? = if (isNull(k)) null else optString(k)

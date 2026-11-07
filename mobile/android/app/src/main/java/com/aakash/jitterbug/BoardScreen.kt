@@ -73,6 +73,12 @@ fun BoardScreen(r: Route) {
     var moving by remember { mutableStateOf<JSONObject?>(null) }
     val tasks by loaded(view.id, query) { EpicNames.load(); Api.arr("/tasks?view=${view.id}" + if (query.isNotBlank()) "&q=${java.net.URLEncoder.encode(query, "UTF-8")}" else "").objs() }
     val scope = rememberCoroutineScope()
+    // Snoozed tasks, and blocked ones while this view hides them, are not listed; their buttons open them.
+    val hideBlocked = hidesBlocked(view)
+    val checksDetails = requiredFields(boot.settings).isNotEmpty()
+    val split = remember(tasks, hideBlocked, checksDetails) { tasks?.let { splitTasks(it, hideBlocked, checksDetails) } }
+    var hiddenSheet by remember { mutableStateOf<String?>(null) }
+    var waking by remember { mutableStateOf(setOf<Long>()) }
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
@@ -100,7 +106,8 @@ fun BoardScreen(r: Route) {
                 }
                 IconButton(Icons.filters, "Layout, grouping and filters", size = 44) { layoutSheet = true }
             }
-            val list = tasks
+            split?.let { HiddenGroup(it) { which -> hiddenSheet = which } }
+            val list = split?.shown
             if (list != null) when (view.kind) {
                 "List" -> ListLayout(view, list) { moving = it }
                 "Timeline" -> TimelineLayout(list)
@@ -114,6 +121,29 @@ fun BoardScreen(r: Route) {
         choosingView = false; App.go("board", "view" to it)
     }
     if (layoutSheet) LayoutSheet(view) { layoutSheet = false }
+    if (split != null) when (hiddenSheet) {
+        "snoozed" -> SnoozedSheet(snoozedOrder(split.snoozed), waking, { t ->
+            val id = t.getLong("id")
+            if (id !in waking) {
+                waking = waking + id
+                scope.launch {
+                    val done = attempt("Not woken") { snoozeTask(id, 0); App.changed() }
+                    waking = waking - id
+                    if (done == null) hiddenSheet = null
+                }
+            }
+        }) { hiddenSheet = null }
+        "blocked" -> BlockedSheet(split.blocked, hideBlocked, { hide ->
+            scope.launch {
+                val done = attempt("Not saved") {
+                    Api.patch("/views/${view.id}", jsonOf("board_state" to boardStateWith(view.raw, "hide_blocked", hide)))
+                    App.reloadBoot(); App.changed()
+                }
+                if (done == null) hiddenSheet = null
+            }
+        }) { hiddenSheet = null }
+        "incomplete" -> IncompleteSheet(split.incomplete) { hiddenSheet = null }
+    }
     moving?.let { t ->
         PickSheet("Move \"${t.optString("title")}\" to", boot.statuses.filter { it.id != t.getLong("status_id") }.map { it.id to it.name }, { moving = null }) { sid ->
             moving = null
@@ -140,15 +170,15 @@ private fun LayoutSheet(view: ViewRef, onDismiss: () -> Unit) {
         Column(Modifier.padding(start = 20.dp, end = 20.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             T("Layout", Palette.fg, 18.sp, FontWeight.SemiBold)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Pill("Board", view.kind == "Board") { patch(jsonOf("layout" to "board", "board_state" to JSONObject(state.toString()).put("timeline", false))) }
-                Pill("List", view.kind == "List") { patch(jsonOf("layout" to "table", "board_state" to JSONObject(state.toString()).put("timeline", false))) }
-                Pill("Timeline", view.kind == "Timeline") { patch(jsonOf("board_state" to JSONObject(state.toString()).put("timeline", true))) }
+                Pill("Board", view.kind == "Board") { patch(jsonOf("layout" to "board", "board_state" to boardStateWith(view.raw, "timeline", false))) }
+                Pill("List", view.kind == "List") { patch(jsonOf("layout" to "table", "board_state" to boardStateWith(view.raw, "timeline", false))) }
+                Pill("Timeline", view.kind == "Timeline") { patch(jsonOf("board_state" to boardStateWith(view.raw, "timeline", true))) }
             }
             T("Group by (list)", Palette.fg, 15.sp, FontWeight.SemiBold)
             androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 val g = state.optString("group_by", "status").ifBlank { "status" }
                 listOf("status", "priority", "area", "energy_type", "epic", "none").forEach { k ->
-                    Pill(k.replace('_', ' ').replaceFirstChar { it.uppercase() }, g == k) { patch(jsonOf("board_state" to JSONObject(state.toString()).put("group_by", k))) }
+                    Pill(k.replace('_', ' ').replaceFirstChar { it.uppercase() }, g == k) { patch(jsonOf("board_state" to boardStateWith(view.raw, "group_by", k))) }
                 }
             }
             T("Filters and card fields are set on the web app.", Palette.subtle, 13.sp)

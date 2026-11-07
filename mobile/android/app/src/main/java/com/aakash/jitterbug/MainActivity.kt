@@ -104,6 +104,8 @@ object App {
 /** Runs a write and reports a failure as a toast; returns null on failure. */
 suspend fun <T> attempt(what: String, f: suspend () -> T): T? = try {
     f()
+} catch (e: kotlinx.coroutines.CancellationException) {
+    throw e
 } catch (e: Exception) {
     Log.w("JB", "$what failed", e)
     App.say("$what: ${e.message}")
@@ -160,8 +162,11 @@ private fun Root(activity: MainActivity) {
         if (!ready) return@LaunchedEffect
         var last = 0L
         var lastPoke = 0L
+        var day = today()
         while (true) {
             val now = System.currentTimeMillis()
+            // A new day wakes snoozed tasks (the server works it out from the date), so show it.
+            if (today() != day) { day = today(); App.version++ }
             val poked = Sync.pokedAt > lastPoke && now - Sync.pokedAt > 4000
             val st = Sync.state(activity)
             if (st.server != null && st.firstDone && (last == 0L || poked || now - last > 5 * 60_000)) {

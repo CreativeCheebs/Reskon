@@ -207,6 +207,14 @@ The owner asked for two things. First, a choice at first start: connect to a ser
 - **On an exact tie with a known time** (for example built-in rows retired by a migration at slightly different moments), every device keeps the greater value, so they still agree.
 - **The phone's networking is in Kotlin.** The Go code produces what to send and applies the answer, and Kotlin carries it over the network. That avoids Go networking inside an Android app.
 
+### Snoozed and blocked tasks on the phone (owner, 2026-11-07)
+
+A task snoozed on the desktop still showed on the phone. Sync was fine (every task column, including the snooze day, already syncs); the phone's Board screen simply never hid tasks marked snoozed, while the web does. Blocked tasks had the same gap. The phone now splits the view's tasks as the web's view screen does (`splitTasks` in `ListState.kt`, which only reads the server's `snoozed`, `blocked` and `missing` flags) and shows the three joined buttons Snoozed, Blocked and Incomplete only when they have tasks. Wake labels and the Snoozed order follow the web (`wakeLabel`, `snoozedOrder`). The phone's Blocked switch writes the view's whole `board_state` back with one key changed, because the server replaces that object instead of merging it (`boardStateWith`).
+
+Two things the owner should know. (1) After updating, blocked tasks leave the phone's lists, because views that never chose "hide blocked" default to hiding them, as on the web. (2) A done task that still has an open blocker is counted as blocked (the server rule, same on the web), so it leaves the Done list under that default.
+
+The owner approved the first touch-target fix with this change (2026-11-07): the choice sheets (Snooze, Move to, Views, Pick a task) have rows at least 48 dp tall. The test that checks 48 dp reads a control's own size, not the touch area Compose widens around small controls, and a test proves it fails for a 24 dp control. The rest of the touch-target work still waits for the agreed mockups.
+
 ### The 16 KB fix for the phone library
 Newer Android phones use 16 KB memory pages, and Google Play requires native libraries laid out for them. The Go library is now built that way (one linker option in `mobile/build.ps1`). It changes nothing about how the app works.
 
