@@ -1,5 +1,8 @@
 package com.aakash.jitterbug
 
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -186,10 +189,10 @@ fun SectionTitle(text: String, modifier: Modifier = Modifier) =
 fun Pill(text: String, on: Boolean = false, dot: Color? = null, height: Int = 36, trailing: String? = null, onClick: (() -> Unit)? = null) {
     val shape = RoundedCornerShape(height / 2)
     Row(
-        Modifier.height(height.dp).clip(shape)
+        Modifier.heightIn(min = height.dp).clip(shape)
             .background(if (on) Palette.selected else Color.Transparent)
             .border(1.dp, if (on) Palette.accent else Palette.strong, shape)
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick).semantics { selected = on } else Modifier)
             .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
@@ -203,7 +206,7 @@ fun Pill(text: String, on: Boolean = false, dot: Color? = null, height: Int = 36
 @Composable
 fun Tag(text: String, dot: Color? = null, bg: Color = Palette.chip, fg: Color = Palette.fg, round: Int = 6) {
     Row(
-        Modifier.height(22.dp).clip(RoundedCornerShape(round.dp)).background(bg).padding(horizontal = 8.dp),
+        Modifier.heightIn(min = 22.dp).clip(RoundedCornerShape(round.dp)).background(bg).padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp),
     ) {
         dot?.let { Dot(it, 7) }
@@ -241,7 +244,7 @@ fun TopBar(title: String, onBack: (() -> Unit)? = null, sub: String? = null, act
 fun Fab(label: String?, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Row(
         modifier.height(56.dp).shadow(8.dp, RoundedCornerShape(18.dp)).clip(RoundedCornerShape(18.dp))
-            .background(Palette.accent).clickable(onClick = onClick).semantics { contentDescription = label ?: "New" }
+            .background(Palette.accent).clickable(role = Role.Button, onClick = onClick).semantics { contentDescription = label ?: "New" }
             .padding(start = 16.dp, end = if (label != null) 20.dp else 16.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -261,14 +264,14 @@ fun BottomAction(label: String, enabled: Boolean = true, secondary: String? = nu
         ) {
             secondary?.let {
                 Box(
-                    Modifier.weight(1f).height(52.dp).clip(RoundedCornerShape(26.dp)).border(1.dp, Palette.strong, RoundedCornerShape(26.dp))
-                        .clickable(onClick = onSecondary),
+                    Modifier.weight(1f).heightIn(min = 52.dp).clip(RoundedCornerShape(26.dp)).border(1.dp, Palette.strong, RoundedCornerShape(26.dp))
+                        .clickable(role = Role.Button, onClick = onSecondary),
                     contentAlignment = Alignment.Center,
                 ) { T(it, Palette.fg, 16.sp, FontWeight.SemiBold) }
             }
             Box(
-                Modifier.weight(if (secondary != null) 2f else 1f).height(52.dp).clip(RoundedCornerShape(26.dp))
-                    .background(if (enabled) Palette.accent else Palette.chip).clickable(enabled = enabled, onClick = onClick),
+                Modifier.weight(if (secondary != null) 2f else 1f).heightIn(min = 52.dp).clip(RoundedCornerShape(26.dp))
+                    .background(if (enabled) Palette.accent else Palette.chip).clickable(enabled = enabled, role = Role.Button, onClick = onClick),
                 contentAlignment = Alignment.Center,
             ) { T(label, if (enabled) Palette.onAccent else Palette.subtle, 16.sp, FontWeight.SemiBold) }
         }
@@ -280,8 +283,8 @@ fun BottomAction(label: String, enabled: Boolean = true, secondary: String? = nu
 fun FieldBox(label: String, value: String, modifier: Modifier = Modifier, dot: Color? = null, bg: Color = Palette.panel, height: Int = 60, onClick: (() -> Unit)? = null) {
     val shape = RoundedCornerShape(14.dp)
     Column(
-        modifier.height(height.dp).clip(shape).background(bg).border(1.dp, Palette.border, shape)
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier).padding(horizontal = 14.dp),
+        modifier.heightIn(min = height.dp).clip(shape).background(bg).border(1.dp, Palette.border, shape)
+            .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier).padding(horizontal = 14.dp),
         verticalArrangement = Arrangement.Center,
     ) {
         T(label, Palette.muted, 12.sp)
@@ -296,7 +299,7 @@ fun FieldBox(label: String, value: String, modifier: Modifier = Modifier, dot: C
 @Composable
 fun ListRow(name: String, hint: String = "", icon: String? = null, iconColor: Color = Palette.muted, chevron: Boolean = true, onClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 14.dp),
+        Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onClick).padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         icon?.let { Icon(it, iconColor) }

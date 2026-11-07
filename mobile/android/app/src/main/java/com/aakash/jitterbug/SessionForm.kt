@@ -1,5 +1,7 @@
 package com.aakash.jitterbug
 
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -345,10 +347,10 @@ fun TextBox(label: String, value: String, placeholder: String = "", single: Bool
         BasicTextField(
             value, onChange, singleLine = single, cursorBrush = SolidColor(Palette.accent),
             textStyle = TextStyle(color = Palette.fg, fontSize = 15.sp),
-            keyboardOptions = KeyboardOptions(keyboardType = keyboard),
+            keyboardOptions = KeyboardOptions(keyboardType = if (password) KeyboardType.Password else keyboard),
             visualTransformation = if (password) androidx.compose.ui.text.input.PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
-            modifier = Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 4.dp),
-            decorationBox = { inner -> if (value.isEmpty()) T(placeholder, Palette.strong, 15.sp); inner() },
+            modifier = Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 4.dp).semantics { contentDescription = label },
+            decorationBox = { inner -> if (value.isEmpty()) T(placeholder, Palette.subtle, 15.sp); inner() },
         )
     }
 }

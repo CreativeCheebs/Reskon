@@ -108,9 +108,18 @@ object Sync {
         } finally {
             progress = null
         }
+        val current = state(ctx)
+        if (!sameConnection(s, current)) return@withLock current // disconnected or reconnected while this ran
         s.copy(checkedAt = now, error = error, syncedAt = if (error == null) now else s.syncedAt, sent = sent, received = received, firstDone = done)
             .also { save(ctx, it) }
     }
+
+    /**
+     * Whether two states are the same connection (same server, same sign-in). A sync that
+     * started on one connection must not save its result onto another: if the person
+     * disconnected, or connected somewhere else, while it ran, the result is dropped.
+     */
+    fun sameConnection(a: State, b: State) = a.server == b.server && a.cookie == b.cookie
 
     /** "jitterbug.lan:8080" -> "http://jitterbug.lan:8080". */
     fun normalise(addr: String): String {
@@ -175,7 +184,7 @@ object Sync {
      * Checks the address is a JitterBug server, then signs in. The returned
      * state still has the first download to do; FirstSyncScreen does it.
      */
-    suspend fun connect(ctx: Context, addr: String, username: String, password: String): State {
+    suspend fun connect(ctx: Context, addr: String, username: String, password: String): State = lock.withLock {
         val base = normalise(addr)
         val now = Instant.now().toString()
         val health = runCatching { http("GET", "$base/api/health") }.getOrElse { throw Exception("Can't reach $base: ${it.message}") }
@@ -187,7 +196,7 @@ object Sync {
         }
         // A new connection starts from nothing: both sides send everything once.
         Api.post("/sync/incoming", jsonOf("response" to jsonOf("token" to 0, "changes" to org.json.JSONArray()), "upto" to 0))
-        return State(base, username.trim().lowercase(), login.cookie, now, null, firstDone = false).also { save(ctx, it) }
+        State(base, username.trim().lowercase(), login.cookie, now, null, firstDone = false).also { save(ctx, it) }
     }
 
     /** Checks the kept sign-in still works, and records when and what went wrong. */
@@ -205,6 +214,8 @@ object Sync {
         } catch (e: Exception) {
             "Can't reach the server: ${e.message}"
         }
+        val current = state(ctx)
+        if (!sameConnection(s, current)) return current // disconnected or reconnected while this ran
         return s.copy(checkedAt = Instant.now().toString(), error = error).also { save(ctx, it) }
     }
 }

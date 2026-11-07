@@ -328,8 +328,11 @@ fun DataScreen() {
                 val f = Core.export(ctx)
                 val size = f.length()
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                    ctx.contentResolver.openOutputStream(uri)!!.use { out -> f.inputStream().use { it.copyTo(out) } }
-                    f.parentFile?.deleteRecursively()
+                    try {
+                        ctx.contentResolver.openOutputStream(uri)!!.use { out -> f.inputStream().use { it.copyTo(out) } }
+                    } finally {
+                        f.parentFile?.deleteRecursively() // a full copy of the data must not be left in the cache
+                    }
                 }
                 "Saved, ${size / 1024} KB."
             }

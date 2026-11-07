@@ -1,5 +1,8 @@
 package com.aakash.jitterbug
 
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.layout.heightIn
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -111,7 +114,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        handle(intent)
+        // Only when the app is really started by the link: turning the phone or changing the theme
+        // recreates the activity with the same intent, and must not push the screen again.
+        if (savedInstanceState == null) handle(intent)
         setContent { JbTheme { Root(this) } }
     }
 
@@ -174,7 +179,7 @@ private fun Root(activity: MainActivity) {
         val boot = App.boot
         when {
             error != null -> Empty("Could not open the data: $error")
-            !ready || boot == null -> {}
+            !ready || boot == null -> Empty("Opening JitterBug…")
             (Sync.live ?: Sync.state(activity)).let { it.server != null && !it.firstDone } -> FirstSyncScreen()
             boot.areas.isEmpty() -> FirstRunScreen()
             else -> Screen(App.route)
@@ -233,12 +238,12 @@ fun NavBar() {
     Column(Modifier.fillMaxWidth().background(Palette.panel)) {
         Line()
         Row(
-            Modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.navigationBars).height(80.dp).padding(top = 8.dp, bottom = 12.dp),
+            Modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.navigationBars).heightIn(min = 80.dp).padding(top = 8.dp, bottom = 12.dp),
         ) {
             TABS.forEachIndexed { i, (key, name) ->
                 val on = App.tab == key
                 Column(
-                    Modifier.weight(1f).clickable { App.go(Route(key)) },
+                    Modifier.weight(1f).selectable(selected = on, role = Role.Tab, onClick = { App.go(Route(key)) }),
                     horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Box(

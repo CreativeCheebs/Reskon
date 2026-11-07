@@ -48,7 +48,7 @@ fun SyncScreen() {
                     st.error?.let { T(it, Palette.yellow, 13.sp) }
                     Gap(4)
                     Row {
-                        TextLink(if (busy) "Syncing…" else "Sync now") { if (!busy) scope.launch { busy = true; Sync.syncNow(ctx); busy = false } }
+                        TextLink(if (busy) "Syncing…" else "Sync now") { if (!busy) scope.launch { busy = true; try { Sync.syncNow(ctx) } finally { busy = false } } }
                         TextLink("Disconnect", Palette.red) { Sync.disconnect(ctx); App.say("Disconnected. Everything stays on this phone.") }
                     }
                 }
