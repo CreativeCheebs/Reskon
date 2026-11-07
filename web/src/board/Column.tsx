@@ -238,7 +238,6 @@ const SortableCard = memo(function SortableCard({
         {...listeners}
         role="button" // dnd-kit sets the same role and tabIndex; stated here for readers and the linter
         tabIndex={0}
-        aria-label={task.title}
         onKeyDown={(e) => {
           // Enter opens the task. Space picks the card up to move it (the keyboard sensor).
           if (e.key === "Enter" && e.target === e.currentTarget) {

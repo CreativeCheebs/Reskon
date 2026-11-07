@@ -94,7 +94,7 @@ export function StateChip({ s, onClick }: { s: StateRow; onClick?: () => void })
   return (
     <Tooltip title={`${s.kind} · ${Math.round(s.effective_severity * 10) / 10} of 5 · ${band.hint}${s.ended ? " · ended, not cleared" : ""}`}>
       <span
-        {...pressable(onClick, `${s.kind}: ${s.name}, ${band.name}`)}
+        {...pressable(onClick)}
         style={{
           display: "inline-flex",
           alignItems: "center",

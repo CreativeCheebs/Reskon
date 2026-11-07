@@ -412,7 +412,7 @@ export function ViewScreen({ view }: { view: View }) {
 function HiddenStatusButton({ name, count, onClick }: { name: string; count: number; onClick: () => void }) {
   if (count === 0) return null;
   return (
-    <Button size="small" onClick={onClick} aria-label={`${name}: ${count} tasks`} style={{ color: palette.muted, paddingInline: 8, gap: 6 }}>
+    <Button size="small" onClick={onClick} style={{ color: palette.muted, paddingInline: 8, gap: 6 }}>
       {name}
       <span
         style={{
