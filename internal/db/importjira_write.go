@@ -23,7 +23,7 @@ type ImportReport struct {
 	Warnings    []string `json:"warnings"` // anything not carried over exactly
 }
 
-// How Jira's names map onto JitterBug. Anything not listed is created.
+// How Jira's names map onto Reskon. Anything not listed is created.
 var (
 	jiraAreas = map[string]struct{ Name, Prefix, Energy string }{
 		// Main job keeps the OM2 prefix, so imported keys and new keys match.
@@ -205,7 +205,7 @@ func (im *importer) issue(is jiraIssue, byKey map[string]jiraIssue, ex *jiraExpo
 		im.warn("%s was a Jira sub-task of %s; imported as a task, link kept in Jira links", is.Key, is.ParentKey)
 	}
 
-	// Things JitterBug has no column for are kept, not dropped.
+	// Things Reskon has no column for are kept, not dropped.
 	custom := map[string]any{"_jira": map[string]any{"id": is.ID, "type": is.Type, "status": is.Status, "resolution": is.Resolution, "labels": is.Labels}}
 	if p, ok := jiraPoints(is.Points); ok {
 		custom["jira_points"] = p

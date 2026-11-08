@@ -13,7 +13,7 @@ export default defineConfig({
     chunkSizeWarningLimit: 2000,
     rollupOptions: {
       output: {
-        // Libraries change far less often than JitterBug's own code; in their
+        // Libraries change far less often than Reskon's own code; in their
         // own file they stay cached across upgrades.
         // Chart and grid libraries only load with the screens that use them.
         manualChunks(id) {

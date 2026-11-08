@@ -1,4 +1,4 @@
-// Command jitterbug serves the JitterBug API and the embedded web UI from a
+// Command jitterbug serves the Reskon API and the embedded web UI from a
 // single binary. Accounts live in <data>/auth.db; each user's data lives in
 // its own SQLite file under <data>/users/.
 package main

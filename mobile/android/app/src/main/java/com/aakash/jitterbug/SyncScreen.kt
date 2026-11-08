@@ -54,7 +54,7 @@ fun SyncScreen() {
                 }
                 T("Everything is kept on this phone and works offline. Changes go both ways when the server can be reached: on opening the app, a few seconds after a change, and every few minutes.", Palette.subtle, 13.sp)
             } else {
-                T("JitterBug works fully on this phone. Add your own JitterBug server to sync with it. Connecting first downloads everything from the server and sends this phone's data up; the app waits until that is done.", Palette.muted, 14.sp)
+                T("Reskon works fully on this phone. Add your own Reskon server to sync with it. Connecting first downloads everything from the server and sends this phone's data up; the app waits until that is done.", Palette.muted, 14.sp)
             }
             SectionTitle(if (st.server == null) "Connect" else "Connect again")
             TextBox("Server address", addr, "jitterbug.home.lan:8080", keyboard = KeyboardType.Uri) { addr = it }

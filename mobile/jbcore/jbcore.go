@@ -1,4 +1,4 @@
-// Package jbcore runs the JitterBug API inside an Android app, in the app's
+// Package jbcore runs the Reskon API inside an Android app, in the app's
 // own process. gomobile turns it into an .aar; Kotlin calls Start once, then
 // Call for each request. No network, no port: Call hands the request straight
 // to the same http.Handler the server uses.

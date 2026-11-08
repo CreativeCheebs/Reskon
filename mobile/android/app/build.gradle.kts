@@ -8,20 +8,33 @@ android {
     namespace = "com.aakash.jitterbug"
     compileSdkVersion("android-37.0")
     defaultConfig {
-        applicationId = "com.aakash.jitterbug"
+        applicationId = "com.aakash.reskon"
         minSdk = 26
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
+    // The release key lives outside the repo (X:\Personal\Keys). mobile/release.ps1 sets these two
+    // variables from it; without them the release build is left unsigned instead of using a wrong key.
+    val keystorePath: String? = System.getenv("RESKON_KEYSTORE")
+    val signPass: String? = System.getenv("RESKON_KEY_PASS")
+    signingConfigs {
+        if (keystorePath != null && signPass != null) {
+            create("reskon") {
+                storeFile = file(keystorePath)
+                storePassword = signPass // a .p12/.jks made by keytool uses one password for both
+                keyAlias = "reskon"
+                keyPassword = signPass
+            }
+        }
+    }
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            // Signed with the debug key for sideloading until there is a release key.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("reskon")
         }
     }
     compileOptions {

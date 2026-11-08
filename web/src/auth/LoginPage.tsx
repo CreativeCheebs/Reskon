@@ -43,7 +43,7 @@ export function LoginPage({ setup, tokenRequired = false, onSignedIn }: { setup:
           padding: 24,
         }}
       >
-        <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>JitterBug</div>
+        <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>Reskon</div>
         <Typography.Paragraph type="secondary" style={{ marginBottom: 16 }}>
           {setup
             ? "Welcome. Create the admin account — you can add other people afterwards. Each person's data is kept separate."

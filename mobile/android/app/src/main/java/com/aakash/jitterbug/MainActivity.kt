@@ -194,7 +194,7 @@ private fun Root(activity: MainActivity) {
         val boot = App.boot
         when {
             error != null -> Empty("Could not open the data: $error")
-            !ready || boot == null -> Empty("Opening JitterBug…")
+            !ready || boot == null -> Empty("Opening Reskon…")
             (Sync.live ?: Sync.state(activity)).let { it.server != null && !it.firstDone } -> FirstSyncScreen()
             boot.areas.isEmpty() -> FirstRunScreen()
             else -> Screen(App.route)

@@ -1,14 +1,14 @@
-# JitterBug: what it does and how it works
+# Reskon: what it does and how it works
 
-This is the one description of JitterBug. It says what the app does today and what is planned next. It replaces the old Phase 1 and Phase 2 build specs, the change documents (001, 002, 003), the list of deviations and the schema notes. Why things were chosen, and the questions still open, are in [`docs/decisions.md`](docs/decisions.md).
+This is the one description of Reskon. It says what the app does today and what is planned next. It replaces the old Phase 1 and Phase 2 build specs, the change documents (001, 002, 003), the list of deviations and the schema notes. Why things were chosen, and the questions still open, are in [`docs/decisions.md`](docs/decisions.md).
 
 When the app changes, this file changes with it, in the same commit. If the code and this file disagree, one of them is wrong: fix it, don't leave a note.
 
 ---
 
-## 1. What JitterBug is
+## 1. What Reskon is
 
-JitterBug is a task board and a time log for one person's life: work, health, home, hobbies, rest. You keep your tasks on a board (like Jira or Trello), you log the time you spent on things (like a timesheet), and the app shows you what your days and weeks actually looked like.
+Reskon is a task board and a time log for one person's life: work, health, home, hobbies, rest. You keep your tasks on a board (like Jira or Trello), you log the time you spent on things (like a timesheet), and the app shows you what your days and weeks actually looked like.
 
 It runs on your own computer or home server. It is one program (one file). Several people can use the same server, and each person's data is kept in their own separate database file.
 
@@ -363,7 +363,7 @@ See decisions. In short: it would be a second program to run, embedding it secur
 ## 11. Search
 
 - **Duplicate search** runs as you type a task title (in a column's add box, in quick capture, in a view's search) and lists tasks that look the same. It matches by words (word stems, the word still being typed, one typo) in titles **and descriptions** (a description match ranks just below the same title match). With the small meaning model downloaded, it also matches by meaning ("stomach acid" finds "heartburn diagnosis"). Matching by meaning reads titles only.
-- The meaning model (all-MiniLM-L6-v2, about 90 MB) runs inside JitterBug, offline. An admin downloads it once in Settings › Duplicate search. Without it, word matching works alone. The phone has word matching only.
+- The meaning model (all-MiniLM-L6-v2, about 90 MB) runs inside Reskon, offline. An admin downloads it once in Settings › Duplicate search. Without it, word matching works alone. The phone has word matching only.
 - **Global search**: press `/` or open Search. It uses duplicate search plus exact task keys (typing `JB-42` opens that task).
 
 ---
@@ -400,7 +400,7 @@ Areas, statuses, priorities, energy types and subtypes all work the same way, li
 
 ### 12.3 Importing from Jira
 
-`jitterbug import-jira <export.db> <username> [--dry-run]` copies a Jira export into a person's data in one go (a dry run reports and changes nothing). Keys are kept (`OM2-N`). Labels become areas, and `--area label=Name` sends a label to an existing area. Statuses, priorities and difficulty map to JitterBug's, creating the missing ones (Planned, Paused, Highest, Lowest). The status history becomes the move log, so dates and cycle time are Jira's real history. Worklogs become work sessions with the area's default energy type. Story points, links and comments are kept as custom fields or in the description. It refuses to run if any key already exists.
+`jitterbug import-jira <export.db> <username> [--dry-run]` copies a Jira export into a person's data in one go (a dry run reports and changes nothing). Keys are kept (`OM2-N`). Labels become areas, and `--area label=Name` sends a label to an existing area. Statuses, priorities and difficulty map to Reskon's, creating the missing ones (Planned, Paused, Highest, Lowest). The status history becomes the move log, so dates and cycle time are Jira's real history. Worklogs become work sessions with the area's default energy type. Story points, links and comments are kept as custom fields or in the description. It refuses to run if any key already exists.
 
 ---
 
@@ -408,8 +408,8 @@ Areas, statuses, priorities, energy types and subtypes all work the same way, li
 
 ### 13.1 The app
 
-- A Kotlin and Jetpack Compose app (Material 3, the web app's dark colours) in `mobile/android`.
-- **It works fully on its own.** It runs JitterBug's own Go code inside the app (built as a library, `mobile/jbcore`), with its own database file on the phone. Every screen reads and writes through it, so everything works offline and every number is worked out by the same code as the server.
+- A Kotlin and Jetpack Compose app (Material 3, the web app's dark colours) in `mobile/android`. It is called **Reskon** on the phone (app id `com.aakash.reskon`). The release APK is signed with the Reskon key kept outside the repo and built, checked and copied to the Linux machine by `mobile/release.ps1` (why: `docs/decisions.md`).
+- **It works fully on its own.** It runs Reskon's own Go code inside the app (built as a library, `mobile/jbcore`), with its own database file on the phone. Every screen reads and writes through it, so everything works offline and every number is worked out by the same code as the server.
 - Screens: Today (plan and readout, only while the Day screen is switched on; the app opens on Board otherwise), Log session, Quick capture, Sessions, Inbox, Board / List / Timeline, Task, New task, Search, Buffs and debuffs, Dashboards, Cycle time, More, and Settings (everything in section 12, plus Sync server and Download database; Settings › Screens has the Day screen switch).
 - **Snoozed and blocked tasks on the phone work as on the web.** A snoozed task is not in the Board, List or Timeline until it wakes. A blocked task is left out too while the view hides blocked tasks (the default, and the view's own choice, shared with the web). Views that never made that choice now hide blocked tasks too, so after updating, blocked tasks leave the phone's lists and sit under **Blocked**. A done task that still has an open blocker counts as blocked as well, as on the web.
 - **Snoozed, Blocked and Incomplete are three joined buttons** under the header, each shown only when it has tasks, with its count (the counts follow the current search). Each opens a list; tap a task to open it. **Snoozed** lists tasks with the day each comes back (or what it waits for), those waiting on a blocker first, and a **Wake now** button. **Blocked** says what each is waiting on and has the "hide them from this view" switch. **Incomplete** says what each lacks, once Settings › Complete details asks for something. A list closes by itself when its last task leaves. The buttons stay big enough to tap at any text size by scrolling sideways.
@@ -425,7 +425,7 @@ Areas, statuses, priorities, energy types and subtypes all work the same way, li
 
 Phones only ever sync through a server, never with each other.
 
-- **First start**: the app asks "Do you have a JitterBug server?". **Connect to a server** signs in and downloads everything first. **Offline** asks for the first area, as the web app does, and a server can be added later in Settings. If the server has no areas yet, the phone asks for the first one after the download.
+- **First start**: the app asks "Do you have a Reskon server?". **Connect to a server** signs in and downloads everything first. **Offline** asks for the first area, as the web app does, and a server can be added later in Settings. If the server has no areas yet, the phone asks for the first one after the download.
 - **The first download**: right after connecting, whether at first start or later from Settings, everything on the server is downloaded and the phone's own data is sent up. The app shows how far it got (sending, then downloading as a percentage, then saving) and nothing else can be used until it finishes. If it fails, you can **Try again** or **Disconnect**, and the phone's data stays. If the app is closed midway, nothing of the download is kept, and the next start begins it again.
 - **When it syncs after that**: on opening the app, a few seconds after a change, every 5 minutes, and from **Sync now**. A failed sync just waits for the next one. Nothing on the phone waits for it.
 - **Errors say where they happened**: "This phone's data: …", "Can't reach the server: …" or "Server answered …".

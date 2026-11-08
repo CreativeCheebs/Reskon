@@ -1,5 +1,5 @@
 // Package auth owns accounts, passwords and login sessions (auth.db), and
-// opens each user's own JitterBug database. Users never share data: each
+// opens each user's own Reskon database. Users never share data: each
 // has a separate SQLite file with the ordinary schema.
 package auth
 

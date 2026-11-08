@@ -60,8 +60,8 @@ Where a choice is recorded, it is in [`decisions.md`](decisions.md) (the "Open q
 - **Blank first-load screens.** A failed first load on the Board shows nothing (only a toast). Show an error with Retry, as the web does.
 - **A big first download is held in memory several times.** A very large server could run out of memory on the phone. Stream it to a file instead.
 - **The core is built for arm64 only.** An x86_64 emulator cannot load it. Either add an `android/amd64` target or document that tests need an arm64 image or a real phone.
-- **Release signing key.** The release build is signed with the debug key. Make a real key before anyone installs a release over an older one. **Owner decision.**
-- **Smaller:** an app icon (lint: `MissingApplicationIcon`), the KTX lint hints, `mutableDoubleStateOf` hints.
+- **Back up the Reskon signing key.** The release is signed with `X:\Personal\Keys\reskon-release.jks`. If that file or its passphrase is lost, installed copies can never be updated. Keep a copy off this PC.
+- **Smaller:** the KTX lint hints, `mutableDoubleStateOf` hints.
 
 ## 5. The web app
 

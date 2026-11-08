@@ -349,7 +349,7 @@ fun DataScreen() {
         TopBar("Download database", onBack = { App.back() })
         Column(Modifier.weight(1f).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             T("Saves everything on this phone (tasks, sessions, plans, settings) as one SQLite file. Use it to move your data without a sync server, or as a backup.", Palette.muted, 14.sp)
-            T("It is the same database a JitterBug server keeps for each person, so it can be opened with any SQLite tool.", Palette.subtle, 13.sp)
+            T("It is the same database a Reskon server keeps for each person, so it can be opened with any SQLite tool.", Palette.subtle, 13.sp)
             status?.let { T(it, Palette.green, 14.sp) }
         }
         BottomAction("Download database") { save.launch("jitterbug-${today()}.db") }

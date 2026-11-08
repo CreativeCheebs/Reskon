@@ -1,12 +1,12 @@
 # AGENTS.md — read first
 
-**What this is:** JitterBug, a self-hosted task board and time log. Several people can sign in to one server; each has a completely separate database.
+**What this is:** Reskon (the repo, program, Go module and Kotlin package still say `jitterbug`/JitterBug; only the name people see changed), a self-hosted task board and time log. Several people can sign in to one server; each has a completely separate database.
 **The spec:** [`SPEC.md`](SPEC.md) says what the app does, in plain English. [`docs/decisions.md`](docs/decisions.md) says why, and lists the open questions. These are the only two docs besides this file, the README, [`docs/next-phase.md`](docs/next-phase.md) (the open to-do list) and [`docs/engineering-toolchain.md`](docs/engineering-toolchain.md). When you change what the app does, update `SPEC.md` in the same commit (and `docs/decisions.md` if a choice was made). The owner decides what the app does: a change of behaviour needs their yes. Write docs in plain English, with examples, for a reader who is new to web and database terms.
 
 ## Stack
 
 - Go (`net/http`, stdlib mux), `modernc.org/sqlite` — pure Go, **no cgo**. Do not swap in `mattn/go-sqlite3`.
-- SQLite, WAL mode: `<data>/auth.db` for accounts and login sessions (`internal/auth/migrations/`), plus one database per user with the JitterBug schema (`internal/db/migrations/`). Migration version tracked in `PRAGMA user_version`.
+- SQLite, WAL mode: `<data>/auth.db` for accounts and login sessions (`internal/auth/migrations/`), plus one database per user with the Reskon schema (`internal/db/migrations/`). Migration version tracked in `PRAGMA user_version`.
 - Every `/api` call except health and `/api/auth/*` sign-in routes needs the session cookie; the middleware in `internal/api/server.go` puts the user's own `*db.DB` on the request context (`dbOf(ctx)`). Handlers never reach another user's database.
 - React 18 + TypeScript + Vite, Ant Design 5 (one token block in `web/src/theme/antTheme.ts`, palette in `web/src/theme/palette.ts`), dnd-kit.
 - The built frontend (`web/dist`) is embedded with `go:embed` — one binary.
@@ -25,7 +25,7 @@ Before calling a step done: run its acceptance check for real, `make test` passe
 
 ### Where things run (read before starting anything)
 
-This Windows PC (`X:\Personal\JitterBug`) is **for building and editing only**. The JitterBug server **never runs here**: do not start `./jitterbug`, run the container (`docker run`), or open or launch Docker Desktop (if the daemon is off, leave it off, and report the check as blocked).
+This Windows PC (`X:\Personal\JitterBug`) is **for building and editing only**. The Reskon server **never runs here**: do not start `./jitterbug`, run the container (`docker run`), or open or launch Docker Desktop (if the daemon is off, leave it off, and report the check as blocked).
 
 What is fine here: `go vet`, `go test`, `tsc`, `vite build`, the Gradle/Android build, `gomobile`, and `gitleaks`.
 

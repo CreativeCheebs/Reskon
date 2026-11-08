@@ -41,7 +41,7 @@ func Open(path string) (*DB, error) {
 	return &DB{sqldb}, nil
 }
 
-// OpenMigrated opens any JitterBug SQLite file and applies the numbered
+// OpenMigrated opens any Reskon SQLite file and applies the numbered
 // migrations NNN_*.sql found in dir of fsys. The auth database uses it too.
 func OpenMigrated(path string, fsys fs.FS, dir string) (*sql.DB, error) {
 	// _txlock=immediate makes every transaction take the write lock up front,

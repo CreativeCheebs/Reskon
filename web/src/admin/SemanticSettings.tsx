@@ -5,7 +5,7 @@ import { message } from "../theme/feedback";
 import { useAuth } from "../auth/AuthGate";
 
 // Duplicate search's local model (GET /api/semantic). Word matching always
-// works; the model adds matching by meaning. It runs inside JitterBug on
+// works; the model adds matching by meaning. It runs inside Reskon on
 // this computer: downloaded once (an admin starts it), then offline.
 
 interface Status {

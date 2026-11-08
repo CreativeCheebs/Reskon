@@ -161,7 +161,7 @@ export function Sidebar(props: {
       style={{ borderRight: `1px solid ${palette.border}`, position: "relative", zIndex: 10 }}
     >
       <div className={rail ? "jb-sider-top jb-sider-top-rail" : "jb-sider-top"}>
-        {!rail && <span className="jb-sider-name">JitterBug</span>}
+        {!rail && <span className="jb-sider-name">Reskon</span>}
         <CaptureButton />
         {!narrow && foldButton}
       </div>

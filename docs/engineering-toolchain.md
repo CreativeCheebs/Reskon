@@ -1,4 +1,4 @@
-# JitterBug engineering toolchain
+# Reskon engineering toolchain
 
 This checklist is tailored to the existing app and its Go-backed Android client. It is a plan for evolving the initial release; it does not replace the product decisions in `AGENTS.md`, `SPEC.md`, or `docs/decisions.md`.
 

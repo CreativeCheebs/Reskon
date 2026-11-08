@@ -39,7 +39,7 @@ export const LATER_KEYS: readonly PaletteKey[] = ["shadow", "difficulty1", "diff
 export type PaletteKey = (typeof PALETTE_KEYS)[number];
 export type Palette = Record<PaletteKey, string>;
 
-/** JitterBug's own default theme. */
+/** Reskon's own default theme. */
 export const DEFAULT_COLORS: Palette = {
   bg: "#1D2125", // page (elevation.surface)
   panel: "#22272B", // cards, tables, raised things (surface.raised)

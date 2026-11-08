@@ -12,7 +12,7 @@ import java.util.TimeZone
 import java.util.UUID
 
 /**
- * JitterBug's Go core, inside the app (jbcore.aar from mobile/jbcore). Every
+ * Reskon's Go core, inside the app (jbcore.aar from mobile/jbcore). Every
  * screen reads and writes through it, so the app works with no network, and
  * every number is worked out by the same Go code as the server.
  */

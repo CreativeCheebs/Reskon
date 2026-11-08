@@ -16,7 +16,7 @@ import java.net.URL
 import java.time.Instant
 
 /**
- * The sync server (Change 003). Connecting checks the address is a JitterBug
+ * The sync server (Change 003). Connecting checks the address is a Reskon
  * server, signs in and keeps the sign-in. The first sync after connecting is
  * a full download the app waits for (FirstSyncScreen); after that, syncs run
  * in the background and the screens never wait for them. The screens never
@@ -181,14 +181,14 @@ object Sync {
     }
 
     /**
-     * Checks the address is a JitterBug server, then signs in. The returned
+     * Checks the address is a Reskon server, then signs in. The returned
      * state still has the first download to do; FirstSyncScreen does it.
      */
     suspend fun connect(ctx: Context, addr: String, username: String, password: String): State = lock.withLock {
         val base = normalise(addr)
         val now = Instant.now().toString()
         val health = runCatching { http("GET", "$base/api/health") }.getOrElse { throw Exception("Can't reach $base: ${it.message}") }
-        if (health.code != 200) throw Exception("$base answered ${health.code}; is it a JitterBug server?")
+        if (health.code != 200) throw Exception("$base answered ${health.code}; is it a Reskon server?")
         val login = http("POST", "$base/api/auth/login", jsonOf("username" to username.trim().lowercase(), "password" to password).toString())
         if (login.code != 200) {
             val msg = runCatching { JSONObject(login.body).let { it.optString("detail").ifBlank { it.optString("error") } } }.getOrDefault(login.body)

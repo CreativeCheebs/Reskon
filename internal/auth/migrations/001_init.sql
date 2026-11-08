@@ -1,5 +1,5 @@
 -- auth.db: accounts and login sessions. Each user's own data lives in a
--- separate SQLite file (user.db_file), with the ordinary JitterBug schema.
+-- separate SQLite file (user.db_file), with the ordinary Reskon schema.
 
 CREATE TABLE user (
   id            INTEGER PRIMARY KEY,

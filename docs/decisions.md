@@ -1,13 +1,13 @@
 # Decisions
 
-Why JitterBug works the way it does. What the app does is in [`SPEC.md`](../SPEC.md); this file says **why**, and what else was considered. Newest additions go at the end of their section. The questions still open are at the bottom.
+Why Reskon works the way it does. What the app does is in [`SPEC.md`](../SPEC.md); this file says **why**, and what else was considered. Newest additions go at the end of their section. The questions still open are at the bottom.
 
 ---
 
 ## The app as a whole
 
 ### One program, one SQLite file per person
-JitterBug is one Go program with the web app built into it, and SQLite for data. There is nothing else to install or keep running, and a backup is copying files. Each person gets their own database file, so one person's data can't leak into another's screens even if a query forgets a filter, and one person's data can be backed up or handed over as one file. A `user_id` column on every table was rejected: one missed filter would leak data.
+Reskon is one Go program with the web app built into it, and SQLite for data. There is nothing else to install or keep running, and a backup is copying files. Each person gets their own database file, so one person's data can't leak into another's screens even if a query forgets a filter, and one person's data can be backed up or handed over as one file. A `user_id` column on every table was rejected: one missed filter would leak data.
 
 ### Pure Go, no C compiler
 `modernc.org/sqlite` is SQLite rewritten in Go. It builds anywhere, including for the phone, without a C toolchain. Don't swap it for `mattn/go-sqlite3`.
@@ -185,7 +185,7 @@ Tasks used Jira's blue ticked box. On a task that isn't finished, a ticked box r
 
 ## The phone and sync
 
-### Kotlin and Compose, with JitterBug's own Go inside
+### Kotlin and Compose, with Reskon's own Go inside
 The owner compared demos and chose Kotlin + Jetpack Compose + Material 3. The app runs the same Go code as the server, built as an Android library with `gomobile bind` and called directly inside the app (no separate server process). It opens in about 30–50 ms and works with no network. Rewriting the logic in Kotlin would save about 15 ms per screen, but would create a second copy of every calculation, so Go stays.
 
 ### Local first, sync optional (Change 003, 2026-11-04)
@@ -221,6 +221,14 @@ The owner rarely uses the Day screen. One account setting, `show_day_screen`, de
 
 Checked end to end on the test server and spare phone: switching it on or off on the phone reaches the server, and switching it on or off on the server reaches the phone on its next sync.
 
+### The app is called Reskon, and the phone release is signed (owner, 2026-11-08)
+
+The product name shown to people is now **Reskon**: the phone app's name, the web page title, sign-in page and sidebar, the messages, and the docs. Names that only the code sees were left alone on purpose, because changing them would break things and show nothing: the Go module and the `jitterbug` program, the folder names, `jitterbug://` links (the tests use them over adb), the phone's data folder and the Kotlin package `com.aakash.jitterbug`. The owner can rename those later as a separate change.
+
+The phone app's id (what Android calls the app) is now `com.aakash.reskon`. Android installs it next to the old JitterBug app instead of over it, so the old app and its data stay until the owner removes them (a server-connected phone just syncs again). It also could not have updated in place anyway: the old app was signed with the debug key, and the release is signed with the Reskon key.
+
+The release is signed with the key in `X:\Personal\Keys` (`reskon-release.jks`, alias `reskon`; the passphrase is in `reskon-passphrase.txt` beside it). Neither is in the repo. `mobile/release.ps1` reads them for the build only, builds `Reskon-<version>.apk`, checks with `apksigner` that it carries the Reskon key's fingerprint, and copies it to `/home/aakash/apks/` on the Linux machine. Without the key the release build is left unsigned instead of falling back to the debug key. Keep a copy of the key and passphrase somewhere safe: an app signed with a lost key can never be updated, only replaced.
+
 ### The 16 KB fix for the phone library
 Newer Android phones use 16 KB memory pages, and Google Play requires native libraries laid out for them. The Go library is now built that way (one linker option in `mobile/build.ps1`). It changes nothing about how the app works.
 
@@ -251,6 +259,5 @@ A clean copy is made with SQLite's `VACUUM INTO`, so changes still waiting in th
 - **Dark only.** The web app and the phone app have only a dark look. Is a light theme wanted?
 - **Touch targets under 48 dp on the phone (owner: do with mockups).** Pills, tags and icon buttons are smaller than Android's 48 dp guide. Draw mockups first, then change the sizes, so the layouts are agreed before any code moves.
 - **Border and hard-coded colours (owner decision).** `borderStrong` is about 2.1:1 against the background (3:1 is the guide for a control's outline), and a few colours are written as fixed values. The fix is to change the colours **inside each theme**, not to add code around themes. The theme system itself stays as it is.
-- **Release signing.** The phone app's release build is signed with the debug key for sideloading. A real key must be made before the first release that people install over an older one.
 - **Session totals on the server.** The Sessions screen adds up hours in the browser for the "in total" line, and the Inbox works out ages from the clock. AGENTS.md says totals come from the server; moving them needs an API change.
 - **The Jira import** maps worklogs to each area's default energy type (Main job and Freelance → Engineering, Personal → Admin). Check before importing.

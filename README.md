@@ -1,4 +1,4 @@
-# JitterBug
+# Reskon
 
 Self-hosted task board and time log. One Go binary. Several people can share a server; each person's data lives in their own SQLite file.
 What the app does is described in [`SPEC.md`](SPEC.md); why it works that way is in [`docs/decisions.md`](docs/decisions.md).

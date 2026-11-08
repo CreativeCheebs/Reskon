@@ -19,7 +19,7 @@ export const BUILTIN_THEMES: Theme[] = [
     id: "default",
     name: "Default",
     builtin: true,
-    source: "JitterBug (Atlassian 2022–24 dark palette)",
+    source: "Reskon (Atlassian 2022–24 dark palette)",
     colors: DEFAULT_COLORS,
   },
   {

@@ -47,9 +47,9 @@ fun FirstRunScreen() {
                 Modifier.weight(1f).windowInsetsPadding(WindowInsets.statusBars).padding(horizontal = 24.dp, vertical = 48.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                T("JitterBug", Palette.fg, 32.sp, FontWeight.SemiBold)
-                T("Do you have a JitterBug server?", Palette.fg, 17.sp, FontWeight.SemiBold)
-                T("Connect to it now and everything on it is downloaded to this phone first. Or use JitterBug on this phone only: it works fully offline, and you can connect a server later in Settings.", Palette.muted, 15.sp)
+                T("Reskon", Palette.fg, 32.sp, FontWeight.SemiBold)
+                T("Do you have a Reskon server?", Palette.fg, 17.sp, FontWeight.SemiBold)
+                T("Connect to it now and everything on it is downloaded to this phone first. Or use Reskon on this phone only: it works fully offline, and you can connect a server later in Settings.", Palette.muted, 15.sp)
             }
             BottomAction("Connect to a server", secondary = "Offline", onSecondary = { choice = "offline" }) { choice = "server" }
         }
@@ -68,7 +68,7 @@ private fun FirstArea(connected: Boolean, onBack: (() -> Unit)?) {
                 .padding(horizontal = 24.dp, vertical = if (onBack == null) 48.dp else 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            T("JitterBug", Palette.fg, 32.sp, FontWeight.SemiBold)
+            T("Reskon", Palette.fg, 32.sp, FontWeight.SemiBold)
             T(
                 if (connected) "Your server has no areas yet." else "Everything stays on this phone. You can add a sync server later in Settings.",
                 Palette.muted, 15.sp,

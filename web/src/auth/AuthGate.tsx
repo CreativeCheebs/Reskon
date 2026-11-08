@@ -63,7 +63,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   if (!status)
     return unreachable ? (
-      <Result status="warning" title="Can't reach the JitterBug server" subTitle="Retrying every few seconds." extra={<Button onClick={load}>Retry now</Button>} />
+      <Result status="warning" title="Can't reach the Reskon server" subTitle="Retrying every few seconds." extra={<Button onClick={load}>Retry now</Button>} />
     ) : (
       <div style={{ display: "grid", placeItems: "center", height: "100vh" }}>
         <Spin />
