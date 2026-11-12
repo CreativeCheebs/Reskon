@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Checkbox, Typography } from "antd";
 import { autosave } from "../theme/feedback";
 import { useApp } from "../store";
-import { COMPLETENESS_FIELDS, requiredFields } from "../task/completeness";
+import { COMPLETENESS_FIELDS, completenessFields, requiredFields } from "../task/completeness";
+import { useTerms } from "../terms";
 
 // The `task_completeness` setting: the fields an open task needs before
 // its details count as complete. Nothing ticked (the default) means every
@@ -10,6 +11,7 @@ import { COMPLETENESS_FIELDS, requiredFields } from "../task/completeness";
 
 export function CompletenessSettings() {
   const { boot, saveSetting, online } = useApp();
+  const T = useTerms();
   const [required, setRequired] = useState<string[]>(requiredFields(boot.settings));
   const save = (next: string[]) => {
     const before = required;
@@ -25,12 +27,12 @@ export function CompletenessSettings() {
         value={required}
         onChange={(v) => save(v as string[])}
         style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "8px 16px" }}
-        options={COMPLETENESS_FIELDS.map((f) => ({ value: f.key, label: f.label }))}
+        options={completenessFields(T).map((f) => ({ value: f.key, label: f.label }))}
       />
       <Typography.Paragraph type="secondary" style={{ fontSize: 12, margin: "12px 0 0" }}>
         {required.length
-          ? "Open tasks missing any of these are listed under Incomplete beside Backlog, Cancelled and Snoozed."
-          : "Nothing is required, so every task counts as complete."}
+          ? `Open ${T.tasks} missing any of these are listed under Incomplete beside Backlog, Cancelled and Snoozed.`
+          : `Nothing is required, so every ${T.task} counts as complete.`}
       </Typography.Paragraph>
     </div>
   );

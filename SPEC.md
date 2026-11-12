@@ -50,6 +50,10 @@ There is also an Android app. It works completely on its own, with no server and
 
 ---
 
+**Your own words for task and epic.** This document says *task* and *epic* everywhere. Settings › Names (web and phone, one setting on the account) lets a person pick other words for what the screens show, such as *todo*/*todos* or *story*/*stories*. Four words: one task, several tasks, one epic, several epics, each 1 to 24 letters, digits, spaces, hyphens or apostrophes. Write them in lower case; the first letter is raised where a label or sentence starts, and the rest is left as typed. Only what is displayed changes. The API, the database, the key (`PER-12`), error messages from the server, the capture model's instructions and this document keep saying task and epic. The Task / Event switch on a session uses the same word. Two things are not renamed: the words *subtask* and *Subtasks*, and the names and descriptions of the built-in chart measures such as "Open tasks", which come from the server.
+
+---
+
 ## 3. People and signing in
 
 - The first person to open a new server creates the **admin** account. After that there is no open sign-up: only an admin adds people (Settings › People).
@@ -377,7 +381,7 @@ See decisions. In short: it would be a second program to run, embedding it secur
 | Time and points | Energy types (name, colour, points per hour), subtypes, subtype rank weights, reflection (week start) |
 | Connections | Quick capture model, duplicate search model, sync server (phone) |
 | Data | Download database (phone) |
-| You | Screens (the Day screen switch), Appearance (themes: Default, Jira, Jira high contrast, GitHub Dark, GitHub Dark Dimmed; download one as a file, edit it, upload it; in any theme, grey secondary text is lightened just enough to be readable, at least 4.5:1 on every surface), account |
+| You | Screens (the Day screen switch), Names (what tasks and epics are called), Appearance (themes: Default, Jira, Jira high contrast, GitHub Dark, GitHub Dark Dimmed; download one as a file, edit it, upload it; in any theme, grey secondary text is lightened just enough to be readable, at least 4.5:1 on every surface), account |
 | Admin | People |
 
 ### 12.1 Deleting something that is in use

@@ -5,9 +5,10 @@ import { api } from "../api";
 import { useApp } from "../store";
 import { formatHours } from "../format";
 import { palette } from "../theme/palette";
-import { DEFAULT_SHOW, SHOW_LABELS } from "../views/cardConfig";
+import { DEFAULT_SHOW, SHOW_LABELS, showLabelsFor } from "../views/cardConfig";
 import { TaskTable } from "../views/TaskTable";
 import type { CardConfig, CardShow, Task } from "../types";
+import { useTerms } from "../terms";
 
 // The tasks in an epic, as a table, under the epic's own fields. Totals are
 // the epic's derived values from the server; the column choice is one
@@ -25,6 +26,8 @@ interface Props {
 
 export function EpicTasks({ epic, version, onOpenTask }: Props) {
   const { boot, online, saveSetting } = useApp();
+  const T = useTerms();
+  const showLabels = showLabelsFor(T);
   const [tasks, setTasks] = useState<Task[] | null>(null);
   const saved = boot.settings[SETTING] as Partial<CardShow> | undefined;
   const show: CardShow = { ...DEFAULT_COLUMNS, ...saved, epic: false };
@@ -47,7 +50,7 @@ export function EpicTasks({ epic, version, onOpenTask }: Props) {
         .filter((k) => k !== "epic")
         .map((k) => (
           <Checkbox key={k} checked={show[k]} disabled={!online} onChange={(e) => setShow(k, e.target.checked)}>
-            {SHOW_LABELS[k]}
+            {showLabels[k]}
           </Checkbox>
         ))}
     </div>
@@ -56,7 +59,7 @@ export function EpicTasks({ epic, version, onOpenTask }: Props) {
   return (
     <>
       <Divider plain orientation="left" style={{ margin: "4px 0" }}>
-        Tasks in this epic
+        {T.Tasks} in this {T.epic}
       </Divider>
       <Space size={16} wrap style={{ fontSize: 13 }}>
         <Total label="Logged" value={formatHours(epic.epic_logged_h ?? 0)} />
@@ -69,7 +72,7 @@ export function EpicTasks({ epic, version, onOpenTask }: Props) {
       {!tasks ? (
         <Spin />
       ) : tasks.length === 0 ? (
-        <Typography.Text type="secondary">No tasks yet. Pick this epic on a task to add it here.</Typography.Text>
+        <Typography.Text type="secondary">No {T.tasks} yet. Pick this {T.epic} on any {T.task} to add it here.</Typography.Text>
       ) : (
         <TaskTable tasks={tasks} config={config} widthsKey="epic" onOpenTask={onOpenTask} />
       )}

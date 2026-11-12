@@ -8,6 +8,7 @@ import { TaskPanel } from "../task/TaskPanel";
 import { ViewIconMark } from "../icons/ViewIconMark";
 import { CycleRows, CycleSummary, type CycleRow } from "./CycleChart";
 import { chartColors, unitFor, unitName } from "./cycleScale";
+import { useTerms } from "../terms";
 
 // Stacked cycle-time chart for one view: a bar per task, split by status,
 // on a shared time axis, so it shows where work waits. The summary sums
@@ -23,6 +24,7 @@ type Order = "longest" | "title";
 
 export function CycleTimeScreen() {
   const { boot, reloadKey, statusById } = useApp();
+  const T = useTerms();
   const views = [...boot.views].sort((a, b) => a.position - b.position);
   const [viewId, setViewId] = useState<number | undefined>(views[0]?.id);
   const [data, setData] = useState<CycleTime | null>(null);
@@ -108,16 +110,16 @@ export function CycleTimeScreen() {
       {!data ? (
         <Spin />
       ) : rows.length === 0 ? (
-        <Empty description="No tasks in this view" />
+        <Empty description={`No ${T.tasks} in this view`} />
       ) : (
         <>
           <p style={{ margin: "0 0 12px", color: palette.muted, fontSize: 12, maxWidth: 760 }}>
-            Each bar runs from when the task was created until now, split by the status it was in. Lengths are
+            Each bar runs from when the {T.task} was created until now, split by the status it was in. Lengths are
             calendar time from the status history, not logged work.{" "}
             {scale === "shared"
-              ? `All bars share one axis in ${unitName(unit)}, so longer bars are older tasks.`
+              ? `All bars share one axis in ${unitName(unit)}, so longer bars are older ${T.tasks}.`
               : "Every bar is stretched to full width, so compare the share of each status, not lengths."}{" "}
-            Hover a bar for its breakdown; click a row to open the task.
+            Hover a bar for its breakdown; click a row to open the {T.task}.
           </p>
           <CycleSummary ids={statusIds} totals={data.status_totals} colors={colors} taskCount={rows.length} unit={totalsUnit} />
           <div style={{ marginTop: 16 }}>

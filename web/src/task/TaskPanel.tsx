@@ -20,6 +20,7 @@ import { priorityOptions } from "./LevelIcons";
 import { TimeBar } from "./TimeBar";
 import { SnoozeButton } from "./SnoozeButton";
 import { fieldLabel } from "./completeness";
+import { useTerms } from "../terms";
 
 // The task panel: the only place the task key is shown. Every edit is a
 // PATCH carrying the updated_at last seen; status changes go through /move.
@@ -35,6 +36,7 @@ interface Props {
 
 export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Props) {
   const { boot, online, reloadKey } = useApp();
+  const T = useTerms();
   const { epics, refresh: refreshEpics } = useEpics();
   const [task, setTask] = useState<Task | null>(initial ?? null);
   const [title, setTitle] = useState(initial?.title ?? "");
@@ -100,7 +102,7 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
 
   const remove = () => {
     if (!task) return;
-    deleteTaskAsking(task, (id) => { onDeleted(id); onClose(); }, (e) => message.error(e.message));
+    deleteTaskAsking(task, (id) => { onDeleted(id); onClose(); }, (e) => message.error(e.message), T);
   };
 
   const ro = !online;
@@ -157,10 +159,10 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
                 options={(task.parent_id ? (["task"] as const) : (["task", "epic"] as const)).map((t) => ({ value: t, label: <TypeLabel type={t} /> }))}
               />
             </Descriptions.Item>
-            <Descriptions.Item label="Epic">
+            <Descriptions.Item label={T.Epic}>
               {task.type === "epic" ? (
                 <span style={{ color: palette.muted }}>
-                  {task.epic_tasks ? `${task.epic_done}/${task.epic_tasks} done · ${formatHours(task.epic_logged_h)} logged` : "No tasks yet"}
+                  {task.epic_tasks ? `${task.epic_done}/${task.epic_tasks} done · ${formatHours(task.epic_logged_h)} logged` : `No ${T.tasks} yet`}
                 </span>
               ) : task.parent_id ? (
                 <span style={{ color: palette.muted }}>The parent's</span>
@@ -171,7 +173,7 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
                   allowClear
                   showSearch
                   optionFilterProp="search"
-                  placeholder="No epic"
+                  placeholder={`No ${T.epic}`}
                   disabled={ro}
                   value={task.epic_id ?? undefined}
                   onChange={(v) => patch({ epic_id: v ?? null })}
@@ -273,7 +275,7 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
               type="warning"
               showIcon
               style={{ padding: "4px 10px" }}
-              message={`Details missing: ${task.missing.map(fieldLabel).join(", ")}`}
+              message={`Details missing: ${task.missing.map((k) => fieldLabel(k, T)).join(", ")}`}
             />
           )}
           <Input.TextArea

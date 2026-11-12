@@ -10,11 +10,13 @@ import { CustomFilterEditor } from "./CustomFilterEditor";
 import { filterOf } from "./cardConfig";
 import type { TaskType, View, ViewFilter } from "../types";
 import { DifficultySlider } from "../task/DifficultySlider";
+import { useTerms } from "../terms";
 
 // Which tasks this view shows. Applied on the server.
 
 export function FilterSettings({ view, onClose }: { view: View; onClose: () => void }) {
   const { boot, updateView } = useApp();
+  const T = useTerms();
   const { epics } = useEpics();
   const [filter, setFilter] = useState<ViewFilter>(filterOf(view));
   const [busy, setBusy] = useState(false);
@@ -51,7 +53,7 @@ export function FilterSettings({ view, onClose }: { view: View; onClose: () => v
       }
     >
       <Form layout="vertical" size="small">
-        <Form.Item label="Type" help="Empty means tasks and epics">
+        <Form.Item label="Type" help={`Empty means ${T.tasks} and ${T.epics}`}>
           <Select<TaskType[]>
             mode="multiple"
             allowClear
@@ -60,7 +62,7 @@ export function FilterSettings({ view, onClose }: { view: View; onClose: () => v
             options={(["task", "epic"] as TaskType[]).map((t) => ({ value: t, label: <TypeLabel type={t} /> }))}
           />
         </Form.Item>
-        <Form.Item label="Epic" help="Tasks belonging to these epics. Empty means any.">
+        <Form.Item label={T.Epic} help={`${T.Tasks} belonging to these ${T.epics}. Empty means any.`}>
           <Select<number[]>
             mode="multiple"
             allowClear
@@ -69,7 +71,7 @@ export function FilterSettings({ view, onClose }: { view: View; onClose: () => v
             value={filter.epics ?? []}
             onChange={(v) => set("epics", list(v))}
             options={[
-              { value: 0, search: "no epic", label: "No epic" },
+              { value: 0, search: `no ${T.epic}`.toLowerCase(), label: `No ${T.epic}` },
               ...epics.map((e) => ({
                 value: e.id,
                 search: e.title.toLowerCase(),
@@ -104,13 +106,13 @@ export function FilterSettings({ view, onClose }: { view: View; onClose: () => v
           <Form.Item label="Min intensity">
             <DifficultySlider value={filter.difficulty_min} width={220} onChange={(v) => set("difficulty_min", v)} />
           </Form.Item>
-          <Form.Item label="Hide done after (days)" tooltip="Done tasks finished longer ago than this are left out. Empty: never hide.">
+          <Form.Item label="Hide done after (days)" tooltip={`Done ${T.tasks} finished longer ago than this are left out. Empty: never hide.`}>
             <InputNumber min={0} value={filter.include_done_days ?? undefined} onChange={(v) => set("include_done_days", v ?? null)} placeholder="all" />
           </Form.Item>
           <Form.Item label="Open only">
             <Switch checked={!!filter.open_only} onChange={(v) => set("open_only", v)} />
           </Form.Item>
-          <Form.Item label="Subtasks as cards" tooltip="Off: subtasks stay in their task's panel, and its card shows how many are done.">
+          <Form.Item label="Subtasks as cards" tooltip={`Off: subtasks stay in their ${T.task}'s panel, and its card shows how many are done.`}>
             <Switch checked={!!filter.subtasks} onChange={(v) => set("subtasks", v)} />
           </Form.Item>
         </Space>

@@ -14,6 +14,8 @@ import { UsersSettings } from "../auth/UsersSettings";
 import { useAuth } from "../auth/AuthGate";
 import { AppearanceSettings } from "../theme/AppearanceSettings";
 import { ScreensSettings } from "./ScreensSettings";
+import { useTerms, type Terms } from "../terms";
+import { NamesSettings } from "./NamesSettings";
 
 // Settings: sections grouped in a menu on the left, or in a picker above
 // the section when the screen is too narrow for both. The open section is
@@ -30,47 +32,47 @@ interface Section {
   bare?: boolean;
 }
 
-const GROUPS: { label: string; sections: Section[] }[] = [
+const groupsFor = (T: Terms): { label: string; sections: Section[] }[] => [
   {
     label: "Workflow",
     sections: [
       {
         key: "areas",
         label: "Areas",
-        intro: "Every task belongs to one area, such as Main job, Personal or Freelance.",
+        intro: `Every ${T.task} belongs to one area, such as Main job, Personal or Freelance.`,
         render: () => <AreaSettings />,
       },
       {
         key: "statuses",
         label: "Statuses",
-        intro: "The stages a task moves through. Their order is the order of the board's columns.",
+        intro: `The stages every ${T.task} moves through. Their order is the order of the board's columns.`,
         render: () => <StatusSettings />,
       },
       {
         key: "priorities",
         label: "Priorities",
-        intro: "How much a task matters. A priority's weight multiplies the points its task earns.",
+        intro: `How much each ${T.task} matters. A priority's weight multiplies the points its ${T.task} earns.`,
         render: () => <PrioritySettings />,
       },
       {
         key: "dates",
-        label: "Task dates",
+        label: `${T.Task} dates`,
         intro:
-          "Start and end dates can always be set by hand in the task panel. Turned on here, a move fills them in with today's date when they are empty. Reopening a finished task clears its end date.",
+          `Start and end dates can always be set by hand in the ${T.task} panel. Turned on here, a move fills them in with today's date when they are empty. Reopening a finished ${T.task} clears its end date.`,
         render: () => <TaskDateSettings />,
       },
       {
         key: "snooze",
         label: "Snooze",
         intro:
-          "Snoozing hides an open task (to do or in progress) from boards and tables for some days, without changing its status. Snoozed tasks are listed under Snoozed beside the hidden statuses, and come back on their own.",
+          `Snoozing hides an open ${T.task} (to do or in progress) from boards and tables for some days, without changing its status. Snoozed ${T.tasks} are listed under Snoozed beside the hidden statuses, and come back on their own.`,
         render: () => <SnoozeSettings />,
       },
       {
         key: "details",
         label: "Complete details",
         intro:
-          "The details an open task should have, such as a start date, an estimate or an intensity. This is about a task's information, not whether the work is done. Tasks missing any are listed under Incomplete in each view.",
+          `The details an open ${T.task} should have, such as a start date, an estimate or an intensity. This is about the ${T.task}'s information, not whether the work is done. ${T.Tasks} missing any are listed under Incomplete in each view.`,
         render: () => <CompletenessSettings />,
       },
       {
@@ -84,7 +86,7 @@ const GROUPS: { label: string; sections: Section[] }[] = [
         key: "custom",
         label: "Custom fields",
         intro:
-          "Fields stored on tasks or sessions without a schema change. Filter by them in a view's settings; show them on cards with the view's card configuration.",
+          `Fields stored on ${T.tasks} or sessions without a schema change. Filter by them in a view's settings; show them on cards with the view's card configuration.`,
         render: () => <CustomFieldSettings />,
       },
     ],
@@ -125,7 +127,7 @@ const GROUPS: { label: string; sections: Section[] }[] = [
       {
         key: "search",
         label: "Duplicate search",
-        intro: "While you type a new task, or search a view, tasks like it are listed so you don't add the same one twice.",
+        intro: `While you type a title, or search a view, ${T.tasks} like it are listed so you don't add the same one twice.`,
         render: () => <SemanticSettings />,
       },
     ],
@@ -138,6 +140,12 @@ const GROUPS: { label: string; sections: Section[] }[] = [
         label: "Screens",
         intro: "Choose which screens are offered. The phone follows the same choice.",
         render: () => <ScreensSettings />,
+      },
+      {
+        key: "names",
+        label: "Names",
+        intro: "Call tasks and epics what you like, such as todos or stories. The phone follows the same choice.",
+        render: () => <NamesSettings />,
       },
       {
         key: "appearance",
@@ -168,7 +176,8 @@ const SIDE_BY_SIDE_MIN = 900;
 
 export function Settings({ section, onSection }: { section?: string; onSection: (key: string) => void }) {
   const { user } = useAuth();
-  const groups = GROUPS.map((g) => ({ ...g, sections: g.sections.filter((s) => !s.adminOnly || user.is_admin) })).filter(
+  const T = useTerms();
+  const groups = groupsFor(T).map((g) => ({ ...g, sections: g.sections.filter((s) => !s.adminOnly || user.is_admin) })).filter(
     (g) => g.sections.length > 0,
   );
   const all = groups.flatMap((g) => g.sections);

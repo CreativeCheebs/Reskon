@@ -8,6 +8,7 @@ import type { TaskBrief } from "../types";
 import type { MetricCatalog, MetricDef, Viz, Widget, WidgetOptions, WidgetQuery } from "./types";
 import { TIME_GROUPS } from "./types";
 import { useMetric, VizBody } from "./WidgetFrame";
+import { useTerms } from "../terms";
 
 // Builds a widget from the metrics catalog: only metrics, groupings, splits
 // and filters the server lists are offered, so nothing built here can be
@@ -100,6 +101,8 @@ export function WidgetEditor({
   onSaved: (w: Widget) => void;
 }) {
   const { boot, online } = useApp();
+  const T = useTerms();
+  const groupLabel = (g: string) => (g === "task" ? T.Task : GROUP_LABEL[g] ?? g);
   const [catalog, setCatalog] = useState<MetricCatalog | null>(null);
   const [tasks, setTasks] = useState<TaskBrief[]>([]);
   const [title, setTitle] = useState(editing?.title ?? "");
@@ -222,7 +225,7 @@ export function WidgetEditor({
                 onChange={(group) =>
                   setQuery({ ...query, group, split: TIME_GROUPS.concat("task").includes(group) && group !== query.split ? query.split : null })
                 }
-                options={metric?.groups.map((g) => ({ value: g, label: GROUP_LABEL[g] ?? g }))}
+                options={metric?.groups.map((g) => ({ value: g, label: groupLabel(g) }))}
               />
             </Form.Item>
             {metric?.ranged && (
@@ -241,7 +244,7 @@ export function WidgetEditor({
                   placeholder="No split"
                   value={query.split ?? undefined}
                   onChange={(split) => setQuery({ ...query, split: split ?? null })}
-                  options={metric?.splits?.filter((s) => s !== query.group).map((s) => ({ value: s, label: GROUP_LABEL[s] ?? s }))}
+                  options={metric?.splits?.filter((s) => s !== query.group).map((s) => ({ value: s, label: groupLabel(s) }))}
                 />
               </Form.Item>
             )}
@@ -313,11 +316,11 @@ export function WidgetEditor({
           {metric?.filters?.includes("kind") && (
             <Form.Item label="Kind" {...item}>
               <Select mode="multiple" allowClear placeholder="All" value={filters.kind as string[] | undefined} onChange={(v) => setFilter("kind", v)}
-                options={kindValues.map((k) => ({ value: k, label: k }))} />
+                options={kindValues.map((k) => ({ value: k, label: k === "task" ? T.task : k }))} />
             </Form.Item>
           )}
           {metric?.filters?.includes("task_id") && (
-            <Form.Item label="Tasks" {...item}>
+            <Form.Item label={T.Tasks} {...item}>
               <Select mode="multiple" allowClear showSearch optionFilterProp="label" placeholder="All" value={filters.task_id?.map(Number)}
                 onChange={(v) => setFilter("task_id", v)} options={tasks.map((t) => ({ value: t.id, label: t.title }))} />
             </Form.Item>

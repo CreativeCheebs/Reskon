@@ -6,6 +6,7 @@ import { Lozenge } from "../theme/Lozenge";
 import { snoozeTask, wakeLabel } from "../task/SnoozeButton";
 import { useColumnWidths } from "./useColumnWidths";
 import type { Task } from "../types";
+import { useTerms } from "../terms";
 
 // The view's snoozed tasks, beside the hidden statuses in the toolbar.
 // Escape closes it; it is not a route. Waking puts a task back where it was.
@@ -19,6 +20,7 @@ interface Props {
 
 export function SnoozedOverlay({ tasks, onClose, onChanged, onOpenTask }: Props) {
   const app = useApp();
+  const T = useTerms();
   const rows = tasks.filter((t) => t.snoozed);
   const areaName = (id: number) => app.boot.areas.find((a) => a.id === id)?.name ?? "";
 
@@ -75,7 +77,7 @@ export function SnoozedOverlay({ tasks, onClose, onChanged, onOpenTask }: Props)
         dataSource={rows}
         pagination={false}
         scroll={{ y: 480 }}
-        locale={{ emptyText: "Nothing snoozed. Snooze an open task from its panel." }}
+        locale={{ emptyText: `Nothing snoozed. Snooze any open ${T.task} from its panel.` }}
         onRow={(t) => ({ onClick: () => onOpenTask(t.id), style: { cursor: "pointer" } })}
         columns={sized.columns}
         components={sized.components}

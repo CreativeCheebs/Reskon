@@ -8,6 +8,7 @@ import { api } from "../api";
 import { autosave, confirm, message } from "../theme/feedback";
 import { PRIORITY_LEVEL_COLORS, priorityColor, priorityLevel } from "../task/LevelIcons";
 import type { Priority } from "../types";
+import { useTerms } from "../terms";
 
 // The lookup sections of Settings: areas, statuses, priorities, energy
 // types and subtypes. Each is one LookupEditor table; the section's intro
@@ -26,6 +27,7 @@ function useEnergyOptions() {
 }
 
 export function AreaSettings() {
+  const T = useTerms();
   const { boot } = useApp();
   const energyOptions = useEnergyOptions();
   return (
@@ -35,7 +37,7 @@ export function AreaSettings() {
       rows={boot.areas as never}
       fields={[
         { key: "name", title: "Name", kind: "text" },
-        { key: "key_prefix", title: "Key prefix", kind: "text", width: 110, help: "Starts the area's task keys, like PER-12." },
+        { key: "key_prefix", title: "Key prefix", kind: "text", width: 110, help: `Starts the area's ${T.task} keys, like PER-12.` },
         { key: "color", title: "Colour", kind: "color", width: 80 },
         { key: "default_energy_type_id", title: "Default energy type", kind: "select", options: energyOptions, nullable: true, width: 160 },
       ]}
@@ -48,6 +50,7 @@ export function AreaSettings() {
 }
 
 export function StatusSettings() {
+  const T = useTerms();
   const { boot, reloadBootstrap, behaviourOf } = useApp();
   const statusDelete = useReassignDelete("statuses", false);
 
@@ -91,7 +94,7 @@ export function StatusSettings() {
           },
           { key: "color", title: "Colour", kind: "color", width: 80, help: "Caps the board column and tints its count." },
           { key: "on_board", title: "On board", kind: "bool", width: 96, help: "Off makes the status a header button instead of a column, like Backlog." },
-          { key: "alert_after_days", title: "Alert after", kind: "number", nullable: true, width: 110, help: "Flags a task red once it has sat in the status this many days." },
+          { key: "alert_after_days", title: "Alert after", kind: "number", nullable: true, width: 110, help: `Flags the ${T.task} red once it has sat in the status this many days.` },
         ]}
         newRow={() => ({
           name: unique("New status", boot.statuses),
@@ -106,6 +109,7 @@ export function StatusSettings() {
 }
 
 export function PrioritySettings() {
+  const T = useTerms();
   const { boot, reloadBootstrap } = useApp();
   const priorityDelete = useReassignDelete("priorities", true);
 
@@ -136,7 +140,7 @@ export function PrioritySettings() {
         fields={[
           { key: "name", title: "Name", kind: "text" },
           { key: "color", title: "Colour", kind: "color", width: 80, help: "With no colour, a priority takes one by its rank: blue lowest, red highest." },
-          { key: "weight", title: "Weight", kind: "number", step: 0.25, width: 110, help: "Multiplies points. 1.0 is neutral; a task with no priority counts as 1.0." },
+          { key: "weight", title: "Weight", kind: "number", step: 0.25, width: 110, help: `Multiplies points. 1.0 is neutral; ${T.tasks} with no priority count as 1.0.` },
         ]}
         newRow={() => ({ name: unique("New priority", boot.priorities), weight: 1, position: next(boot.priorities) })}
         onDelete={(r) => priorityDelete.start(r as never)}

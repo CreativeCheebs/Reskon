@@ -8,6 +8,7 @@ import { autosave, confirm, message } from "./feedback";
 import { blend, contrast, palette, readable } from "./palette";
 import { useTheme } from "./ThemeProvider";
 import { BUILTIN_THEMES, checkContrast, parseTheme, themeTemplate, type Theme } from "./themes";
+import { useTerms } from "../terms";
 
 // Pick a theme, download any theme as an editable template, upload your
 // own. The choice is saved on the account (setting "theme"); uploaded
@@ -133,6 +134,7 @@ function ThemeCard({
   onRemove?: () => void;
 }) {
   const c = theme.colors;
+  const T = useTerms();
   const warnings = checkContrast(c);
   const chip = (color: string, label: string) => {
     const bg = blend(color, c.panel, 0.16);
@@ -167,13 +169,13 @@ function ThemeCard({
           <div style={{ background: c.panel, borderRadius: 4, padding: "5px 6px", boxShadow: `0 1px 1px ${c.shadow}80` }}>
             <div style={{ fontSize: 11, color: c.fg, marginBottom: 4 }}>Port STM32 changes</div>
             <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-              {chip(c.epic, "Epic")}
+              {chip(c.epic, T.Epic)}
               {chip(c.warn, "High")}
               <span style={{ fontSize: 10, color: c.muted }}>⧗ 3d</span>
             </div>
           </div>
           <div style={{ background: c.panel, borderRadius: 4, padding: "5px 6px", border: `1px solid ${c.danger}` }}>
-            <div style={{ fontSize: 11, color: c.fg }}>Stalled task</div>
+            <div style={{ fontSize: 11, color: c.fg }}>Stalled {T.task}</div>
           </div>
           <div style={{ display: "flex", gap: 4 }}>
             <span style={{ fontSize: 10, color: c.bg, background: c.accent, borderRadius: 3, padding: "1px 6px" }}>Save</span>

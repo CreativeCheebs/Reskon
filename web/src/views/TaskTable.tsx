@@ -15,6 +15,7 @@ import { useColumnWidths } from "./useColumnWidths";
 import { useSurfaceOpacity, withAlpha } from "./ViewBackdrop";
 import { TaskBulkBar } from "./TaskBulkBar";
 import { checkboxLabel } from "../a11y";
+import { useTerms } from "../terms";
 
 // Table layout: same filter, columns from the same `show` config as cards.
 // Default sort is time in status, descending — the aging list.
@@ -40,6 +41,7 @@ export function TaskTable({
   onMoved?: (tasks: Task[]) => void;
 }) {
   const { boot, statusById } = useApp();
+  const T = useTerms();
   const { byId: epics } = useEpics();
   const show = config.show;
   const iconsOnly = config.icons_only;
@@ -74,7 +76,7 @@ export function TaskTable({
   if (show.epic && groupBy !== "epic")
     cols.push({
       key: "epic",
-      title: "Epic",
+      title: T.Epic,
       width: 180,
       ellipsis: true,
       render: (_, t) => {

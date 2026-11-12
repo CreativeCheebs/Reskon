@@ -6,6 +6,7 @@ import { message } from "../theme/feedback";
 import { palette } from "../theme/palette";
 import { today } from "../format";
 import type { Task } from "../types";
+import { useTerms } from "../terms";
 
 // Actions on the tasks ticked in a table. Moving goes through one
 // all-or-nothing request (POST /api/tasks/move), which writes a transition
@@ -27,9 +28,10 @@ export function TaskBulkBar({
   onClear: () => void;
 }) {
   const { boot, online } = useApp();
+  const T = useTerms();
   const [busy, setBusy] = useState(false);
   const n = ids.length;
-  const plural = `${n} task${n === 1 ? "" : "s"}`;
+  const plural = T.countTasks(n);
   const statuses = [...boot.statuses].sort((a, b) => a.position - b.position);
 
   const move = async (statusId: number) => {
@@ -48,7 +50,7 @@ export function TaskBulkBar({
   return (
     <div
       role="toolbar"
-      aria-label="Selected tasks"
+      aria-label={`Selected ${T.tasks}`}
       style={{
         position: "fixed",
         bottom: 20,

@@ -6,6 +6,7 @@ import { palette } from "../theme/palette";
 import type { Segment } from "../types";
 import { CycleBar } from "./CycleBar";
 import { formatSpan, ticks, unitName, type Unit } from "./cycleScale";
+import { useTerms } from "../terms";
 
 // The two parts of the cycle-time chart: the all-tasks summary (one bar and
 // a figure per status under it) and the per-task rows on a common grid of
@@ -43,14 +44,15 @@ export function CycleSummary({
   unit: Unit;
 }) {
   const { statusById } = useApp();
+  const T = useTerms();
   const sum = ids.reduce((s, id) => s + totals[id], 0);
   const segs: Segment[] = ids.map((id) => ({ status_id: id, from: "", to: "", hours: totals[id], current: false }));
   return (
     <section style={{ background: palette.panel, border: `1px solid ${palette.border}`, borderRadius: 8, padding: "10px 12px 12px" }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
-        <span style={{ fontWeight: 600 }}>Time in each status, all tasks combined</span>
+        <span style={{ fontWeight: 600 }}>Time in each status, all {T.tasks} combined</span>
         <span style={{ color: palette.subtle, fontSize: 12 }}>
-          {taskCount} {taskCount === 1 ? "task" : "tasks"} · in {unitName(unit)}
+          {T.countTasks(taskCount)} · in {unitName(unit)}
         </span>
       </div>
       <CycleBar
@@ -116,6 +118,7 @@ export function CycleRows({
   onOpen: (taskId: number) => void;
 }) {
   const [axisRef, axisW] = useWidth<HTMLDivElement>();
+  const T = useTerms();
   const maxH = rows.reduce((m, r) => Math.max(m, r.total_h), 0);
   // Tick positions as fractions of the bar column, with their labels.
   const marks: [number, string][] =
@@ -127,7 +130,7 @@ export function CycleRows({
   return (
     <div
       role="table"
-      aria-label="Cycle time per task"
+      aria-label={`Cycle time per ${T.task}`}
       style={{
         display: "grid",
         gridTemplateColumns: "fit-content(min(300px, 34%)) minmax(0, 1fr) 64px",
@@ -156,7 +159,7 @@ export function CycleRows({
         }}
       >
         <span role="columnheader" style={{ paddingLeft: 8 }}>
-          Task
+          {T.Task}
         </span>
         <div role="columnheader" ref={axisRef} style={{ position: "relative", height: 16 }}>
           {marks.map(([f, label], i) => (

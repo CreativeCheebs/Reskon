@@ -3,6 +3,7 @@ import { Alert, Button, Space, Tag, Typography } from "antd";
 import { api } from "../api";
 import { message } from "../theme/feedback";
 import { useAuth } from "../auth/AuthGate";
+import { useTerms } from "../terms";
 
 // Duplicate search's local model (GET /api/semantic). Word matching always
 // works; the model adds matching by meaning. It runs inside Reskon on
@@ -24,6 +25,7 @@ const LABEL: Record<Status["state"], { text: string; color?: string }> = {
 };
 
 export function SemanticSettings() {
+  const T = useTerms();
   const { user } = useAuth();
   const [status, setStatus] = useState<Status | null>(null);
   const load = () => api.get<Status>("/semantic").then(setStatus).catch(() => undefined);
@@ -65,7 +67,7 @@ export function SemanticSettings() {
       <Typography.Paragraph type="secondary" style={{ fontSize: 12, margin: 0 }}>
         Matching by words always works. With the model, titles that mean the same thing match too ("doctor about stomach acid" finds "Planning for
         heartburn diagnosis"). It runs on this server's CPU, about 30 ms a search, and nothing is sent anywhere. The first search after
-        adding many tasks reads them in the background for a few seconds.
+        adding many {T.tasks} reads them in the background for a few seconds.
       </Typography.Paragraph>
     </Space>
   );

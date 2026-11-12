@@ -8,6 +8,7 @@ import { TypeIcon } from "../task/TypeIcon";
 import { DifficultyIcon, PriorityIcon, priorityColor } from "../task/LevelIcons";
 import { useEpics } from "../task/useEpics";
 import { paceChip, TimeBar } from "../task/TimeBar";
+import { useTerms } from "../terms";
 
 // A board card, title first. Under it: labels (epic, area ...), then the
 // signals as tinted chips (priority, intensity, time in status, due), then
@@ -35,6 +36,7 @@ export function TaskCard({
   pinned?: boolean;
 }) {
   const { boot } = useApp();
+  const T = useTerms();
   const { byId: epicsById } = useEpics();
   const epic = task.epic_id ? epicsById.get(task.epic_id) : undefined;
   const show = config.show;
@@ -80,7 +82,7 @@ export function TaskCard({
     );
   if (task.type === "epic" && task.epic_tasks)
     chips.push(
-      <Chip key="epicprog" color={palette.epic} tip="Tasks done in this epic">
+      <Chip key="epicprog" color={palette.epic} tip={`${T.Tasks} done in this ${T.epic}`}>
         {task.epic_done}/{task.epic_tasks} done
       </Chip>,
     );

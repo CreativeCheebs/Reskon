@@ -51,7 +51,7 @@ suspend fun saveSetting(key: String, value: Any) {
 }
 
 @Composable
-private fun SettingPage(title: String, content: @Composable () -> Unit) {
+internal fun SettingPage(title: String, content: @Composable () -> Unit) {
     Column(Modifier.fillMaxSize()) {
         TopBar(title, onBack = { App.back() })
         Column(
@@ -88,8 +88,8 @@ fun TaskDatesScreen() {
     fun save(sa: Boolean = startAuto, s: List<Long> = start, ea: Boolean = endAuto, e: List<Long> = end) = scope.launch {
         attempt("Not saved") { saveSetting("task_dates", jsonOf("start_auto" to sa, "start_statuses" to JSONArray(s), "end_auto" to ea, "end_statuses" to JSONArray(e))) }
     }
-    SettingPage("Task dates") {
-        T("A move can fill in a task's start or end date. Dates set by hand are kept.", Palette.muted, 14.sp)
+    SettingPage("${Terms.capTask} dates") {
+        T("A move can fill in the start or end date. Dates set by hand are kept.", Palette.muted, 14.sp)
         Card(pad = 16.dp) {
             SwitchRow("Fill in the start date", startAuto) { save(sa = it) }
             if (startAuto) FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -118,7 +118,7 @@ fun SnoozeSettingsScreen() {
     var max by remember { mutableStateOf((boot.settings.optJSONObject("snooze")?.optInt("max_days", 30) ?: 30).toString()) }
     SettingPage("Snooze") {
         TextBox("Longest snooze (days)", max, keyboard = KeyboardType.Number) { max = it.filter(Char::isDigit).take(3) }
-        T("From 1 to 365 days. Tasks already snoozed keep their date.", Palette.subtle, 13.sp)
+        T("From 1 to 365 days. ${Terms.capTasks} already snoozed keep their date.", Palette.subtle, 13.sp)
         TextLink("Save") {
             val v = max.toIntOrNull()?.coerceIn(1, 365) ?: return@TextLink
             scope.launch { attempt("Not saved") { saveSetting("snooze", jsonOf("max_days" to v)); App.say("Saved") } }
@@ -127,9 +127,9 @@ fun SnoozeSettingsScreen() {
 }
 
 /** The fields Settings › Complete details can ask for, with their names (also used to say what a task lacks). */
-internal val COMPLETENESS = listOf(
+internal val COMPLETENESS get() = listOf(
     "start_date" to "Start date", "end_date" to "End date", "due_at" to "Due date", "estimate_h" to "Estimate (max time)",
-    "difficulty" to "Intensity", "priority_id" to "Priority", "energy_type_id" to "Energy type", "description" to "Description", "epic_id" to "Epic",
+    "difficulty" to "Intensity", "priority_id" to "Priority", "energy_type_id" to "Energy type", "description" to "Description", "epic_id" to Terms.capEpic,
 )
 
 fun fieldLabel(key: String): String = COMPLETENESS.firstOrNull { it.first == key }?.second ?: key
@@ -142,7 +142,7 @@ fun CompletenessScreen() {
     val scope = rememberCoroutineScope()
     val required = strs(boot.settings.optJSONObject("task_completeness")?.optJSONArray("required"))
     SettingPage("Complete details") {
-        T("Open tasks missing any of these are listed as incomplete, and the task panel says what's missing.", Palette.muted, 14.sp)
+        T("Open ${Terms.tasks} missing any of these are listed as incomplete, and the ${Terms.task} panel says what's missing.", Palette.muted, 14.sp)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             COMPLETENESS.forEach { (k, label) ->
                 val on = k in required
@@ -155,7 +155,7 @@ fun CompletenessScreen() {
     }
 }
 
-private val CARD_ACTIONS = listOf("log" to "Log time", "snooze" to "Snooze", "note" to "Note", "move" to "Move to", "open" to "Open task", "delete" to "Delete")
+private val CARD_ACTIONS get() = listOf("log" to "Log time", "snooze" to "Snooze", "note" to "Note", "move" to "Move to", "open" to "Open ${Terms.task}", "delete" to "Delete")
 
 /** Settings › Card actions: the web board's hover buttons (up to 3) and right-click menu. */
 @OptIn(ExperimentalLayoutApi::class)
@@ -258,7 +258,7 @@ fun CustomFieldsScreen() {
     fun run(what: String, f: suspend () -> Unit) = scope.launch { attempt(what) { f(); App.reloadBoot(); App.changed() } }
     Box(Modifier.fillMaxSize()) {
         SettingPage("Custom fields") {
-            listOf("task" to "On tasks", "session" to "On sessions").forEach { (entity, title) ->
+            listOf("task" to "On ${Terms.tasks}", "session" to "On sessions").forEach { (entity, title) ->
                 SectionTitle(title)
                 Card {
                     val list = fields.orEmpty().filter { it.optString("entity") == entity && it.isNull("deleted_at") }
@@ -312,7 +312,7 @@ fun CustomFieldsScreen() {
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Pill("Task", entity == "task") { entity = "task" }
+                        Pill(Terms.capTask, entity == "task") { entity = "task" }
                         Pill("Session", entity == "session") { entity = "session" }
                     }
                     TextBox("Label", label) { label = it }

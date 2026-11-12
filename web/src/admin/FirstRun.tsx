@@ -3,11 +3,13 @@ import { Form, Input, Modal, Select } from "antd";
 import { message } from "../theme/feedback";
 import { api } from "../api";
 import { useApp } from "../store";
+import { useTerms } from "../terms";
 
 // No areas exist yet: ask for one. Creating it also creates its board view.
 
 export function FirstRun() {
   const { boot, reloadBootstrap, online } = useApp();
+  const T = useTerms();
   const [form] = Form.useForm();
   const [busy, setBusy] = useState(false);
 
@@ -37,7 +39,7 @@ export function FirstRun() {
       cancelButtonProps={{ style: { display: "none" } }}
     >
       <p style={{ marginTop: 0 }}>
-        Every task belongs to exactly one area — Main job, Personal, Freelance. The prefix makes task keys like PER-1.
+        Every {T.task} belongs to exactly one area — Main job, Personal, Freelance. The prefix makes {T.task} keys like PER-1.
       </p>
       <Form form={form} layout="vertical" initialValues={{ default_energy_type_id: boot.energy_types[0]?.id }}>
         <Form.Item name="name" label="Name" rules={[{ required: true }]}>

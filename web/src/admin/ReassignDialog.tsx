@@ -3,6 +3,7 @@ import { Modal, Radio, Select, Space } from "antd";
 import { message } from "../theme/feedback";
 import { api, ApiError } from "../api";
 import { useApp } from "../store";
+import { useTerms } from "../terms";
 
 // Deleting something that is still in use (a status, priority, area,
 // energy type or subtype): the server refuses and says what uses it, and
@@ -59,6 +60,7 @@ export function useReassignDelete(collection: Collection, allowClear: boolean) {
 }
 
 function ReassignDialog({ collection, row, count, usedBy, allowClear, onDone }: Props & { count: number; usedBy?: string }) {
+  const T = useTerms();
   const { boot, reloadBootstrap } = useApp();
   const all: { id: number; name: string }[] = {
     statuses: boot.statuses,
@@ -98,8 +100,8 @@ function ReassignDialog({ collection, row, count, usedBy, allowClear, onDone }: 
       <p>
         {usedBy
           ? `This ${NOUN[collection]} is used by ${usedBy}. Pick where they should move.`
-          : `${count} task${count === 1 ? "" : "s"} ${count === 1 ? "uses" : "use"} this ${NOUN[collection]}.`}
-        {collection === "statuses" && " Each move is written to the task's history and its time in status restarts."}
+          : `${T.countTasks(count)} ${count === 1 ? "uses" : "use"} this ${NOUN[collection]}.`}
+        {collection === "statuses" && ` Each move is written to the ${T.task}'s history and its time in status restarts.`}
       </p>
       <Space direction="vertical">
         {allowClear && (

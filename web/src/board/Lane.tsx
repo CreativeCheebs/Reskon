@@ -27,6 +27,7 @@ import { Column } from "./Column";
 import { TaskCard } from "./TaskCard";
 import { COL_GAP } from "./useBoardFit";
 import { boardComparator } from "./sorting";
+import { useTerms } from "../terms";
 
 // One row of status columns with drag and drop. Without grouping the board
 // is a single lane; grouped, each group (epic, priority ...) is a lane, and
@@ -69,6 +70,7 @@ export function Lane(props: Props) {
   const { view, tasks, boardStatuses, collapsed, onToggleCollapse, limits, onSetLimit, inLane, createDefaults, setTasks, refetch, onOpenTask } =
     props;
   const { online, boot } = useApp();
+  const T = useTerms();
   const config = useMemo(() => cardConfigOf(view), [view]);
   const sort = view.board_state?.sort ?? "manual";
   const sorted = sort !== "manual";
@@ -114,7 +116,7 @@ export function Lane(props: Props) {
 
   // What a screen reader says while a card is moved with the keyboard. Without
   // this it would read internal ids ("col-3") instead of titles and statuses.
-  const titleOf = (id: string | number) => byId.get(Number(id))?.title ?? "the task";
+  const titleOf = (id: string | number) => byId.get(Number(id))?.title ?? `the ${T.task}`;
   const placeOf = (id: string | number) => boardStatuses.find((st) => st.id === containerOf(id))?.name ?? "the board";
   const announcements: Announcements = {
     onDragStart: ({ active }) => `Picked up ${titleOf(active.id)}.`,
@@ -240,7 +242,7 @@ export function Lane(props: Props) {
         accessibility={{
           announcements,
           screenReaderInstructions: {
-            draggable: "Press Space to pick up this task, the arrow keys to move it, Space to drop it and Escape to cancel. Press Enter to open it.",
+            draggable: `Press Space to pick up this ${T.task}, the arrow keys to move it, Space to drop it and Escape to cancel. Press Enter to open it.`,
           },
         }}
         collisionDetection={collision}

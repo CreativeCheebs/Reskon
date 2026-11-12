@@ -108,16 +108,19 @@ fun SettingsScreen() {
                     scope.launch { attempt("Not saved") { saveSetting("show_day_screen", it) } }
                 }
             }
+            Card {
+                ListRow("Names", "What ${Terms.tasks} and ${Terms.epics} are called") { App.go("names") }
+            }
             SectionTitle("Workflow")
             Card {
                 ListRow("Areas", "${boot.areas.size} ${if (boot.areas.size == 1) "area" else "areas"}") { App.go("lookup", "kind" to "areas") }
                 Line(); ListRow("Statuses", boot.statuses.joinToString(", ") { it.name }) { App.go("lookup", "kind" to "statuses") }
                 Line(); ListRow("Priorities", boot.priorities.joinToString(", ") { it.name }) { App.go("lookup", "kind" to "priorities") }
-                Line(); ListRow("Task dates", "Start, end and due") { App.go("taskdates") }
+                Line(); ListRow("${Terms.capTask} dates", "Start, end and due") { App.go("taskdates") }
                 Line(); ListRow("Snooze", "Longest snooze") { App.go("snoozeset") }
-                Line(); ListRow("Complete details", "Fields an open task should have") { App.go("complete") }
+                Line(); ListRow("Complete details", "Fields an open ${Terms.task} should have") { App.go("complete") }
                 Line(); ListRow("Card actions", "Buttons and menu on web cards") { App.go("cardactions") }
-                Line(); ListRow("Custom fields", "Extra fields on tasks and sessions") { App.go("fields") }
+                Line(); ListRow("Custom fields", "Extra fields on ${Terms.tasks} and sessions") { App.go("fields") }
             }
             SectionTitle("Time and points")
             Card {
@@ -128,7 +131,7 @@ fun SettingsScreen() {
             SectionTitle("Connections")
             Card {
                 ListRow("Quick capture", "Parser and model") { App.go("llm") }
-                Line(); ListRow("Duplicate search", "Match tasks by meaning") { App.go("duplicates") }
+                Line(); ListRow("Duplicate search", "Match ${Terms.tasks} by meaning") { App.go("duplicates") }
                 Line(); ListRow("Sync server", sync.server ?: "Not set · everything stays on this phone") { App.go("sync") }
             }
             SectionTitle("Data")
@@ -195,7 +198,7 @@ fun LookupScreen(r: Route) {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     TextBox("Name", name) { name = it }
                     if (kind == "energy-types") TextBox("Points an hour", extra, keyboard = KeyboardType.Decimal) { extra = it }
-                    if (kind == "areas") TextBox("Task key prefix", extra) { extra = it.uppercase() }
+                    if (kind == "areas") TextBox("${Terms.capTask} key prefix", extra) { extra = it.uppercase() }
                     if (o.optBoolean("is_builtin")) T("Built in: it can be renamed but not deleted.", Palette.subtle, 12.sp)
                 }
             },
@@ -219,7 +222,7 @@ fun LookupScreen(r: Route) {
                             } catch (e: ApiError) {
                                 // In use: ask where its tasks and sessions should move (as in Jira).
                                 val cur = e.body?.optJSONObject("current")
-                                if (e.status == 409 && cur != null) moving = o to (cur.optString("used_by").ifBlank { "${cur.optInt("task_count")} tasks" })
+                                if (e.status == 409 && cur != null) moving = o to (cur.optString("used_by").ifBlank { Terms.countTasks(cur.optInt("task_count")) })
                                 else App.say("Not deleted: ${e.message}")
                             }
                         }
@@ -251,7 +254,7 @@ fun LookupScreen(r: Route) {
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     TextBox("Name", name) { name = it }
-                    if (kind == "areas") TextBox("Task key prefix", extra, "e.g. HM") { extra = it.uppercase().filter(Char::isLetterOrDigit).take(6) }
+                    if (kind == "areas") TextBox("${Terms.capTask} key prefix", extra, "e.g. HM") { extra = it.uppercase().filter(Char::isLetterOrDigit).take(6) }
                     if (parents.isNotEmpty()) {
                         T(if (kind == "subtypes") "Energy type" else "Behaves as", Palette.muted, 13.sp)
                         androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -348,7 +351,7 @@ fun DataScreen() {
     Column(Modifier.fillMaxSize()) {
         TopBar("Download database", onBack = { App.back() })
         Column(Modifier.weight(1f).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            T("Saves everything on this phone (tasks, sessions, plans, settings) as one SQLite file. Use it to move your data without a sync server, or as a backup.", Palette.muted, 14.sp)
+            T("Saves everything on this phone (${Terms.tasks}, sessions, plans, settings) as one SQLite file. Use it to move your data without a sync server, or as a backup.", Palette.muted, 14.sp)
             T("It is the same database a Reskon server keeps for each person, so it can be opened with any SQLite tool.", Palette.subtle, 13.sp)
             status?.let { T(it, Palette.green, 14.sp) }
         }

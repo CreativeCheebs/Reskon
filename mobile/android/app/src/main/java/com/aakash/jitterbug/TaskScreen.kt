@@ -99,7 +99,7 @@ fun TaskScreen(r: Route) {
                 T("⧗ ${age(t.num("time_in_status_h"))} in this status", Palette.muted, 13.sp)
             }
             if (t.optBoolean("snoozed")) T("Snoozed until ${dayLabel(t.str("snoozed_until"))}", Palette.yellow, 13.sp)
-            if (t.optBoolean("blocked")) T("Blocked by an open task", Palette.yellow, 13.sp)
+            if (t.optBoolean("blocked")) T("Blocked by an open ${Terms.task}", Palette.yellow, 13.sp)
             if (t.strs("missing").isNotEmpty()) T("Missing: ${t.strs("missing").joinToString(", ")}", Palette.yellow, 13.sp)
 
             // Progress, all from the server: logged, estimate, remaining, pace.
@@ -123,7 +123,7 @@ fun TaskScreen(r: Route) {
 
             Card {
                 val fields = listOf(
-                    Triple("Epic", t.id("epic_id")?.let { EpicNames.of(it) ?: "#$it" } ?: "None", Palette.purple.takeIf { t.id("epic_id") != null }) to "epic",
+                    Triple(Terms.capEpic, t.id("epic_id")?.let { EpicNames.of(it) ?: "#$it" } ?: "None", Palette.purple.takeIf { t.id("epic_id") != null }) to "epic",
                     Triple("Area", boot.area(t.id("area_id"))?.name ?: "–", boot.area(t.id("area_id"))?.color) to "area",
                     Triple("Energy type", boot.type(t.id("energy_type_id"))?.name ?: "–", boot.type(t.id("energy_type_id"))?.color) to "type",
                     Triple("Priority", boot.priority(t.id("priority_id"))?.name ?: "–", boot.priority(t.id("priority_id"))?.color) to "priority",
@@ -214,7 +214,7 @@ fun TaskScreen(r: Route) {
                 }
             }
 
-            SectionTitle("Sessions on this task")
+            SectionTitle("Sessions on this ${Terms.task}")
             Card {
                 if (sessions.isEmpty()) T("No time logged yet.", Palette.muted, 14.sp, modifier = Modifier.padding(16.dp))
                 sessions.forEachIndexed { i, s ->
@@ -229,7 +229,7 @@ fun TaskScreen(r: Route) {
                 }
             }
         }
-        BottomAction("Log time on this task") { App.go("log", "task" to id) }
+        BottomAction("Log time on this ${Terms.task}") { App.go("log", "task" to id) }
     }
 
     when (sheet) {
@@ -240,7 +240,7 @@ fun TaskScreen(r: Route) {
         "difficulty" -> PickSheet("Intensity", listOf(0L to "None") + (1..5).map { it.toLong() to "$it · ${INTENSITY[it - 1]}" }, { sheet = null }) { sheet = null; change(jsonOf("difficulty" to it.takeIf { it > 0 })) }
         "epic" -> {
             val epics by loaded { Api.arr("/tasks?type=epic").objs() }
-            PickSheet("Epic", listOf(0L to "None") + epics.orEmpty().filter { it.getLong("id") != id }.map { it.getLong("id") to it.getString("title") }, { sheet = null }) {
+            PickSheet(Terms.capEpic, listOf(0L to "None") + epics.orEmpty().filter { it.getLong("id") != id }.map { it.getLong("id") to it.getString("title") }, { sheet = null }) {
                 sheet = null; change(jsonOf("epic_id" to it.takeIf { it > 0 }))
             }
         }
@@ -256,7 +256,7 @@ fun TaskScreen(r: Route) {
                 }
             }
         }
-        "actions" -> PickSheet("Task", listOf(1L to "Log time", 2L to "Delete task"), { sheet = null }) {
+        "actions" -> PickSheet(Terms.capTask, listOf(1L to "Log time", 2L to "Delete ${Terms.task}"), { sheet = null }) {
             sheet = null
             if (it == 1L) App.go("log", "task" to id) else confirmDelete = true
         }
@@ -297,16 +297,16 @@ fun TaskScreen(r: Route) {
             scope.launch {
                 attempt("Not deleted") {
                     Api.del("/tasks/$id" + if (withSubtasks) "?subtasks=delete" else "")
-                    App.changed(); App.back(); App.say("Task deleted")
+                    App.changed(); App.back(); App.say("${Terms.capTask} deleted")
                 }
             }
         }
         AlertDialog(
             onDismissRequest = { confirmDelete = false }, containerColor = Palette.raised,
-            title = { T("Delete this task?", Palette.fg, 18.sp, FontWeight.SemiBold) },
+            title = { T("Delete this ${Terms.task}?", Palette.fg, 18.sp, FontWeight.SemiBold) },
             text = {
-                T(if (subs == 0) "Its sessions stay, without a task."
-                  else "It has $subs ${if (subs == 1) "subtask" else "subtasks"}. Delete ${if (subs == 1) "it" else "them"} too, or keep ${if (subs == 1) "it as a normal task" else "them as normal tasks"}? Sessions stay either way.",
+                T(if (subs == 0) "Its sessions stay, with no ${Terms.task}."
+                  else "It has $subs ${if (subs == 1) "subtask" else "subtasks"}. Delete ${if (subs == 1) "it" else "them"} too, or keep ${if (subs == 1) "it as its own ${Terms.task}" else "them as their own ${Terms.tasks}"}? Sessions stay either way.",
                   Palette.muted, 14.sp)
             },
             confirmButton = {
@@ -338,15 +338,15 @@ fun NewTaskScreen(r: Route) {
     var pickDue by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     Column(Modifier.fillMaxSize()) {
-        TopBar("New task", onBack = { App.back() })
+        TopBar("New ${Terms.task}", onBack = { App.back() })
         Column(
             Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             TextBox("Title", title, "What needs doing?") { title = it }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Pill("Task", !epic) { epic = false }
-                Pill("Epic", epic) { epic = true }
+                Pill(Terms.capTask, !epic) { epic = false }
+                Pill(Terms.capEpic, epic) { epic = true }
             }
             SectionTitle("Area")
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -369,7 +369,7 @@ fun NewTaskScreen(r: Route) {
                 FieldBox("Due", due?.let { dayLabel(it.toString()) } ?: "–", Modifier.weight(1f)) { pickDue = true }
             }
         }
-        BottomAction("Create task", enabled = title.isNotBlank()) {
+        BottomAction("Create ${Terms.task}", enabled = title.isNotBlank()) {
             scope.launch {
                 attempt("Not created") {
                     val t = Api.post("/tasks", jsonOf(

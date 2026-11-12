@@ -1,3 +1,5 @@
+import type { Terms } from "../terms";
+
 // The fields Settings → Complete details can require, with their names.
 // The server works out which a task is missing (Task.missing).
 
@@ -13,7 +15,10 @@ export const COMPLETENESS_FIELDS: { key: string; label: string }[] = [
   { key: "epic_id", label: "Epic" },
 ];
 
-export const fieldLabel = (key: string) => COMPLETENESS_FIELDS.find((f) => f.key === key)?.label ?? key;
+/** The fields with the epic's own name in the list. */
+export const completenessFields = (T: Terms) => COMPLETENESS_FIELDS.map((f) => (f.key === "epic_id" ? { ...f, label: T.Epic } : f));
+
+export const fieldLabel = (key: string, T: Terms) => completenessFields(T).find((f) => f.key === key)?.label ?? key;
 
 /** The fields the setting requires; empty means every task is complete. */
 export function requiredFields(settings: Record<string, unknown>): string[] {

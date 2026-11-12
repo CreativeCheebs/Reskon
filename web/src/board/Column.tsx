@@ -15,6 +15,7 @@ import { Composer } from "./Composer";
 import { COLLAPSED_W, COL_MIN } from "./useBoardFit";
 import { useSurfaceOpacity, withAlpha } from "../views/ViewBackdrop";
 import { pressable } from "../a11y";
+import { useTerms } from "../terms";
 
 // Columns sit half way between the page and the sunken well, with a faint
 // outline, so a mostly empty column reads as space rather than a dark slab.
@@ -65,6 +66,7 @@ export function Column(props: Props) {
   const overLimit = !!limit && limit.use > limit.limit.max;
   const { setNodeRef, isOver } = useDroppable({ id: "col-" + status.id, disabled });
   const { behaviourOf } = useApp();
+  const T = useTerms();
   const surface = useSurfaceOpacity();
   const color = status.color && /^#[0-9a-fA-F]{6}$/.test(status.color) ? status.color : palette.muted;
   const dot = <span style={{ width: 8, height: 8, borderRadius: 4, background: color, flex: "none" }} />;
@@ -138,7 +140,7 @@ export function Column(props: Props) {
           {status.name}
         </span>
         <span
-          aria-label={`${taskIds.length} tasks`}
+          aria-label={T.countTasks(taskIds.length)}
           style={{
             minWidth: 20,
             height: 18,
@@ -262,6 +264,7 @@ const SortableCard = memo(function SortableCard({
 /** A small, friendly placeholder for a column with no cards, which also
  *  shows where a dragged card will land. */
 function EmptyColumn({ done, isOver, onAdd }: { done: boolean; isOver: boolean; onAdd?: () => void }) {
+  const T = useTerms();
   return (
     <div
       style={{
@@ -279,12 +282,12 @@ function EmptyColumn({ done, isOver, onAdd }: { done: boolean; isOver: boolean; 
         transition: "border-color .12s ease, background-color .12s ease",
       }}
     >
-      <span>{done ? "Nothing finished lately" : "No tasks here yet"}</span>
+      <span>{done ? "Nothing finished lately" : `No ${T.tasks} here yet`}</span>
       {isOver ? (
         <span style={{ color: palette.fg }}>Drop to move it here</span>
       ) : onAdd ? (
         <Button size="small" type="dashed" icon={<PlusOutlined />} onClick={onAdd}>
-          Add task
+          Add {T.task}
         </Button>
       ) : (
         <span>Drag a card here</span>

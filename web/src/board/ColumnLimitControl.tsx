@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Button, InputNumber, Popover, Segmented, Space, Tooltip, Typography } from "antd";
 import { palette } from "../theme/palette";
 import type { ColumnLimit } from "../types";
-import { formatLimit, LIMIT_UNITS } from "./limits";
+import { formatLimit, limitUnits } from "./limits";
+import { useTerms } from "../terms";
 
 // A column's limit in its header: "3/5" coloured by how full the column is,
 // and a popover to set, change or remove it. Saved on the view at once.
@@ -21,6 +22,7 @@ export function ColumnLimitControl({
   onChange: (limit: ColumnLimit | null) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const T = useTerms();
   const [draft, setDraft] = useState<ColumnLimit>(limit ?? { max: 5, unit: "tasks", hard: false });
   const over = limit ? use > limit.max : false;
   const full = limit ? use >= limit.max : false;
@@ -38,7 +40,7 @@ export function ColumnLimitControl({
             size="small"
             value={draft.unit}
             onChange={(v) => setDraft((d) => ({ ...d, unit: v as ColumnLimit["unit"] }))}
-            options={LIMIT_UNITS}
+            options={limitUnits(T)}
           />
         </div>
         <div>

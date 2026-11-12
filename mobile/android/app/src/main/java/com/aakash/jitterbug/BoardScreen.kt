@@ -178,7 +178,7 @@ private fun LayoutSheet(view: ViewRef, onDismiss: () -> Unit) {
             androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 val g = state.optString("group_by", "status").ifBlank { "status" }
                 listOf("status", "priority", "area", "energy_type", "epic", "none").forEach { k ->
-                    Pill(k.replace('_', ' ').replaceFirstChar { it.uppercase() }, g == k) { patch(jsonOf("board_state" to boardStateWith(view.raw, "group_by", k))) }
+                    Pill(if (k == "epic") Terms.capEpic else k.replace('_', ' ').replaceFirstChar { it.uppercase() }, g == k) { patch(jsonOf("board_state" to boardStateWith(view.raw, "group_by", k))) }
                 }
             }
             T("Filters and card fields are set on the web app.", Palette.subtle, 13.sp)
@@ -325,7 +325,7 @@ private fun ListLayout(view: ViewRef, tasks: List<JSONObject>, onLongPress: (JSO
         "priority" -> boot.priority(t.id("priority_id"))?.let { it.name to it.color } ?: ("No priority" to Palette.subtle)
         "area" -> boot.area(t.id("area_id"))?.let { it.name to it.color } ?: ("No area" to Palette.subtle)
         "energy_type" -> boot.type(t.id("energy_type_id"))?.let { it.name to it.color } ?: ("No energy type" to Palette.subtle)
-        "epic" -> (t.id("epic_id")?.let { EpicNames.of(it) } ?: "No epic") to Palette.purple
+        "epic" -> (t.id("epic_id")?.let { EpicNames.of(it) } ?: "No ${Terms.epic}") to Palette.purple
         "none" -> "All" to Palette.accent
         else -> boot.status(t.id("status_id"))?.let { it.name to it.color } ?: ("?" to Palette.subtle)
     }
@@ -334,9 +334,9 @@ private fun ListLayout(view: ViewRef, tasks: List<JSONObject>, onLongPress: (JSO
 
     Row(Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Pill("Time in status", true)
-        Pill("Group: ${groupBy.replace('_', ' ')}")
+        Pill("Group: ${if (groupBy == "epic") Terms.epic else groupBy.replace('_', ' ')}")
         Box(Modifier.weight(1f))
-        T("${tasks.size} ${if (tasks.size == 1) "task" else "tasks"}", Palette.muted, 13.sp)
+        T(Terms.countTasks(tasks.size), Palette.muted, 13.sp)
     }
     LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         items(groups, key = { it.key.first }) { (g, rows) ->
@@ -422,7 +422,7 @@ private fun TimelineLayout(tasks: List<JSONObject>) {
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 groups.forEach { (epicId, rows) ->
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        T(epicId?.let { EpicNames.of(it) } ?: "No epic", Palette.fg, 14.sp, FontWeight.SemiBold)
+                        T(epicId?.let { EpicNames.of(it) } ?: "No ${Terms.epic}", Palette.fg, 14.sp, FontWeight.SemiBold)
                         rows.forEach { t ->
                             val (a, b) = span(t)!!
                             val from = ChronoUnit.DAYS.between(start, a).coerceIn(0, days.toLong())
@@ -443,7 +443,7 @@ private fun TimelineLayout(tasks: List<JSONObject>) {
             }
             if (todayIdx in 0 until days) Box(Modifier.offset(x = w * ((todayIdx + 0.5f) / days)).width(2.dp).height(1.dp))
         }
-        if (dated.isEmpty()) Empty("No task in this view has dates.")
-        if (undated > 0) T("$undated ${if (undated == 1) "task has" else "tasks have"} no dates, so ${if (undated == 1) "it is" else "they are"} not drawn. Dates are set on the task.", Palette.subtle, 13.sp)
+        if (dated.isEmpty()) Empty("No ${Terms.task} in this view has dates.")
+        if (undated > 0) T("${Terms.countTasks(undated)} ${if (undated == 1) "has" else "have"} no dates, so ${if (undated == 1) "it is" else "they are"} not drawn. Dates are set on the ${Terms.task}.", Palette.subtle, 13.sp)
     }
 }

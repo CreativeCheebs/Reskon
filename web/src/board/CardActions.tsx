@@ -17,6 +17,7 @@ import { SessionModal } from "../sessions/SessionModal";
 import { deleteTaskAsking } from "../task/deleteTask";
 import { formatWakeDate, snoozeMaxDays, snoozeTask } from "../task/SnoozeButton";
 import type { Task } from "../types";
+import { makeTerms, termWords, useTerms, type Terms } from "../terms";
 
 // A board card's quick actions. Which ones sit in the hover rail over the
 // card's upper right corner, and which the right-click menu lists, is the
@@ -30,14 +31,17 @@ import type { Task } from "../types";
 export type CardActionKey = "log" | "snooze" | "note" | "move" | "open" | "delete";
 
 /** Every card action, in the order they are shown everywhere. */
-export const CARD_ACTIONS: { key: CardActionKey; label: string; hint: string; icon: ReactNode }[] = [
-  { key: "log", label: "Log time", hint: "Open the worklog form with this task filled in", icon: <ClockCircleOutlined /> },
-  { key: "snooze", label: "Snooze", hint: "Hide an open task for some days", icon: <MoonOutlined /> },
-  { key: "note", label: "Note", hint: "Edit the task's description in place", icon: <FileTextOutlined /> },
+export const cardActionsFor = (T: Terms): { key: CardActionKey; label: string; hint: string; icon: ReactNode }[] => [
+  { key: "log", label: "Log time", hint: `Open the worklog form with this ${T.task} filled in`, icon: <ClockCircleOutlined /> },
+  { key: "snooze", label: "Snooze", hint: `Hide this open ${T.task} for some days`, icon: <MoonOutlined /> },
+  { key: "note", label: "Note", hint: `Edit the ${T.task}'s description in place`, icon: <FileTextOutlined /> },
   { key: "move", label: "Move to", hint: "Send the card to another status", icon: <SwapRightOutlined /> },
-  { key: "open", label: "Open task", hint: "Open the task panel", icon: <ExpandAltOutlined /> },
-  { key: "delete", label: "Delete", hint: "Delete the task, after asking", icon: <DeleteOutlined /> },
+  { key: "open", label: `Open ${T.task}`, hint: `Open the ${T.task} panel`, icon: <ExpandAltOutlined /> },
+  { key: "delete", label: "Delete", hint: `Delete the ${T.task}, after asking`, icon: <DeleteOutlined /> },
 ];
+
+/** The actions with the default words: enough for their keys. */
+export const CARD_ACTIONS = cardActionsFor(makeTerms(termWords({})));
 
 /** Most buttons the rail may hold, so it never covers a whole title. */
 export const RAIL_MAX = 3;
@@ -86,6 +90,7 @@ type Item = NonNullable<MenuProps["items"]>[number];
 
 /** The card's action state (note editor, log form, menus) and its menus. */
 export function useCardActions(task: Task, { onOpen, onChanged, onDeleted }: CardHandlers) {
+  const T = useTerms();
   const app = useApp();
   const [noteOpen, setNoteOpen] = useState(false);
   const [logging, setLogging] = useState(false);
@@ -116,7 +121,7 @@ export function useCardActions(task: Task, { onOpen, onChanged, onDeleted }: Car
       onChanged(await snoozeTask(task.id, days));
       message.success(`Snoozed for ${days === 1 ? "a day" : `${days} days`}`);
     });
-  const remove = () => deleteTaskAsking(task, onDeleted, (e) => message.error(e.message));
+  const remove = () => deleteTaskAsking(task, onDeleted, (e) => message.error(e.message), T);
   // Logging time changes the card's logged hours and time bar.
   const reload = () => run(async () => onChanged(await api.get<Task>(`/tasks/${task.id}`)));
 
@@ -138,7 +143,7 @@ export function useCardActions(task: Task, { onOpen, onChanged, onDeleted }: Car
     })),
   };
   const item = (k: CardActionKey): Item => {
-    const a = CARD_ACTIONS.find((x) => x.key === k)!;
+    const a = cardActionsFor(T).find((x) => x.key === k)!;
     const offline = !app.online && k !== "open";
     if (k === "move" || k === "snooze")
       return { key: k, label: a.label, icon: a.icon, disabled: offline, children: choices[k], popupClassName: "jb-menu" };
@@ -223,6 +228,7 @@ export function CardContextMenu({ actions, children }: { actions: Actions; child
 /** The rail itself, placed in the card by TaskCard. Its events stop here,
  *  so a click is never also a card click, a drag or a keyboard pick-up. */
 export function CardActionRail({ task, actions, onChanged }: { task: Task; actions: Actions; onChanged: (t: Task) => void }) {
+  const T = useTerms();
   const { online } = useApp();
   const stop = (e: React.SyntheticEvent) => e.stopPropagation();
   const note = <NoteEditor task={task} onSaved={onChanged} onClose={() => actions.setNoteOpen(false)} />;
@@ -242,7 +248,7 @@ export function CardActionRail({ task, actions, onChanged }: { task: Task; actio
   );
 
   const buttons = actions.rail.map((k) => {
-    const a = CARD_ACTIONS.find((x) => x.key === k)!;
+    const a = cardActionsFor(T).find((x) => x.key === k)!;
     const offline = !online && k !== "open";
     const button = (props: React.ButtonHTMLAttributes<HTMLButtonElement> = {}) => (
       <RailButton key={k} label={a.label} primary danger={k === "delete"} disabled={offline} {...props}>

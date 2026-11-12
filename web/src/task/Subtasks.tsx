@@ -7,6 +7,7 @@ import { formatHours, today } from "../format";
 import { palette } from "../theme/palette";
 import type { Task, TaskBrief } from "../types";
 import { pressable } from "../a11y";
+import { useTerms } from "../terms";
 
 // A task's subtasks, as a checklist under its fields. Each is a full task
 // (its own status, key and sessions); ticking one moves it to the first
@@ -24,6 +25,7 @@ interface Props {
 
 export function Subtasks({ parent, version, onOpenTask, onChanged }: Props) {
   const { boot, online, behaviourOf } = useApp();
+  const T = useTerms();
   const [tasks, setTasks] = useState<Task[] | null>(null);
   const [title, setTitle] = useState("");
   const [busy, setBusy] = useState(false);
@@ -125,7 +127,7 @@ export function Subtasks({ parent, version, onOpenTask, onChanged }: Props) {
           />
           {tasks.length === 0 && (
             <Typography.Text type="secondary" style={{ fontSize: 12, paddingInline: 4 }}>
-              Break it into small steps. Each one is a task of its own, hidden from boards unless the view's filter shows subtasks.
+              Break it into small steps. Each one is its own {T.task}, hidden from boards unless the view's filter shows subtasks.
             </Typography.Text>
           )}
         </div>

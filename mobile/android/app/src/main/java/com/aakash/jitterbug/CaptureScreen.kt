@@ -210,7 +210,7 @@ private fun EntryCard(e: Entry, onRemove: () -> Unit, onEdit: () -> Unit, onSwit
     Card(pad = 0.dp) {
         Column(Modifier.clickable(onClick = onEdit).padding(start = 16.dp, end = 8.dp, top = 10.dp, bottom = 14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.clickable(onClick = onSwitch)) { Tag(if (e.intent == "task") "Task" else if (d.kind == "event") "Event" else "Session", bg = Palette.selected, fg = Palette.accentFg, round = 12) }
+                Box(Modifier.clickable(onClick = onSwitch)) { Tag(if (e.intent == "task") Terms.capTask else if (d.kind == "event") "Event" else "Session", bg = Palette.selected, fg = Palette.accentFg, round = 12) }
                 Box(Modifier.weight(1f))
                 IconButton(Icons.close, "Remove this entry", Palette.subtle, 40, onRemove)
             }
@@ -225,7 +225,7 @@ private fun EntryCard(e: Entry, onRemove: () -> Unit, onEdit: () -> Unit, onSwit
                 Triple("Energy type", if (d.parts.size > 1) d.parts.joinToString(" + ") { boot.type(it.typeId)?.name ?: "?" } else boot.type(first?.typeId)?.name ?: "Choose…", boot.type(first?.typeId)?.color),
                 Triple("Intensity", first?.difficulty?.let { "$it · ${INTENSITY[it - 1]}" } ?: "–", first?.difficulty?.let { Palette.intensity[it - 1] }),
                 Triple("Area", boot.area(d.areaId)?.name ?: "–", null),
-                if (d.taskId != null) Triple("Task", d.taskTitle ?: "#${d.taskId}", null) else Triple("Date", relDay(d.loggedFor.toString()), null),
+                if (d.taskId != null) Triple(Terms.capTask, d.taskTitle ?: "#${d.taskId}", null) else Triple("Date", relDay(d.loggedFor.toString()), null),
             )
             fields.chunked(2).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(end = 8.dp)) {
@@ -248,7 +248,7 @@ private fun EditEntrySheet(e: Entry, update: (Entry) -> Unit, onDismiss: () -> U
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                T(if (e.intent == "task") "Task" else "Session", Palette.fg, 18.sp, FontWeight.SemiBold, Modifier.weight(1f))
+                T(if (e.intent == "task") Terms.capTask else "Session", Palette.fg, 18.sp, FontWeight.SemiBold, Modifier.weight(1f))
                 TextLink("Done", onClick = onDismiss)
             }
             if (e.intent == "task") {

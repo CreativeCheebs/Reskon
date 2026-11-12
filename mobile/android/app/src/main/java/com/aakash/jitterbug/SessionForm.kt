@@ -192,8 +192,8 @@ fun SessionFields(d: Draft, onDone: (() -> Unit)? = null, set: (Draft) -> Unit) 
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
-                T("Task", Palette.muted, 12.sp)
-                T(d.taskTitle ?: if (d.taskId != null) "Task #${d.taskId}" else "No task", Palette.fg, 15.sp, FontWeight.Medium)
+                T(Terms.capTask, Palette.muted, 12.sp)
+                T(d.taskTitle ?: if (d.taskId != null) "${Terms.capTask} #${d.taskId}" else "No ${Terms.task}", Palette.fg, 15.sp, FontWeight.Medium)
             }
             Icon(Icons.right, Palette.subtle, 20)
         }
@@ -203,7 +203,7 @@ fun SessionFields(d: Draft, onDone: (() -> Unit)? = null, set: (Draft) -> Unit) 
             Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 T("Kind", Palette.muted, 14.sp, modifier = Modifier.width(64.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Pill("Task", d.kind == "task") { set(d.copy(kind = "task")) }
+                    Pill(Terms.capTask, d.kind == "task") { set(d.copy(kind = "task")) }
                     Pill("Event", d.kind == "event") { set(d.copy(kind = "event")) }
                 }
             }
@@ -402,16 +402,16 @@ fun TaskPicker(onDismiss: () -> Unit, allowNone: Boolean = true, onPick: (JSONOb
     val tasks by loaded { Api.arr("/tasks?brief=1").objs() }
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = Palette.raised) {
         Column(Modifier.fillMaxHeight(0.85f)) {
-            T("Pick a task", Palette.fg, 18.sp, FontWeight.SemiBold, Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp))
+            T("Pick the ${Terms.task}", Palette.fg, 18.sp, FontWeight.SemiBold, Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp))
             OutlinedTextField(
                 query, { query = it }, singleLine = true, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                leadingIcon = { Icon(Icons.search, Palette.muted, 20) }, placeholder = { T("Search tasks", Palette.subtle) },
+                leadingIcon = { Icon(Icons.search, Palette.muted, 20) }, placeholder = { T("Search ${Terms.tasks}", Palette.subtle) },
             )
             Spacer(Modifier.height(8.dp))
             val shown = tasks.orEmpty().filter { (query.isBlank() || it.optString("title").contains(query, true)) && it.optString("behaviour") != "cancelled" }
             LazyColumn {
                 if (allowNone && query.isBlank()) item {
-                    Box(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button) { onPick(null) }.padding(horizontal = 16.dp), contentAlignment = Alignment.CenterStart) { T("No task", Palette.muted) }
+                    Box(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button) { onPick(null) }.padding(horizontal = 16.dp), contentAlignment = Alignment.CenterStart) { T("No ${Terms.task}", Palette.muted) }
                 }
                 items(shown, key = { it.getLong("id") }) { t ->
                     Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button) { onPick(t) }.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {

@@ -12,6 +12,7 @@ import { priorityOptions } from "../task/LevelIcons";
 import { palette } from "../theme/palette";
 import { today } from "../format";
 import { SimilarTasksList, useSimilarTasks } from "../task/SimilarTasks";
+import { useTerms } from "../terms";
 
 // Quick capture: one line in, filled forms out, nothing written until the
 // user confirms. One line can hold several entries ("6 hours at the
@@ -52,6 +53,7 @@ interface Props {
 
 export function CaptureModal({ onClose, takeEarlyKeys, initialText, onSaved }: Props) {
   const { boot, online } = useApp();
+  const T = useTerms();
   const [text, setText] = useState(initialText ?? "");
   const [parsing, setParsing] = useState(false);
   const [parse, setParse] = useState<CaptureParse | null>(null);
@@ -154,7 +156,7 @@ export function CaptureModal({ onClose, takeEarlyKeys, initialText, onSaved }: P
   const saveOne = async (e: Entry) => {
     if (e.intent === "task") {
       const t = e.task;
-      if (!t.title.trim() || !t.area_id) throw new Error("A task needs a title and an area.");
+      if (!t.title.trim() || !t.area_id) throw new Error(`Every ${T.task} needs a title and an area.`);
       const body: Record<string, unknown> = { title: t.title.trim(), area_id: t.area_id, custom: audit(e), today: today() };
       if (t.energy_type_id) body.energy_type_id = t.energy_type_id;
       if (t.difficulty) body.difficulty = t.difficulty;
@@ -182,7 +184,7 @@ export function CaptureModal({ onClose, takeEarlyKeys, initialText, onSaved }: P
         remove(e.id);
       }
       const parts = [
-        tasksAdded ? `${tasksAdded} task${tasksAdded > 1 ? "s" : ""} added` : "",
+        tasksAdded ? `${T.countTasks(tasksAdded)} added` : "",
         sessionsLogged ? `${sessionsLogged} session${sessionsLogged > 1 ? "s" : ""} logged` : "",
       ].filter(Boolean);
       message.success(parts.join(", ").replace(/^./, (c) => c.toUpperCase()));
@@ -271,7 +273,7 @@ export function CaptureModal({ onClose, takeEarlyKeys, initialText, onSaved }: P
               }}
             />
             <Typography.Text type="secondary" style={{ fontSize: 11 }}>
-              Enter to read it · Esc to close · past tense logs a session, future or imperative makes a task · one line can hold several
+              Enter to read it · Esc to close · past tense logs a session, future or imperative makes {T.tasks} · one line can hold several
             </Typography.Text>
             <SimilarTasksList {...similar} />
           </Spin>
@@ -295,14 +297,14 @@ export function CaptureModal({ onClose, takeEarlyKeys, initialText, onSaved }: P
                   {/* Radio, not Segmented: Segmented shows its first option as
                       selected when nothing is, which would be a silent guess. */}
                   <Radio.Group value={e.intent} onChange={(ev) => update(e.id, { intent: ev.target.value })} optionType="button" buttonStyle="solid" size={several ? "small" : "middle"}>
-                    <Radio.Button value="task">Task</Radio.Button>
+                    <Radio.Button value="task">{T.Task}</Radio.Button>
                     <Radio.Button value="session">Session</Radio.Button>
                   </Radio.Group>
                   {several && (
                     <Button size="small" type="text" icon={<DeleteOutlined />} onClick={() => remove(e.id)} aria-label="Remove this entry" style={{ marginLeft: "auto" }} />
                   )}
                 </div>
-                {!e.intent && <Typography.Text type="secondary">Is this a task to do, or a session that happened?</Typography.Text>}
+                {!e.intent && <Typography.Text type="secondary">Is this {T.task} to do, or a session that happened?</Typography.Text>}
                 {e.intent === "task" && <TaskFields draft={e.task} onChange={(task) => update(e.id, { task })} />}
                 {e.intent === "session" && (
                   <SessionFields draft={e.session} onChange={(session) => update(e.id, { session })} tasks={tasks} disabled={!online} />

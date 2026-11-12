@@ -221,6 +221,14 @@ The owner rarely uses the Day screen. One account setting, `show_day_screen`, de
 
 Checked end to end on the test server and spare phone: switching it on or off on the phone reaches the server, and switching it on or off on the server reaches the phone on its next sync.
 
+### Tasks and epics can be renamed on screen (owner, 2026-11-13)
+
+The owner wanted a better word than "task" (Todo was an idea) and said it should be a setting, so each person picks their own. One account setting, `terms`, holds up to four words (task, tasks, epic, epics); anything missing means the default. It syncs like any setting, so the web and the phone agree. The server checks the shape and the characters and trims the words (`internal/db/terms.go`), nothing else.
+
+Only what is displayed changes. API field names, the database, task keys, server error messages, the spec and the capture model's prompt keep the words task and epic, so a rename can never break sync or an old phone. Words are stored as typed in the lower case wanted mid-sentence and only the first letter is raised at the start of a label, so "ToDo" is never turned into "Todo". Screens avoid putting "a" or "an" in front of a name ("New task", not "Add a task"), because the right one depends on the word. This is why a few sentences were reworded.
+
+Settings › Names on the web, and Settings › Names on the phone.
+
 ### The app is called Reskon, and the phone release is signed (owner, 2026-11-08)
 
 The product name shown to people is now **Reskon**: the phone app's name, the web page title, sign-in page and sidebar, the messages, and the docs. Names that only the code sees were left alone on purpose, because changing them would break things and show nothing: the Go module and the `jitterbug` program, the folder names, `jitterbug://` links (the tests use them over adb), the phone's data folder and the Kotlin package `com.aakash.jitterbug`. The owner can rename those later as a separate change.

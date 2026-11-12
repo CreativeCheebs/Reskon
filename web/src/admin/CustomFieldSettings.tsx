@@ -6,6 +6,7 @@ import { api } from "../api";
 import { useApp } from "../store";
 import { WriteButton } from "../offline";
 import type { CustomField, FieldType } from "../types";
+import { useTerms } from "../terms";
 
 // Custom field definitions. Key and type are fixed once created — to change
 // a type, make a new field. Deleting a definition keeps the stored values.
@@ -14,6 +15,7 @@ const TYPES: FieldType[] = ["text", "int", "real", "date", "bool", "select"];
 
 export function CustomFieldSettings() {
   const { boot, reloadBootstrap } = useApp();
+  const T = useTerms();
   const [adding, setAdding] = useState(false);
 
   const patch = async (id: number, body: Record<string, unknown>) => {
@@ -41,7 +43,7 @@ export function CustomFieldSettings() {
         pagination={false}
         dataSource={boot.custom_fields}
         columns={[
-          { title: "On", dataIndex: "entity", width: 80, render: (e) => <Tag>{e}</Tag> },
+          { title: "On", dataIndex: "entity", width: 80, render: (e) => <Tag>{e === "task" ? T.task : e}</Tag> },
           {
             title: "Label",
             render: (_, f) => (
@@ -88,6 +90,7 @@ export function CustomFieldSettings() {
 
 function AddField({ onClose }: { onClose: () => void }) {
   const { reloadBootstrap } = useApp();
+  const T = useTerms();
   const [form] = Form.useForm();
   const type: FieldType = Form.useWatch("type", form);
 
@@ -106,7 +109,7 @@ function AddField({ onClose }: { onClose: () => void }) {
     <Modal open title="New custom field" onOk={submit} onCancel={onClose} okText="Create">
       <Form form={form} layout="vertical" size="small" initialValues={{ entity: "task", type: "text" }}>
         <Form.Item name="entity" label="On">
-          <Select options={[{ value: "task" }, { value: "session" }]} />
+          <Select options={[{ value: "task", label: T.task }, { value: "session" }]} />
         </Form.Item>
         <Form.Item name="label" label="Label" rules={[{ required: true }]}>
           <Input

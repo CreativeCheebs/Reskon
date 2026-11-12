@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Form, Select, Space, Switch } from "antd";
 import { autosave } from "../theme/feedback";
 import { useApp } from "../store";
+import { useTerms } from "../terms";
 
 // The `task_dates` setting: which statuses fill in a task's start and end
 // date when a task moves into them. The server applies it, inside the move.
@@ -15,6 +16,7 @@ interface Rules {
 }
 
 export function TaskDateSettings() {
+  const T = useTerms();
   const { boot, behaviourOf, saveSetting, online } = useApp();
   const saved = (boot.settings.task_dates as Partial<Rules> | undefined) ?? {};
   const statuses = [...boot.statuses].sort((a, b) => a.position - b.position);
@@ -43,7 +45,7 @@ export function TaskDateSettings() {
           <Space direction="vertical" style={{ width: "100%" }}>
             <Space>
               <Switch checked={rules.start_auto} onChange={(v) => set({ start_auto: v })} />
-              <span>{rules.start_auto ? "Set automatically when a task moves into" : "Manual only"}</span>
+              <span>{rules.start_auto ? `Set automatically when the ${T.task} moves into` : "Manual only"}</span>
             </Space>
             {rules.start_auto && (
               <Select
@@ -62,7 +64,7 @@ export function TaskDateSettings() {
           <Space direction="vertical" style={{ width: "100%" }}>
             <Space>
               <Switch checked={rules.end_auto} onChange={(v) => set({ end_auto: v })} />
-              <span>{rules.end_auto ? "Set automatically when a task moves into" : "Manual only"}</span>
+              <span>{rules.end_auto ? `Set automatically when the ${T.task} moves into` : "Manual only"}</span>
             </Space>
             {rules.end_auto && (
               <Select

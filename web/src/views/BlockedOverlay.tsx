@@ -3,6 +3,7 @@ import { useApp } from "../store";
 import { Lozenge } from "../theme/Lozenge";
 import { useColumnWidths } from "./useColumnWidths";
 import type { Task } from "../types";
+import { useTerms } from "../terms";
 
 // The view's blocked tasks: open, with an open task still blocking them.
 // While the view hides them (the default) they are listed here instead of
@@ -18,6 +19,7 @@ interface Props {
 
 export function BlockedOverlay({ tasks, hidden, onHidden, onClose, onOpenTask }: Props) {
   const { statusById, online } = useApp();
+  const T = useTerms();
   const rows = tasks.filter((t) => t.blocked);
   const sized = useColumnWidths<Task>("blocked", [
     { key: "title", title: "Title", dataIndex: "title" },
@@ -64,7 +66,7 @@ export function BlockedOverlay({ tasks, hidden, onHidden, onClose, onOpenTask }:
         dataSource={rows}
         pagination={false}
         scroll={{ y: 480 }}
-        locale={{ emptyText: "Nothing blocked. Link tasks under Dependencies in a task's panel." }}
+        locale={{ emptyText: `Nothing blocked. Link ${T.tasks} under Dependencies in the ${T.task}'s panel.` }}
         onRow={(t) => ({ onClick: () => onOpenTask(t.id), style: { cursor: "pointer" } })}
         columns={sized.columns}
         components={sized.components}

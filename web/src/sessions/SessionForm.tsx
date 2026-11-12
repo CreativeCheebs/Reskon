@@ -10,7 +10,8 @@ import { RankedSubtypes } from "./RankedSubtypes";
 import { CustomFieldsEditor } from "../fields/CustomFieldsEditor";
 import { DurationInput, MAX_HOURS } from "./DurationInput";
 import { EnergyFields } from "./EnergyFields";
-import { KIND_OPTIONS } from "./kind";
+import { kindOptions } from "./kind";
+import { useTerms } from "../terms";
 
 // The fields of a session, shared by the manual log form and quick capture.
 // Laid out as a worklog: duration, date and start time first, then a short
@@ -166,6 +167,7 @@ export function SessionFields({
   onKeyDown?: React.KeyboardEventHandler<HTMLFormElement>;
 }) {
   const { boot } = useApp();
+  const T = useTerms();
   const set = (patch: Partial<SessionDraft>) => onChange({ ...draft, ...patch });
   const openTasks = useMemo(
     () => tasks.filter((t) => (t.behaviour !== "done" && t.behaviour !== "cancelled") || t.id === draft.task_id),
@@ -219,7 +221,7 @@ export function SessionFields({
         className="jb-kind"
         value={draft.kind}
         onChange={(v) => set({ kind: v as SessionDraft["kind"] })}
-        options={KIND_OPTIONS}
+        options={kindOptions(T)}
         aria-label="Kind"
         style={{ marginBottom: 12 }}
       />
@@ -279,7 +281,7 @@ export function SessionFields({
         label="Description"
         htmlFor="session-description"
         style={tight}
-        extra={draft.task_id && draft.label_suggested ? "Filled in from the task; type to describe this piece of work." : "A few words on what you did."}
+        extra={draft.task_id && draft.label_suggested ? `Filled in from the ${T.task}; type to describe this piece of work.` : "A few words on what you did."}
       >
         <Input
           id="session-description"
@@ -293,14 +295,14 @@ export function SessionFields({
       {/* An event is not work on a task, so it doesn't offer one; one
           already saved against a task still shows its task. */}
       {(draft.kind === "task" || draft.task_id) && (
-        <Form.Item label="Task" htmlFor="session-task" style={tight}>
+        <Form.Item label={T.Task} htmlFor="session-task" style={tight}>
           <Select
             id="session-task"
             size="middle"
             allowClear
             showSearch
             optionFilterProp="label"
-            placeholder="No task (optional)"
+            placeholder={`No ${T.task} (optional)`}
             value={draft.task_id ?? undefined}
             onChange={(v) => {
               const t = tasks.find((x) => x.id === v);

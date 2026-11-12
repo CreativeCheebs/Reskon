@@ -5,14 +5,17 @@ import { api } from "../api";
 import { useApp } from "../store";
 import { WriteButton } from "../offline";
 import { TaskCard } from "../board/TaskCard";
-import { cardConfigOf, SHOW_LABELS } from "./cardConfig";
+import { cardConfigOf, SHOW_LABELS, showLabelsFor } from "./cardConfig";
 import type { CardConfig, CardShow, Task, View } from "../types";
+import { useTerms } from "../terms";
 
 // What each card (and table column) shows in this view, with a live
 // preview. Applies to this view only.
 
 export function CardSettings({ view, sample, onClose }: { view: View; sample?: Task; onClose: () => void }) {
   const { boot, updateView } = useApp();
+  const T = useTerms();
+  const showLabels = showLabelsFor(T);
   const [card, setCard] = useState<CardConfig>(cardConfigOf(view));
   const [busy, setBusy] = useState(false);
   const setShow = (k: keyof CardShow, v: boolean) => setCard((c) => ({ ...c, show: { ...c.show, [k]: v } }));
@@ -55,7 +58,7 @@ export function CardSettings({ view, sample, onClose }: { view: View; sample?: T
             .filter((k) => !(k === "status" && view.layout === "board"))
             .map((k) => (
               <Checkbox key={k} checked={card.show[k]} onChange={(e) => setShow(k, e.target.checked)}>
-                {SHOW_LABELS[k]}
+                {showLabels[k]}
               </Checkbox>
             ))}
         </div>
@@ -78,7 +81,7 @@ export function CardSettings({ view, sample, onClose }: { view: View; sample?: T
         )}
         <Form.Item label="Preview">
           <div style={{ width: 280 }}>
-            <TaskCard task={sample ?? SAMPLE} config={card} />
+            <TaskCard task={sample ?? { ...SAMPLE, title: `Example ${T.task}` }} config={card} />
           </div>
         </Form.Item>
       </Form>

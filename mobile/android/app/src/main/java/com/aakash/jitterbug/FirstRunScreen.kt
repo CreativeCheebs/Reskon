@@ -74,9 +74,9 @@ private fun FirstArea(connected: Boolean, onBack: (() -> Unit)?) {
                 Palette.muted, 15.sp,
             )
             Gap(8)
-            T("Name your first area. Tasks belong to an area; you can add more later.", Palette.fg, 15.sp)
+            T("Name your first area. ${Terms.capTasks} belong to an area; you can add more later.", Palette.fg, 15.sp)
             TextBox("Area", name) { name = it }
-            TextBox("Task key prefix", prefix, "e.g. PR") { prefix = it.uppercase().filter(Char::isLetterOrDigit).take(6) }
+            TextBox("${Terms.capTask} key prefix", prefix, "e.g. PR") { prefix = it.uppercase().filter(Char::isLetterOrDigit).take(6) }
         }
         BottomAction("Start", enabled = name.isNotBlank() && prefix.isNotBlank()) {
             scope.launch {

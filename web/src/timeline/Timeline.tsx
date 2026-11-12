@@ -6,6 +6,7 @@ import { blend, palette } from "../theme/palette";
 import { today } from "../format";
 import type { Task } from "../types";
 import { pressable } from "../a11y";
+import { useTerms } from "../terms";
 
 // A simple timeline, after Jira's: one row per task with a bar from its
 // start date to its end date, grouped under epics. Read-only; dates are
@@ -55,6 +56,7 @@ interface Props {
 
 export function Timeline({ tasks, zoom, onZoom, onOpenTask }: Props) {
   const { statusById } = useApp();
+  const T = useTerms();
   const { byId: epicsById } = useEpics();
   const scroller = useRef<HTMLDivElement>(null);
   const px = DAY_PX[zoom];
@@ -178,7 +180,7 @@ export function Timeline({ tasks, zoom, onZoom, onOpenTask }: Props) {
         />
         {unscheduled > 0 && (
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            {unscheduled} {unscheduled === 1 ? "task has" : "tasks have"} no start, end or due date and {unscheduled === 1 ? "isn't" : "aren't"} shown
+            {unscheduled} {unscheduled === 1 ? `${T.task} has` : `${T.tasks} have`} no start, end or due date and {unscheduled === 1 ? "isn't" : "aren't"} shown
           </Typography.Text>
         )}
       </div>
@@ -202,12 +204,12 @@ export function Timeline({ tasks, zoom, onZoom, onOpenTask }: Props) {
           </div>
           {rows.length === 0 && (
             <div style={{ position: "sticky", left: 0, width: LABELS + 400, padding: 24, color: palette.muted }}>
-              Nothing to draw yet. Give tasks a start and end date in their panel.
+              Nothing to draw yet. Give {T.tasks} a start and end date in their panel.
             </div>
           )}
           {rows.map((r, i) => {
             const label =
-              r.kind === "task" ? r.span!.task.title : r.kind === "epic" ? r.group.title : "No epic";
+              r.kind === "task" ? r.span!.task.title : r.kind === "epic" ? r.group.title : `No ${T.epic}`;
             const epicSpan = r.kind === "epic" && r.group.epic ? spanOf(r.group.epic) : null;
             return (
               <div key={r.kind === "task" ? `t${r.span!.task.id}` : `g${r.group.key}`} style={{ display: "flex", height: ROW, borderTop: i ? `1px solid ${blend(palette.border, palette.bg, 0.5)}` : undefined }}>

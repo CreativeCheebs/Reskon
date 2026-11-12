@@ -6,6 +6,7 @@ import { Lozenge } from "../theme/Lozenge";
 import { palette } from "../theme/palette";
 import { TypeIcon } from "./TypeIcon";
 import type { TaskType } from "../types";
+import { useTerms } from "../terms";
 
 // Duplicate search while a task is typed: the server matches the text
 // against every task by words and, with the local model, by meaning
@@ -90,16 +91,17 @@ export function SimilarTasksList({
   heading?: string;
 }) {
   const app = useApp();
+  const T = useTerms();
   const rows = result?.results ?? [];
   if (!loading && rows.length === 0) return null;
   return (
     <div className="jb-similar" role="presentation" onPointerDown={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
       <div className="jb-similar-head">
-        <span>{rows.length ? heading : "Looking for similar tasks"}</span>
+        <span>{rows.length ? heading : `Looking for similar ${T.tasks}`}</span>
         {loading && <LoadingDots />}
         {!loading && result?.semantic === "indexing" && (
-          <Tooltip title={`Meaning search has read ${result.indexed} of ${result.total} tasks; the rest match by words for now.`}>
-            <span className="jb-similar-note">reading tasks…</span>
+          <Tooltip title={`Meaning search has read ${result.indexed} of ${result.total} ${T.tasks}; the rest match by words for now.`}>
+            <span className="jb-similar-note">reading {T.tasks}…</span>
           </Tooltip>
         )}
       </div>
@@ -115,7 +117,7 @@ export function SimilarTasksList({
               onOpen?.(t.id);
             }}
             disabled={!onOpen}
-            title={onOpen ? "Open this task" : undefined}
+            title={onOpen ? `Open this ${T.task}` : undefined}
           >
             <TypeIcon type={t.type} />
             <span className="jb-similar-title">{t.title}</span>

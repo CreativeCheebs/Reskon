@@ -97,7 +97,7 @@ fun SessionsScreen() {
                 Pill(range, true, trailing = Icons.down) { picking = "range" }
                 Pill(boot.area(area)?.name ?: "Area", area != null, trailing = Icons.down) { picking = "area" }
                 Pill(boot.type(type)?.name ?: "Energy type", type != null, trailing = Icons.down) { picking = "type" }
-                Pill(task?.optString("title")?.take(18) ?: "Task", task != null, trailing = Icons.down) { picking = "task" }
+                Pill(task?.optString("title")?.take(18) ?: Terms.capTask, task != null, trailing = Icons.down) { picking = "task" }
             }
             val (sessions, split, totals) = data ?: Triple(emptyList(), emptyList(), emptyList())
             val days = sessions.groupBy { it.getString("logged_for") }.toSortedMap(compareByDescending { it })
@@ -164,7 +164,7 @@ fun SessionRow(s: JSONObject, selecting: Boolean = false, on: Boolean = false, t
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             val title = s.str("label") ?: s.str("note") ?: if (s.optString("kind") == "event") "Event" else "Session"
             T(title, Palette.fg, 15.sp, FontWeight.Medium)
-            T(taskTitle ?: SessionTitles.of(s.id("task_id")) ?: "No task", Palette.muted, 13.sp, oneLine = true)
+            T(taskTitle ?: SessionTitles.of(s.id("task_id")) ?: "No ${Terms.task}", Palette.muted, 13.sp, oneLine = true)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(top = 2.dp)) {
                 energies.forEach { e ->
                     val t = boot.type(e.getLong("energy_type_id"))

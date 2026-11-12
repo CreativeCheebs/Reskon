@@ -7,6 +7,7 @@ import { useApp } from "../store";
 import { palette } from "../theme/palette";
 import type { LinkedTask, Task, TaskBrief } from "../types";
 import { pressable } from "../a11y";
+import { useTerms } from "../terms";
 
 // Dependencies in the task panel, after Jira: what this task is blocked by
 // and what it blocks. Whether it is blocked is the server's (task.blocked);
@@ -23,6 +24,7 @@ interface Props {
 
 export function Dependencies({ task, onOpenTask, onChanged }: Props) {
   const { online } = useApp();
+  const T = useTerms();
   const [briefs, setBriefs] = useState<TaskBrief[] | null>(null);
   const [side, setSide] = useState<Side>("blocked_by");
   const load = () => !briefs && api.get<TaskBrief[]>("/tasks?brief=1").then(setBriefs).catch(() => undefined);
@@ -90,7 +92,7 @@ export function Dependencies({ task, onOpenTask, onChanged }: Props) {
         />
         <Select<number>
           showSearch
-          placeholder="Pick a task"
+          placeholder={`Pick the ${T.task}`}
           style={{ flex: 1 }}
           disabled={!online}
           value={null}

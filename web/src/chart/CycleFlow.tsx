@@ -5,6 +5,7 @@ import { useApp } from "../store";
 import { formatDateTime, formatSpan } from "../format";
 import { blend, palette } from "../theme/palette";
 import type { Segment } from "../types";
+import { useTerms } from "../terms";
 
 // A task's path through its statuses as blocks joined by arrows:
 // To do (3d 3h) → In progress (5h, now). One block per stretch in a status,
@@ -12,6 +13,7 @@ import type { Segment } from "../types";
 
 export function CycleFlow({ segments }: { segments: Segment[] }) {
   const { statusById } = useApp();
+  const T = useTerms();
   const total = segments.reduce((n, s) => n + s.hours, 0);
   if (segments.length === 0) return null;
   return (
@@ -26,7 +28,7 @@ export function CycleFlow({ segments }: { segments: Segment[] }) {
               title={
                 <div style={{ fontSize: 12 }}>
                   {formatDateTime(s.from)} → {s.current ? "now" : formatDateTime(s.to)}
-                  {total > 0 && <div>{Math.round((s.hours / total) * 100)}% of this task's time so far</div>}
+                  {total > 0 && <div>{Math.round((s.hours / total) * 100)}% of this {T.task}'s time so far</div>}
                 </div>
               }
             >

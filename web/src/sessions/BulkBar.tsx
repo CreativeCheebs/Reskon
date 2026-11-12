@@ -7,6 +7,7 @@ import { WriteButton } from "../offline";
 import { confirm, message } from "../theme/feedback";
 import { palette } from "../theme/palette";
 import { DifficultySlider } from "../task/DifficultySlider";
+import { useTerms } from "../terms";
 
 // Actions on the selected sessions. Each one is a single all-or-nothing
 // request (POST /api/sessions/bulk).
@@ -23,6 +24,7 @@ export function BulkBar({
   onClear: () => void;
 }) {
   const { boot } = useApp();
+  const T = useTerms();
   const [busy, setBusy] = useState(false);
   const running = useRef(false); // a second action never starts while one runs
   const [diff, setDiff] = useState<number | null>(null);
@@ -83,9 +85,9 @@ export function BulkBar({
         style={{ width: 120 }}
         value={null}
         disabled={busy}
-        onChange={(v: string) => set({ kind: v }, `Marked as ${v === "event" ? "event" : "task"}`)}
+        onChange={(v: string) => set({ kind: v }, `Marked as ${v === "event" ? "event" : T.task}`)}
         options={[
-          { value: "task", label: "Task" },
+          { value: "task", label: T.Task },
           { value: "event", label: "Event" },
         ]}
       />
@@ -146,8 +148,8 @@ export function BulkBar({
       <Select
         size="small"
         showSearch
-        placeholder="Attach to task…"
-        aria-label="Attach the selected sessions to a task"
+        placeholder={`Attach to ${T.task}…`}
+        aria-label={`Attach the selected sessions to ${T.task}`}
         style={{ width: 220 }}
         value={null}
         disabled={busy}
@@ -155,7 +157,7 @@ export function BulkBar({
         onChange={(v: number) => set({ task_id: v }, `Attached to ${tasks.find((t) => t.id === v)?.title}`)}
         options={tasks.map((t) => ({ value: t.id, label: `${t.key} · ${t.title}`, search: `${t.key} ${t.title}`.toLowerCase() }))}
       />
-      <WriteButton size="small" disabled={busy} onClick={() => set({ task_id: null }, "Detached from their tasks")}>
+      <WriteButton size="small" disabled={busy} onClick={() => set({ task_id: null }, `Detached from their ${T.tasks}`)}>
         Detach
       </WriteButton>
       <WriteButton

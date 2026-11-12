@@ -6,6 +6,7 @@ import { useApp } from "../store";
 import { TaskPanel } from "../task/TaskPanel";
 import { LoadingDots, SimilarTasksList, useSimilarTasks } from "../task/SimilarTasks";
 import type { TaskBrief } from "../types";
+import { useTerms } from "../terms";
 
 // Search every task from anywhere: "/" (outside a text field) or the
 // sidebar's Search. Matching is the server's duplicate search (words and
@@ -24,6 +25,7 @@ function typing(el: Element | null): boolean {
 
 export function GlobalSearch({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const { reloadBootstrap } = useApp();
+  const T = useTerms();
   const [text, setText] = useState("");
   const [task, setTask] = useState<number | null>(null);
   const [byKey, setByKey] = useState<TaskBrief | null>(null);
@@ -82,7 +84,7 @@ export function GlobalSearch({ open, onOpenChange }: { open: boolean; onOpenChan
           size="large"
           prefix={<SearchOutlined />}
           suffix={similar.loading ? <LoadingDots /> : <span />}
-          placeholder="Search every task by words, meaning or key"
+          placeholder={`Search every ${T.task} by words, meaning or key`}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onPressEnter={() => first && show(first)}
@@ -92,7 +94,7 @@ export function GlobalSearch({ open, onOpenChange }: { open: boolean; onOpenChan
             {byKey.key} · {byKey.title}
           </Button>
         )}
-        <SimilarTasksList {...similar} heading="Tasks" onOpen={show} />
+        <SimilarTasksList {...similar} heading={T.Tasks} onOpen={show} />
         <Typography.Text type="secondary" style={{ fontSize: 11 }}>
           Enter opens the first · Esc closes · {SEARCH_SHORTCUT} opens this from anywhere
         </Typography.Text>

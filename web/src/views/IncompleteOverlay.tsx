@@ -4,6 +4,7 @@ import { Lozenge } from "../theme/Lozenge";
 import { useColumnWidths } from "./useColumnWidths";
 import { fieldLabel } from "../task/completeness";
 import type { Task } from "../types";
+import { useTerms } from "../terms";
 
 // The view's open tasks that lack details Settings → Complete details asks
 // for, each with what is missing. Opening one fills it in from the panel.
@@ -11,6 +12,7 @@ import type { Task } from "../types";
 
 export function IncompleteOverlay({ tasks, onClose, onOpenTask }: { tasks: Task[]; onClose: () => void; onOpenTask: (id: number) => void }) {
   const app = useApp();
+  const T = useTerms();
   const rows = tasks.filter((t) => t.missing.length > 0);
   const sized = useColumnWidths<Task>("incomplete", [
     { key: "title", title: "Title", dataIndex: "title" },
@@ -32,7 +34,7 @@ export function IncompleteOverlay({ tasks, onClose, onOpenTask }: { tasks: Task[
       render: (_, t) =>
         t.missing.map((k) => (
           <Tag key={k} bordered={false} style={{ marginBlock: 1 }}>
-            {fieldLabel(k)}
+            {fieldLabel(k, T)}
           </Tag>
         )),
     },
@@ -45,7 +47,7 @@ export function IncompleteOverlay({ tasks, onClose, onOpenTask }: { tasks: Task[
         dataSource={rows}
         pagination={false}
         scroll={{ y: 480 }}
-        locale={{ emptyText: "Every open task has the details Settings → Complete details asks for." }}
+        locale={{ emptyText: `Every open ${T.task} has the details Settings → Complete details asks for.` }}
         onRow={(t) => ({ onClick: () => onOpenTask(t.id), style: { cursor: "pointer" } })}
         columns={sized.columns}
         components={sized.components}

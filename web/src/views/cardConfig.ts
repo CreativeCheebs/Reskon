@@ -1,4 +1,5 @@
 import type { CardConfig, CardShow, View, ViewFilter } from "../types";
+import type { Terms } from "../terms";
 
 // Defaults for a view whose stored JSON leaves keys out. Matches the spec's
 // example card configuration.
@@ -42,6 +43,9 @@ export const SHOW_LABELS: Record<Exclude<keyof CardShow, "custom">, string> = {
   epic: "Epic",
   logged: "Logged time",
 };
+
+/** The labels with the epic's own name in the list. */
+export const showLabelsFor = (T: Terms) => ({ ...SHOW_LABELS, epic: T.Epic });
 
 export function cardConfigOf(view: View): CardConfig {
   const cc = view.card_config ?? {};

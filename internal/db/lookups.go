@@ -324,6 +324,13 @@ func (d *DB) PutSetting(ctx context.Context, key string, value json.RawMessage) 
 			return err
 		}
 	}
+	if key == "terms" {
+		v, err := normaliseTerms(value)
+		if err != nil {
+			return err
+		}
+		value = v
+	}
 	if key == "time_zone" {
 		var name string
 		if json.Unmarshal(value, &name) != nil {

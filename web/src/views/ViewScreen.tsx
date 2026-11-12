@@ -17,7 +17,7 @@ import { IncompleteOverlay } from "./IncompleteOverlay";
 import { requiredFields } from "../task/completeness";
 import { FilterSettings, activeFilterCount } from "./FilterSettings";
 import { CardSettings } from "./CardSettings";
-import { GROUP_OPTIONS } from "./grouping";
+import { groupOptionsFor } from "./grouping";
 import { useSaveView } from "./useViewState";
 import { cardConfigOf } from "./cardConfig";
 import type { BoardSort, GroupBy, Task, View } from "../types";
@@ -28,6 +28,7 @@ import { SurfaceOpacityProvider, surfaceOpacityOf, ViewBackdrop, withAlpha } fro
 import { lookOf, ViewLookSettings, type ViewLook } from "./ViewLookSettings";
 import { ToolbarGroup } from "../theme/Toolbar";
 import { LoadingDots, SimilarTasksList, useSimilarTasks } from "../task/SimilarTasks";
+import { useTerms } from "../terms";
 
 // Loads a view's tasks (the server resolves the filter and the search) and
 // renders the board or the table, plus the overlays that hang off it.
@@ -35,6 +36,7 @@ import { LoadingDots, SimilarTasksList, useSimilarTasks } from "../task/SimilarT
 
 export function ViewScreen({ view }: { view: View }) {
   const { boot, reloadKey, online, reloadBootstrap } = useApp();
+  const T = useTerms();
   const { refresh: refreshEpics } = useEpics();
   const save = useSaveView(view);
   const [tasks, setTasks] = useState<Task[] | null>(null);
@@ -93,7 +95,7 @@ export function ViewScreen({ view }: { view: View }) {
   const replace = useCallback((t: Task) => update((prev) => prev.map((x) => (x.id === t.id ? t : x))), [update]);
   const groupBy: GroupBy = view.board_state?.group_by ?? "none";
   const timeline = !!view.board_state?.timeline;
-  const groupOptions = GROUP_OPTIONS.filter((o) => !(view.layout === "board" && o.tableOnly));
+  const groupOptions = groupOptionsFor(T).filter((o) => !(view.layout === "board" && o.tableOnly));
   const filters = activeFilterCount(view);
   // Quick switch for the filter's types: everything, tasks only, epics only.
   const types = view.filter?.types ?? [];
@@ -125,7 +127,7 @@ export function ViewScreen({ view }: { view: View }) {
   const remove = () =>
     confirm({
       title: `Delete the view “${view.name}”?`,
-      content: "Only the view is deleted; its tasks stay.",
+      content: `Only the view is deleted; its ${T.tasks} stay.`,
       okButtonProps: { danger: true },
       okText: "Delete",
       onOk: async () => {
@@ -218,7 +220,7 @@ export function ViewScreen({ view }: { view: View }) {
                 <div role="presentation" style={{ position: "absolute", top: "100%", left: 0, width: "max(100%, 420px)", zIndex: 20 }} onMouseDown={(e) => e.preventDefault()}>
                   <SimilarTasksList
                     {...similar}
-                    heading="Similar tasks in every view"
+                    heading={`Similar ${T.tasks} in every view`}
                     onOpen={(id) => {
                       setSearchFocus(false);
                       setOpenTask(id);
@@ -261,14 +263,14 @@ export function ViewScreen({ view }: { view: View }) {
             <Segmented
               size="small"
               className="jb-seg"
-              aria-label="Show tasks, epics or both"
+              aria-label={`Show ${T.tasks}, ${T.epics} or both`}
               value={typeShown}
               disabled={!online}
               onChange={(v) => save({ filter: { ...view.filter, types: v === "all" ? null : [v as "task" | "epic"] } })}
               options={[
                 { value: "all", label: "All" },
-                { value: "task", label: "Tasks" },
-                { value: "epic", label: "Epics" },
+                { value: "task", label: T.Tasks },
+                { value: "epic", label: T.Epics },
               ]}
             />
           </ToolbarGroup>

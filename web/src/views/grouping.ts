@@ -1,11 +1,12 @@
 import { DIFFICULTY_LABELS, type Bootstrap, type GroupBy, type Task } from "../types";
+import { makeTerms, termWords, type Terms } from "../terms";
 
 // Splits a view's tasks into groups (board swimlanes / table sections).
 // Grouping only arranges server-provided rows; nothing is derived here.
 
-export const GROUP_OPTIONS: { value: GroupBy; label: string; boardOnly?: boolean; tableOnly?: boolean }[] = [
+export const groupOptionsFor = (T: Terms): { value: GroupBy; label: string; boardOnly?: boolean; tableOnly?: boolean }[] => [
   { value: "none", label: "No grouping" },
-  { value: "epic", label: "Epic" },
+  { value: "epic", label: T.Epic },
   { value: "priority", label: "Priority" },
   { value: "area", label: "Area" },
   { value: "energy_type", label: "Energy type" },
@@ -25,6 +26,7 @@ export interface Group {
 
 export function groupTasks(tasks: Task[], by: GroupBy, boot: Bootstrap, epics: Map<number, Task>): Group[] {
   if (by === "none") return [{ key: "all", label: "", tasks, defaults: {} }];
+  const T = makeTerms(termWords(boot.settings));
 
   const groups = new Map<string, Group>();
   const order: string[] = [];
@@ -45,8 +47,8 @@ export function groupTasks(tasks: Task[], by: GroupBy, boot: Bootstrap, epics: M
         // An epic sits in its own lane, at the top of its tasks.
         const epicId = t.type === "epic" ? t.id : t.epic_id;
         const epic = epicId ? (t.type === "epic" ? t : epics.get(epicId)) : undefined;
-        if (epicId) add(`e${epicId}`, epic?.title ?? `Epic #${epicId}`, t, { epic_id: epicId }, epic);
-        else add(none("No epic"), "No epic", t, {});
+        if (epicId) add(`e${epicId}`, epic?.title ?? `${T.Epic} #${epicId}`, t, { epic_id: epicId }, epic);
+        else add(none(`No ${T.epic}`), `No ${T.epic}`, t, {});
         break;
       }
       case "priority": {
@@ -72,7 +74,7 @@ export function groupTasks(tasks: Task[], by: GroupBy, boot: Bootstrap, epics: M
         else add(none("No intensity"), "No intensity", t, {});
         break;
       case "type":
-        add(t.type === "epic" ? "0epic" : "1task", t.type === "epic" ? "Epics" : "Tasks", t, { type: t.type });
+        add(t.type === "epic" ? "0epic" : "1task", t.type === "epic" ? T.Epics : T.Tasks, t, { type: t.type });
         break;
       case "status": {
         const s = boot.statuses.find((x) => x.id === t.status_id);

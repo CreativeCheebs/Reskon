@@ -4,7 +4,8 @@ import { EllipsisOutlined } from "@ant-design/icons";
 import { autosave } from "../theme/feedback";
 import { useApp } from "../store";
 import { blend, palette } from "../theme/palette";
-import { CARD_ACTIONS, RAIL_MAX, cardActionsOf, type CardActionConfig, type CardActionKey } from "../board/CardActions";
+import { CARD_ACTIONS, cardActionsFor, RAIL_MAX, cardActionsOf, type CardActionConfig, type CardActionKey } from "../board/CardActions";
+import { useTerms } from "../terms";
 
 // The `card_actions` setting: which actions are buttons on a board card
 // (shown on hover) and which the card's right-click menu lists. Actions
@@ -12,6 +13,7 @@ import { CARD_ACTIONS, RAIL_MAX, cardActionsOf, type CardActionConfig, type Card
 
 export function CardActionSettings() {
   const { boot, saveSetting, online } = useApp();
+  const T = useTerms();
   const [config, setConfig] = useState<CardActionConfig>(cardActionsOf(boot.settings));
 
   const toggle = (list: "rail" | "menu", key: CardActionKey, on: boolean) => {
@@ -45,7 +47,7 @@ export function CardActionSettings() {
           aria-hidden
         >
           {config.rail.map((k) => {
-            const a = CARD_ACTIONS.find((x) => x.key === k)!;
+            const a = cardActionsFor(T).find((x) => x.key === k)!;
             return (
               <Tooltip key={k} title={a.label}>
                 <span className="jb-rail-btn">{a.icon}</span>
@@ -82,7 +84,7 @@ export function CardActionSettings() {
             Right-click
           </span>
         </div>
-        {CARD_ACTIONS.map((a, i) => {
+        {cardActionsFor(T).map((a, i) => {
           const onRail = config.rail.includes(a.key);
           return (
             <div
@@ -128,7 +130,7 @@ export function CardActionSettings() {
         })}
       </div>
       <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-        Snooze shows only on open tasks. With nothing ticked under Right-click, the browser's own menu opens instead.
+        Snooze shows only on open {T.tasks}. With nothing ticked under Right-click, the browser's own menu opens instead.
       </Typography.Text>
     </div>
   );

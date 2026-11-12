@@ -19,6 +19,7 @@ import { FilterSelect, PageHeader, Toolbar, ToolbarGroup } from "../theme/Toolba
 import { KIND_ICON, KindChip } from "./kind";
 import { LoadError } from "../views/LoadError";
 import { checkboxLabel } from "../a11y";
+import { useTerms } from "../terms";
 
 // Sessions by day, with filters (applied on the server) and selection for
 // bulk changes: tick rows, tick a day to take all of it, or select
@@ -43,6 +44,7 @@ const NO_FILTERS: Filters = { energy: [], areas: [], kind: "", hasTask: "", hasD
 
 export function SessionsScreen() {
   const { boot, reloadKey } = useApp();
+  const T = useTerms();
   const [range, setRange] = useState<[string, string]>([dayjs().subtract(6, "day").format("YYYY-MM-DD"), today()]);
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
   const [search, setSearch] = useState("");
@@ -129,7 +131,7 @@ export function SessionsScreen() {
       title: "What",
       render: (_, s) => (
         <span>
-          {s.task_id ? titleOf.get(s.task_id) ?? `task #${s.task_id}` : s.label ?? "–"}
+          {s.task_id ? titleOf.get(s.task_id) ?? `${T.task} #${s.task_id}` : s.label ?? "–"}
           {s.started_at && (
             <span style={{ color: palette.subtle, fontSize: 11 }}> · {dayjs(s.started_at).format("HH:mm")}</span>
           )}
@@ -197,7 +199,7 @@ export function SessionsScreen() {
             okButtonProps={{ danger: true }}
             onConfirm={() => remove(s.id)}
           >
-            <Button size="small" type="text" icon={<DeleteOutlined />} aria-label={`Delete session: ${s.task_id ? titleOf.get(s.task_id) ?? `task #${s.task_id}` : s.label ?? "no task"} on ${s.logged_for}`} />
+            <Button size="small" type="text" icon={<DeleteOutlined />} aria-label={`Delete session: ${s.task_id ? titleOf.get(s.task_id) ?? `${T.task} #${s.task_id}` : s.label ?? `no ${T.task}`} on ${s.logged_for}`} />
           </Popconfirm>
         </span>
       ),
@@ -241,7 +243,7 @@ export function SessionsScreen() {
             size="small"
             allowClear
             prefix={<SearchOutlined />}
-            placeholder="Search label, note, task"
+            placeholder={`Search label, note, ${T.task}`}
             style={{ width: 200 }}
             className={search ? "jb-active" : undefined}
             aria-label="Search sessions"
@@ -250,12 +252,12 @@ export function SessionsScreen() {
           />
           <Segmented
             size="small"
-            aria-label="Tasks or events"
+            aria-label={`${T.Tasks} or events`}
             value={filters.kind}
             onChange={(v) => setF("kind", v as Filters["kind"])}
             options={[
               { value: "", label: "All" },
-              { value: "task", label: "Task", icon: KIND_ICON.task },
+              { value: "task", label: T.Task, icon: KIND_ICON.task },
               { value: "event", label: "Events", icon: KIND_ICON.event },
             ]}
           />
@@ -301,13 +303,13 @@ export function SessionsScreen() {
         <ToolbarGroup>
           <FilterSelect
             style={{ width: 150 }}
-            aria-label="Filter by whether a task is attached"
+            aria-label={`Filter by whether sessions are attached to ${T.tasks}`}
             active={filters.hasTask !== ""}
             value={filters.hasTask}
             onChange={(v) => setF("hasTask", v)}
             options={[
-              { value: "", label: "With or without task" },
-              { value: "true", label: "Attached to a task" },
+              { value: "", label: `With or without ${T.task}` },
+              { value: "true", label: `Attached to ${T.task}` },
               { value: "false", label: "Not attached" },
             ]}
           />
@@ -385,7 +387,7 @@ export function SessionsScreen() {
               dataSource={rows}
               // The header checkbox selects this whole day.
               rowSelection={{
-                getCheckboxProps: (r) => checkboxLabel(`Select session: ${r.task_id ? titleOf.get(r.task_id) ?? `task #${r.task_id}` : r.label ?? "no task"}`),
+                getCheckboxProps: (r) => checkboxLabel(`Select session: ${r.task_id ? titleOf.get(r.task_id) ?? `${T.task} #${r.task_id}` : r.label ?? `no ${T.task}`}`),
               selectedRowKeys: rows.filter((r) => selected.has(r.id)).map((r) => r.id),
                 onChange: (keys) =>
                   setSelected((sel) => {

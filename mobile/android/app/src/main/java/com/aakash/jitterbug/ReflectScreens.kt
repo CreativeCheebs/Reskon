@@ -71,7 +71,7 @@ fun SearchScreen() {
             BasicTextField(
                 q, { q = it }, singleLine = true, cursorBrush = SolidColor(Palette.accent), textStyle = TextStyle(color = Palette.fg, fontSize = 17.sp),
                 modifier = Modifier.weight(1f).height(48.dp).clip(RoundedCornerShape(24.dp)).background(Palette.panel).padding(horizontal = 16.dp, vertical = 13.dp).focusRequester(focus),
-                decorationBox = { inner -> if (q.isEmpty()) T("Search every task", Palette.subtle, 17.sp); inner() },
+                decorationBox = { inner -> if (q.isEmpty()) T("Search every ${Terms.task}", Palette.subtle, 17.sp); inner() },
             )
             if (q.isNotEmpty()) IconButton(Icons.close, "Clear") { q = "" }
         }
@@ -83,7 +83,7 @@ fun SearchScreen() {
             }
             results?.let { res ->
                 val semantic = res.optString("semantic")
-                SectionTitle(if (semantic == "on") "Every task · words and meaning" else "Every task · words")
+                SectionTitle(if (semantic == "on") "Every ${Terms.task} · words and meaning" else "Every ${Terms.task} · words")
                 val rows = res.objs("results")
                 Card {
                     if (rows.isEmpty()) T("Nothing matches.", Palette.muted, 14.sp, modifier = Modifier.padding(16.dp))
@@ -106,7 +106,7 @@ fun SearchScreen() {
                     }
                 }
             }
-            T("A task key such as JB-42 opens that task directly.", Palette.subtle, 13.sp, modifier = Modifier.padding(4.dp))
+            T("Type a key such as JB-42 to open that ${Terms.task} directly.", Palette.subtle, 13.sp, modifier = Modifier.padding(4.dp))
         }
     }
 }
@@ -384,9 +384,9 @@ fun CycleTimeScreen(r: Route) {
                         T(span(totals.optDouble(s.id.toString())), Palette.fg, 14.sp, FontWeight.SemiBold)
                     }
                 }
-                T("Time in each status, summed over the ${if (tasks.size == 1) "task" else "${tasks.size} tasks"} below.", Palette.subtle, 12.sp, modifier = Modifier.padding(top = 6.dp))
+                T("Time in each status, summed over the ${if (tasks.size == 1) Terms.task else Terms.countTasks(tasks.size)} below.", Palette.subtle, 12.sp, modifier = Modifier.padding(top = 6.dp))
             }
-            if (tasks.isEmpty()) Empty("No tasks in this view.")
+            if (tasks.isEmpty()) Empty("No ${Terms.tasks} in this view.")
             else Card(pad = 16.dp) {
                 val max = tasks.maxOf { it.optDouble("total_h") }.coerceAtLeast(0.001)
                 tasks.forEach { t ->

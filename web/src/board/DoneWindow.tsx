@@ -4,11 +4,13 @@ import { palette } from "../theme/palette";
 import { filterOf } from "../views/cardConfig";
 import { useSaveView } from "../views/useViewState";
 import type { View } from "../types";
+import { useTerms } from "../terms";
 
 // Foot of a done column: how long finished cards stay on this board (the
 // view filter's include_done_days, applied on the server), changeable here.
 
 export function DoneWindow({ view, disabled }: { view: View; disabled: boolean }) {
+  const T = useTerms();
   const save = useSaveView(view);
   const days = filterOf(view).include_done_days;
   const [open, setOpen] = useState(false);
@@ -28,11 +30,11 @@ export function DoneWindow({ view, disabled }: { view: View; disabled: boolean }
         if (o) setDraft(days);
         setOpen(o);
       }}
-      title="Hide finished tasks"
+      title={`Hide finished ${T.tasks}`}
       content={
         <div style={{ width: 230 }}>
           <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginBottom: 8 }}>
-            Tasks finished longer ago than this drop off this view. They are not deleted.
+            {T.Tasks} finished longer ago than this drop off this view. They are not deleted.
           </Typography.Paragraph>
           <Space.Compact style={{ width: "100%" }}>
             <InputNumber
@@ -42,7 +44,7 @@ export function DoneWindow({ view, disabled }: { view: View; disabled: boolean }
               value={draft}
               placeholder="never hide"
               onChange={(v) => setDraft(v)}
-              aria-label="Days before a finished task is hidden"
+              aria-label={`Days before a finished ${T.task} is hidden`}
             />
             <Button size="small" disabled>
               days
@@ -60,7 +62,7 @@ export function DoneWindow({ view, disabled }: { view: View; disabled: boolean }
       }
     >
       <Button size="small" type="text" block disabled={disabled} style={{ color: palette.subtle, fontSize: 12, height: 24 }}>
-        {days === null ? "Finished tasks stay shown" : days === 0 ? "Finished tasks are hidden" : `Hidden ${days} day${days === 1 ? "" : "s"} after done`}
+        {days === null ? `Finished ${T.tasks} stay shown` : days === 0 ? `Finished ${T.tasks} are hidden` : `Hidden ${days} day${days === 1 ? "" : "s"} after done`}
       </Button>
     </Popover>
   );

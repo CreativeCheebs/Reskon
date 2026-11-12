@@ -1,13 +1,14 @@
 import type { ColumnLimit, Task } from "../types";
 import { formatHours } from "../format";
+import type { Terms } from "../terms";
 
 // Column limits (WIP) for one board view: a maximum per status, counted in
 // tasks, points or estimated hours over every card the view shows in that
 // column (all swimlanes together). A soft limit only colours the header; a
 // hard one asks before a card is moved in past it.
 
-export const LIMIT_UNITS: { value: ColumnLimit["unit"]; label: string }[] = [
-  { value: "tasks", label: "Tasks" },
+export const limitUnits = (T: Terms): { value: ColumnLimit["unit"]; label: string }[] => [
+  { value: "tasks", label: T.Tasks },
   { value: "points", label: "Points" },
   { value: "hours", label: "Estimate hours" },
 ];

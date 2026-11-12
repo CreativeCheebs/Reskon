@@ -11,6 +11,7 @@ import { TypeIcon } from "../task/TypeIcon";
 import { useEpics } from "../task/useEpics";
 import { today } from "../format";
 import { SimilarTasksList, useSimilarTasks } from "../task/SimilarTasks";
+import { useTerms } from "../terms";
 
 const LAST_AREA = "jitterbug.lastAreaId";
 
@@ -47,6 +48,7 @@ export function Composer({
   onOpenTask?: (id: number) => void;
 }) {
   const { online } = useApp();
+  const T = useTerms();
   const { refresh: refreshEpics } = useEpics();
   const [type, setType] = useState<TaskType>((defaults.type as TaskType) ?? "task");
   const { areas, preselect, remember } = useAreaChoice(view);
@@ -62,7 +64,7 @@ export function Composer({
   if (!open)
     return (
       <WriteButton type="text" size="small" block className="jb-add-task" icon={<PlusOutlined />} onClick={() => setOpen(true)} style={{ justifyContent: "flex-start" }}>
-        Add task
+        Add {T.task}
       </WriteButton>
     );
 
@@ -91,13 +93,13 @@ export function Composer({
         autoFocus
         size="small"
         prefix={
-          <Tooltip title={type === "epic" ? "Creating an epic (click for task)" : "Creating a task (click for epic)"}>
+          <Tooltip title={type === "epic" ? `New ${T.epic} (click for ${T.task})` : `New ${T.task} (click for ${T.epic})`}>
             <Button
               type="text"
               size="small"
               style={{ padding: 0, height: 18, width: 18, minWidth: 18 }}
               onClick={() => setType(type === "epic" ? "task" : "epic")}
-              aria-label="Toggle task or epic"
+              aria-label={`Toggle ${T.task} or ${T.epic}`}
             >
               <TypeIcon type={type} />
             </Button>
