@@ -48,6 +48,28 @@ fun LogScreen(r: Route) {
         }
     }
 
+    // Save session, and the keyboard's Done / Enter in the single-line fields.
+    var saving by remember { mutableStateOf(false) }
+    val save: () -> Unit = {
+        if (!saving) {
+            saving = true // before launching, so a second tap in the same frame is ignored
+            scope.launch {
+                try {
+                    attempt("Not saved") {
+                        val s = if (editing != null) Api.patch("/sessions/${editing.getLong("id")}", d.body())
+                        else Api.post("/sessions", d.body())
+                        App.changed()
+                        App.back()
+                        App.say("Saved: ${hrs(s.optDouble("hours"))}, ${num(s.num("points"))} points")
+                    }
+                } finally {
+                    saving = false
+                }
+            }
+        }
+    }
+    val enterSaves: (() -> Unit) = { if (d.valid) save() }
+
     Column(Modifier.fillMaxSize()) {
         TopBar(if (editing != null) "Edit session" else "Log session", onBack = { App.back() }) {
             if (editing != null) TextLink("Delete", Palette.red) {
@@ -60,19 +82,9 @@ fun LogScreen(r: Route) {
             Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            DurationCard(d, text, { text = it }) { d = it }
-            SessionFields(d) { d = it }
+            DurationCard(d, text, { text = it }, onDone = enterSaves) { d = it }
+            SessionFields(d, onDone = enterSaves) { d = it }
         }
-        BottomAction("Save session", enabled = d.valid) {
-            scope.launch {
-                attempt("Not saved") {
-                    val s = if (editing != null) Api.patch("/sessions/${editing.getLong("id")}", d.body())
-                    else Api.post("/sessions", d.body())
-                    App.changed()
-                    App.back()
-                    App.say("Saved: ${hrs(s.optDouble("hours"))}, ${num(s.num("points"))} points")
-                }
-            }
-        }
+        BottomAction("Save session", enabled = d.valid, onClick = save)
     }
 }

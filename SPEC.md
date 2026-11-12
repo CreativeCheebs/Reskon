@@ -245,6 +245,7 @@ Choosing a task also fills in its intensity, unless you set one yourself. You ca
 - Days show their totals per energy type, from the server.
 - **Bulk changes**: tick sessions (or whole days, or all shown) and change their energy type, work/event, area, intensity, date or task, or delete them. All or nothing. Detaching from a task keeps the task's title as the description; attaching takes the task's area.
 - The log form takes a duration like `1h 30m`, `90m`, `1.5` or `1:30`.
+- **Enter saves.** In the Log time and Edit session forms, Enter in a one-line box (duration, date, start time, description) saves, the same as the Save button, once the form is complete. It does not save from the note (Enter starts a new line), from a button, while a drop-down or date pop-up is open (Enter picks the choice there), or while a word is being composed. On the phone, the keyboard's Done key in the duration and description boxes saves.
 
 ---
 

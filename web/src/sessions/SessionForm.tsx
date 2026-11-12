@@ -154,6 +154,7 @@ export function SessionFields({
   tasks,
   disabled,
   autoFocus,
+  onKeyDown,
 }: {
   draft: SessionDraft;
   onChange: (d: SessionDraft) => void;
@@ -161,6 +162,8 @@ export function SessionFields({
   disabled?: boolean;
   /** Put the cursor in Duration (the manual log form). */
   autoFocus?: boolean;
+  /** Key presses inside the form (the manual form saves on Enter). */
+  onKeyDown?: React.KeyboardEventHandler<HTMLFormElement>;
 }) {
   const { boot } = useApp();
   const set = (patch: Partial<SessionDraft>) => onChange({ ...draft, ...patch });
@@ -209,7 +212,7 @@ export function SessionFields({
   const tight = { marginBottom: 10 };
 
   return (
-    <Form layout="vertical" size="middle" disabled={disabled} requiredMark>
+    <Form layout="vertical" size="middle" disabled={disabled} requiredMark onKeyDown={onKeyDown}>
       {/* One switch, two equal options: same height, padding and selected fill. */}
       <Segmented
         size="small"

@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -52,6 +53,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -146,14 +148,15 @@ fun durationText(h: Double?): String {
 /** The big duration field with quick picks (Log session). */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun DurationCard(d: Draft, text: String, onText: (String) -> Unit, set: (Draft) -> Unit) {
+fun DurationCard(d: Draft, text: String, onText: (String) -> Unit, onDone: (() -> Unit)? = null, set: (Draft) -> Unit) {
     Card(pad = 16.dp) {
         T("Duration", Palette.muted, 13.sp)
         BasicTextField(
             text, { onText(it); set(d.copy(hours = parseHours(it))) },
             textStyle = TextStyle(color = Palette.fg, fontSize = 34.sp, fontWeight = FontWeight.SemiBold),
             cursorBrush = SolidColor(Palette.accent), singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = if (onDone != null) ImeAction.Done else ImeAction.Default),
+            keyboardActions = KeyboardActions(onDone = { onDone?.invoke() }),
             modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
             decorationBox = { inner -> if (text.isEmpty()) T("0 h", Palette.strong, 34.sp, FontWeight.SemiBold); inner() },
         )
@@ -169,7 +172,7 @@ fun DurationCard(d: Draft, text: String, onText: (String) -> Unit, set: (Draft) 
 /** Date, start time, description, task, area, energy types and subtypes. */
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
-fun SessionFields(d: Draft, set: (Draft) -> Unit) {
+fun SessionFields(d: Draft, onDone: (() -> Unit)? = null, set: (Draft) -> Unit) {
     val boot = App.boot ?: return
     var pickDate by remember { mutableStateOf(false) }
     var pickTime by remember { mutableStateOf(false) }
@@ -182,7 +185,7 @@ fun SessionFields(d: Draft, set: (Draft) -> Unit) {
             FieldBox("Date logged", relDay(d.loggedFor.toString()).let { if (' ' in it) it else "$it, ${shortDate(d.loggedFor.toString())}" }, Modifier.weight(1f)) { pickDate = true }
             FieldBox("Started at", d.startedAt?.toString()?.take(5) ?: "–", Modifier.weight(1f)) { pickTime = true }
         }
-        TextBox("Description", d.label, "What did you do?") { set(d.copy(label = it)) }
+        TextBox("Description", d.label, "What did you do?", onDone = onDone) { set(d.copy(label = it)) }
         Row(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Palette.panel).border(1.dp, Palette.border, RoundedCornerShape(14.dp))
                 .clickable { pickTask = true }.padding(start = 14.dp, end = 8.dp, top = 10.dp, bottom = 10.dp),
@@ -339,7 +342,7 @@ private fun PartEditor(d: Draft, i: Int, p: Part, set: (Draft) -> Unit) {
 
 /** Labelled text field in the mockups' boxed style. */
 @Composable
-fun TextBox(label: String, value: String, placeholder: String = "", single: Boolean = true, keyboard: KeyboardType = KeyboardType.Text, password: Boolean = false, onChange: (String) -> Unit) {
+fun TextBox(label: String, value: String, placeholder: String = "", single: Boolean = true, keyboard: KeyboardType = KeyboardType.Text, password: Boolean = false, onDone: (() -> Unit)? = null, onChange: (String) -> Unit) {
     Column(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Palette.panel).border(1.dp, Palette.border, RoundedCornerShape(14.dp))
             .padding(horizontal = 14.dp, vertical = 8.dp),
@@ -349,7 +352,8 @@ fun TextBox(label: String, value: String, placeholder: String = "", single: Bool
         BasicTextField(
             value, onChange, singleLine = single, cursorBrush = SolidColor(Palette.accent),
             textStyle = TextStyle(color = Palette.fg, fontSize = 15.sp),
-            keyboardOptions = KeyboardOptions(keyboardType = if (password) KeyboardType.Password else keyboard),
+            keyboardOptions = KeyboardOptions(keyboardType = if (password) KeyboardType.Password else keyboard, imeAction = if (onDone != null) ImeAction.Done else ImeAction.Default),
+            keyboardActions = KeyboardActions(onDone = { onDone?.invoke() }),
             visualTransformation = if (password) androidx.compose.ui.text.input.PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
             modifier = Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 4.dp).semantics { contentDescription = label },
             decorationBox = { inner -> if (value.isEmpty()) T(placeholder, Palette.subtle, 15.sp); inner() },

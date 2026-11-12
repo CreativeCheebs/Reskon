@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, Modal, Typography } from "antd";
 import { message } from "../theme/feedback";
 import { api } from "../api";
 import { useApp } from "../store";
 import { OFFLINE_TIP } from "../offline";
 import type { Session, TaskBrief } from "../types";
+import { enterSaves } from "./enterSaves";
 import { draftFromSession, emptySession, pointsInputsChanged, sessionBody, sessionReady, SessionFields, type SessionDraft } from "./SessionForm";
 import { palette } from "../theme/palette";
 
@@ -65,6 +66,13 @@ export function SessionModal({
     }
   };
 
+  // Enter saves from the form as it is after the box has committed what was
+  // typed (some boxes commit on blur), so the save always sees the latest draft.
+  const saveFromEnter = useRef(() => undefined as void);
+  saveFromEnter.current = () => {
+    if (!busy && online && sessionReady(draft)) void save();
+  };
+
   return (
     <Modal
       open
@@ -82,7 +90,24 @@ export function SessionModal({
         title: online ? undefined : OFFLINE_TIP,
       }}
     >
-      <SessionFields draft={draft} onChange={setDraft} tasks={tasks} disabled={!online} autoFocus={!editing} />
+      <SessionFields
+        draft={draft}
+        onChange={setDraft}
+        tasks={tasks}
+        disabled={!online}
+        autoFocus={!editing}
+        // Enter in a single-line box saves, the same as the Save button.
+        onKeyDown={(e) => {
+          if (busy || !online || !sessionReady(draft)) return;
+          const { key, shiftKey, ctrlKey, altKey, metaKey, defaultPrevented } = e;
+          const target = e.target as HTMLInputElement;
+          if (enterSaves({ key, shiftKey, ctrlKey, altKey, metaKey, defaultPrevented, isComposing: e.nativeEvent.isComposing, target })) {
+            e.preventDefault();
+            target.blur();
+            window.setTimeout(() => saveFromEnter.current(), 0);
+          }
+        }}
+      />
       {editing && <PointsLine editing={editing} draft={draft} recalc={recalc} onRecalc={() => setRecalc(true)} />}
     </Modal>
   );

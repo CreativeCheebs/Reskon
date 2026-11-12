@@ -109,3 +109,17 @@ test("the Day screen is offered only while Settings > Screens has it on", async 
   await flipDay(page);
   await expect(day).not.toBeChecked();
 });
+
+test("Enter in the Log time form saves only once it is complete", async ({ page }) => {
+  await signIn(page);
+  await page.getByRole("menuitem", { name: /Sessions/ }).click();
+  await page.getByRole("button", { name: /Log time/ }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  // Nothing typed yet: the form is not complete, so Enter does nothing.
+  await dialog.getByLabel("Description").fill("enter-key check");
+  await page.keyboard.press("Enter");
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+});
