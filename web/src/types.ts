@@ -341,5 +341,6 @@ export interface CaptureParse {
   entries?: CaptureParse[];
 }
 
-/** Intensity (stored as difficulty) is 1-5: how hard or intense the work or event was. */
-export const DIFFICULTY_LABELS: Record<number, string> = { 1: "Light", 2: "Moderate", 3: "Intense", 4: "Very intense", 5: "Extreme" };
+/** The level (stored as difficulty) is 1-5: how much it took, for work, rest or play alike.
+ *  It is only a number: no word says one level is "more" than another. */
+export const levelName = (n: number): string => `Level ${n}`;

@@ -1,44 +1,63 @@
 import { Tooltip } from "antd";
 import { palette } from "../theme/palette";
-import { DIFFICULTY_LABELS, type Priority } from "../types";
+import { levelName, type Priority } from "../types";
 
-// Small symbols for difficulty and priority, so cards carry them without
+// Small symbols for level and priority, so cards carry them without
 // words. Every colour comes from the theme (difficulty) or the priority's own
 // colour (Settings → Priorities).
 
-const DIFFICULTY_SIDES = [0, 3, 4, 5, 6]; // 0 = circle
-
-/** A ring with a shape inside: circle, triangle, square, pentagon, hexagon
- *  for difficulty 1 to 5, in the theme's difficulty1..5 colours. */
-export function DifficultyIcon({ level, size = 14, tip = true }: { level: number; size?: number; tip?: boolean }) {
+/** The level as slanted lines: one for level 1 up to five for level 5, in the
+ *  theme's level colours (pale to deep blue, never red: a restful level 5 is
+ *  not a warning). The count of lines says the level without the colour. */
+export function DifficultyIcon({
+  level,
+  size = 14,
+  tip = true,
+  decorative = false,
+}: {
+  level: number;
+  size?: number;
+  tip?: boolean;
+  /** The words "Level N" are already beside it, so a screen reader skips the icon. */
+  decorative?: boolean;
+}) {
   const i = Math.min(5, Math.max(1, Math.round(level)));
   const color = palette[`difficulty${i}` as "difficulty1"];
-  const sides = DIFFICULTY_SIDES[i - 1];
   const icon = (
-    <svg width={size} height={size} viewBox="0 0 16 16" role="img" aria-label={`Intensity ${i}`} style={{ flex: "none", display: "block" }}>
-      <circle cx="8" cy="8" r="7" fill="none" stroke={color} strokeWidth="1.5" />
-      {sides === 0 ? <circle cx="8" cy="8" r="3" fill={color} /> : <polygon points={polygon(sides, 3.9)} fill={color} />}
+    <svg
+      width={(size * VIEW_W) / VIEW_H}
+      height={size}
+      viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
+      {...(decorative ? { "aria-hidden": true } : { role: "img", "aria-label": `Level ${i}` })}
+      style={{ flex: "none", display: "block" }}
+    >
+      {slantLines(i).map((d, k) => (
+        <path key={k} d={d} stroke={color} strokeWidth="1.4" strokeLinecap="round" fill="none" />
+      ))}
     </svg>
   );
   if (!tip) return icon;
   return (
-    <Tooltip title={`Intensity ${i} of 5 · ${DIFFICULTY_LABELS[i] ?? ""}`} mouseEnterDelay={0.3}>
+    <Tooltip title={`${levelName(i)} of 5`} mouseEnterDelay={0.3}>
       <span style={{ display: "inline-flex" }}>{icon}</span>
     </Tooltip>
   );
 }
 
-/** Regular polygon around (8, 8): one point straight up, except the square,
- *  which sits flat. A triangle sits a little low so it looks centred. */
-function polygon(sides: number, r: number): string {
-  const dy = sides === 3 ? 0.8 : 0;
-  const start = sides === 4 ? -Math.PI / 4 : -Math.PI / 2;
-  const pts: string[] = [];
-  for (let k = 0; k < sides; k++) {
-    const a = start + (k * 2 * Math.PI) / sides;
-    pts.push(`${(8 + r * Math.cos(a)).toFixed(2)},${(8 + dy + r * Math.sin(a)).toFixed(2)}`);
+const VIEW_W = 24;
+const VIEW_H = 16;
+
+/** Path data for n slanted lines (like "/"), evenly spaced across the icon. */
+export function slantLines(n: number): string[] {
+  const gap = 4;
+  const slant = 3;
+  const first = (VIEW_W - slant - (n - 1) * gap) / 2 + slant; // keep the group centred
+  const out: string[] = [];
+  for (let k = 0; k < n; k++) {
+    const x = first + k * gap;
+    out.push(`M${x.toFixed(2)} 2.5L${(x - slant).toFixed(2)} 13.5`);
   }
-  return pts.join(" ");
+  return out;
 }
 
 /** -2 lowest ... 0 middle ... 2 highest, from the priority's rank by weight

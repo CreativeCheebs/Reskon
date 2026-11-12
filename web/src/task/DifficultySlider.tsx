@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button, Slider, Tooltip } from "antd";
 import { palette } from "../theme/palette";
-import { DIFFICULTY_LABELS } from "../types";
+import { levelName } from "../types";
 import { DifficultyIcon } from "./LevelIcons";
 
 // Difficulty is a 1-5 scale, optional. The slider reports a value only when
@@ -32,18 +32,18 @@ export function DifficultySlider({
         disabled={disabled}
         value={draft ?? 1}
         style={{ flex: 1, margin: "0 6px", opacity: unset ? 0.45 : 1 }}
-        tooltip={{ formatter: (v) => (v ? `${v} · ${DIFFICULTY_LABELS[v]}` : "") }}
+        tooltip={{ formatter: (v) => (v ? levelName(v) : "") }}
         onChange={(v) => setDraft(v)}
         onChangeComplete={(v) => v !== value && onChange(v)}
-        aria-label="Intensity"
+        aria-label="Level"
       />
       <span style={{ fontSize: 11, color: unset ? palette.subtle : palette.fg, minWidth: 70, whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: 5 }}>
-        {!unset && <DifficultyIcon level={draft} tip={false} />}
-        {unset ? "Not set" : `${draft} · ${DIFFICULTY_LABELS[draft]}`}
+        {!unset && <DifficultyIcon level={draft} tip={false} decorative />}
+        {unset ? "Not set" : levelName(draft)}
       </span>
       {!unset && !disabled && (
-        <Tooltip title="Clear intensity">
-          <Button size="small" type="text" style={{ padding: 0, width: 18, minWidth: 18, color: palette.subtle }} onClick={() => onChange(null)}>
+        <Tooltip title="Clear level">
+          <Button size="small" type="text" aria-label="Clear level" style={{ padding: 0, width: 18, minWidth: 18, color: palette.subtle }} onClick={() => onChange(null)}>
             ✕
           </Button>
         </Tooltip>

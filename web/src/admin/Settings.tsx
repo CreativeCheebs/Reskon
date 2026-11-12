@@ -72,7 +72,7 @@ const groupsFor = (T: Terms): { label: string; sections: Section[] }[] => [
         key: "details",
         label: "Complete details",
         intro:
-          `The details an open ${T.task} should have, such as a start date, an estimate or an intensity. This is about the ${T.task}'s information, not whether the work is done. ${T.Tasks} missing any are listed under Incomplete in each view.`,
+          `The details an open ${T.task} should have, such as a start date, an estimate or a level. This is about the ${T.task}'s information, not whether the work is done. ${T.Tasks} missing any are listed under Incomplete in each view.`,
         render: () => <CompletenessSettings />,
       },
       {
@@ -98,7 +98,7 @@ const groupsFor = (T: Terms): { label: string; sections: Section[] }[] => [
         key: "energy",
         label: "Energy types",
         intro:
-          "Every type is equal and every type earns points: hours × the type's rate × intensity. Types are added up, never set against each other.",
+          "Every type is equal and every type earns points: hours × the type's rate × level. Types are added up, never set against each other.",
         render: () => <EnergyTypeSettings />,
       },
       {

@@ -8,7 +8,7 @@ export const COMPLETENESS_FIELDS: { key: string; label: string }[] = [
   { key: "end_date", label: "End date" },
   { key: "due_at", label: "Due date" },
   { key: "estimate_h", label: "Estimate (max time)" },
-  { key: "difficulty", label: "Intensity" },
+  { key: "difficulty", label: "Level" },
   { key: "priority_id", label: "Priority" },
   { key: "energy_type_id", label: "Energy type" },
   { key: "description", label: "Description" },

@@ -6,7 +6,7 @@ import { palette } from "../theme/palette";
 import { IntensityPicker } from "../task/IntensityPicker";
 import { draftParts, withParts, type EnergyPart, type SessionDraft } from "./SessionForm";
 
-// The session's energy types, each with its intensity, and with two or
+// The session's energy types, each with its level, and with two or
 // more, each one's share of the hours. Splitting across types is a small
 // link beside the label, so it never sits in the way of the main fields.
 
@@ -64,7 +64,7 @@ export function EnergyFields({
   const taken = new Set(parts.map((p) => p.energy_type_id));
   const label = (
     <span style={{ display: "inline-flex", alignItems: "baseline", gap: 10 }}>
-      {several ? "Energy types · share · intensity" : "Energy type · intensity"}
+      {several ? "Energy types · share · level" : "Energy type · level"}
       {!disabled && parts.length < MAX_ENERGIES && (
         <Typography.Link onClick={addPart} style={{ fontSize: 12, fontWeight: 400 }}>
           <PlusOutlined /> {several ? "Add another" : "Split across types"}
@@ -118,7 +118,7 @@ export function EnergyFields({
             <IntensityPicker
               value={p.difficulty}
               disabled={disabled}
-              label={several ? `Intensity for energy type ${i + 1}` : "Intensity"}
+              label={several ? `Level for energy type ${i + 1}` : "Level"}
               onChange={(v) => {
                 if (i === 0) onFirstIntensity();
                 setPart(i, { difficulty: v });

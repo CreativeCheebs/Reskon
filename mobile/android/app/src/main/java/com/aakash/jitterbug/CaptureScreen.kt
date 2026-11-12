@@ -112,7 +112,7 @@ fun CaptureScreen(r: Route) {
                     textStyle = TextStyle(color = Palette.fg, fontSize = 16.sp),
                     modifier = Modifier.fillMaxWidth().height(92.dp).clip(RoundedCornerShape(14.dp)).background(Palette.bg)
                         .border(1.dp, Palette.accent, RoundedCornerShape(14.dp)).padding(horizontal = 14.dp, vertical = 12.dp),
-                    decorationBox = { inner -> if (text.isEmpty()) T("e.g. 2 hours on the tax receipts, intense", Palette.strong, 16.sp); inner() },
+                    decorationBox = { inner -> if (text.isEmpty()) T("e.g. 2 hours on the tax receipts, level 4", Palette.strong, 16.sp); inner() },
                 )
                 val status = when {
                     reading -> "Reading…"
@@ -223,7 +223,7 @@ private fun EntryCard(e: Entry, onRemove: () -> Unit, onEdit: () -> Unit, onSwit
                 Triple("Energy type", boot.type(first?.typeId)?.name ?: "–", boot.type(first?.typeId)?.color),
             ) else listOf(
                 Triple("Energy type", if (d.parts.size > 1) d.parts.joinToString(" + ") { boot.type(it.typeId)?.name ?: "?" } else boot.type(first?.typeId)?.name ?: "Choose…", boot.type(first?.typeId)?.color),
-                Triple("Intensity", first?.difficulty?.let { "$it · ${INTENSITY[it - 1]}" } ?: "–", first?.difficulty?.let { Palette.intensity[it - 1] }),
+                Triple("Level", first?.difficulty?.let { "$it of 5" } ?: "–", first?.difficulty?.let { Palette.intensity[it - 1] }),
                 Triple("Area", boot.area(d.areaId)?.name ?: "–", null),
                 if (d.taskId != null) Triple(Terms.capTask, d.taskTitle ?: "#${d.taskId}", null) else Triple("Date", relDay(d.loggedFor.toString()), null),
             )

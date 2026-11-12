@@ -56,7 +56,7 @@ Where a choice is recorded, it is in [`decisions.md`](decisions.md) (the "Open q
 - **The sync loop is not lifecycle-aware.** It is a loop inside the screen, so it keeps polling while the app is in the background, and a change made just before the app is killed is not synced until the next start. Move it to Android's WorkManager (a scheduler Android runs for you) or tie it to the lifecycle.
 - **Screen state is lost when the phone turns or the process is killed.** `ready` and the screen stack are not saved (`rememberSaveable`). Example: rotate on the Task screen and you land back on Today.
 - **Checkbox rows and long-press.** Subtask and session rows draw their own checkbox, so TalkBack cannot say "checked"; use `Role.Checkbox` with `toggleable`. Moving a card is long-press only, with no spoken label (`onLongClickLabel`).
-- **Intensity is a bare number to TalkBack.** Add the words ("Intensity 3 of 5") as on the web.
+- **Level is a bare number to TalkBack** on the board card tag and the task screen's level pills. The session form's level buttons already say "Level 3 of 5". Add the same words ("Level 3 of 5") as on the web.
 - **Blank first-load screens.** A failed first load on the Board shows nothing (only a toast). Show an error with Retry, as the web does.
 - **A big first download is held in memory several times.** A very large server could run out of memory on the phone. Stream it to a file instead.
 - **The core is built for arm64 only.** An x86_64 emulator cannot load it. Either add an `android/amd64` target or document that tests need an arm64 image or a real phone.

@@ -107,7 +107,7 @@ export function BulkBar({
           <Space direction="vertical">
             <DifficultySlider value={diff} width={260} onChange={setDiff} />
             <Space>
-              <WriteButton size="small" type="primary" disabled={busy} onClick={() => set({ difficulty: diff }, diff ? `Intensity set to ${diff}` : "Intensity cleared")}>
+              <WriteButton size="small" type="primary" disabled={busy} onClick={() => set({ difficulty: diff }, diff ? `Level set to ${diff}` : "Level cleared")}>
                 Apply to {plural}
               </WriteButton>
             </Space>
@@ -115,7 +115,7 @@ export function BulkBar({
         }
       >
         <Button size="small" disabled={busy}>
-          Intensity…
+          Level…
         </Button>
       </Popover>
       <Popover

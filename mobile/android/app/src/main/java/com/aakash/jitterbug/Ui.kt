@@ -78,11 +78,9 @@ object Palette {
     val green = Color(0xFF4BCE97)
     val purple = Color(0xFF9F8FEF)
 
-    /** Intensity 1-5, as on the web. */
-    val intensity = listOf(Color(0xFF42A5F5), Color(0xFF66BB6A), Color(0xFFFFEE58), Color(0xFFFFA726), Color(0xFFEF5350))
+    /** Level 1-5, as on the web: pale to deep blue, never red (a restful level 5 is not a warning). */
+    val intensity = listOf(Color(0xFFC7D1DE), Color(0xFFA3BDE6), Color(0xFF7DAEF0), Color(0xFF579DFF), Color(0xFF3B82F6))
 }
-
-val INTENSITY = listOf("Light", "Moderate", "Intense", "Very intense", "Extreme")
 
 private val JbColors = darkColorScheme(
     primary = Palette.accent, onPrimary = Palette.onAccent,

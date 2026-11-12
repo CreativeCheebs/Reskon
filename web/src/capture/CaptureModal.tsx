@@ -346,7 +346,7 @@ function TaskFields({ draft, onChange }: { draft: TaskDraft; onChange: (d: TaskD
         <Form.Item label="Energy type" help="Blank takes the area default" style={{ marginBottom: 8 }}>
           <Select allowClear value={draft.energy_type_id ?? undefined} onChange={(v) => set({ energy_type_id: v ?? null })} options={opt(boot.energy_types)} />
         </Form.Item>
-        <Form.Item label="Intensity" style={{ marginBottom: 8 }}>
+        <Form.Item label="Level" style={{ marginBottom: 8 }}>
           <DifficultySlider value={draft.difficulty} width={230} onChange={(v) => set({ difficulty: v })} />
         </Form.Item>
         <Form.Item label="Priority" style={{ marginBottom: 8 }}>

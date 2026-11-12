@@ -65,7 +65,7 @@ export function CardSettings({ view, sample, onClose }: { view: View; sample?: T
         {view.layout === "table" && (
           <Form.Item>
             <Checkbox checked={card.icons_only} onChange={(e) => setCard((c) => ({ ...c, icons_only: e.target.checked }))}>
-              Symbols only: hide the priority and intensity names
+              Symbols only: hide the priority and level names
             </Checkbox>
           </Form.Item>
         )}

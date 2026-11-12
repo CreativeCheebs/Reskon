@@ -1,4 +1,4 @@
-import { DIFFICULTY_LABELS, type Bootstrap, type GroupBy, type Task } from "../types";
+import { levelName, type Bootstrap, type GroupBy, type Task } from "../types";
 import { makeTerms, termWords, type Terms } from "../terms";
 
 // Splits a view's tasks into groups (board swimlanes / table sections).
@@ -10,7 +10,7 @@ export const groupOptionsFor = (T: Terms): { value: GroupBy; label: string; boar
   { value: "priority", label: "Priority" },
   { value: "area", label: "Area" },
   { value: "energy_type", label: "Energy type" },
-  { value: "difficulty", label: "Intensity" },
+  { value: "difficulty", label: "Level" },
   { value: "type", label: "Type" },
   { value: "status", label: "Status", tableOnly: true },
 ];
@@ -70,8 +70,8 @@ export function groupTasks(tasks: Task[], by: GroupBy, boot: Bootstrap, epics: M
       }
       case "difficulty":
         if (t.difficulty)
-          add(`d${t.difficulty}`, `Intensity ${t.difficulty} · ${DIFFICULTY_LABELS[t.difficulty] ?? ""}`, t, { difficulty: t.difficulty });
-        else add(none("No intensity"), "No intensity", t, {});
+          add(`d${t.difficulty}`, levelName(t.difficulty), t, { difficulty: t.difficulty });
+        else add(none("No level"), "No level", t, {});
         break;
       case "type":
         add(t.type === "epic" ? "0epic" : "1task", t.type === "epic" ? T.Epics : T.Tasks, t, { type: t.type });

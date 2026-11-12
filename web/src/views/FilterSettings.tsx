@@ -103,7 +103,7 @@ export function FilterSettings({ view, onClose }: { view: View; onClose: () => v
           />
         </Form.Item>
         <Space wrap>
-          <Form.Item label="Min intensity">
+          <Form.Item label="Min level">
             <DifficultySlider value={filter.difficulty_min} width={220} onChange={(v) => set("difficulty_min", v)} />
           </Form.Item>
           <Form.Item label="Hide done after (days)" tooltip={`Done ${T.tasks} finished longer ago than this are left out. Empty: never hide.`}>

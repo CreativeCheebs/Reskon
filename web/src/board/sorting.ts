@@ -8,7 +8,7 @@ export const SORT_OPTIONS: { value: BoardSort; label: string }[] = [
   { value: "manual", label: "Manual" },
   { value: "priority", label: "Priority, highest first" },
   { value: "due", label: "Due date, soonest first" },
-  { value: "difficulty", label: "Intensity, highest first" },
+  { value: "difficulty", label: "Level, highest first" },
   { value: "estimate", label: "Estimate, largest first" },
   { value: "time_in_status", label: "Time in status, longest first" },
   { value: "newest", label: "Newest first" },

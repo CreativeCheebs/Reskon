@@ -31,7 +31,7 @@ export const BUILTIN_THEMES: Theme[] = [
       bg: "#1F1F21", panel: "#242528", panelDim: "#18191A", overlay: "#2B2C2F", hover: "#2B2C2F", selected: "#1C2B42",
       border: "#3B3C41", borderStrong: "#7E8188", fg: "#CECFD2", muted: "#A9ABAF", subtle: "#96999E", accent: "#669DF1",
       success: "#B3DF72", warn: "#FBC828", danger: "#FD9891", epic: "#D8A0F7",
-      shadow: "#030404", difficulty1: "#42A5F5", difficulty2: "#66BB6A", difficulty3: "#FFEE58", difficulty4: "#FFA726", difficulty5: "#EF5350",
+      shadow: "#030404", difficulty1: "#C7D1DE", difficulty2: "#A3BDE6", difficulty3: "#7DAEF0", difficulty4: "#579DFF", difficulty5: "#3B82F6",
     },
   },
   {
@@ -43,7 +43,7 @@ export const BUILTIN_THEMES: Theme[] = [
       bg: "#1F1F21", panel: "#242528", panelDim: "#18191A", overlay: "#2B2C2F", hover: "#2B2C2F", selected: "#1C2B42",
       border: "#6B6E74", borderStrong: "#A9ABAF", fg: "#E2E3E4", muted: "#CECFD2", subtle: "#BFC1C4", accent: "#CFE1FD",
       success: "#BAF3DB", warn: "#FCE4A6", danger: "#FFD5D2", epic: "#EED7FC",
-      shadow: "#030404", difficulty1: "#42A5F5", difficulty2: "#66BB6A", difficulty3: "#FFEE58", difficulty4: "#FFA726", difficulty5: "#EF5350",
+      shadow: "#030404", difficulty1: "#C7D1DE", difficulty2: "#A3BDE6", difficulty3: "#7DAEF0", difficulty4: "#579DFF", difficulty5: "#3B82F6",
     },
   },
   {
@@ -55,8 +55,8 @@ export const BUILTIN_THEMES: Theme[] = [
       bg: "#0D1117", panel: "#151B23", panelDim: "#010409", overlay: "#151B23", hover: "#262C36", selected: "#192639",
       border: "#3D444D", borderStrong: "#656C76", fg: "#F0F6FC", muted: "#9198A1", subtle: "#9198A1", accent: "#4493F8",
       success: "#3FB950", warn: "#D29922", danger: "#F85149", epic: "#AB7DF8",
-      // Difficulty from Primer's own scales: blue, green, attention, severe, danger.
-      shadow: "#010409", difficulty1: "#4493F8", difficulty2: "#3FB950", difficulty3: "#D29922", difficulty4: "#DB6D28", difficulty5: "#F85149",
+      // Level 1-5: the same pale-to-deep-blue ramp as the other themes.
+      shadow: "#010409", difficulty1: "#C7D1DE", difficulty2: "#A3BDE6", difficulty3: "#7DAEF0", difficulty4: "#579DFF", difficulty5: "#3B82F6",
     },
   },
   {
@@ -68,7 +68,7 @@ export const BUILTIN_THEMES: Theme[] = [
       bg: "#212830", panel: "#262C36", panelDim: "#151B23", overlay: "#2A313C", hover: "#2F3742", selected: "#293548",
       border: "#3D444D", borderStrong: "#656C76", fg: "#D1D7E0", muted: "#9198A1", subtle: "#9198A1", accent: "#478BE6",
       success: "#57AB5A", warn: "#C69026", danger: "#E5534B", epic: "#986EE2",
-      shadow: "#151B23", difficulty1: "#478BE6", difficulty2: "#57AB5A", difficulty3: "#C69026", difficulty4: "#CC6B2C", difficulty5: "#E5534B",
+      shadow: "#151B23", difficulty1: "#C7D1DE", difficulty2: "#A3BDE6", difficulty3: "#7DAEF0", difficulty4: "#579DFF", difficulty5: "#3B82F6",
     },
   },
 ];
@@ -92,11 +92,11 @@ export const TOKEN_HELP: Record<PaletteKey, string> = {
   danger: "Errors, stalled tasks, delete buttons",
   epic: "The epic symbol and epic labels",
   shadow: "Shadows under cards and menus (drawn semi-transparent, so usually near black)",
-  difficulty1: "Intensity 1 (trivial): circle inside a circle",
-  difficulty2: "Intensity 2: triangle inside a circle",
-  difficulty3: "Intensity 3: square inside a circle",
-  difficulty4: "Intensity 4: pentagon inside a circle",
-  difficulty5: "Intensity 5 (most intense): hexagon inside a circle",
+  difficulty1: "Level 1 (one slanted line). Levels run from pale to deep blue; a calm colour, not a warning",
+  difficulty2: "Level 2 (two slanted lines)",
+  difficulty3: "Level 3 (three slanted lines)",
+  difficulty4: "Level 4 (four slanted lines)",
+  difficulty5: "Level 5 (five slanted lines)",
 };
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
@@ -151,6 +151,7 @@ export function checkContrast(c: Palette): string[] {
   need("fg", "bg", 4.5, "Main text on the page may be hard to read");
   need("muted", "panel", 4.5, "Secondary text may be hard to read");
   need("accent", "panel", 3, "Links and buttons may be hard to see");
+  need("difficulty5", "panel", 3, "The level symbol may be hard to see");
   if (contrast(c.panel, c.panelDim) < 1.05) w.push("Cards and board columns are nearly the same colour, so cards won't stand out.");
   return w;
 }

@@ -58,7 +58,7 @@ export function optionColor(c: string | undefined, fallback = palette.accent): s
 /** One colour per split series: its own (an area's or energy type's) when
  *  it has one no earlier series took, else the next from a fixed cycle. */
 export function seriesColors(series: { color: string | null }[]): string[] {
-  const cycle = [palette.accent, palette.success, palette.warn, palette.epic, palette.difficulty4, palette.difficulty1, palette.muted];
+  const cycle = [palette.accent, palette.success, palette.warn, palette.epic, palette.danger, palette.muted];
   const used = new Set<string>();
   let next = 0;
   return series.map((s) => {

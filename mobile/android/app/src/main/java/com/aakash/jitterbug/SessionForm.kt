@@ -1,5 +1,6 @@
 package com.aakash.jitterbug
 
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.foundation.background
@@ -65,7 +66,7 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZoneOffset
 
-/** One energy type of a session: share in percent, intensity 1-5. */
+/** One energy type of a session: share in percent, level 1-5. */
 data class Part(val typeId: Long, val share: Int, val difficulty: Int?)
 
 /** A session being written, as web/src/sessions/SessionForm.tsx's SessionDraft. */
@@ -324,10 +325,12 @@ private fun PartEditor(d: Draft, i: Int, p: Part, set: (Draft) -> Unit) {
                 Row(
                     Modifier.weight(1f).height(36.dp).clip(RoundedCornerShape(10.dp)).background(if (on) Palette.selected else Color.Transparent)
                         .border(1.dp, if (on) Palette.accent else Palette.strong, RoundedCornerShape(10.dp))
-                        .clickable { update(p.copy(difficulty = if (on) null else n)) },
+                        .clickable(role = Role.RadioButton, onClickLabel = if (on) "Clear level" else "Set level $n") { update(p.copy(difficulty = if (on) null else n)) }
+                        .semantics(mergeDescendants = true) { contentDescription = "Level $n of 5"; selected = on },
                     horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Dot(Palette.intensity[n - 1])
+                    // The level as slanted lines, one to five, as on the web.
+                    T("/".repeat(n), Palette.intensity[n - 1], 13.sp, FontWeight.Bold, oneLine = true)
                     HGap(4)
                     T(n.toString(), if (on) Palette.fg else Palette.muted, 14.sp, FontWeight.SemiBold)
                 }

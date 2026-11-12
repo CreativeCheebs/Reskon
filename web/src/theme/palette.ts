@@ -58,12 +58,12 @@ export const DEFAULT_COLORS: Palette = {
   danger: "#F87168",
   epic: "#9F8FEF", // the epic symbol and labels
   shadow: "#030404", // card and menu shadows (drawn semi-transparent)
-  // Difficulty 1-5: Material Design 400 blue, green, yellow, orange, red.
-  difficulty1: "#42A5F5",
-  difficulty2: "#66BB6A",
-  difficulty3: "#FFEE58",
-  difficulty4: "#FFA726",
-  difficulty5: "#EF5350",
+  // Level 1-5 (stored as difficulty): pale to deep blue. No red: a restful level 5 is not a warning.
+  difficulty1: "#C7D1DE",
+  difficulty2: "#A3BDE6",
+  difficulty3: "#7DAEF0",
+  difficulty4: "#579DFF",
+  difficulty5: "#3B82F6",
 };
 
 /** The active colours. Components read this at render time; the theme

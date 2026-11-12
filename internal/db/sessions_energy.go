@@ -74,7 +74,7 @@ func parseEnergies(f Fields) (parts []energyPart, present bool, err error) {
 			return nil, true, invalid("each energy type's share must be more than 0 and at most 1")
 		}
 		if p.Difficulty != nil && !validDifficulty(*p.Difficulty) {
-			return nil, true, invalid("intensity must be a whole number from 1 to 5")
+			return nil, true, invalid("level must be a whole number from 1 to 5")
 		}
 		sum += p.Share
 	}

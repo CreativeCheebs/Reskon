@@ -10,7 +10,6 @@ import { formatHours, today } from "../format";
 import { palette } from "../theme/palette";
 import { Lozenge } from "../theme/Lozenge";
 import type { Session } from "../types";
-import { DIFFICULTY_LABELS } from "../types";
 import { SessionModal } from "./SessionModal";
 import { BulkBar } from "./BulkBar";
 import { useColumnWidths } from "../views/useColumnWidths";
@@ -154,17 +153,17 @@ export function SessionsScreen() {
     {
       key: "diff",
       title: (
-        <Tooltip title="Intensity, 1 Light to 5 Extreme. The shape and number say it too, not just the colour.">
-          Intensity
+        <Tooltip title="Level, 1 to 5. The lines and the number say it too, not just the colour.">
+          Level
         </Tooltip>
       ),
       width: 92,
       render: (_, s) =>
         s.difficulty && (
-          <Tooltip title={`Intensity ${s.difficulty} of 5 · ${DIFFICULTY_LABELS[s.difficulty] ?? ""}`}>
+          <Tooltip title={`Level ${s.difficulty} of 5`}>
             <span
               role="img"
-              aria-label={`Intensity ${s.difficulty} of 5${DIFFICULTY_LABELS[s.difficulty] ? `, ${DIFFICULTY_LABELS[s.difficulty]}` : ""}`}
+              aria-label={`Level ${s.difficulty} of 5`}
               style={{ display: "inline-flex", alignItems: "center", gap: 6, fontVariantNumeric: "tabular-nums" }}
             >
               <DifficultyIcon level={s.difficulty} tip={false} />
@@ -315,14 +314,14 @@ export function SessionsScreen() {
           />
           <FilterSelect
             style={{ width: 130 }}
-            aria-label="Filter by whether intensity is set"
+            aria-label="Filter by whether a level is set"
             active={filters.hasDiff !== ""}
             value={filters.hasDiff}
             onChange={(v) => setF("hasDiff", v)}
             options={[
-              { value: "", label: "Any intensity" },
-              { value: "true", label: "Intensity set" },
-              { value: "false", label: "Intensity not set" },
+              { value: "", label: "Any level" },
+              { value: "true", label: "Level set" },
+              { value: "false", label: "Level not set" },
             ]}
           />
           <FilterSelect

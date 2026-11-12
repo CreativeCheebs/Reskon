@@ -1,6 +1,6 @@
 import { Tooltip } from "antd";
 import { palette } from "../theme/palette";
-import { DIFFICULTY_LABELS } from "../types";
+import { levelName } from "../types";
 import { DifficultyIcon } from "./LevelIcons";
 
 // Intensity 1-5 as a row of five symbol buttons, for forms where a slider
@@ -11,7 +11,7 @@ export function IntensityPicker({
   value,
   onChange,
   disabled,
-  label = "Intensity",
+  label = "Level",
 }: {
   value: number | null;
   onChange: (v: number | null) => void;
@@ -24,11 +24,11 @@ export function IntensityPicker({
         {[1, 2, 3, 4, 5].map((n) => {
           const on = value === n;
           return (
-            <Tooltip key={n} title={`${n} · ${DIFFICULTY_LABELS[n]}${on ? " (click to clear)" : ""}`} mouseEnterDelay={0.3}>
+            <Tooltip key={n} title={`${levelName(n)}${on ? " (click to clear)" : ""}`} mouseEnterDelay={0.3}>
               <button
                 type="button"
                 aria-pressed={on}
-                aria-label={`${label} ${n}, ${DIFFICULTY_LABELS[n]}`}
+                aria-label={`${label}: ${n} of 5${on ? ", selected (click to clear)" : ""}`}
                 disabled={disabled}
                 onClick={() => onChange(on ? null : n)}
                 style={{
@@ -42,17 +42,17 @@ export function IntensityPicker({
                   cursor: disabled ? "not-allowed" : "pointer",
                   background: on ? palette.selected : "transparent",
                   border: `1px solid ${on ? palette.accent : palette.border}`,
-                  opacity: on ? 1 : value === null ? 0.7 : 0.4,
+                  opacity: 1, // never dimmed: the deep blues would fall below 3:1 against the panel
                 }}
               >
-                <DifficultyIcon level={n} tip={false} />
+                <DifficultyIcon level={n} tip={false} decorative />
               </button>
             </Tooltip>
           );
         })}
       </div>
       <span style={{ fontSize: 11, whiteSpace: "nowrap", color: value === null ? palette.subtle : palette.muted }}>
-        {value === null ? "Not set" : DIFFICULTY_LABELS[value]}
+        {value === null ? "Not set" : levelName(value)}
       </span>
     </div>
   );

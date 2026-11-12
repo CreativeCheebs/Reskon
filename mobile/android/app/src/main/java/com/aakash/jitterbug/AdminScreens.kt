@@ -129,7 +129,7 @@ fun SnoozeSettingsScreen() {
 /** The fields Settings › Complete details can ask for, with their names (also used to say what a task lacks). */
 internal val COMPLETENESS get() = listOf(
     "start_date" to "Start date", "end_date" to "End date", "due_at" to "Due date", "estimate_h" to "Estimate (max time)",
-    "difficulty" to "Intensity", "priority_id" to "Priority", "energy_type_id" to "Energy type", "description" to "Description", "epic_id" to Terms.capEpic,
+    "difficulty" to "Level", "priority_id" to "Priority", "energy_type_id" to "Energy type", "description" to "Description", "epic_id" to Terms.capEpic,
 )
 
 fun fieldLabel(key: String): String = COMPLETENESS.firstOrNull { it.first == key }?.second ?: key

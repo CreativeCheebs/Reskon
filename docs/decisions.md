@@ -33,7 +33,7 @@ A session's points are saved with it, instead of being worked out when read. Tha
 - **Sessions:** hours × the type's points per hour × intensity. The owner chose hours × intensity (2026-10-30). With every rate at 1 per hour this gives the same numbers as before rates existed.
 - **Tasks:** intensity × priority weight. The owner confirmed this (2026-11-04).
 
-### Intensity, not difficulty
+### Intensity, not difficulty (superseded 2026-11-13: it is now called Level)
 "Difficulty" didn't fit a game, a workout or a hard conversation, so the word shown is **intensity**: Light, Moderate, Intense, Very intense, Extreme. Only the words changed. The database and API still say `difficulty`, and nothing was recalculated.
 
 ---
@@ -220,6 +220,12 @@ The owner approved the first touch-target fix with this change (2026-11-07): the
 The owner rarely uses the Day screen. One account setting, `show_day_screen`, decides whether it is offered: a switch in Settings › Screens on the web and on the phone, off by default for everyone, synced like any setting so both agree. The server only checks that it is `true` or `false` (`internal/db/screens.go`). Off hides Day from the web sidebar and the phone's Today tab; nothing is deleted. After updating, Day disappears for existing accounts until switched on. An old `#/day` link opens the first view. The phone opens on Board, and leaves Today if the setting is turned off while it is open.
 
 Checked end to end on the test server and spare phone: switching it on or off on the phone reaches the server, and switching it on or off on the server reaches the phone on its next sync.
+
+### "Intensity" is now "Level", and "Work" is now "Task" (owner, 2026-11-13)
+
+The words Light, Moderate, Intense, Very intense and Extreme did not fit rest and play ("a good nap is not extreme"), so the 1 to 5 scale is just **Level 1** to **Level 5**. Nothing in the data changes: it is still `difficulty` and the same numbers, so old data, points and sync are untouched. The symbols changed from circle-to-hexagon in blue, green, yellow, orange and red to one to five slanted lines in a pale-to-deep-blue ramp (`difficulty1` to `difficulty5` in each theme). Red was dropped on purpose, because it reads as a warning. The line count carries the number, so colour is never the only signal. The phone shows the number with a coloured slash count in the session form and a coloured number elsewhere. Charts no longer borrow the level colours for their series; they use the danger colour instead. The capture model's prompt still describes the 1 to 5 scale in words, because that is how a person writes ("it was intense"); only the screens changed.
+
+The session switch says **Task** or **Event** (it was Work or "Event (not work)"), with no hint line.
 
 ### Tasks and epics can be renamed on screen (owner, 2026-11-13)
 

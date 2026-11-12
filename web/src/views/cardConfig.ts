@@ -30,7 +30,7 @@ export const SHOW_LABELS: Record<Exclude<keyof CardShow, "custom">, string> = {
   created_age: "Created age",
   started_age: "Started age",
   time_in_status: "Time in status",
-  difficulty: "Intensity",
+  difficulty: "Level",
   priority: "Priority",
   energy_type: "Energy type",
   subtypes: "Subtypes",

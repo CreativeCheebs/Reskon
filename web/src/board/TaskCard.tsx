@@ -3,7 +3,7 @@ import { formatAge, formatHours } from "../format";
 import { blend, palette } from "../theme/palette";
 import { Chip } from "../theme/Chip";
 import { Lozenge } from "../theme/Lozenge";
-import { DIFFICULTY_LABELS, type CardConfig, type Task } from "../types";
+import { levelName, type CardConfig, type Task } from "../types";
 import { TypeIcon } from "../task/TypeIcon";
 import { DifficultyIcon, PriorityIcon, priorityColor } from "../task/LevelIcons";
 import { useEpics } from "../task/useEpics";
@@ -74,10 +74,10 @@ export function TaskCard({
       <Chip
         key="diff"
         color={palette[`difficulty${task.difficulty}` as "difficulty1"]}
-        icon={<DifficultyIcon level={task.difficulty} size={12} tip={false} />}
-        tip={`Intensity ${task.difficulty} of 5 · ${DIFFICULTY_LABELS[task.difficulty]}`}
+        icon={<DifficultyIcon level={task.difficulty} size={12} tip={false} decorative />}
+        tip={`${levelName(task.difficulty)} of 5`}
       >
-        {DIFFICULTY_LABELS[task.difficulty]}
+        {levelName(task.difficulty)}
       </Chip>,
     );
   if (task.type === "epic" && task.epic_tasks)

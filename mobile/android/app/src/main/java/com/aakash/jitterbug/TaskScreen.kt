@@ -127,7 +127,7 @@ fun TaskScreen(r: Route) {
                     Triple("Area", boot.area(t.id("area_id"))?.name ?: "–", boot.area(t.id("area_id"))?.color) to "area",
                     Triple("Energy type", boot.type(t.id("energy_type_id"))?.name ?: "–", boot.type(t.id("energy_type_id"))?.color) to "type",
                     Triple("Priority", boot.priority(t.id("priority_id"))?.name ?: "–", boot.priority(t.id("priority_id"))?.color) to "priority",
-                    Triple("Intensity", t.id("difficulty")?.let { "$it · ${INTENSITY[(it - 1).toInt()]}" } ?: "–", t.id("difficulty")?.let { Palette.intensity[(it - 1).toInt()] }) to "difficulty",
+                    Triple("Level", t.id("difficulty")?.let { "$it of 5" } ?: "–", t.id("difficulty")?.let { Palette.intensity[(it - 1).toInt()] }) to "difficulty",
                     Triple("Estimate", t.num("estimate_h")?.let { hrs(it) } ?: "–", null) to "estimate",
                     Triple("Start – end", if (t.str("start_date") == null && t.str("end_date") == null) "–" else "${shortDate(t.str("start_date")).ifEmpty { "…" }} – ${shortDate(t.str("end_date")).ifEmpty { "…" }}", null) to "dates",
                     Triple("Due", t.str("due_at")?.let { dayLabel(it) } ?: "–", null) to "due",
@@ -237,7 +237,7 @@ fun TaskScreen(r: Route) {
         "area" -> PickSheet("Area", boot.areas.map { it.id to it.name }, { sheet = null }) { sheet = null; change(jsonOf("area_id" to it)) }
         "type" -> PickSheet("Energy type", listOf(0L to "None") + boot.energyTypes.map { it.id to it.name }, { sheet = null }) { sheet = null; change(jsonOf("energy_type_id" to it.takeIf { it > 0 })) }
         "priority" -> PickSheet("Priority", listOf(0L to "None") + boot.priorities.map { it.id to it.name }, { sheet = null }) { sheet = null; change(jsonOf("priority_id" to it.takeIf { it > 0 })) }
-        "difficulty" -> PickSheet("Intensity", listOf(0L to "None") + (1..5).map { it.toLong() to "$it · ${INTENSITY[it - 1]}" }, { sheet = null }) { sheet = null; change(jsonOf("difficulty" to it.takeIf { it > 0 })) }
+        "difficulty" -> PickSheet("Level", listOf(0L to "None") + (1..5).map { it.toLong() to "Level $it" }, { sheet = null }) { sheet = null; change(jsonOf("difficulty" to it.takeIf { it > 0 })) }
         "epic" -> {
             val epics by loaded { Api.arr("/tasks?type=epic").objs() }
             PickSheet(Terms.capEpic, listOf(0L to "None") + epics.orEmpty().filter { it.getLong("id") != id }.map { it.getLong("id") to it.getString("title") }, { sheet = null }) {
@@ -360,7 +360,7 @@ fun NewTaskScreen(r: Route) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 boot.priorities.forEach { p -> Pill(p.name, priority == p.id, p.color) { priority = if (priority == p.id) null else p.id } }
             }
-            SectionTitle("Intensity")
+            SectionTitle("Level")
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 (1..5).forEach { n -> Box(Modifier.weight(1f)) { Pill(n.toString(), difficulty == n, Palette.intensity[n - 1]) { difficulty = if (difficulty == n) null else n } } }
             }

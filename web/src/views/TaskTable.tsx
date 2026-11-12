@@ -126,17 +126,15 @@ export function TaskTable({
   if (show.difficulty)
     cols.push({
       key: "diff",
-      title: iconsOnly ? "Int." : "Intensity",
+      title: "Level",
       width: iconsOnly ? 48 : 90,
       render: (_, t) =>
         t.difficulty &&
-        (iconsOnly ? (
-          <DifficultyIcon level={t.difficulty} />
-        ) : (
+        (
           <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-            <DifficultyIcon level={t.difficulty} /> {t.difficulty}
+            <DifficultyIcon level={t.difficulty} tip={false} decorative /> {t.difficulty}
           </span>
-        )),
+        ),
       sorter: (a, b) => num(a.difficulty, b.difficulty),
     });
   if (show.estimate)

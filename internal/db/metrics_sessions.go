@@ -29,7 +29,7 @@ func init() {
 	})
 	register(&metricDef{
 		Name: "points", Label: "Points", Unit: "points",
-		Description: "Points stored on sessions when they were logged (hours × the type's rate × intensity), every energy type. By subtype, weighted by rank.",
+		Description: "Points stored on sessions when they were logged (hours × the type's rate × level), every energy type. By subtype, weighted by rank.",
 		Groups:      []string{"day", "week", "month", "area", "energy_type", "subtype"},
 		Splits:      []string{"area", "subtype", "energy_type"},
 		Filters:     sessionFilters, Reduce: "sum", Ranged: true,

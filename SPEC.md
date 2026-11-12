@@ -31,7 +31,7 @@ There is also an Android app. It works completely on its own, with no server and
 | Word | Meaning |
 | --- | --- |
 | **Area** | A part of life a task belongs to: Main job, Personal, Health… Each task has exactly one. The area gives the task key its prefix (`PER-12`). |
-| **Task** | Something to do. It has a status, and can have a priority, intensity, estimate, dates and more. |
+| **Task** | Something to do. It has a status, and can have a priority, level, estimate, dates and more. |
 | **Epic** | A big task that groups other tasks (for example "Android app"). |
 | **Subtask** | A small task inside another task, shown as a checklist on its parent. |
 | **Status** | Where a task is: Backlog, To do, In progress, Done, Cancelled, or your own. |
@@ -40,8 +40,8 @@ There is also an Android app. It works completely on its own, with no server and
 | **Task / Event** | A session is either a task session (time spent on work or anything else you do on purpose) or an event: something that happened to you (a meal, a nap, time with family). Called "Work / Event" before; the database still stores `task` or `event`. |
 | **Energy type** | What kind of effort a session was: Engineering, Physical, Admin, Rest, Leisure, or your own. |
 | **Subtype** | A finer kind inside an energy type: coding, cardio, paperwork… Optional. |
-| **Intensity** | How hard or intense something was, from 1 (Light) to 5 (Extreme). In the code and database it is called `difficulty`. |
-| **Points** | A number earned by a session: hours × the energy type's points per hour × intensity. |
+| **Level** | How much a session or task took, from 1 to 5. It is only a number, with no word like "intense" attached, so it suits rest and play as much as work (a good nap can be level 5). In the code and database it is called `difficulty`; before it was called intensity. |
+| **Points** | A number earned by a session: hours × the energy type's points per hour × level. |
 | **Buff / debuff / modifier** | Something going on in your life that affects your days: a debuff makes things harder (a cold), a buff makes them easier (a new routine), a modifier is neither (travelling). Together they are called **states**. |
 | **View** | A saved way of looking at tasks: which tasks (filter), how they look (card settings), and as a board, list or timeline. |
 | **Dashboard / widget** | A page of charts. Each chart is a widget. |
@@ -124,11 +124,11 @@ These are never stored. They are worked out every time a task is read, from the 
 - **Remaining** = estimate − logged. It goes negative once you're over.
 - A task with subtasks shows its own logged hours and, below, **the total including its subtasks**.
 
-### 4.8 Priorities and intensity
+### 4.8 Priorities and level
 
 - Priorities are rows (seeded **Low 0.75**, **Normal 1.0**, **High 1.5**). Each has a colour and a weight. With no colour, a priority gets one by its rank: blue for the lowest through green, yellow, orange to red for the highest. You can add more; built-in ones can't be deleted.
-- **Intensity** is 1 to 5: Light, Moderate, Intense, Very intense, Extreme. It shows as a coloured symbol: blue circle, green triangle, yellow square, orange pentagon, red hexagon.
-- A task's own points (shown on the task) are **intensity × priority weight**. No intensity means no points. No priority counts as 1.
+- **Level** is 1 to 5, shown as 1 to 5 slanted lines (one line for level 1, five for level 5) in a colour that goes from pale to deep blue. There is no red: a restful level 5 is not a warning. The number is written beside it, so nothing depends on the colour.
+- A task's own points (shown on the task) are **level × priority weight**. No level means no points. No priority counts as 1.
 
 ### 4.9 Epics
 
@@ -157,7 +157,7 @@ These are never stored. They are worked out every time a task is read, from the 
 
 ### 4.13 Complete details
 
-Settings › Complete details lets you choose fields an open task should have (start date, end date, due date, estimate, intensity, priority, energy type, description, epic). An open task of type *task* missing one of them is **incomplete**: views show an **Incomplete** button listing them with what each lacks, and the task panel says what's missing. Done and cancelled tasks, epics and snoozed tasks are never listed. With nothing chosen, there is no Incomplete button.
+Settings › Complete details lets you choose fields an open task should have (start date, end date, due date, estimate, level, priority, energy type, description, epic). An open task of type *task* missing one of them is **incomplete**: views show an **Incomplete** button listing them with what each lacks, and the task panel says what's missing. Done and cancelled tasks, epics and snoozed tasks are never listed. With nothing chosen, there is no Incomplete button.
 
 ### 4.14 Deleting a task
 
@@ -176,23 +176,23 @@ A **view** is a saved way of looking at tasks: a filter, card settings, a layout
 
 ### 5.1 Filter: which tasks
 
-- Areas, statuses, minimum intensity, types (task/epic), epics (including "no epic"), custom field values (exact value, empty, or a range of dates or numbers), open tasks only, subtasks as cards.
+- Areas, statuses, minimum level, types (task/epic), epics (including "no epic"), custom field values (exact value, empty, or a range of dates or numbers), open tasks only, subtasks as cards.
 - **Hide done after N days**: only tasks finished in the last N days show in the done column, so it doesn't grow forever. It can be changed at the foot of the done column.
 - The filter runs on the server. The screen sends which view, never the filter itself. An unknown filter key is refused, so a typo can't quietly match everything.
 - Search inside a view: every word must appear in the title, key or description, and the view's filter still applies.
 
 ### 5.2 Card settings: what a card shows
 
-Per view: area, created age, started age, time in status, intensity, priority, energy type, subtypes (of sessions logged on the task), estimate, time bar with pace, due, start, end, epic, logged time, and chosen custom fields. Density: compact or comfortable. Lists can show priority and intensity as symbols only. Board cards never show the status (the column already does). A task's symbol is a blue page and an epic's a purple bolt; neither is a tick-box, so nothing on a card looks done unless it is. Changing these changes that view only.
+Per view: area, created age, started age, time in status, level, priority, energy type, subtypes (of sessions logged on the task), estimate, time bar with pace, due, start, end, epic, logged time, and chosen custom fields. Density: compact or comfortable. Lists can show priority and level as symbols only. Board cards never show the status (the column already does). A task's symbol is a blue page and an epic's a purple bolt; neither is a tick-box, so nothing on a card looks done unless it is. Changing these changes that view only.
 
 ### 5.3 Board
 
 - Columns are the visible statuses. Drag cards to move or reorder them. From the keyboard, Tab to a card, **Enter opens it**, **Space picks it up**, the arrow keys move it, Space drops it and Escape cancels; a screen reader announces the task title and the column it is over.
-- **Grouping** makes swimlanes (by epic, priority, area, energy type, intensity, type or status). Cards move between columns inside their lane, not between lanes. A task created in a lane gets that lane's value.
-- **Sorting**: manual (default), priority, due, intensity, estimate, time in status, newest, oldest. While sorted, you can still move cards between columns.
+- **Grouping** makes swimlanes (by epic, priority, area, energy type, level, type or status). Cards move between columns inside their lane, not between lanes. A task created in a lane gets that lane's value.
+- **Sorting**: manual (default), priority, due, level, estimate, time in status, newest, oldest. While sorted, you can still move cards between columns.
 - **Collapsed columns** are shared by every lane and still accept drops.
 - **Column limits** per status: a maximum in tasks, points or estimate hours. A soft limit colours the header. A hard limit asks "Move anyway?" before a drag takes the column over. Limits are stored with the view and sync.
-- Cards show priority, intensity, time in status and due date as small chips with text (the intensity chip says its name, such as "Intense", beside its symbol). A coloured edge marks stalled (red) or overdue (amber) cards.
+- Cards show priority, level, time in status and due date as small chips with text (the level chip says "Level 3" beside its lines). A coloured edge marks stalled (red) or overdue (amber) cards.
 - **Card actions**: Log time, Snooze, Note, Move to, Open task, Delete. Settings › Card actions chooses which are buttons on a hovered card (up to 3; default Log time and Snooze) and which are in the right-click menu (default all). On the phone, long-press a card to move it.
 
 ### 5.4 List (table)
@@ -219,7 +219,7 @@ A view has an icon (emoji, or an icon from Fluent UI or PrimeIcons), a colour, a
 
 - **Hours** (more than 0, at most 24), the **date** it was for, and optionally a **start time**.
 - **Description** (shown as the session's title), an optional **task**, an **area**, and **task or event**.
-- **Energy types**: one, or up to four with shares in whole percents that add up to 100% ("70% Engineering, 30% Admin"). Each part has its own intensity. An hour is never counted twice, so a day can't pass 24 hours.
+- **Energy types**: one, or up to four with shares in whole percents that add up to 100% ("70% Engineering, 30% Admin"). Each part has its own level. An hour is never counted twice, so a day can't pass 24 hours.
 - **Subtypes**: up to four, ranked by dragging, or with the keyboard (focus the handle, Space, arrow keys). Each has a Remove button. Rank weights are a setting (default 100%, 50%, 25%, 25%). Percentages are never typed.
 - A **note**, and custom fields.
 - Points (below), and when it was created and last changed.
@@ -232,22 +232,22 @@ A view has an icon (emoji, or an icon from Fluent UI or PrimeIcons), a colour, a
 | Session without a task | the area's default, else you pick |
 | New task | the area's default |
 
-Choosing a task also fills in its intensity, unless you set one yourself. You can always change it.
+Choosing a task also fills in its level, unless you set one yourself. You can always change it.
 
 ### 6.3 Points
 
-- Each part of a session earns **hours × share × the energy type's points per hour × intensity**. The intensity is the part's, else the task's, else 1. A session's points are the sum of its parts.
+- Each part of a session earns **hours × share × the energy type's points per hour × level**. The level is the part's, else the task's, else 1. A session's points are the sum of its parts.
 - Every energy type starts at **1 point per hour**. You can change a rate in Settings › Energy types.
 - Points are **saved when the session is logged**, so changing a rate later doesn't change old sessions.
-- **Editing a session** that changes its hours, intensity, energy types, shares or task saves fresh points at today's rates. Editing only the note doesn't.
+- **Editing a session** that changes its hours, level, energy types, shares or task saves fresh points at today's rates. Editing only the note doesn't.
 - When only a rate has changed since, the session shows what it **would earn today** and offers **Recalculate** (one session, or many from the bulk bar).
 - Points can't be typed by hand in the app. (The API still accepts them, for imports.)
 
 ### 6.4 The Sessions screen
 
-- Filters: dates, energy type, area, task, task/event, has a task or not, has an intensity, has subtypes, and words. All filtering is done on the server.
+- Filters: dates, energy type, area, task, task/event, has a task or not, has a level, has subtypes, and words. All filtering is done on the server.
 - Days show their totals per energy type, from the server.
-- **Bulk changes**: tick sessions (or whole days, or all shown) and change their energy type, task/event, area, intensity, date or task, or delete them. All or nothing. Detaching from a task keeps the task's title as the description; attaching takes the task's area.
+- **Bulk changes**: tick sessions (or whole days, or all shown) and change their energy type, task/event, area, level, date or task, or delete them. All or nothing. Detaching from a task keeps the task's title as the description; attaching takes the task's area.
 - The log form takes a duration like `1h 30m`, `90m`, `1.5` or `1:30`.
 - **Enter saves.** In the Log time and Edit session forms, Enter in a one-line box (duration, date, start time, description) saves, the same as the Save button, once the form is complete. It does not save from the note (Enter starts a new line), from a button, while a drop-down or date pop-up is open (Enter picks the choice there), or while a word is being composed. On the phone, the keyboard's Done key in the duration and description boxes saves.
 
@@ -262,7 +262,7 @@ Choosing a task also fills in its intensity, unless you set one yourself. You ca
 - An AI model reads the line ("Worked on stm32 demo, 2 hours" → a 2-hour Engineering work session; "Need to order a new NVR drive" → a task). The model chooses only among your real areas, energy types, subtypes and open tasks. It can't invent them.
 - **The AI decides whether the line is a task or a session.** Until it does (or when there is no AI), nothing is picked and you choose.
 - **Nothing is saved until you confirm.** The answer becomes a filled-in form you can change. One line can become up to 6 entries ("6 hours at the hospital, work was only 1 of them" → a 1-hour work session and a 5-hour other session). Saving goes one by one; if one fails, only the unsaved ones stay.
-- The model writes a short title; the line as typed is kept in the session's note. It sets intensity when the line says how it felt, and an area only when the line makes it clear. A task without an area gets the last area used.
+- The model writes a short title; the line as typed is kept in the session's note. It sets level when the line says how it felt, and an area only when the line makes it clear. A task without an area gets the last area used.
 - **Capture never fails because the AI is down.** Only the first 40 different words of a long note are used to look for similar open tasks, so even a pasted page works. With no model set, or one that is slow (over 5 seconds) or broken, it falls back to the plain form with your line in it, and says why.
 - The line and the AI's answer are kept on the saved session or task (in `custom._capture`), so a wrong answer can be checked later.
 - The model is any OpenAI-compatible service, set per person in Settings › Quick capture (endpoint, model, key). The server's `JITTERBUG_LLM_*` settings are used when a person hasn't set their own. **The server's key only goes with the server's own endpoint:** a person who types a different endpoint must also give their own key, so no one can send the server's key to an address of their choosing. The server does not follow redirects from the endpoint, and when it fails the message shows only the status number, not what the endpoint answered. The key is never sent back to the screen.
@@ -478,11 +478,11 @@ The database is SQLite in WAL mode (several readers, one writer). There is one c
 | `energy_type` | Your energy types: colour, points per hour. (An old `direction` column is no longer read.) |
 | `subtype` | Subtypes, each under one energy type. |
 | `area` | Areas: name, key prefix, colour, default energy type. |
-| `task` | Tasks, epics and subtasks: key, title, description, area, status, priority, energy type, intensity, estimate, due, start and end dates, snooze, epic, parent, board position, custom fields. |
+| `task` | Tasks, epics and subtasks: key, title, description, area, status, priority, energy type, level, estimate, due, start and end dates, snooze, epic, parent, board position, custom fields. |
 | `status_transition` | The move log. Only ever added to. |
 | `task_link` | "Blocked by" links. |
-| `session` | Logged time: hours, date, start time, description, task, area, task/event, energy type, intensity, points, note, custom fields, last changed. |
-| `session_energy` | The parts of a session with several energy types: share, intensity, points. |
+| `session` | Logged time: hours, date, start time, description, task, area, task/event, energy type, level, points, note, custom fields, last changed. |
+| `session_energy` | The parts of a session with several energy types: share, level, points. |
 | `session_subtype` | A session's ranked subtypes. |
 | `day_plan` | Each day's focus, ceilings and evening answers. |
 | `state` | Buffs, debuffs and modifiers. |
