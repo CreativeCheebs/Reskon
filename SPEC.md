@@ -37,7 +37,7 @@ There is also an Android app. It works completely on its own, with no server and
 | **Status** | Where a task is: Backlog, To do, In progress, Done, Cancelled, or your own. |
 | **Behaviour** | What a status means to the app: *to do*, *in progress*, *done* or *cancelled*. Every status has one. |
 | **Session** | A piece of logged time: "2 hours on the tax receipts, yesterday". |
-| **Work / Event** | A session is either work, or an event: something that happened but isn't work (a meal, a nap, time with family). |
+| **Task / Event** | A session is either a task session (time spent on work or anything else you do on purpose) or an event: something that happened to you (a meal, a nap, time with family). Called "Work / Event" before; the database still stores `task` or `event`. |
 | **Energy type** | What kind of effort a session was: Engineering, Physical, Admin, Rest, Leisure, or your own. |
 | **Subtype** | A finer kind inside an energy type: coding, cardio, paperwork… Optional. |
 | **Intensity** | How hard or intense something was, from 1 (Light) to 5 (Extreme). In the code and database it is called `difficulty`. |
@@ -214,7 +214,7 @@ A view has an icon (emoji, or an icon from Fluent UI or PrimeIcons), a colour, a
 ### 6.1 What a session holds
 
 - **Hours** (more than 0, at most 24), the **date** it was for, and optionally a **start time**.
-- **Description** (shown as the session's title), an optional **task**, an **area**, and **work or event**.
+- **Description** (shown as the session's title), an optional **task**, an **area**, and **task or event**.
 - **Energy types**: one, or up to four with shares in whole percents that add up to 100% ("70% Engineering, 30% Admin"). Each part has its own intensity. An hour is never counted twice, so a day can't pass 24 hours.
 - **Subtypes**: up to four, ranked by dragging, or with the keyboard (focus the handle, Space, arrow keys). Each has a Remove button. Rank weights are a setting (default 100%, 50%, 25%, 25%). Percentages are never typed.
 - A **note**, and custom fields.
@@ -241,9 +241,9 @@ Choosing a task also fills in its intensity, unless you set one yourself. You ca
 
 ### 6.4 The Sessions screen
 
-- Filters: dates, energy type, area, task, work/event, has a task or not, has an intensity, has subtypes, and words. All filtering is done on the server.
+- Filters: dates, energy type, area, task, task/event, has a task or not, has an intensity, has subtypes, and words. All filtering is done on the server.
 - Days show their totals per energy type, from the server.
-- **Bulk changes**: tick sessions (or whole days, or all shown) and change their energy type, work/event, area, intensity, date or task, or delete them. All or nothing. Detaching from a task keeps the task's title as the description; attaching takes the task's area.
+- **Bulk changes**: tick sessions (or whole days, or all shown) and change their energy type, task/event, area, intensity, date or task, or delete them. All or nothing. Detaching from a task keeps the task's title as the description; attaching takes the task's area.
 - The log form takes a duration like `1h 30m`, `90m`, `1.5` or `1:30`.
 - **Enter saves.** In the Log time and Edit session forms, Enter in a one-line box (duration, date, start time, description) saves, the same as the Save button, once the form is complete. It does not save from the note (Enter starts a new line), from a button, while a drop-down or date pop-up is open (Enter picks the choice there), or while a word is being composed. On the phone, the keyboard's Done key in the duration and description boxes saves.
 
@@ -343,7 +343,7 @@ Bar, line, cumulative (only rises), number, list, bands (states across days, dra
 | Days over plan | Days where any type went over its ceiling. |
 | Ceiling vs actual | Hours as a share of the planned ceiling, per type. |
 
-- Each metric says which groupings (day, week, month, area, subtype, energy type, status, task, session…) and filters (area, energy type, subtype, status, work/event, task) it allows. The widget editor only offers what the server supports.
+- Each metric says which groupings (day, week, month, area, subtype, energy type, status, task, session…) and filters (area, energy type, subtype, status, task/event, task) it allows. The widget editor only offers what the server supports.
 - Ranges: today, 7 days, 30 days, 90 days, this month, 1 year, all, or chosen dates.
 - Weeks start on the day set in Settings › Reflection (default Monday).
 - Totals, running totals and shares come from the server, never added up on screen. A share is a part of the sum of all types, never one type divided by another.
@@ -477,7 +477,7 @@ The database is SQLite in WAL mode (several readers, one writer). There is one c
 | `task` | Tasks, epics and subtasks: key, title, description, area, status, priority, energy type, intensity, estimate, due, start and end dates, snooze, epic, parent, board position, custom fields. |
 | `status_transition` | The move log. Only ever added to. |
 | `task_link` | "Blocked by" links. |
-| `session` | Logged time: hours, date, start time, description, task, area, work/event, energy type, intensity, points, note, custom fields, last changed. |
+| `session` | Logged time: hours, date, start time, description, task, area, task/event, energy type, intensity, points, note, custom fields, last changed. |
 | `session_energy` | The parts of a session with several energy types: share, intensity, points. |
 | `session_subtype` | A session's ranked subtypes. |
 | `day_plan` | Each day's focus, ceilings and evening answers. |

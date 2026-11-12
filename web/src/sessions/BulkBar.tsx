@@ -83,10 +83,10 @@ export function BulkBar({
         style={{ width: 120 }}
         value={null}
         disabled={busy}
-        onChange={(v: string) => set({ kind: v }, `Marked as ${v === "event" ? "event" : "work"}`)}
+        onChange={(v: string) => set({ kind: v }, `Marked as ${v === "event" ? "event" : "task"}`)}
         options={[
-          { value: "task", label: "Work" },
-          { value: "event", label: "Event (not work)" },
+          { value: "task", label: "Task" },
+          { value: "event", label: "Event" },
         ]}
       />
       <Select

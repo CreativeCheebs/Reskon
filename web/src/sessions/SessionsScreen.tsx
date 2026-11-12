@@ -250,12 +250,12 @@ export function SessionsScreen() {
           />
           <Segmented
             size="small"
-            aria-label="Work or events"
+            aria-label="Tasks or events"
             value={filters.kind}
             onChange={(v) => setF("kind", v as Filters["kind"])}
             options={[
               { value: "", label: "All" },
-              { value: "task", label: "Work", icon: KIND_ICON.task },
+              { value: "task", label: "Task", icon: KIND_ICON.task },
               { value: "event", label: "Events", icon: KIND_ICON.event },
             ]}
           />

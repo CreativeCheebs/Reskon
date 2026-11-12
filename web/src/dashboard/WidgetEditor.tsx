@@ -313,7 +313,7 @@ export function WidgetEditor({
           {metric?.filters?.includes("kind") && (
             <Form.Item label="Kind" {...item}>
               <Select mode="multiple" allowClear placeholder="All" value={filters.kind as string[] | undefined} onChange={(v) => setFilter("kind", v)}
-                options={kindValues.map((k) => ({ value: k, label: k === "task" ? "work" : k }))} />
+                options={kindValues.map((k) => ({ value: k, label: k }))} />
             </Form.Item>
           )}
           {metric?.filters?.includes("task_id") && (

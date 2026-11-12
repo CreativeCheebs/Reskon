@@ -203,7 +203,7 @@ fun SessionFields(d: Draft, onDone: (() -> Unit)? = null, set: (Draft) -> Unit) 
             Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 T("Kind", Palette.muted, 14.sp, modifier = Modifier.width(64.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Pill("Work", d.kind == "task") { set(d.copy(kind = "task")) }
+                    Pill("Task", d.kind == "task") { set(d.copy(kind = "task")) }
                     Pill("Event", d.kind == "event") { set(d.copy(kind = "event")) }
                 }
             }

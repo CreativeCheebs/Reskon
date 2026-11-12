@@ -154,7 +154,7 @@ export function interactionCss(): string {
       width: 24px; height: 24px;
       display: inline-flex; align-items: center; justify-content: center;
     }
-    /* Every segmented switch (Board/Table, the dashboard's ranges, Work or
+    /* Every segmented switch (Board/Table, the dashboard's ranges, Task or
        Event ...) looks like the board toolbar's. 24px tall like the selects
        beside them: a 1px border, then a 2px gap
        on every side of the selected fill. Every option has the same height,
@@ -201,7 +201,7 @@ export function interactionCss(): string {
     .ant-btn-default:not(:disabled):not(.jb-active):not(.ant-btn-dangerous):not(:hover) { border-color: ${palette.borderStrong}; }
     .ant-segmented { max-width: 100%; }
     .ant-segmented .ant-segmented-item-label .anticon { font-size: 12px; margin-inline-end: 5px; }
-    /* Work or Event: two equal options. */
+    /* Task or Event: two equal options. */
     .jb-kind .ant-segmented-item { flex: 1 1 0; min-width: 120px; }
     /* Colour pickers: the swatch centred in its box, one size on every row. */
     .ant-color-picker-trigger { display: inline-flex !important; align-items: center; justify-content: center; padding: 0 !important; box-sizing: border-box; }
