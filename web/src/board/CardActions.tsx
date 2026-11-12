@@ -326,7 +326,7 @@ export const RailButton = forwardRef<
 
 /** The task's description, edited in place. Saves with the updated_at the
  *  card last saw, retrying once on a conflict like the task panel does. */
-function NoteEditor({ task, onSaved, onClose }: { task: Task; onSaved: (t: Task) => void; onClose: () => void }) {
+export function NoteEditor({ task, onSaved, onClose }: { task: Task; onSaved: (t: Task) => void; onClose: () => void }) {
   const [text, setText] = useState(task.description ?? "");
   const [busy, setBusy] = useState(false);
   const save = async () => {

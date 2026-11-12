@@ -79,7 +79,7 @@ const groupsFor = (T: Terms): { label: string; sections: Section[] }[] => [
         key: "card-actions",
         label: "Card actions",
         intro:
-          "Quick actions on board cards. Buttons appear when you hover a card or tab to it; the card's More button holds every action that isn't a button. Right-click a card for the menu.",
+          "Quick actions on board cards. Buttons appear when you hover a card or tab to it; the card's More button holds every action that isn't a button. Right-click a card, or a row in the list, for the menu.",
         render: () => <CardActionSettings />,
       },
       {

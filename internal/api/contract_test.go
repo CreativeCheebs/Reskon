@@ -54,6 +54,7 @@ func TestAnotherUserCannotReachRecordsByID(t *testing.T) {
 		{"move a task", "POST", fmt.Sprintf("/api/tasks/%d/move", task.ID), m{"status_id": 3}},
 		{"read a task's history", "GET", fmt.Sprintf("/api/tasks/%d/transitions", task.ID), nil},
 		{"edit a session", "PATCH", fmt.Sprintf("/api/sessions/%d", session.ID), m{"hours": 9}},
+		{"delete tasks together", "POST", "/api/tasks/delete", m{"task_ids": []int64{task.ID}}},
 	}
 	for _, c := range cases {
 		if code := bob.do(c.method, c.path, c.body, nil); code != 404 {

@@ -123,3 +123,42 @@ test("Enter in the Log time form saves only once it is complete", async ({ page 
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
 });
+
+// The table's own actions. They only open things and cancel: nothing is moved or deleted.
+test("a table row's status is a button that lists the statuses, and Escape closes it", async ({ page }) => {
+  await signIn(page);
+  await layout(page, "Table");
+  const status = page.getByRole("button", { name: /^Status: .*Change status$/ }).first();
+  await status.click();
+  await expect(page.getByRole("menu")).toBeVisible();
+  // Opening the list must not also open the task.
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("menu")).toHaveCount(0);
+});
+
+test("right-click on a table row opens the card menu, and a click elsewhere closes it", async ({ page }) => {
+  await signIn(page);
+  await layout(page, "Table");
+  await page.locator("tbody tr[tabindex='0']").first().click({ button: "right" });
+  await expect(page.getByRole("menu")).toBeVisible();
+  await page.getByRole("heading").first().click();
+  await expect(page.getByRole("menu")).toHaveCount(0);
+});
+
+test("deleting several table rows needs the word typed, and Cancel leaves them", async ({ page }) => {
+  await signIn(page);
+  await layout(page, "Table");
+  const boxes = page.locator("tbody .ant-table-selection-column input[type='checkbox']");
+  await boxes.nth(0).check();
+  await boxes.nth(1).check();
+  await page.getByRole("toolbar", { name: /^Selected / }).getByRole("button", { name: "Delete" }).click();
+  const dialog = page.getByRole("dialog").filter({ hasText: "type delete" });
+  await expect(dialog).toBeVisible();
+  const ok = dialog.getByRole("button", { name: /^Delete 2$/ });
+  await expect(ok).toBeDisabled();
+  await dialog.getByLabel(/type delete/).fill("delet");
+  await expect(ok).toBeDisabled();
+  await dialog.getByRole("button", { name: "Cancel" }).click();
+  await expect(dialog).toBeHidden();
+});

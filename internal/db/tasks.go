@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -355,32 +356,86 @@ func (d *DB) DeleteTask(ctx context.Context, id int64) error {
 // epic, its tasks stay and simply lose the epic. Its subtasks are deleted
 // with it when withSubtasks is set; otherwise they stay, as ordinary tasks.
 func (d *DB) DeleteTaskWith(ctx context.Context, id int64, withSubtasks bool) error {
-	now := Now()
 	return d.inTx(ctx, func(tx *sql.Tx) error {
-		if withSubtasks {
-			if _, err := tx.ExecContext(ctx, `UPDATE task SET deleted_at = ?, updated_at = ? WHERE parent_id = ? AND deleted_at IS NULL`,
-				now, now, id); err != nil {
-				return err
-			}
-		}
-		res, err := tx.ExecContext(ctx, `UPDATE task SET deleted_at = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL`,
-			now, now, id)
-		if err != nil {
-			return err
-		}
-		if n, _ := res.RowsAffected(); n == 0 {
-			return ErrNotFound
-		}
-		// Deleting an epic leaves its tasks in place, without an epic.
-		_, err = tx.ExecContext(ctx, `UPDATE task SET epic_id = NULL, updated_at = ? WHERE epic_id = ? AND deleted_at IS NULL`, now, id)
-		if err != nil {
-			return err
-		}
-		_, err = tx.ExecContext(ctx, `UPDATE task SET parent_id = NULL, updated_at = ? WHERE parent_id = ? AND deleted_at IS NULL`, now, id)
-		if err != nil {
+		if err := deleteTaskTx(ctx, tx, id, withSubtasks, Now()); err != nil {
 			return err
 		}
 		// A deleted task blocks nothing.
 		return releaseUnblocked(ctx, tx)
 	})
+}
+
+// DeleteTasks soft-deletes several tasks in one go, from the table's
+// selection: all of them or none, at most 1000. A task that is already gone,
+// or an id that is not a task, fails the whole call and nothing is deleted.
+// Each task is handled as DeleteTaskWith handles it, so an epic's tasks stay
+// without the epic. An id given twice counts once, and so does a subtask
+// that is selected together with its parent when subtasks go with it. It
+// returns how many different tasks were chosen.
+func (d *DB) DeleteTasks(ctx context.Context, ids []int64, withSubtasks bool) (int, error) {
+	if len(ids) == 0 {
+		return 0, invalid("choose at least one task")
+	}
+	if len(ids) > maxBulkTasks {
+		return 0, invalid("at most %d tasks at a time", maxBulkTasks)
+	}
+	now := Now()
+	unique := make([]int64, 0, len(ids))
+	seen := make(map[int64]bool, len(ids))
+	for _, id := range ids {
+		if !seen[id] {
+			seen[id] = true
+			unique = append(unique, id)
+		}
+	}
+	err := d.inTx(ctx, func(tx *sql.Tx) error {
+		// Every id must be a live task before anything is changed.
+		for _, id := range unique {
+			var one int
+			err := tx.QueryRowContext(ctx, `SELECT 1 FROM task WHERE id = ? AND deleted_at IS NULL`, id).Scan(&one)
+			if err == sql.ErrNoRows {
+				return ErrNotFound
+			}
+			if err != nil {
+				return err
+			}
+		}
+		for _, id := range unique {
+			// A subtask already deleted with its parent earlier in this batch is done.
+			if err := deleteTaskTx(ctx, tx, id, withSubtasks, now); err != nil && !errors.Is(err, ErrNotFound) {
+				return err
+			}
+		}
+		return releaseUnblocked(ctx, tx)
+	})
+	if err != nil {
+		return 0, err
+	}
+	return len(unique), nil
+}
+
+// The most tasks one bulk move or delete may name.
+const maxBulkTasks = 1000
+
+func deleteTaskTx(ctx context.Context, tx *sql.Tx, id int64, withSubtasks bool, now string) error {
+	if withSubtasks {
+		if _, err := tx.ExecContext(ctx, `UPDATE task SET deleted_at = ?, updated_at = ? WHERE parent_id = ? AND deleted_at IS NULL`,
+			now, now, id); err != nil {
+			return err
+		}
+	}
+	res, err := tx.ExecContext(ctx, `UPDATE task SET deleted_at = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL`,
+		now, now, id)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrNotFound
+	}
+	// Deleting an epic leaves its tasks in place, without an epic.
+	if _, err = tx.ExecContext(ctx, `UPDATE task SET epic_id = NULL, updated_at = ? WHERE epic_id = ? AND deleted_at IS NULL`, now, id); err != nil {
+		return err
+	}
+	_, err = tx.ExecContext(ctx, `UPDATE task SET parent_id = NULL, updated_at = ? WHERE parent_id = ? AND deleted_at IS NULL`, now, id)
+	return err
 }

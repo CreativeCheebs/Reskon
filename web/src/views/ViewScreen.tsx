@@ -93,6 +93,23 @@ export function ViewScreen({ view }: { view: View }) {
   // drawer opens.
   const update = useCallback((fn: (prev: Task[]) => Task[]) => setTasks((prev) => fn(prev ?? [])), []);
   const replace = useCallback((t: Task) => update((prev) => prev.map((x) => (x.id === t.id ? t : x))), [update]);
+  // A move can take tasks out of this view's filter, so ask again after it.
+  const moved = useCallback(
+    (changed: Task[]) => {
+      update((prev) => prev.map((t) => changed.find((m) => m.id === t.id) ?? t));
+      refetch();
+    },
+    [update, refetch],
+  );
+  // A deleted epic's tasks lose it, so the epic lists and counts are asked for again.
+  const deleted = useCallback(
+    (ids: number[]) => {
+      update((prev) => prev.filter((t) => !ids.includes(t.id)));
+      refetch();
+      refreshEpics();
+    },
+    [update, refetch, refreshEpics],
+  );
   const groupBy: GroupBy = view.board_state?.group_by ?? "none";
   const timeline = !!view.board_state?.timeline;
   const groupOptions = groupOptionsFor(T).filter((o) => !(view.layout === "board" && o.tableOnly));
@@ -353,16 +370,23 @@ export function ViewScreen({ view }: { view: View }) {
             groupBy={groupBy}
             widthsKey={`view:${view.id}`}
             onOpenTask={setOpenTask}
-            onMoved={(moved) => {
-              // A move can take tasks out of this view's filter.
-              update((prev) => prev.map((t) => moved.find((m) => m.id === t.id) ?? t));
-              refetch();
-            }}
+            onMoved={moved}
+            onDeleted={deleted}
           />
         )}
       </div>
       {shown && hiddenStatus !== null && (
-        <HiddenStatusOverlay statusId={hiddenStatus} tasks={shown} onClose={() => setHiddenStatus(null)} onMoved={replace} onOpenTask={setOpenTask} />
+        <HiddenStatusOverlay
+          statusId={hiddenStatus}
+          tasks={shown}
+          config={cardConfigOf(view)}
+          groupBy={groupBy}
+          widthsKey={`hidden:${view.id}`}
+          onClose={() => setHiddenStatus(null)}
+          onMoved={moved}
+          onDeleted={deleted}
+          onOpenTask={setOpenTask}
+        />
       )}
       {shown && incompleteOpen && <IncompleteOverlay tasks={shown} onClose={() => setIncompleteOpen(false)} onOpenTask={setOpenTask} />}
       {awake && blockedOpen && (

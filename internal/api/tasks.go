@@ -15,6 +15,7 @@ func (s *Server) taskRoutes() {
 	m.HandleFunc("DELETE /api/tasks/{id}", s.deleteTask)
 	m.HandleFunc("POST /api/tasks/{id}/move", s.moveTask)
 	m.HandleFunc("POST /api/tasks/move", s.moveTasks)
+	m.HandleFunc("POST /api/tasks/delete", s.deleteTasks)
 	m.HandleFunc("POST /api/tasks/{id}/snooze", s.snoozeTask)
 	m.HandleFunc("GET /api/tasks/{id}/transitions", s.taskTransitions)
 	m.HandleFunc("GET /api/cycle-time", s.cycleTime)
@@ -84,6 +85,22 @@ func (s *Server) moveTasks(w http.ResponseWriter, r *http.Request) {
 	}
 	ts, err := dbOf(r.Context()).MoveMany(r.Context(), body.TaskIDs, body.StatusID, body.Today)
 	respond(w, ts, err)
+}
+
+// deleteTasks deletes several tasks at once, from the table's selection:
+// all or none. subtasks "delete" deletes their subtasks too; by default
+// they stay as ordinary tasks.
+func (s *Server) deleteTasks(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		TaskIDs  []int64 `json:"task_ids"`
+		Subtasks string  `json:"subtasks"`
+	}
+	if err := decodeBody(r, &body); err != nil {
+		respond(w, nil, err)
+		return
+	}
+	n, err := dbOf(r.Context()).DeleteTasks(r.Context(), body.TaskIDs, body.Subtasks == "delete")
+	respond(w, map[string]int{"deleted": n}, err)
 }
 
 // snoozeTask hides an open task for {days} days from {today}, or with

@@ -85,7 +85,7 @@ Every task gets a key when it is created, made of its area's prefix and a number
 
 - Seeded statuses: **Backlog**, **To do**, **In progress**, **Done**, **Cancelled**. All five are built in: they can be renamed and recoloured, but not deleted.
 - Each status has a colour, a position and a behaviour (*to do*, *in progress*, *done*, *cancelled*). You can add your own statuses.
-- A status can be **hidden from the board** (Backlog and Cancelled are). Hidden statuses open from small buttons next to the search box, as a list over the board. These buttons (and Snoozed, Blocked, Incomplete) show only when they have at least one task. Taking a task out of the backlog puts it in the first visible *to do* status.
+- A status can be **hidden from the board** (Backlog and Cancelled are). Hidden statuses open from small buttons next to the search box, as the view's own list (see 5.4) over the board, narrowed to that status, with the same columns, grouping, sorting, status buttons, right-click menu and bulk actions, and a **To to-do** button on each row. These buttons (and Snoozed, Blocked, Incomplete) show only when they have at least one task. Taking a task out of the backlog puts it in the first visible *to do* status.
 - A status can have **"alert after N days"**: a task that has sat in it longer is marked as stalled (a red edge on its card). Empty means never.
 
 ### 4.4 Moving a task
@@ -161,7 +161,7 @@ Settings › Complete details lets you choose fields an open task should have (s
 
 ### 4.14 Deleting a task
 
-Deleting a task hides it (its key stays used). Its sessions stay, without a task. A deleted task blocks nothing.
+Deleting a task hides it (its key stays used). Its sessions stay, without a task. A deleted task blocks nothing. Deleting an epic does not delete the tasks in it: they stay, just no longer in that epic. Deleting one task asks yes or no (a task with subtasks also asks whether they go too). Deleting **several at once** from the table has no undo, so the box lists what goes and asks for the word *delete* to be typed out by hand (pasting is blocked). All of them are deleted or none (`POST /api/tasks/delete`); subtasks stay as ordinary tasks unless the box is ticked.
 
 ### 4.15 Editing at the same time in two places
 
@@ -193,11 +193,11 @@ Per view: area, created age, started age, time in status, level, priority, energ
 - **Collapsed columns** are shared by every lane and still accept drops.
 - **Column limits** per status: a maximum in tasks, points or estimate hours. A soft limit colours the header. A hard limit asks "Move anyway?" before a drag takes the column over. Limits are stored with the view and sync.
 - Cards show priority, level, time in status and due date as small chips with text (the level chip says "Level 3" beside its lines). A coloured edge marks stalled (red) or overdue (amber) cards.
-- **Card actions**: Log time, Snooze, Note, Move to, Open task, Delete. Settings › Card actions chooses which are buttons on a hovered card (up to 3; default Log time and Snooze) and which are in the right-click menu (default all). On the phone, long-press a card to move it.
+- **Card actions**: Log time, Snooze, Note, Move to, Open task, Delete. Settings › Card actions chooses which are buttons on a hovered card (up to 3; default Log time and Snooze) and which are in the right-click menu on cards and table rows (default all). On the phone, long-press a card to move it.
 
 ### 5.4 List (table)
 
-The same view as a table, with the same filter and the same field choices as columns. Rows start sorted by time in status, longest first (the "aging" list). Tab reaches each row and Enter or Space opens it. Sorting by area sorts by the area's name. Rows can be grouped (including by status) and ticked for bulk moves. Column widths can be dragged and are remembered in that browser only.
+The same view as a table, with the same filter and the same field choices as columns. Rows start sorted by time in status, longest first (the "aging" list). Tab reaches each row and Enter or Space opens it. Sorting by area sorts by the area's name. Rows can be grouped (including by status) and ticked for bulk actions: move to a status, or delete (see 4.14). The **status** of each row is a button that opens the list of statuses; choosing one moves the task (and writes its history) and does nothing else. **Right-click a row** (or press the keyboard's menu key on it) for the same menu as a board card's right-click menu: Settings › Card actions chooses which items it lists, one setting for cards and rows alike; with none chosen the browser's own menu shows. Column widths can be dragged and are remembered in that browser only.
 
 ### 5.5 Timeline
 
@@ -530,6 +530,7 @@ JSON over HTTP. Every `/api` call except health and sign-in needs the session co
 | `/api/states`, `GET /api/states/shapes` | Buffs and debuffs. |
 | `/api/areas`, `/api/statuses`, `/api/status-categories`, `/api/priorities`, `/api/energy-types`, `/api/subtypes`, `/api/custom-fields`, `/api/views` | Your lists. DELETE takes `?reassign_to=:id` (and `?clear=true` for priorities). |
 | `PUT /api/settings/:key` | Save a setting. |
+| `POST /api/tasks/delete` | Delete up to 1000 tasks at once (`task_ids`; `subtasks: "delete"` takes their subtasks too). All or nothing. |
 | `POST /api/images`, `GET /api/images/:id` | Background images. |
 | `POST /api/sync` | Sync: a device sends its changes and gets back what it hasn't seen. The `X-Sync-Size` header gives the answer's size before compression, for the phone's progress bar. |
 | `POST /api/sync/outgoing`, `POST /api/sync/incoming` | Used by the phone's built-in core: get the request to send, apply the answer. |

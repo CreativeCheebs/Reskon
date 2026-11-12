@@ -8,7 +8,7 @@ import { CARD_ACTIONS, cardActionsFor, RAIL_MAX, cardActionsOf, type CardActionC
 import { useTerms } from "../terms";
 
 // The `card_actions` setting: which actions are buttons on a board card
-// (shown on hover) and which the card's right-click menu lists. Actions
+// (shown on hover) and which the right-click menu lists, on a board card and on a row in the list. Actions
 // that are not buttons stay under the card's More button. Saves on change.
 
 export function CardActionSettings() {

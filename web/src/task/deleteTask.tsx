@@ -17,7 +17,13 @@ export function deleteTaskAsking(task: Task, onDeleted: (id: number) => void, on
   };
   const n = task.subtask_count;
   if (!n) {
-    confirm({ title: `Delete “${task.title}”?`, okText: "Delete", okButtonProps: { danger: true }, onOk: () => del("keep") });
+    confirm({
+      title: `Delete “${task.title}”?`,
+      content: task.type === "epic" ? `Its ${T.tasks} are not deleted: they stay, just no longer in this ${T.epic}.` : undefined,
+      okText: "Delete",
+      okButtonProps: { danger: true },
+      onOk: () => del("keep"),
+    });
     return;
   }
   const dialog = confirm({

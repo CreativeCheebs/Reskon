@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { Button, Divider, Select } from "antd";
+import { DeleteOutlined } from "@ant-design/icons";
 import { api } from "../api";
 import { useApp } from "../store";
 import { message } from "../theme/feedback";
 import { palette } from "../theme/palette";
 import { today } from "../format";
 import type { Task } from "../types";
+import { deleteTaskAsking } from "../task/deleteTask";
+import { BulkDeleteModal } from "./BulkDelete";
 import { useTerms } from "../terms";
 
 // Actions on the tasks ticked in a table. Moving goes through one
@@ -19,6 +22,9 @@ export function TaskBulkBar({
   onSelectAll,
   onMoved,
   onClear,
+  tasks,
+  onDeleted,
+  zIndex = 20,
 }: {
   ids: number[];
   /** How many rows the table shows, for "Select all". */
@@ -26,10 +32,17 @@ export function TaskBulkBar({
   onSelectAll: () => void;
   onMoved: (tasks: Task[]) => void;
   onClear: () => void;
+  /** The ticked tasks, for the delete confirmation. */
+  tasks: Task[];
+  /** Called with the ids once they are deleted. */
+  onDeleted: (ids: number[]) => void;
+  /** Above a pop-up that this bar sits in. */
+  zIndex?: number;
 }) {
   const { boot, online } = useApp();
   const T = useTerms();
   const [busy, setBusy] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const n = ids.length;
   const plural = T.countTasks(n);
   const statuses = [...boot.statuses].sort((a, b) => a.position - b.position);
@@ -56,7 +69,7 @@ export function TaskBulkBar({
         bottom: 20,
         left: "50%",
         transform: "translateX(-50%)",
-        zIndex: 20,
+        zIndex,
         display: "flex",
         flexWrap: "wrap",
         alignItems: "center",
@@ -95,9 +108,23 @@ export function TaskBulkBar({
           ),
         }))}
       />
+      <Button
+        size="small"
+        danger
+        icon={<DeleteOutlined />}
+        disabled={busy || !online}
+        onClick={() => {
+          // One task: the usual yes or no. Several: type the word.
+          if (tasks.length === 1) deleteTaskAsking(tasks[0], (id) => onDeleted([id]), (e) => message.error(e.message), T);
+          else setDeleting(true);
+        }}
+      >
+        Delete
+      </Button>
       <Button size="small" type="text" onClick={onClear}>
         Clear
       </Button>
+      {deleting && <BulkDeleteModal tasks={tasks} onClose={() => setDeleting(false)} onDeleted={onDeleted} />}
     </div>
   );
 }

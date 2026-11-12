@@ -1,81 +1,90 @@
-import { Modal, Table } from "antd";
+import { Modal } from "antd";
+import type { ColumnsType } from "antd/es/table";
 import { message } from "../theme/feedback";
 import { api } from "../api";
 import { firstBoardTodoStatus, useApp } from "../store";
 import { WriteButton } from "../offline";
-import { formatAge, today } from "../format";
-import { useColumnWidths } from "../views/useColumnWidths";
-import type { Task } from "../types";
+import { today } from "../format";
+import { TaskTable } from "../views/TaskTable";
+import type { CardConfig, GroupBy, Task } from "../types";
 
 // Overlay for a hidden (on_board = 0) status such as Backlog. Escape closes
-// it; it is not a route. Nothing here is specific to Backlog.
+// it; it is not a route. It is the view's own table (same columns, grouping,
+// sorting, status buttons, right-click menu and bulk actions), narrowed to
+// that status, so nothing the List layout can do is missing here. Nothing
+// here is specific to Backlog.
 
 interface Props {
   statusId: number;
   tasks: Task[];
+  /** The view's columns and grouping, as its List layout shows them. */
+  config: CardConfig;
+  groupBy: GroupBy;
+  widthsKey: string;
   onClose: () => void;
-  onMoved: (t: Task) => void;
+  /** Called with the tasks a move changed. */
+  onMoved: (tasks: Task[]) => void;
+  onDeleted: (ids: number[]) => void;
   onOpenTask: (id: number) => void;
 }
 
-export function HiddenStatusOverlay({ statusId, tasks, onClose, onMoved, onOpenTask }: Props) {
+/** Above the pop-up itself, so its bulk bar can be reached. */
+const OVERLAY_Z = 1100;
+
+export function HiddenStatusOverlay({ statusId, tasks, config, groupBy, widthsKey, onClose, onMoved, onDeleted, onOpenTask }: Props) {
   const app = useApp();
   const status = app.statusById.get(statusId);
   const target = firstBoardTodoStatus(app);
   const rows = tasks.filter((t) => t.status_id === statusId);
-  const areaName = (id: number) => app.boot.areas.find((a) => a.id === id)?.name ?? "";
 
   const moveToBoard = async (t: Task) => {
     if (!target) return;
     try {
-      onMoved(await api.post<Task>(`/tasks/${t.id}/move`, { status_id: target.id, today: today() }));
+      const { column_renumbered: _, ...moved } = await api.post<Task & { column_renumbered?: boolean }>(`/tasks/${t.id}/move`, {
+        status_id: target.id,
+        today: today(),
+      });
+      onMoved([moved]);
     } catch (e) {
       message.error((e as Error).message);
     }
   };
 
-  const sized = useColumnWidths<Task>("hidden-status", [
-    { key: "title", title: "Title", dataIndex: "title" },
-    { key: "area", title: "Area", width: 120, render: (_, t) => areaName(t.area_id) },
-    {
-      key: "time",
-      title: "Time here",
-      width: 100,
-      sorter: (a, b) => a.time_in_status_h - b.time_in_status_h,
-      defaultSortOrder: "descend",
-      render: (_, t) => formatAge(t.time_in_status_h),
-    },
-    {
-      title: "",
-      width: 130,
-      render: (_, t) => (
-        <WriteButton
-          size="small"
-          disabled={!target}
-          onClick={(e) => {
-            e.stopPropagation();
-            moveToBoard(t);
-          }}
-        >
-          To {target?.name ?? "board"}
-        </WriteButton>
-      ),
-    },
-  ]);
+  // The one extra: a button to bring a task back to the board in one click.
+  const toBoard: ColumnsType<Task>[number] = {
+    key: "to-board",
+    title: "",
+    width: 130,
+    render: (_, t) => (
+      <WriteButton
+        size="small"
+        disabled={!target}
+        onClick={(e) => {
+          e.stopPropagation();
+          moveToBoard(t);
+        }}
+      >
+        To {target?.name ?? "board"}
+      </WriteButton>
+    ),
+  };
 
   return (
-    <Modal open title={`${status?.name ?? "Hidden"} · ${rows.length}`} onCancel={onClose} footer={null} width={760} keyboard>
-      <Table<Task>
-        size="small"
-        rowKey="id"
-        dataSource={rows}
-        pagination={false}
-        scroll={{ y: 480 }}
-        onRow={(t) => ({ onClick: () => onOpenTask(t.id), style: { cursor: "pointer" } })}
-        columns={sized.columns}
-        components={sized.components}
-        tableLayout="fixed"
-      />
+    <Modal open title={`${status?.name ?? "Hidden"} · ${rows.length}`} onCancel={onClose} footer={null} width="min(1200px, 94vw)" keyboard>
+      <div style={{ maxHeight: "70vh", overflow: "auto" }}>
+        <TaskTable
+          tasks={rows}
+          config={config}
+          groupBy={groupBy}
+          widthsKey={widthsKey}
+          sticky={false}
+          bulkZIndex={OVERLAY_Z}
+          extraColumn={toBoard}
+          onOpenTask={onOpenTask}
+          onMoved={onMoved}
+          onDeleted={onDeleted}
+        />
+      </div>
     </Modal>
   );
 }

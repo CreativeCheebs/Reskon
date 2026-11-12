@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { ConfigProvider, Table, Tag, Typography } from "antd";
 import { TimeBar } from "../task/TimeBar";
 import type { ColumnsType } from "antd/es/table";
@@ -16,6 +16,9 @@ import { useSurfaceOpacity, withAlpha } from "./ViewBackdrop";
 import { TaskBulkBar } from "./TaskBulkBar";
 import { checkboxLabel } from "../a11y";
 import { useTerms } from "../terms";
+import { cardActionsOf } from "../board/CardActions";
+import { RowMenu } from "./RowMenu";
+import { StatusPicker } from "./StatusPicker";
 
 // Table layout: same filter, columns from the same `show` config as cards.
 // Default sort is time in status, descending — the aging list.
@@ -30,6 +33,10 @@ export function TaskTable({
   widthsKey,
   onOpenTask,
   onMoved,
+  onDeleted,
+  sticky = true,
+  bulkZIndex,
+  extraColumn,
 }: {
   tasks: Task[];
   config: CardConfig;
@@ -37,8 +44,17 @@ export function TaskTable({
   /** Names this table for its saved column widths, e.g. "view:3". */
   widthsKey: string;
   onOpenTask: (id: number) => void;
-  /** Turns on row selection; called with the tasks a bulk move changed. */
+  /** Turns on row selection, the status button and the right-click menu;
+   *  called with the tasks a move changed. */
   onMoved?: (tasks: Task[]) => void;
+  /** Called with the ids of the tasks deleted from a row menu or the bulk bar. */
+  onDeleted?: (ids: number[]) => void;
+  /** The header stays in view while the page scrolls. Off inside a pop-up. */
+  sticky?: boolean;
+  /** Raises the bulk bar above a pop-up this table sits in. */
+  bulkZIndex?: number;
+  /** One more column at the end, such as a row's own button. */
+  extraColumn?: ColumnsType<Task>[number];
 }) {
   const { boot, statusById } = useApp();
   const T = useTerms();
@@ -100,7 +116,9 @@ export function TaskTable({
       width: 120,
       render: (_, t) => {
         const s = statusById.get(t.status_id);
-        return s && <Lozenge color={s.color} strong>{s.name}</Lozenge>;
+        if (!s) return null;
+        // With moves on, the status is a button listing the statuses.
+        return onMoved ? <StatusPicker task={t} onMoved={(m) => onMoved([m])} /> : <Lozenge color={s.color} strong>{s.name}</Lozenge>;
       },
       sorter: (a, b) => (statusById.get(a.status_id)?.position ?? 0) - (statusById.get(b.status_id)?.position ?? 0),
     });
@@ -212,11 +230,31 @@ export function TaskTable({
         <span style={{ color: t.stalled ? palette.danger : undefined }}>{formatAge(t.time_in_status_h)}</span>
       ),
     });
+  if (extraColumn) cols.push(extraColumn);
   const sized = useColumnWidths<Task>(widthsKey, cols);
   const surface = useSurfaceOpacity();
   // Rows start in aging order even when the column is hidden.
   const rows = [...tasks].sort((a, b) => b.time_in_status_h - a.time_in_status_h);
   const [picked, setPicked] = useState<Set<number>>(new Set());
+  // The row whose right-click menu is open, and where.
+  // Kept by id so the menu always works on the task as it is now, and by a
+  // number so only the menu that asked to close is closed.
+  const [menu, setMenu] = useState<{ id: number; seq: number; x: number; y: number } | null>(null);
+  const menuSeq = useRef(0);
+  const lastRow = useRef(0);
+  const closeMenu = useCallback((seq: number) => {
+    setMenu((m) => (m && m.seq === seq ? null : m));
+    // Give the keyboard back to the row the menu came from.
+    window.setTimeout(() => {
+      if (document.activeElement === document.body || document.activeElement === null) {
+        document.querySelector<HTMLElement>(`tr[data-row-key="${lastRow.current}"]`)?.focus();
+      }
+    }, 0);
+  }, []);
+  // Settings > Card actions lists nothing for the menu: the browser's own then.
+  // Snooze is only offered for open tasks, so it can leave a task nothing.
+  const menuKeys = cardActionsOf(boot.settings).menu;
+  const hasMenu = (t: Task) => menuKeys.some((k) => k !== "snooze" || t.behaviour === "todo" || t.behaviour === "in_progress");
   // Only rows still shown count, so a filter change never moves hidden tasks.
   const selected = rows.filter((t) => picked.has(t.id)).map((t) => t.id);
 
@@ -245,11 +283,29 @@ export function TaskTable({
       }
       onRow={(t) => ({
         // A click on the tick box selects the row; anywhere else opens it.
-        onClick: (e) => !(e.target as HTMLElement).closest(".ant-table-selection-column") && onOpenTask(t.id),
+        onClick: (e) => {
+          // React sends events from pop-ups drawn elsewhere (a status list, a menu) up to the row too: ignore those.
+          if (!e.currentTarget.contains(e.target as Node)) return;
+          if (!(e.target as HTMLElement).closest(".ant-table-selection-column")) onOpenTask(t.id);
+        },
+        onContextMenu: (e) => {
+          if (!e.currentTarget.contains(e.target as Node)) return;
+          if (!onMoved || !hasMenu(t)) return;
+          e.preventDefault();
+          // The keyboard's menu key sends no pointer position: use the row.
+          const at = e.clientX === 0 && e.clientY === 0 ? (e.currentTarget as HTMLElement).getBoundingClientRect() : null;
+          lastRow.current = t.id;
+          setMenu({ id: t.id, seq: ++menuSeq.current, x: at ? at.left + 24 : e.clientX, y: at ? at.top + at.height / 2 : e.clientY });
+        },
         style: { cursor: "pointer" },
         // The same from the keyboard: Tab to a row, Enter or Space opens it.
         tabIndex: 0,
         onKeyDown: (e) => {
+          // Escape closes the menu, not a pop-up (the Backlog list) this table is in.
+          if (e.key === "Escape" && menu) {
+            e.stopPropagation();
+            setMenu(null);
+          }
           if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
             e.preventDefault();
             onOpenTask(t.id);
@@ -260,6 +316,12 @@ export function TaskTable({
   );
   const bar = onMoved && selected.length > 0 && (
     <TaskBulkBar
+      zIndex={bulkZIndex}
+      tasks={rows.filter((t) => picked.has(t.id))}
+      onDeleted={(ids) => {
+        setPicked(new Set());
+        onDeleted?.(ids);
+      }}
       ids={selected}
       total={rows.length}
       onSelectAll={() => setPicked(new Set(rows.map((t) => t.id)))}
@@ -267,6 +329,25 @@ export function TaskTable({
       onMoved={(moved) => {
         setPicked(new Set());
         onMoved(moved);
+      }}
+    />
+  );
+
+  const menuTask = menu ? rows.find((t) => t.id === menu.id) : undefined;
+  const rowMenu = menu && menuTask && onMoved && (
+    <RowMenu
+      key={menu.seq}
+      task={menuTask}
+      x={menu.x}
+      y={menu.y}
+      onDone={() => closeMenu(menu.seq)}
+      handlers={{
+        onOpen: onOpenTask,
+        onChanged: (t) => onMoved([t]),
+        onDeleted: (id) => {
+          setPicked((sel) => new Set([...sel].filter((x) => x !== id)));
+          onDeleted?.([id]);
+        },
       }}
     />
   );
@@ -294,13 +375,15 @@ export function TaskTable({
   if (groupBy === "none")
     return seeThrough(
       <>
-        {table(rows, true)}
+        {table(rows, sticky)}
         {bar}
+        {rowMenu}
       </>,
     );
   return seeThrough(
     <div style={{ height: "100%", overflow: "auto" }}>
       {bar}
+      {rowMenu}
       {groupTasks(rows, groupBy, boot, epics).map((g) => (
         <section key={g.key} style={{ marginBottom: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "4px 0 6px" }}>
