@@ -181,6 +181,9 @@ Tasks used Jira's blue ticked box. On a task that isn't finished, a ticked box r
 ### The task symbol is an outlined tick-box again (owner, 2026-11-13)
 The blue page symbol (2026-11-04) did not look good. Tasks now use an outlined tick-box in the accent colour, close to Jira's, in the same places as before; epics keep their lightning bolt. It is drawn as an outline, not a filled tick, so it does not read as "done". Nothing else about the 2026-11-04 entry changed (the subtask count still says "2/5 subtasks").
 
+### One version number (owner, 2026-11-13)
+The owner asked for a version to be kept, shown in Settings and in the commits. It is `major.minor.patch` in a `VERSION` file, starting at 0.2.0 (the phone app was 0.1.0). The server and web app share it; the phone's Gradle build reads the same file, and each release is tagged `v<version>` in git. A test fails if `VERSION`, `internal/version/version.go` and `web/package.json` disagree. The health check now also says the version, so the phone can show which server it is connected to. Nothing is checked when a phone and a server of different versions sync; sync already tolerates unknown fields.
+
 ### Time zone per person (owner, 2026-11-04)
 "Today" used to be the server's day, which can be wrong near midnight when the server runs in UTC. Now the browser and the phone send their time zone, and the server uses it.
 

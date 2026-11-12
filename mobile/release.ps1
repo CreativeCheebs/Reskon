@@ -45,7 +45,7 @@ try {
     if (-not $wantSha -or $wantSha -ne $gotSha) { throw "APK certificate $gotSha is not the Reskon key $wantSha" }
     Write-Host "signed with the Reskon key (SHA-256 $gotSha)"
 
-    $version = (Select-String -Path (Join-Path $android 'app\build.gradle.kts') -Pattern 'versionName = "([^"]+)"').Matches[0].Groups[1].Value
+    $version = (Get-Content (Join-Path $repo 'VERSION') -Raw).Trim()
     $outDir = Join-Path $PSScriptRoot 'build'
     New-Item -ItemType Directory -Force $outDir | Out-Null
     $apk = Join-Path $outDir "Reskon-$version.apk"

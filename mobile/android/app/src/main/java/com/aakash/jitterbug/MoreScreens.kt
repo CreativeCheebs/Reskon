@@ -21,6 +21,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -99,6 +100,9 @@ fun SettingsScreen() {
     val scope = rememberCoroutineScope()
     val ctx = LocalContext.current
     val sync = remember { Sync.state(ctx) }
+    // The connected server's version, from its health check; nothing is shown until it answers.
+    var serverVersion by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(sync.server) { serverVersion = sync.server?.let { Sync.serverVersion(it) } }
     Column(Modifier.fillMaxSize()) {
         TopBar("Settings", onBack = { App.back() })
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -137,7 +141,10 @@ fun SettingsScreen() {
             SectionTitle("Data")
             Card { ListRow("Download database", "A copy of everything, as one SQLite file") { App.go("data") } }
             SectionTitle("You")
-            Card { ListRow("Appearance", "Dark, as the web app", chevron = false) {} }
+            Card {
+                ListRow("Appearance", "Dark, as the web app", chevron = false) {}
+                Line(); ListRow("About", "Reskon ${appVersion(ctx)}${serverVersion?.let { " · server $it" } ?: ""}", chevron = false) {}
+            }
         }
     }
 }

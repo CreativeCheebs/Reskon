@@ -3,6 +3,7 @@ import { Alert, Button, Form, Input, Typography } from "antd";
 import { api, ApiError } from "../api";
 import { palette } from "../theme/palette";
 import type { User } from "./AuthGate";
+import { APP_VERSION } from "../version";
 
 // Sign in, or on a brand-new server create the first (admin) account.
 
@@ -43,7 +44,9 @@ export function LoginPage({ setup, tokenRequired = false, onSignedIn }: { setup:
           padding: 24,
         }}
       >
-        <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>Reskon</div>
+        <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>
+          Reskon <span style={{ fontSize: 12, fontWeight: 400, color: palette.muted }}>{APP_VERSION}</span>
+        </div>
         <Typography.Paragraph type="secondary" style={{ marginBottom: 16 }}>
           {setup
             ? "Welcome. Create the admin account — you can add other people afterwards. Each person's data is kept separate."

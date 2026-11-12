@@ -11,8 +11,12 @@ android {
         applicationId = "com.aakash.reskon"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        // One version for everything: the VERSION file at the top of the repository (see internal/version).
+        // versionCode is major * 10000 + minor * 100 + patch, so a newer version is always a higher number.
+        val version = file("../../../VERSION").readText().trim()
+        val (major, minor, patch) = version.split(".").map { it.toInt() }
+        versionCode = major * 10000 + minor * 100 + patch
+        versionName = version
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     // The release key lives outside the repo (X:\Personal\Keys). mobile/release.ps1 sets these two

@@ -16,6 +16,7 @@ import { AppearanceSettings } from "../theme/AppearanceSettings";
 import { ScreensSettings } from "./ScreensSettings";
 import { useTerms, type Terms } from "../terms";
 import { NamesSettings } from "./NamesSettings";
+import { AboutSettings } from "./AboutSettings";
 
 // Settings: sections grouped in a menu on the left, or in a picker above
 // the section when the screen is too narrow for both. The open section is
@@ -155,6 +156,7 @@ const groupsFor = (T: Terms): { label: string; sections: Section[] }[] => [
         bare: true,
       },
       { key: "account", label: "Account", render: () => <AccountSettings /> },
+      { key: "about", label: "About", render: () => <AboutSettings /> },
     ],
   },
   {

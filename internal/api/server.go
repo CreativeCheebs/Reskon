@@ -18,6 +18,7 @@ import (
 	"jitterbug/internal/capture"
 	"jitterbug/internal/db"
 	"jitterbug/internal/embed"
+	"jitterbug/internal/version"
 )
 
 // Server holds what handlers need. Each request works on the signed-in
@@ -92,7 +93,8 @@ func dbOf(ctx context.Context) *db.DB { return db.FromContext(ctx) }
 func (s *Server) routes() {
 	m := s.mux
 	m.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+		// The version lets the sign-in page and the phone say which Reskon this is.
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "version": version.Version})
 	})
 	s.authRoutes()
 	m.HandleFunc("GET /api/bootstrap", s.bootstrap)

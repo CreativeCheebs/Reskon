@@ -58,6 +58,12 @@ Everything lives in the `/data` volume (`auth.db`, `users/`). An older `/data/ji
 cd web && npm run dev       # Vite on :5173, proxies /api to :8080
 ```
 
+## Version
+
+Reskon has one version number, `major.minor.patch` (for example `0.2.0`), written in the `VERSION` file at the top of the repository. The server, the web app and the phone app all show it: the web app on the sign-in page and under Settings › About, the phone under Settings › About (with the server's version when it is connected to one), and the server in `GET /api/health`. The phone's `versionName` is read from the same file, and its `versionCode` is `major × 10000 + minor × 100 + patch`.
+
+To release a new version: change the number in three places that must agree, `VERSION`, `internal/version/version.go` and `web/package.json` (a test fails if they differ), commit, and tag the commit `v<version>` (`git tag v0.2.0`). Raise the middle number when the app gains something people will notice, and the last one for fixes only.
+
 ## Themes
 
 **Settings → Appearance**: Default, Jira, Jira increased contrast, GitHub Dark, GitHub Dark Dimmed. Download any of them as a template (JSON, each colour explained), edit it, and upload it back. The choice is saved to your account.

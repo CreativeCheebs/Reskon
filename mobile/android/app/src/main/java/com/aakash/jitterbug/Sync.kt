@@ -180,6 +180,12 @@ object Sync {
         Reply(code, text, set)
     }
 
+    /** The version a Reskon server says it is (its health check), or null if it does not answer or does not say. */
+    suspend fun serverVersion(base: String): String? = runCatching {
+        val r = http("GET", "$base/api/health")
+        if (r.code == 200) JSONObject(r.body).optString("version").ifBlank { null } else null
+    }.getOrNull()
+
     /**
      * Checks the address is a Reskon server, then signs in. The returned
      * state still has the first download to do; FirstSyncScreen does it.

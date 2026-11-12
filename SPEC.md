@@ -381,7 +381,7 @@ See decisions. In short: it would be a second program to run, embedding it secur
 | Time and points | Energy types (name, colour, points per hour), subtypes, subtype rank weights, reflection (week start) |
 | Connections | Quick capture model, duplicate search model, sync server (phone) |
 | Data | Download database (phone) |
-| You | Screens (the Day screen switch), Names (what tasks and epics are called), Appearance (themes: Default, Jira, Jira high contrast, GitHub Dark, GitHub Dark Dimmed; download one as a file, edit it, upload it; in any theme, grey secondary text is lightened just enough to be readable, at least 4.5:1 on every surface), account |
+| You | Screens (the Day screen switch), Names (what tasks and epics are called), About (the version), Appearance (themes: Default, Jira, Jira high contrast, GitHub Dark, GitHub Dark Dimmed; download one as a file, edit it, upload it; in any theme, grey secondary text is lightened just enough to be readable, at least 4.5:1 on every surface), account |
 | Admin | People |
 
 ### 12.1 Deleting something that is in use
@@ -413,6 +413,7 @@ Areas, statuses, priorities, energy types and subtypes all work the same way, li
 
 ### 13.1 The app
 
+- **Version.** Reskon has one version number (`major.minor.patch`, in the `VERSION` file). The web app shows it on the sign-in page and in Settings › About, the phone in Settings › About (and, when connected, the server's version, read from the server's health check), and the server in `GET /api/health`. See the README.
 - A Kotlin and Jetpack Compose app (Material 3, the web app's dark colours) in `mobile/android`. It is called **Reskon** on the phone (app id `com.aakash.reskon`). The release APK is signed with the Reskon key kept outside the repo and built, checked and copied to the Linux machine by `mobile/release.ps1` (why: `docs/decisions.md`).
 - **It works fully on its own.** It runs Reskon's own Go code inside the app (built as a library, `mobile/jbcore`), with its own database file on the phone. Every screen reads and writes through it, so everything works offline and every number is worked out by the same code as the server.
 - Screens: Today (plan and readout, only while the Day screen is switched on; the app opens on Board otherwise), Log session, Quick capture, Sessions, Inbox, Board / List / Timeline, Task, New task, Search, Buffs and debuffs, Dashboards, Cycle time, More, and Settings (everything in section 12, plus Sync server and Download database; Settings › Screens has the Day screen switch).
