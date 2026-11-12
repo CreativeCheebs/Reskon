@@ -9,6 +9,7 @@ import { DifficultyIcon, PriorityIcon, priorityColor } from "../task/LevelIcons"
 import { useEpics } from "../task/useEpics";
 import { paceChip, TimeBar } from "../task/TimeBar";
 import { useTerms } from "../terms";
+import { useTags } from "../tags/tags";
 
 // A board card, title first. Under it: labels (epic, area ...), then the
 // signals as tinted chips (priority, intensity, time in status, due), then
@@ -38,6 +39,7 @@ export function TaskCard({
   const { boot } = useApp();
   const T = useTerms();
   const { byId: epicsById } = useEpics();
+  const { namesOf } = useTags();
   const epic = task.epic_id ? epicsById.get(task.epic_id) : undefined;
   const show = config.show;
   const area = boot.areas.find((a) => a.id === task.area_id);
@@ -56,6 +58,7 @@ export function TaskCard({
   if (show.area && area) labels.push(<Lozenge key="area" color={area.color}>{area.name}</Lozenge>);
   if (show.energy_type && energy) labels.push(<Lozenge key="energy" color={energy.color}>{energy.name}</Lozenge>);
   if (show.subtypes) for (const st of task.subtypes) labels.push(<Lozenge key={"st-" + st}>{st}</Lozenge>);
+  if (show.tags) for (const name of namesOf(task.tag_ids)) labels.push(<Lozenge key={"tag-" + name}>#{name}</Lozenge>);
 
   const chips: React.ReactNode[] = [];
   if (show.priority && priority)

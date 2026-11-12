@@ -54,6 +54,20 @@ export interface Area {
   position: number;
 }
 
+/** A tag, with how many tasks and sessions carry it. */
+export interface Tag {
+  id: number;
+  name: string;
+  task_count: number;
+  session_count: number;
+}
+
+/** A tag on a session: from its task (it follows the task), or put on by hand. */
+export interface SessionTag {
+  tag_id: number;
+  from_task: boolean;
+}
+
 export interface ViewFilter {
   areas: number[] | null;
   statuses: number[] | null;
@@ -63,6 +77,7 @@ export interface ViewFilter {
   open_only?: boolean;
   types?: TaskType[] | null;
   epics?: number[] | null; // 0 = tasks with no epic
+  tags?: number[] | null; // tasks with any of these tags; 0 = tasks with no tags
   /** Show subtasks as their own cards; they are left out when false. */
   subtasks?: boolean;
 }
@@ -113,6 +128,7 @@ export interface CardShow {
   start_date: boolean;
   end_date: boolean;
   epic: boolean;
+  tags: boolean;
   logged: boolean;
   custom: string[];
 }
@@ -174,6 +190,7 @@ export interface Bootstrap {
   subtypes: Subtype[];
   views: View[];
   custom_fields: CustomField[];
+  tags: Tag[];
   settings: Record<string, unknown>;
 }
 
@@ -188,10 +205,13 @@ export interface TaskBrief {
   difficulty: number | null;
   behaviour: Behaviour;
   parent_id: number | null;
+  tag_ids: number[];
 }
 
 export interface Task {
   id: number;
+  /** Its tags, by tag id, in the order of their names. */
+  tag_ids: number[];
   key: string;
   title: string;
   description: string | null;
@@ -319,6 +339,8 @@ export interface Session {
   created_at: string;
   subtypes: SessionSubtype[];
   energies: SessionEnergy[];
+  /** Its task's tags as they are now (from_task), then the ones put on by hand. */
+  tags: SessionTag[];
 }
 
 export interface CaptureParse {

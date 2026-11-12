@@ -11,12 +11,14 @@ import { filterOf } from "./cardConfig";
 import type { TaskType, View, ViewFilter } from "../types";
 import { DifficultySlider } from "../task/DifficultySlider";
 import { useTerms } from "../terms";
+import { useTags } from "../tags/tags";
 
 // Which tasks this view shows. Applied on the server.
 
 export function FilterSettings({ view, onClose }: { view: View; onClose: () => void }) {
   const { boot, updateView } = useApp();
   const T = useTerms();
+  const { tags } = useTags();
   const { epics } = useEpics();
   const [filter, setFilter] = useState<ViewFilter>(filterOf(view));
   const [busy, setBusy] = useState(false);
@@ -82,6 +84,17 @@ export function FilterSettings({ view, onClose }: { view: View; onClose: () => v
                 ),
               })),
             ]}
+          />
+        </Form.Item>
+        <Form.Item label="Tags" help="Tasks with any of these tags. Empty means any.">
+          <Select<number[]>
+            mode="multiple"
+            allowClear
+            showSearch
+            optionFilterProp="label"
+            value={filter.tags ?? []}
+            onChange={(v) => set("tags", list(v))}
+            options={[{ value: 0, label: "No tags" }, ...tags.map((t) => ({ value: t.id, label: t.name }))]}
           />
         </Form.Item>
         <Form.Item label="Areas" help="Empty means all areas">

@@ -93,7 +93,7 @@ export function CardSettings({ view, sample, onClose }: { view: View; sample?: T
 const SAMPLE: Task = {
   id: 0, key: "", title: "Example task", description: null, area_id: 0, status_id: 0, priority_id: null,
   energy_type_id: null, difficulty: 4, estimate_h: 3, due_at: "2026-11-04", start_date: null, end_date: null, snoozed_until: null, type: "task", epic_id: null,
-  parent_id: null, snooze_until_unblocked: false, board_pos: 0, custom: {}, created_at: "", updated_at: "", behaviour: "in_progress", first_started_at: null,
+  parent_id: null, snooze_until_unblocked: false, board_pos: 0, tag_ids: [], custom: {}, created_at: "", updated_at: "", behaviour: "in_progress", first_started_at: null,
   last_started_at: null, completed_at: null, cancelled_at: null, last_moved_at: "", created_age_h: 72,
   started_age_h: 30, time_in_status_h: 20, stalled: false, points: 4, logged_h: 1.5, logged_total_h: 1.5, progress_pct: 50, remaining_h: 1.5, days_to_due: 2, pace_h: 0.5, snoozed: false, missing: [],
   subtypes: ["coding"], epic_tasks: null, epic_done: null, epic_estimate_h: null, epic_logged_h: null,

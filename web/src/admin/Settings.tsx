@@ -16,6 +16,7 @@ import { AppearanceSettings } from "../theme/AppearanceSettings";
 import { ScreensSettings } from "./ScreensSettings";
 import { useTerms, type Terms } from "../terms";
 import { NamesSettings } from "./NamesSettings";
+import { TagsSettings } from "./TagsSettings";
 import { AboutSettings } from "./AboutSettings";
 
 // Settings: sections grouped in a menu on the left, or in a picker above
@@ -42,6 +43,12 @@ const groupsFor = (T: Terms): { label: string; sections: Section[] }[] => [
         label: "Areas",
         intro: `Every ${T.task} belongs to one area, such as Main job, Personal or Freelance.`,
         render: () => <AreaSettings />,
+      },
+      {
+        key: "tags",
+        label: "Tags",
+        intro: `Short words you can put on ${T.tasks} and sessions, such as backend or q4. They sit beside the area and the ${T.epic}.`,
+        render: () => <TagsSettings />,
       },
       {
         key: "statuses",

@@ -4,6 +4,7 @@ import { message } from "../theme/feedback";
 import { api } from "../api";
 import { useApp } from "../store";
 import { OFFLINE_TIP } from "../offline";
+import { useTags } from "../tags/tags";
 import type { Session, TaskBrief } from "../types";
 import { enterSaves } from "./enterSaves";
 import { draftFromSession, emptySession, pointsInputsChanged, sessionBody, sessionReady, SessionFields, type SessionDraft } from "./SessionForm";
@@ -23,6 +24,7 @@ export function SessionModal({
   onSaved: (s: Session) => void;
 }) {
   const { online } = useApp();
+  const { namesOf, refreshIfNew } = useTags();
   const [draft, setDraft] = useState<SessionDraft>(() =>
     editing
       ? emptySession({
@@ -38,6 +40,8 @@ export function SessionModal({
           started_at: editing.started_at,
           note: editing.note ?? "",
           custom: editing.custom,
+          // Only its own tags; the task's tags are shown as they are and follow the task.
+          tags: namesOf((editing.tags ?? []).filter((t) => !t.from_task).map((t) => t.tag_id)),
         })
       : emptySession(initial),
   );
@@ -57,6 +61,7 @@ export function SessionModal({
       const s = editing
         ? await api.patch<Session>(`/sessions/${editing.id}`, { ...body, ...(recalc ? { recalculate: true } : {}) })
         : await api.post<Session>("/sessions", body);
+      refreshIfNew(draft.tags);
       onSaved(s);
       onClose();
     } catch (e) {

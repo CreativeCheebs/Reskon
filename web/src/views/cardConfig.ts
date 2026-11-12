@@ -20,6 +20,7 @@ export const DEFAULT_SHOW: CardShow = {
   start_date: false,
   end_date: false,
   epic: true,
+  tags: true,
   logged: false,
   custom: [],
 };
@@ -41,6 +42,7 @@ export const SHOW_LABELS: Record<Exclude<keyof CardShow, "custom">, string> = {
   start_date: "Start date",
   end_date: "End date",
   epic: "Epic",
+  tags: "Tags",
   logged: "Logged time",
 };
 
@@ -67,6 +69,7 @@ export function filterOf(view: View): ViewFilter {
     open_only: f.open_only ?? false,
     types: f.types ?? null,
     epics: f.epics ?? null,
+    tags: f.tags ?? null,
     subtasks: f.subtasks ?? false,
   };
 }

@@ -11,6 +11,8 @@ import { CustomFieldsEditor } from "../fields/CustomFieldsEditor";
 import { DurationInput, MAX_HOURS } from "./DurationInput";
 import { EnergyFields } from "./EnergyFields";
 import { kindOptions } from "./kind";
+import { TagSelect } from "../tags/TagSelect";
+import { useTags } from "../tags/tags";
 import { useTerms } from "../terms";
 
 // The fields of a session, shared by the manual log form and quick capture.
@@ -58,6 +60,8 @@ export interface SessionDraft {
   started_at: string | null;
   note: string;
   custom: Record<string, unknown>;
+  /** The tags put on this session by hand, by name. Its task's tags are not here: they follow the task. */
+  tags: string[];
 }
 
 export function emptySession(partial: Partial<SessionDraft> = {}): SessionDraft {
@@ -76,6 +80,7 @@ export function emptySession(partial: Partial<SessionDraft> = {}): SessionDraft 
     started_at: null,
     note: "",
     custom: {},
+    tags: [],
     ...partial,
   };
 }
@@ -146,6 +151,7 @@ export function sessionBody(d: SessionDraft) {
     started_at: d.started_at,
     note: d.note || null,
     custom: d.custom,
+    tags: d.tags,
   };
 }
 
@@ -168,6 +174,9 @@ export function SessionFields({
 }) {
   const { boot } = useApp();
   const T = useTerms();
+  const { namesOf } = useTags();
+  // The tags the chosen task has right now; the session shows them and they follow the task.
+  const inherited = namesOf(tasks.find((t) => t.id === draft.task_id)?.tag_ids);
   const set = (patch: Partial<SessionDraft>) => onChange({ ...draft, ...patch });
   const openTasks = useMemo(
     () => tasks.filter((t) => (t.behaviour !== "done" && t.behaviour !== "cancelled") || t.id === draft.task_id),
@@ -350,6 +359,14 @@ export function SessionFields({
           onFirstType={() => setTouchedEnergy(true)}
           onFirstIntensity={() => setTouchedDifficulty(true)}
         />
+        <Form.Item
+          label="Tags"
+          htmlFor="session-tags"
+          style={tight}
+          extra={inherited.length ? "Tags with a grey outline come from the task and follow it. Add more for this session." : undefined}
+        >
+          <TagSelect id="session-tags" value={draft.tags} fixed={inherited} disabled={disabled} onChange={(tags) => set({ tags })} />
+        </Form.Item>
         <Form.Item label="Subtypes" tooltip="Drag to rank; rank sets each one's weight" style={tight}>
           <RankedSubtypes
             value={draft.subtypes}

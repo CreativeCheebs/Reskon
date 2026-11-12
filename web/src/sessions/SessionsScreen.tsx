@@ -19,6 +19,7 @@ import { KIND_ICON, KindChip } from "./kind";
 import { LoadError } from "../views/LoadError";
 import { checkboxLabel } from "../a11y";
 import { useTerms } from "../terms";
+import { useTags } from "../tags/tags";
 
 // Sessions by day, with filters (applied on the server) and selection for
 // bulk changes: tick rows, tick a day to take all of it, or select
@@ -32,6 +33,7 @@ interface DayTotals {
 interface Filters {
   energy: number[];
   areas: number[];
+  tags: number[];
   kind: "" | "task" | "event";
   hasTask: "" | "true" | "false";
   hasDiff: "" | "true" | "false";
@@ -39,9 +41,10 @@ interface Filters {
   q: string;
 }
 
-const NO_FILTERS: Filters = { energy: [], areas: [], kind: "", hasTask: "", hasDiff: "", hasSubtypes: "", q: "" };
+const NO_FILTERS: Filters = { energy: [], areas: [], tags: [], kind: "", hasTask: "", hasDiff: "", hasSubtypes: "", q: "" };
 
 export function SessionsScreen() {
+  const { tags, byId: tagById } = useTags();
   const { boot, reloadKey } = useApp();
   const T = useTerms();
   const [range, setRange] = useState<[string, string]>([dayjs().subtract(6, "day").format("YYYY-MM-DD"), today()]);
@@ -68,6 +71,7 @@ export function SessionsScreen() {
     const p = new URLSearchParams({ from: range[0], to: range[1] });
     if (filters.energy.length) p.set("energy_type", filters.energy.join(","));
     if (filters.areas.length) p.set("area", filters.areas.join(","));
+    if (filters.tags.length) p.set("tag", filters.tags.join(","));
     if (filters.kind) p.set("kind", filters.kind);
     if (filters.hasTask) p.set("has_task", filters.hasTask);
     if (filters.hasDiff) p.set("has_difficulty", filters.hasDiff);
@@ -148,6 +152,17 @@ export function SessionsScreen() {
           : energy(s.energy_type_id)?.name,
     },
     { key: "area", title: "Area", width: 100, render: (_, s) => boot.areas.find((a) => a.id === s.area_id)?.name ?? "" },
+    {
+      key: "tags",
+      title: "Tags",
+      width: 140,
+      render: (_, s) =>
+        (s.tags ?? []).map((g) => (
+          <Tag key={g.tag_id} style={g.from_task ? { borderStyle: "dashed" } : undefined} title={g.from_task ? "From the task" : "On this session"}>
+            {tagById.get(g.tag_id)?.name}
+          </Tag>
+        )),
+    },
     { key: "hours", title: "Hours", width: 70, render: (_, s) => formatHours(s.hours) },
     { key: "points", title: "Points", width: 64, render: (_, s) => (s.points === null ? "" : Number(s.points.toFixed(2))) },
     {
@@ -296,6 +311,18 @@ export function SessionsScreen() {
             value={filters.areas}
             onChange={(v) => setF("areas", v)}
             options={boot.areas.map((a) => ({ value: a.id, label: a.name }))}
+            maxTagCount="responsive"
+          />
+          <FilterSelect
+            mode="multiple"
+            allowClear
+            placeholder="Tags"
+            aria-label="Filter by tag"
+            style={{ width: 130 }}
+            active={filters.tags.length > 0}
+            value={filters.tags}
+            onChange={(v) => setF("tags", v)}
+            options={[{ value: 0, label: "No tags" }, ...tags.map((t) => ({ value: t.id, label: t.name }))]}
             maxTagCount="responsive"
           />
         </ToolbarGroup>

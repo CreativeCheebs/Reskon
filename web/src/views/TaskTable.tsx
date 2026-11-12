@@ -19,6 +19,7 @@ import { useTerms } from "../terms";
 import { cardActionsOf } from "../board/CardActions";
 import { RowMenu } from "./RowMenu";
 import { StatusPicker } from "./StatusPicker";
+import { useTags } from "../tags/tags";
 
 // Table layout: same filter, columns from the same `show` config as cards.
 // Default sort is time in status, descending — the aging list.
@@ -58,6 +59,7 @@ export function TaskTable({
 }) {
   const { boot, statusById } = useApp();
   const T = useTerms();
+  const { namesOf } = useTags();
   const { byId: epics } = useEpics();
   const show = config.show;
   const iconsOnly = config.icons_only;
@@ -100,6 +102,13 @@ export function TaskTable({
         return e ? <span style={{ color: palette.epic }}>{e.title}</span> : null;
       },
       sorter: (a, b) => (epics.get(a.epic_id ?? 0)?.title ?? "~").localeCompare(epics.get(b.epic_id ?? 0)?.title ?? "~"),
+    });
+  if (show.tags)
+    cols.push({
+      key: "tags",
+      title: "Tags",
+      width: 160,
+      render: (_, t) => namesOf(t.tag_ids).map((n) => <Tag key={n}>{n}</Tag>),
     });
   if (show.area)
     cols.push({

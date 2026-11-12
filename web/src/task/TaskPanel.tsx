@@ -17,6 +17,8 @@ import { TaskExtras } from "./TaskExtras";
 import { TypeIcon, TypeLabel } from "./TypeIcon";
 import { useEpics } from "./useEpics";
 import { priorityOptions } from "./LevelIcons";
+import { TagSelect } from "../tags/TagSelect";
+import { useTags } from "../tags/tags";
 import { TimeBar } from "./TimeBar";
 import { SnoozeButton } from "./SnoozeButton";
 import { fieldLabel } from "./completeness";
@@ -36,6 +38,7 @@ interface Props {
 
 export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Props) {
   const { boot, online, reloadKey } = useApp();
+  const { namesOf, refreshIfNew } = useTags();
   const T = useTerms();
   const { epics, refresh: refreshEpics } = useEpics();
   const [task, setTask] = useState<Task | null>(initial ?? null);
@@ -263,6 +266,17 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
                 disabled={ro}
                 value={task.end_date ? dayjs(task.end_date) : null}
                 onChange={(d) => patch({ end_date: d ? d.format("YYYY-MM-DD") : null })}
+              />
+            </Descriptions.Item>
+            <Descriptions.Item label="Tags" span={2}>
+              <TagSelect
+                size="small"
+                disabled={ro}
+                value={namesOf(task.tag_ids)}
+                onChange={(names) => {
+                  patch({ tags: names });
+                  refreshIfNew(names);
+                }}
               />
             </Descriptions.Item>
             <Descriptions.Item label="Level" span={2}>
