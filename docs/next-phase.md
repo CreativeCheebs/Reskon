@@ -42,6 +42,13 @@ Where a choice is recorded, it is in [`decisions.md`](decisions.md) (the "Open q
 - **How:** change the colour values **in each theme** (`web/src/theme/themes.ts`, the Android `Palette`). Do **not** add code around the theme system.
 - **Done when:** each built-in theme passes the contrast check Settings already runs (`checkContrast`), with the border colour included, and no screen hard-codes a colour a theme already names.
 
+### 2.4 Left over from the 2026-11-13 round
+- **Tags, not finished on the phone:** a tag filter on the Sessions screen, tags on the New task form, and tags in phone quick capture.
+- **Tags, not reviewed by an agent:** the web tag screens, quick-capture tags and the phone tag screens were built and checked (types, lint, unit tests, one on-device check) but not reviewed. The server side was.
+- **Browser journeys not run:** the new `web/e2e` journeys (Enter to save, status button, right-click menu, bulk delete) need a sign-in on the test server (:8097). Run `npm run test:e2e` with `JB_E2E_URL`, `JB_E2E_USER`, `JB_E2E_PASS`.
+- **Touch targets:** the phone's status jump buttons and other pills are 36 dp tall (see 2.2).
+- **Push:** the repository has no git remote; add one, then push `phase-2`.
+
 ## 3. Dependencies (kept out of the review on purpose)
 
 | Item | Why it is waiting | How to do it |
