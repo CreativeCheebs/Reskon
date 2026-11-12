@@ -41,6 +41,10 @@ func TestAnotherUserCannotReachRecordsByID(t *testing.T) {
 	if code := alice.do("POST", "/api/sessions", m{"task_id": task.ID, "hours": 1, "energy_type_id": 1, "difficulty": 2, "logged_for": "2026-11-04"}, &session); code != 200 {
 		t.Fatalf("alice session = %d", code)
 	}
+	var tag created
+	if code := alice.do("POST", "/api/tags", m{"name": "private"}, &tag); code != 200 || tag.ID == 0 {
+		t.Fatalf("alice tag = %d %+v", code, tag)
+	}
 	if task.ID == 0 || session.ID == 0 {
 		t.Fatalf("setup failed: task %+v session %+v", task, session)
 	}
@@ -55,6 +59,8 @@ func TestAnotherUserCannotReachRecordsByID(t *testing.T) {
 		{"read a task's history", "GET", fmt.Sprintf("/api/tasks/%d/transitions", task.ID), nil},
 		{"edit a session", "PATCH", fmt.Sprintf("/api/sessions/%d", session.ID), m{"hours": 9}},
 		{"delete tasks together", "POST", "/api/tasks/delete", m{"task_ids": []int64{task.ID}}},
+		{"rename a tag", "PATCH", fmt.Sprintf("/api/tags/%d", tag.ID), m{"name": "taken over"}},
+		{"delete a tag", "DELETE", fmt.Sprintf("/api/tags/%d", tag.ID), nil},
 	}
 	for _, c := range cases {
 		if code := bob.do(c.method, c.path, c.body, nil); code != 404 {

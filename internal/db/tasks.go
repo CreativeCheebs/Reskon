@@ -32,6 +32,7 @@ type Task struct {
 	ParentID             *int64          `json:"parent_id"`              // set on a subtask: the task it belongs to (see subtasks.go)
 	SnoozeUntilUnblocked bool            `json:"snooze_until_unblocked"` // hidden while an open task blocks it; set only by Snooze (see links.go)
 	BoardPos             float64         `json:"board_pos"`
+	TagIDs               []int64         `json:"tag_ids"` // derived: its tags, by name (see tags.go)
 	Custom               json.RawMessage `json:"custom"`
 	CreatedAt            string          `json:"created_at"`
 	UpdatedAt            string          `json:"updated_at"`
@@ -159,6 +160,10 @@ func (d *DB) CreateTask(ctx context.Context, f Fields) (*Task, error) {
 	today := localDate(f)
 	customPatch, hasCustom := f["custom"]
 	delete(f, "custom")
+	tagNames, hasTags, err := parseTags(f)
+	if err != nil {
+		return nil, err
+	}
 	if err := validateTaskFields(f); err != nil {
 		return nil, err
 	}
@@ -225,6 +230,11 @@ func (d *DB) CreateTask(ctx context.Context, f Fields) (*Task, error) {
 		return nil, uniqueAsConflict(err, "task key collision")
 	}
 	id, _ := res.LastInsertId()
+	if hasTags {
+		if err := setTaskTags(ctx, tx, id, tagNames); err != nil {
+			return nil, err
+		}
+	}
 	if err := writeTransition(ctx, tx, id, nil, statusID, "user", now); err != nil {
 		return nil, err
 	}
@@ -289,6 +299,10 @@ func (d *DB) PatchTask(ctx context.Context, id int64, f Fields) (*Task, error) {
 	}
 	customPatch, hasCustom := f["custom"]
 	delete(f, "custom")
+	tagNames, hasTags, err := parseTags(f)
+	if err != nil {
+		return nil, err
+	}
 	if err := validateTaskFields(f); err != nil {
 		return nil, err
 	}
@@ -331,6 +345,11 @@ func (d *DB) PatchTask(ctx context.Context, id int64, f Fields) (*Task, error) {
 			return nil, err
 		}
 		cols, vals = append(cols, "custom"), append(vals, merged)
+	}
+	if hasTags {
+		if err := setTaskTags(ctx, tx, id, tagNames); err != nil {
+			return nil, err
+		}
 	}
 	cols, vals = append(cols, "updated_at"), append(vals, Now())
 	sets := make([]string, len(cols))

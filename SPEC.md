@@ -163,7 +163,19 @@ Settings › Complete details lets you choose fields an open task should have (s
 
 Deleting a task hides it (its key stays used). Its sessions stay, without a task. A deleted task blocks nothing. Deleting an epic does not delete the tasks in it: they stay, just no longer in that epic. Deleting one task asks yes or no (a task with subtasks also asks whether they go too). Deleting **several at once** from the table has no undo, so the box lists what goes and asks for the word *delete* to be typed out by hand (pasting is blocked). All of them are deleted or none (`POST /api/tasks/delete`); subtasks stay as ordinary tasks unless the box is ticked.
 
-### 4.15 Editing at the same time in two places
+### 4.15 Tags
+
+A **tag** is a short free word on a task ("backend", "q4"), beside its area and epic. A task can have several (up to 20).
+
+- A tag name is 1 to 32 characters, with no commas or hidden characters. A leading `#` and extra spaces are dropped. "Backend" and "backend" are the same tag. Settings › Tags lists them with how many tasks and sessions have each; a tag can be renamed (everywhere at once) or deleted (taken off everything).
+- Saving a task with `tags: null` or an empty list removes all its tags; leaving `tags` out keeps them.
+- Naming a tag that does not exist yet creates it, so tags are made by using them: in the task panel, in the new-task form, in the session form, or in quick capture.
+- **Sessions.** A session shows the tags of its task **as they are now**, and its own tags. The task's tags are never copied: change a task's tags and every session of it changes at once, on every device. A tag put on a session by hand belongs to that session and stays when the task's tags change. A session with no task has only its own tags, so they are chosen by hand; detaching a session from its task drops the tags it had from the task. The session shows which tags come from the task (they follow it) and which are its own.
+- **Filters.** A view can filter by tags (any of the chosen ones, or "no tags"); the Sessions screen filters the same way, by the task's tags and the session's own. Filtering is done on the server. Cards and tables can show a task's tags (Card settings).
+- **Quick capture** can pick tags, but only from the tags that already exist: it never invents one.
+- Tags sync like everything else. The same tag made on two devices is one tag, and the same tag put on the same task on two is one link.
+
+### 4.16 Editing at the same time in two places
 
 - When you save a task, the app sends the "last changed" time it saw. If the task changed in the meantime (another tab), the server answers "conflict" with the current version, and the screen applies your change on top of it.
 - **Sessions** don't warn. Each field keeps its latest change, between tabs and between devices (the same way Todoist works).
@@ -483,6 +495,7 @@ The database is SQLite in WAL mode (several readers, one writer). There is one c
 | `task` | Tasks, epics and subtasks: key, title, description, area, status, priority, energy type, level, estimate, due, start and end dates, snooze, epic, parent, board position, custom fields. |
 | `status_transition` | The move log. Only ever added to. |
 | `task_link` | "Blocked by" links. |
+| `tag`, `task_tag`, `session_tag` | Tags (unique ignoring capitals), the tags on each task, and the tags put on a session by hand. A session's other tags come from its task when read. |
 | `session` | Logged time: hours, date, start time, description, task, area, task/event, energy type, level, points, note, custom fields, last changed. |
 | `session_energy` | The parts of a session with several energy types: share, level, points. |
 | `session_subtype` | A session's ranked subtypes. |
@@ -503,7 +516,7 @@ The database is SQLite in WAL mode (several readers, one writer). There is one c
 - Times are UTC text with a fixed width, so sorting text sorts by time.
 - Most deletes only set `deleted_at`, so history still points at real rows.
 - Values worked out from others are never stored, with one exception: a session's points (section 6.3).
-- Migrations so far: 001 the first tables; 002 epics and board settings; 003 intensity becomes 1–5; 004 view icons, colours and backgrounds; 005 dashboards and stored points; 006 all energy types equal; 007 pies and shares; 008 retire "Energy drain felt"; 009 several energy types per session; 010 start and end dates; 011 snooze; 012 duplicate search cache; 013 subtasks; 014 dependencies; 015 inbox; 016 sync; 017 session "last changed", start dates filled in, unfinished parts hidden.
+- Migrations so far: 001 the first tables; 002 epics and board settings; 003 intensity becomes 1–5; 004 view icons, colours and backgrounds; 005 dashboards and stored points; 006 all energy types equal; 007 pies and shares; 008 retire "Energy drain felt"; 009 several energy types per session; 010 start and end dates; 011 snooze; 012 duplicate search cache; 013 subtasks; 014 dependencies; 015 inbox; 016 sync; 017 session "last changed", start dates filled in, unfinished parts hidden; 018 tags.
 
 ---
 
@@ -531,6 +544,7 @@ JSON over HTTP. Every `/api` call except health and sign-in needs the session co
 | `/api/dashboards`, `/api/widgets`, `PATCH /api/dashboards/:id/layout` | Dashboards. |
 | `/api/states`, `GET /api/states/shapes` | Buffs and debuffs. |
 | `/api/areas`, `/api/statuses`, `/api/status-categories`, `/api/priorities`, `/api/energy-types`, `/api/subtypes`, `/api/custom-fields`, `/api/views` | Your lists. DELETE takes `?reassign_to=:id` (and `?clear=true` for priorities). |
+| `GET POST /api/tags`, `PATCH DELETE /api/tags/:id` | Tags. A task or session gets its tags through its own `tags` field, a list of names (a session's list is its own tags). `GET /api/sessions?tag=1,2` filters by tag. |
 | `PUT /api/settings/:key` | Save a setting. |
 | `POST /api/tasks/delete` | Delete up to 1000 tasks at once (`task_ids`; `subtasks: "delete"` takes their subtasks too). All or nothing. |
 | `POST /api/images`, `GET /api/images/:id` | Background images. |

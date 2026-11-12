@@ -46,6 +46,9 @@ func (s *Server) listSessions(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		q.Areas, err = idList(v.Get("area"))
 	}
+	if err == nil {
+		q.Tags, err = idList(v.Get("tag"))
+	}
 	q.HasTask = optBool(v.Get("has_task"))
 	q.HasDiff = optBool(v.Get("has_difficulty"))
 	q.HasSubtypes = optBool(v.Get("has_subtypes"))

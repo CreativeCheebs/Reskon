@@ -255,6 +255,9 @@ func (d *DB) derive(ctx context.Context, tasks []*Task, now time.Time) error {
 		return err
 	}
 
+	if err := d.attachTaskTags(ctx, tasks); err != nil {
+		return err
+	}
 	epics, err := d.epicTotalsOf(ctx, ids, in)
 	if err != nil {
 		return err

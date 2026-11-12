@@ -12,6 +12,7 @@ type SessionQuery struct {
 	TaskID      int64
 	EnergyTypes []int64 // any of these
 	Areas       []int64 // any of these
+	Tags        []int64 // any of these, the task's or put on by hand; 0 means "no tags"
 	Kind        string  // "task" or "event"
 	HasTask     *bool   // true: attached to a task; false: not attached
 	HasDiff     *bool   // true: difficulty set; false: not set
@@ -39,6 +40,26 @@ func (d *DB) ListSessions(ctx context.Context, q SessionQuery) ([]*Session, erro
 	}
 	if len(q.Areas) > 0 {
 		where = append(where, inList("s.area_id", q.Areas, &args))
+	}
+	if len(q.Tags) > 0 {
+		var ids []int64
+		none := false
+		for _, g := range q.Tags {
+			if g == 0 {
+				none = true
+			} else {
+				ids = append(ids, g)
+			}
+		}
+		var conds []string
+		if len(ids) > 0 {
+			conds = append(conds, "s.id IN (SELECT session_id FROM session_tag WHERE "+inList("tag_id", ids, &args)+")",
+				"s.task_id IN (SELECT task_id FROM task_tag WHERE "+inList("tag_id", ids, &args)+")")
+		}
+		if none {
+			conds = append(conds, "(NOT EXISTS (SELECT 1 FROM session_tag st WHERE st.session_id = s.id) AND NOT EXISTS (SELECT 1 FROM task_tag tt WHERE tt.task_id = s.task_id))")
+		}
+		where = append(where, "("+strings.Join(conds, " OR ")+")")
 	}
 	if q.Kind != "" {
 		if q.Kind != "task" && q.Kind != "event" {
@@ -82,6 +103,9 @@ func (d *DB) ListSessions(ctx context.Context, q SessionQuery) ([]*Session, erro
 		return nil, err
 	}
 	if err := d.attachEnergies(ctx, sessions); err != nil {
+		return nil, err
+	}
+	if err := d.attachSessionTags(ctx, sessions); err != nil {
 		return nil, err
 	}
 	return sessions, d.attachSubtypes(ctx, sessions)

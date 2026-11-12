@@ -20,6 +20,7 @@ type ViewFilter struct {
 	OpenOnly        bool                       `json:"open_only"`         // hide done and cancelled
 	Types           []string                   `json:"types"`             // "task", "epic"
 	Epics           []int64                    `json:"epics"`             // tasks in these epics; 0 means "no epic"
+	Tags            []int64                    `json:"tags"`              // tasks with any of these tags; 0 means "no tags"
 	Subtasks        bool                       `json:"subtasks"`          // a view shows subtasks as their own cards only when true
 
 	parent       *int64 // the subtasks of one task; never from a view's JSON
@@ -191,6 +192,28 @@ func (d *DB) queryTasks(ctx context.Context, f *ViewFilter, search string, now t
 		}
 		where = append(where, "("+strings.Join(conds, " OR ")+")")
 	}
+	if f.Tags != nil {
+		var ids []int64
+		none := false
+		for _, g := range f.Tags {
+			if g == 0 {
+				none = true
+			} else {
+				ids = append(ids, g)
+			}
+		}
+		var conds []string
+		if len(ids) > 0 {
+			conds = append(conds, "id IN (SELECT task_id FROM task_tag WHERE "+inList("tag_id", ids, &args)+")")
+		}
+		if none {
+			conds = append(conds, "NOT EXISTS (SELECT 1 FROM task_tag WHERE task_id = task.id)")
+		}
+		if len(conds) == 0 {
+			conds = []string{"0"}
+		}
+		where = append(where, "("+strings.Join(conds, " OR ")+")")
+	}
 	if f.hideSubtasks {
 		where = append(where, "parent_id IS NULL")
 	}
@@ -268,26 +291,46 @@ func likeEscape(s string) string {
 
 // TaskBrief is what a task picker needs, without the derived values.
 type TaskBrief struct {
-	ID           int64  `json:"id"`
-	Key          string `json:"key"`
-	Title        string `json:"title"`
-	Type         string `json:"type"`
-	AreaID       int64  `json:"area_id"`
-	EnergyTypeID *int64 `json:"energy_type_id"`
-	Difficulty   *int64 `json:"difficulty"`
-	Behaviour    string `json:"behaviour"`
-	ParentID     *int64 `json:"parent_id"`
+	ID           int64   `json:"id"`
+	Key          string  `json:"key"`
+	Title        string  `json:"title"`
+	Type         string  `json:"type"`
+	AreaID       int64   `json:"area_id"`
+	EnergyTypeID *int64  `json:"energy_type_id"`
+	Difficulty   *int64  `json:"difficulty"`
+	Behaviour    string  `json:"behaviour"`
+	ParentID     *int64  `json:"parent_id"`
+	TagIDs       []int64 `json:"tag_ids"` // its tags, by name, so a session form can show what it will inherit
 }
 
 // ListTaskBriefs returns every task, newest first, for pickers (Log time,
 // capture, bulk attach). A fraction of the size of the full list.
 func (d *DB) ListTaskBriefs(ctx context.Context) ([]*TaskBrief, error) {
-	return collect(ctx, d, `SELECT t.id, t.key, t.title, t.type, t.area_id, t.energy_type_id, t.difficulty, c.behaviour, t.parent_id FROM task t
+	briefs, err := collect(ctx, d, `SELECT t.id, t.key, t.title, t.type, t.area_id, t.energy_type_id, t.difficulty, c.behaviour, t.parent_id FROM task t
 		JOIN status s ON s.id = t.status_id
 		JOIN status_category c ON c.id = s.category_id
 		WHERE t.deleted_at IS NULL ORDER BY t.id DESC`,
 		func(r *sql.Rows) (*TaskBrief, error) {
-			b := &TaskBrief{}
+			b := &TaskBrief{TagIDs: []int64{}}
 			return b, r.Scan(&b.ID, &b.Key, &b.Title, &b.Type, &b.AreaID, &b.EnergyTypeID, &b.Difficulty, &b.Behaviour, &b.ParentID)
 		})
+	if err != nil {
+		return nil, err
+	}
+	byID := make(map[int64]*TaskBrief, len(briefs))
+	for _, b := range briefs {
+		byID[b.ID] = b
+	}
+	err = scanInto(ctx, d, `SELECT tt.task_id, tt.tag_id FROM task_tag tt JOIN tag g ON g.id = tt.tag_id
+		ORDER BY g.name COLLATE NOCASE`, func(r *sql.Rows) error {
+		var tid, gid int64
+		if err := r.Scan(&tid, &gid); err != nil {
+			return err
+		}
+		if b := byID[tid]; b != nil {
+			b.TagIDs = append(b.TagIDs, gid)
+		}
+		return nil
+	})
+	return briefs, err
 }

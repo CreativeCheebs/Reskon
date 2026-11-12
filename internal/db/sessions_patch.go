@@ -21,6 +21,10 @@ func (d *DB) PatchSession(ctx context.Context, id int64, f Fields) (*Session, er
 	if err != nil {
 		return nil, err
 	}
+	tagNames, hasTags, err := parseTags(f)
+	if err != nil {
+		return nil, err
+	}
 	recalcAsked := takeRecalculate(f)
 	_, typeSet := f["energy_type_id"]
 	_, diffSet := f["difficulty"]
@@ -75,6 +79,11 @@ func (d *DB) PatchSession(ctx context.Context, id int64, f Fields) (*Session, er
 		if _, err := tx.ExecContext(ctx, `UPDATE session SET `+strings.Join(sets, ", ")+` WHERE id = ?`,
 			append(vals, id)...); err != nil {
 			return nil, uniqueAsConflict(err, "conflict")
+		}
+	}
+	if hasTags {
+		if err := setSessionTags(ctx, tx, id, tagNames); err != nil {
+			return nil, err
 		}
 	}
 	if hasSubtypes {

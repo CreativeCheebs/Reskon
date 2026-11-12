@@ -29,6 +29,7 @@ type Session struct {
 	UpdatedAt    *string          `json:"updated_at"`
 	Subtypes     []SessionSubtype `json:"subtypes"`
 	Energies     []SessionEnergy  `json:"energies"` // at least one; see sessions_energy.go
+	Tags         []SessionTag     `json:"tags"`     // derived: its task's tags, then the ones put on by hand (see tags.go)
 }
 
 // SessionSubtype is one ranked subtype with its derived weight and hours.
@@ -222,6 +223,11 @@ func (d *DB) CreateSession(ctx context.Context, f Fields) (*Session, error) {
 	if err != nil {
 		return nil, err
 	}
+	// The tags put on by hand; the task's own tags need no copying (see tags.go).
+	tagNames, hasTags, err := parseTags(f)
+	if err != nil {
+		return nil, err
+	}
 	customPatch, hasCustom := f["custom"]
 	delete(f, "custom")
 	if _, ok := f["kind"]; !ok {
@@ -289,6 +295,11 @@ func (d *DB) CreateSession(ctx context.Context, f Fields) (*Session, error) {
 	if err := writeEnergies(ctx, tx, id, energies, energyPoints); err != nil {
 		return nil, err
 	}
+	if hasTags {
+		if err := setSessionTags(ctx, tx, id, tagNames); err != nil {
+			return nil, err
+		}
+	}
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
@@ -308,6 +319,9 @@ func (d *DB) GetSession(ctx context.Context, id int64) (*Session, error) {
 		return nil, err
 	}
 	if err := d.attachEnergies(ctx, []*Session{s}); err != nil {
+		return nil, err
+	}
+	if err := d.attachSessionTags(ctx, []*Session{s}); err != nil {
 		return nil, err
 	}
 	return s, d.attachSubtypes(ctx, []*Session{s})

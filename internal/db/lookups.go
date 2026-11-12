@@ -96,6 +96,7 @@ type Bootstrap struct {
 	Subtypes         []Subtype                  `json:"subtypes"`
 	Views            []View                     `json:"views"`
 	CustomFields     []CustomField              `json:"custom_fields"`
+	Tags             []Tag                      `json:"tags"`
 	Settings         map[string]json.RawMessage `json:"settings"`
 }
 
@@ -124,6 +125,9 @@ func (d *DB) Bootstrap(ctx context.Context) (*Bootstrap, error) {
 		return nil, err
 	}
 	if b.CustomFields, err = d.ListCustomFields(ctx); err != nil {
+		return nil, err
+	}
+	if b.Tags, err = d.ListTags(ctx); err != nil {
 		return nil, err
 	}
 	if b.Settings, err = d.Settings(ctx); err != nil {

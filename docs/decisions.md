@@ -187,6 +187,18 @@ The owner asked for a version to be kept, shown in Settings and in the commits. 
 ### Board as a list on the phone (owner, 2026-11-13)
 The owner finds side-by-side columns hard on a phone and wanted the Todoist way: one list down the screen with a group for each status. It is a choice about this phone's screen, so it is a plain on/off kept in the phone's own preferences (not an account setting, so nothing syncs and the web is unaffected). Hidden statuses (Backlog, Cancelled) are not sections but keep a button, so the list is not filled with the backlog. The same rule now applies to the List layout, and Settings › Statuses on the phone gained the *Show on the board* switch that the web already had. The first version jumps to a status with its button; it does not filter the list to that status.
 
+### Tags (owner, 2026-11-13)
+
+The owner asked for tags like Jira's labels: several per task, beside areas and epics, also on sessions, picked by the capture model from the tags that exist, and shown in filters, cards, capture and on the phone. Migration 018 adds `tag`, `task_tag` and `session_tag` and nothing else.
+
+**A session's tags are worked out, not copied.** The owner's rule was that a task's tag change reaches its sessions unless the session's tag was put on by hand. That is the same as "a session shows its task's tags as they are now, plus its own", so only the hand-made ones are stored (`session_tag`) and the rest is worked out when the session is read (as AGENTS.md asks of derived values). This also means nothing has to be rewritten, locally or through sync, when a task's tags change. A tag the session has by hand *and* its task also has shows as the task's; if the task loses it, the session keeps it. Detaching a session from its task drops the inherited tags (the owner did not say; this is the least surprising).
+
+**Tags are only a name.** No colour for now (the owner did not ask). Names are case-insensitive and unique, so "Backend" and "backend" cannot both exist.
+
+**Sync.** A tag's record id is made from its lower-case name, and a task's tag from the task's and the tag's ids, so the same tag or link made on two devices merges instead of failing on the unique index (the way custom fields already do). A session's own tags travel as one value of the session, like its subtypes. Deleting a tag removes its links. The tag and link tables use AUTOINCREMENT, because these rows are really deleted: without it SQLite hands the highest id out again, and the new row would inherit the dead row's sync record and reach other devices as a deletion. A session naming a tag the receiving device already deleted is skipped, not an error, so it cannot block a device's sync. A view's tag filter holds tag ids, which are swapped for uids between devices like its areas and epics. The tests cover two devices doing each of these (and fail without each fix).
+
+**Known limit.** Two devices that, while apart, rename a tag to a name and create a different tag with that name end up with two tag records that want the same name; the second cannot be added (names are unique), so its links are dropped on the other device and its rename keeps being refused. Rare (it needs a rename and a new tag with the new name before either syncs), and nothing is corrupted; a person can rename one of them. An older server or phone that does not know tags refuses to open a view whose filter has a tag (it rejects the unknown filter key); the other views are fine.
+
 ### Time zone per person (owner, 2026-11-04)
 "Today" used to be the server's day, which can be wrong near midnight when the server runs in UTC. Now the browser and the phone send their time zone, and the server uses it.
 

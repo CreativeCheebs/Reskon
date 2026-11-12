@@ -304,6 +304,10 @@ func exportRow(ctx context.Context, q txq, table, key string) (SyncRow, bool, er
 		if row.Values["_subtypes"], err = sessionParts(ctx, q, key, `SELECT subtype_id, rank FROM session_subtype WHERE session_id = ?`, "subtype"); err != nil {
 			return row, false, err
 		}
+		// The tags put on by hand; the ones from the task travel with the task.
+		if row.Values["_tags"], err = sessionParts(ctx, q, key, `SELECT tag_id FROM session_tag WHERE session_id = ?`, "tag"); err != nil {
+			return row, false, err
+		}
 	}
 	return row, true, nil
 }

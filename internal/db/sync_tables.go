@@ -34,6 +34,12 @@ var syncTables = []syncTable{
 	{name: "custom_field", uidSQL: `CASE WHEN EXISTS (SELECT 1 FROM sync_idmap WHERE tbl = 'custom_field'
 		AND uid = 'cf-' || NEW.entity || '-' || NEW.key) THEN lower(hex(randomblob(16)))
 		ELSE 'cf-' || NEW.entity || '-' || NEW.key END`},
+	// A tag's name is its uid (lower case), so two devices adding the same tag get one
+	// record; a name used again after a delete or a rename gets a fresh uid, since the
+	// old one is a tombstone or is still the renamed tag's.
+	{name: "tag", uidSQL: `CASE WHEN EXISTS (SELECT 1 FROM sync_idmap WHERE tbl = 'tag'
+		AND uid = 'tag-' || lower(NEW.name)) THEN lower(hex(randomblob(16)))
+		ELSE 'tag-' || lower(NEW.name) END`},
 	{name: "view"},
 	{name: "dashboard"},
 	{name: "widget", refs: map[string]string{"dashboard_id": "dashboard"}},
@@ -41,11 +47,21 @@ var syncTables = []syncTable{
 		"area_id": "area", "status_id": "status", "priority_id": "priority",
 		"energy_type_id": "energy_type", "epic_id": "task", "parent_id": "task",
 	}, skip: []string{"status_id"}},
+	// A task's tag is its uid made of the task's and the tag's, so the same tag added to the
+	// same task on two devices is one record, and removing it on one removes it on the other.
+	{name: "task_tag", refs: map[string]string{"task_id": "task", "tag_id": "tag"}, uidSQL: `CASE WHEN EXISTS (
+		SELECT 1 FROM sync_idmap WHERE tbl = 'task_tag' AND uid = 'tt-'
+			|| (SELECT uid FROM sync_idmap WHERE tbl = 'task' AND id = NEW.task_id) || '-'
+			|| (SELECT uid FROM sync_idmap WHERE tbl = 'tag' AND id = NEW.tag_id))
+		THEN lower(hex(randomblob(16)))
+		ELSE 'tt-' || (SELECT uid FROM sync_idmap WHERE tbl = 'task' AND id = NEW.task_id) || '-'
+			|| (SELECT uid FROM sync_idmap WHERE tbl = 'tag' AND id = NEW.tag_id) END`},
 	{name: "task_link", refs: map[string]string{"blocker_id": "task", "blocked_id": "task"}},
 	{name: "status_transition", refs: map[string]string{"task_id": "task", "from_status_id": "status", "to_status_id": "status"}},
 	{name: "session", refs: map[string]string{"task_id": "task", "area_id": "area", "energy_type_id": "energy_type"}},
 	{name: "session_energy", parent: "_energies"},
 	{name: "session_subtype", parent: "_subtypes"},
+	{name: "session_tag", parent: "_tags"},
 	{name: "state"},
 	{name: "inbox_item"},
 	{name: "day_plan", natural: "day"},

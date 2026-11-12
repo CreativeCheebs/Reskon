@@ -22,6 +22,7 @@ var syncJSONFields = map[string]map[string]func(v any, swap idSwap) any{
 			swapList(m, "areas", "area", swap)
 			swapList(m, "statuses", "status", swap)
 			swapList(m, "epics", "task", swap) // 0 = no epic, kept as is
+			swapList(m, "tags", "tag", swap)   // 0 = no tags, kept as is
 			return m
 		},
 		"board_state": func(v any, swap idSwap) any {

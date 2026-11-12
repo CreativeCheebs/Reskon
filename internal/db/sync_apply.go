@@ -294,7 +294,7 @@ func (a *applier) update(t *syncTable, r SyncRow, key string, local map[string]S
 		if c == "id" || t.skips(c) {
 			continue
 		}
-		isPart := t.name == "session" && (c == "_energies" || c == "_subtypes")
+		isPart := t.name == "session" && (c == "_energies" || c == "_subtypes" || c == "_tags")
 		if !isPart && !known[c] {
 			continue
 		}
@@ -420,6 +420,28 @@ func (a *applier) sessionParts(key string, vals map[string]any) error {
 				continue
 			}
 			if _, err := a.tx.ExecContext(a.ctx, `INSERT INTO session_subtype (session_id, subtype_id, rank) VALUES (?, ?, ?)`, key, st, p[1]); err != nil {
+				return err
+			}
+		}
+	}
+	if list, ok := vals["_tags"].([]any); ok {
+		if _, err := a.tx.ExecContext(a.ctx, `DELETE FROM session_tag WHERE session_id = ?`, key); err != nil {
+			return err
+		}
+		for _, x := range list {
+			p, _ := x.([]any)
+			if len(p) < 1 {
+				continue
+			}
+			uid, _ := p[0].(string)
+			tg, ok := idOf(a.ctx, a.tx, "tag", uid)
+			if !ok {
+				continue
+			}
+			// A tag deleted here is gone for good (its id is still known, but its row is not): skipped,
+			// not an error, or one stale session would stop every sync of the device that sent it.
+			if _, err := a.tx.ExecContext(a.ctx, `INSERT OR IGNORE INTO session_tag (session_id, tag_id)
+				SELECT ?, id FROM tag WHERE id = ?`, key, tg); err != nil {
 				return err
 			}
 		}

@@ -99,6 +99,7 @@ func (s *Server) routes() {
 	s.authRoutes()
 	m.HandleFunc("GET /api/bootstrap", s.bootstrap)
 	m.HandleFunc("PUT /api/settings/{key}", s.putSetting)
+	s.tagRoutes()
 
 	s.taskRoutes()
 	s.similarRoutes()
