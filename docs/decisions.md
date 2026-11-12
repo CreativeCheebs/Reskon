@@ -175,8 +175,11 @@ The dark palette was checked against Atlassian's and GitHub's published dark the
 ### Readable grey text in every theme (owner's UI review, 2026-11-04)
 WCAG AA asks for a contrast of at least 4.5 to 1 between text and its background. A theme's two grey text colours (`muted` and `subtle`) are now checked when the theme loads, against the page, cards, columns, menus and hovered cards. If one falls short, it is moved toward the main text colour just far enough to pass; a passing colour is left as it is. The saved theme is never changed, only what is shown. Why: the built-in themes passed on plain cards, but GitHub Dark Dimmed's grey on a hovered card measured 4.1:1, and an uploaded theme can be anything (the review found one at about 3:1).
 
-### A task's symbol is a page, not a ticked box (owner's UI review, 2026-11-04)
+### A task's symbol is a page, not a ticked box (owner's UI review, 2026-11-04) — superseded 2026-11-13: it is an outlined tick-box again
 Tasks used Jira's blue ticked box. On a task that isn't finished, a ticked box reads as "done", so it is now a blue page symbol. The subtask count on a card says "2/5 subtasks" instead of "☑ 2/5" for the same reason. Small icon buttons (sidebar, column collapse, column limit, quick capture, the buttons on a hovered card) get a click area of at least 32 by 32 pixels; the web app is for desktops, so the 44-pixel touch size isn't used.
+
+### The task symbol is an outlined tick-box again (owner, 2026-11-13)
+The blue page symbol (2026-11-04) did not look good. Tasks now use an outlined tick-box in the accent colour, close to Jira's, in the same places as before; epics keep their lightning bolt. It is drawn as an outline, not a filled tick, so it does not read as "done". Nothing else about the 2026-11-04 entry changed (the subtask count still says "2/5 subtasks").
 
 ### Time zone per person (owner, 2026-11-04)
 "Today" used to be the server's day, which can be wrong near midnight when the server runs in UTC. Now the browser and the phone send their time zone, and the server uses it.
