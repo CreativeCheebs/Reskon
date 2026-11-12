@@ -351,6 +351,8 @@ export interface CaptureParse {
   hours: number | null;
   difficulty: number | null;
   subtypes: string[] | null;
+  /** Tags that already exist; capture never makes one. */
+  tags?: string[] | null;
   area: string | null;
   matched_task_key: string | null;
   confidence: number | null;

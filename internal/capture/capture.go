@@ -22,6 +22,7 @@ type Result struct {
 	Hours          *float64 `json:"hours"`
 	Difficulty     *int     `json:"difficulty"`
 	Subtypes       []string `json:"subtypes"`
+	Tags           []string `json:"tags"` // only tags that already exist (see Lookups.Tags); capture never makes one
 	Area           *string  `json:"area"`
 	MatchedTaskKey *string  `json:"matched_task_key"`
 	Confidence     *float64 `json:"confidence"`
@@ -65,6 +66,7 @@ type Lookups struct {
 	EnergyTypes []string            // names
 	Subtypes    map[string][]string // energy type name -> subtype names
 	Areas       []string            // names
+	Tags        []string            // names of the tags that exist
 	Candidates  []Candidate
 }
 
@@ -94,7 +96,7 @@ type Parser struct {
 // Fallback is the manual form: raw text in the title, everything else blank.
 func Fallback(text, reason string) Result {
 	t := strings.TrimSpace(text)
-	r := Result{Title: &t, Fallback: true, FallbackReason: reason, Subtypes: []string{}}
+	r := Result{Title: &t, Fallback: true, FallbackReason: reason, Subtypes: []string{}, Tags: []string{}}
 	r.Entries = []Result{r}
 	return r
 }
@@ -124,6 +126,10 @@ func normaliseAll(raw Result, text string, l Lookups) Result {
 
 // Parse returns the filled form for text. It never returns an error.
 func (p *Parser) Parse(ctx context.Context, text string, l Lookups) Result {
+	return withHashtags(p.parse(ctx, text, l), text, l)
+}
+
+func (p *Parser) parse(ctx context.Context, text string, l Lookups) Result {
 	if p == nil || p.Provider == nil || p.Config == nil {
 		return Fallback(text, "no capture provider configured")
 	}

@@ -65,6 +65,13 @@ func (d *DB) CaptureLookups(ctx context.Context, text string, limit int) (captur
 	for _, a := range areas {
 		l.Areas = append(l.Areas, a.Name)
 	}
+	tags, err := d.ListTags(ctx)
+	if err != nil {
+		return l, err
+	}
+	for _, t := range tags {
+		l.Tags = append(l.Tags, t.Name)
+	}
 
 	words := captureWords(text)
 	if len(words) == 0 {

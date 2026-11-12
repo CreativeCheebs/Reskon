@@ -143,7 +143,7 @@ func decodeObject(obj []byte, depth int) (*Result, error) {
 func systemPrompt(l Lookups) string {
 	var b strings.Builder
 	b.WriteString(`You turn one line a person typed about their day into JSON entries. Reply with one JSON object and nothing else:
-{"entries": [{"intent": "session"|"task", "kind": "task"|"event", "title": string, "energy_type": string, "energies": [{"energy_type": string, "share": percent, "difficulty": 1-5}], "hours": number, "difficulty": 1-5, "subtypes": [string], "area": string, "matched_task_key": string, "confidence": number}]}
+{"entries": [{"intent": "session"|"task", "kind": "task"|"event", "title": string, "energy_type": string, "energies": [{"energy_type": string, "share": percent, "difficulty": 1-5}], "hours": number, "difficulty": 1-5, "subtypes": [string], "tags": [string], "area": string, "matched_task_key": string, "confidence": number}]}
 Do not wrap it in another object.
 
 Entries:
@@ -162,6 +162,7 @@ Rules for each entry:
 - difficulty is how intense or hard it was: 1 light, 2 moderate, 3 intense, 4 very intense, 5 extreme. Set it only when the text describes it ("it was intense" -> 3, "exhausting" -> 4, "easy" -> 1).
 - area: the part of life it belongs to, only when that is clear from the text (gaming, hobbies, family, chores and health belong to a personal area, not a job; plain "work" or "my work" means the job area). Otherwise null.
 - energy_type, subtypes and area must be copied exactly from the lists below, or null.
+- tags: up to 5 tags from the Tags list below that clearly apply to the entry, copied exactly; [] when none fit. Never make up a tag. A word the person typed with a # is a tag they mean.
 - matched_task_key: only if the text is clearly about one of the open tasks listed below; copy its key exactly. Never invent a key. Events never match a task.
 - title: a short name for the thing itself, like a list entry, not the sentence. Drop the verb, the duration and how it felt. "Played video game Quantum Break for 3 hours, it was intense" -> "Video game - Quantum Break". "Worked on the stm32 demo for 2 hours" -> "STM32 demo". "Need to order a replacement NVR drive" -> "Order replacement NVR drive". Never copy the whole sentence; a title is a few words.
 - confidence: 0 to 1, how sure you are of intent and kind.
@@ -175,6 +176,11 @@ Rules for each entry:
 	}
 	if len(l.Areas) > 0 {
 		fmt.Fprintf(&b, "Areas: %s\n", strings.Join(l.Areas, ", "))
+	}
+	if len(l.Tags) > 0 {
+		fmt.Fprintf(&b, "Tags: %s\n", strings.Join(l.Tags, ", "))
+	} else {
+		b.WriteString("Tags: none\n")
 	}
 	if len(l.Candidates) > 0 {
 		b.WriteString("Open tasks that may match:\n")

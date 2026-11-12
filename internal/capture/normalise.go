@@ -7,7 +7,7 @@ import "strings"
 // impossible hours or difficulty) becomes nil, so the form shows a blank
 // instead of a wrong value.
 func Normalise(r Result, text string, l Lookups) Result {
-	out := Result{Subtypes: []string{}}
+	out := Result{Subtypes: []string{}, Tags: pickTags(r.Tags, l.Tags)}
 
 	if r.Intent != nil && (*r.Intent == "session" || *r.Intent == "task") {
 		out.Intent = r.Intent
@@ -87,6 +87,56 @@ func Normalise(r Result, text string, l Lookups) Result {
 		}
 	}
 	return out
+}
+
+// maxCaptureTags is how many tags capture suggests for one entry.
+const maxCaptureTags = 5
+
+// pickTags keeps the tags that exist, in their real spelling, each once.
+// A tag the model made up is dropped: capture never creates a tag.
+func pickTags(in, existing []string) []string {
+	out := []string{}
+	seen := map[string]bool{}
+	for _, t := range in {
+		n := pick(&t, existing)
+		if n == nil || seen[strings.ToLower(*n)] || len(out) == maxCaptureTags {
+			continue
+		}
+		seen[strings.ToLower(*n)] = true
+		out = append(out, *n)
+	}
+	return out
+}
+
+// hashtags returns the words of text written as #tag, without the # and any
+// trailing punctuation.
+func hashtags(text string) []string {
+	var out []string
+	for _, w := range strings.Fields(text) {
+		if strings.HasPrefix(w, "#") {
+			if t := strings.TrimRight(strings.TrimLeft(w, "#"), ".,;:!?)\"'"); t != "" {
+				out = append(out, t)
+			}
+		}
+	}
+	return out
+}
+
+// withHashtags adds the tags written as #tag in text, when they exist, to
+// every entry: a person who types the tag means it, with or without a model.
+func withHashtags(r Result, text string, l Lookups) Result {
+	typed := pickTags(hashtags(text), l.Tags)
+	if len(typed) == 0 {
+		return r
+	}
+	add := func(e *Result) {
+		e.Tags = pickTags(append(append([]string{}, typed...), e.Tags...), l.Tags)
+	}
+	for i := range r.Entries {
+		add(&r.Entries[i])
+	}
+	add(&r)
+	return r
 }
 
 // pick returns the canonical spelling of v from options, or nil.

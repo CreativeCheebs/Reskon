@@ -172,7 +172,7 @@ A **tag** is a short free word on a task ("backend", "q4"), beside its area and 
 - Naming a tag that does not exist yet creates it, so tags are made by using them: in the task panel, in the new-task form, in the session form, or in quick capture.
 - **Sessions.** A session shows the tags of its task **as they are now**, and its own tags. The task's tags are never copied: change a task's tags and every session of it changes at once, on every device. A tag put on a session by hand belongs to that session and stays when the task's tags change. A session with no task has only its own tags, so they are chosen by hand; detaching a session from its task drops the tags it had from the task. The session shows which tags come from the task (they follow it) and which are its own.
 - **Filters.** A view can filter by tags (any of the chosen ones, or "no tags"); the Sessions screen filters the same way, by the task's tags and the session's own. Filtering is done on the server. Cards and tables can show a task's tags (Card settings).
-- **Quick capture** can pick tags, but only from the tags that already exist: it never invents one.
+- **Quick capture** can pick tags, but only from the tags that already exist: it never invents one. A word typed with a `#` in the line ("fix login #backend") is taken as that tag when it exists, with or without the model. The confirm form shows the tags for each entry, to change before saving.
 - Tags sync like everything else. The same tag made on two devices is one tag, and the same tag put on the same task on two is one link.
 
 ### 4.16 Editing at the same time in two places

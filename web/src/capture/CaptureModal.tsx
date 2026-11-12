@@ -8,6 +8,8 @@ import { local } from "../offline";
 import type { CaptureParse, Task, TaskBrief } from "../types";
 import { DifficultySlider } from "../task/DifficultySlider";
 import { emptySession, sessionBody, sessionReady, SessionFields, type SessionDraft } from "../sessions/SessionForm";
+import { TagSelect } from "../tags/TagSelect";
+import { useTags } from "../tags/tags";
 import { priorityOptions } from "../task/LevelIcons";
 import { palette } from "../theme/palette";
 import { today } from "../format";
@@ -26,6 +28,8 @@ interface TaskDraft {
   energy_type_id: number | null;
   difficulty: number | null;
   priority_id: number | null;
+  /** Tags by name; new names are made when it is saved. */
+  tags: string[];
 }
 
 type Intent = "task" | "session";
@@ -53,6 +57,7 @@ interface Props {
 
 export function CaptureModal({ onClose, takeEarlyKeys, initialText, onSaved }: Props) {
   const { boot, online } = useApp();
+  const { refreshIfNew } = useTags();
   const T = useTerms();
   const [text, setText] = useState(initialText ?? "");
   const [parsing, setParsing] = useState(false);
@@ -109,7 +114,7 @@ export function CaptureModal({ onClose, takeEarlyKeys, initialText, onSaved }: P
       id: nextEntryId++,
       parse: p,
       intent: p.intent === "session" ? "session" : p.intent === "task" ? "task" : null,
-      task: { title: p.title ?? raw, area_id: areaId, energy_type_id: energyId, difficulty: p.difficulty, priority_id: null },
+      task: { title: p.title ?? raw, area_id: areaId, energy_type_id: energyId, difficulty: p.difficulty, priority_id: null, tags: p.tags ?? [] },
       session: emptySession({
         task_id: p.matched_task_id ?? null,
         label: p.matched_task_id ? "" : p.title ?? raw,
@@ -121,6 +126,7 @@ export function CaptureModal({ onClose, takeEarlyKeys, initialText, onSaved }: P
         difficulty: p.difficulty,
         ...(several ? { share: parts[0].share, more: parts.slice(1) } : {}),
         subtypes: subtypeIds,
+        tags: p.tags ?? [],
         // The title is shortened by the model, so the line as typed is kept
         // as the note.
         note: raw && !p.fallback && p.title && p.title !== raw ? raw : "",
@@ -161,6 +167,7 @@ export function CaptureModal({ onClose, takeEarlyKeys, initialText, onSaved }: P
       if (t.energy_type_id) body.energy_type_id = t.energy_type_id;
       if (t.difficulty) body.difficulty = t.difficulty;
       if (t.priority_id) body.priority_id = t.priority_id;
+      if (t.tags.length) body.tags = t.tags;
       await api.post<Task>("/tasks", body);
       local.set(LAST_AREA, String(t.area_id));
     } else if (e.intent === "session") {
@@ -187,6 +194,7 @@ export function CaptureModal({ onClose, takeEarlyKeys, initialText, onSaved }: P
         tasksAdded ? `${T.countTasks(tasksAdded)} added` : "",
         sessionsLogged ? `${sessionsLogged} session${sessionsLogged > 1 ? "s" : ""} logged` : "",
       ].filter(Boolean);
+      refreshIfNew(entries.flatMap((e) => (e.intent === "task" ? e.task.tags : e.session.tags)));
       message.success(parts.join(", ").replace(/^./, (c) => c.toUpperCase()));
       onSaved?.();
       onClose();
@@ -352,6 +360,9 @@ function TaskFields({ draft, onChange }: { draft: TaskDraft; onChange: (d: TaskD
         <Form.Item label="Priority" style={{ marginBottom: 8 }}>
           <Select allowClear value={draft.priority_id ?? undefined} onChange={(v) => set({ priority_id: v ?? null })} options={priorityOptions(boot.priorities)} />
         </Form.Item>
+        <Form.Item label="Tags" style={{ gridColumn: "1 / -1", marginBottom: 8 }}>
+          <TagSelect value={draft.tags} onChange={(tags) => set({ tags })} />
+        </Form.Item>
       </div>
     </Form>
   );
@@ -366,6 +377,7 @@ function emptyParse(): CaptureParse {
     hours: null,
     difficulty: null,
     subtypes: null,
+    tags: null,
     area: null,
     matched_task_key: null,
     confidence: null,
