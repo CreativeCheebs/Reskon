@@ -174,6 +174,14 @@ private fun LayoutSheet(view: ViewRef, onDismiss: () -> Unit) {
                 Pill("List", view.kind == "List") { patch(jsonOf("layout" to "table", "board_state" to boardStateWith(view.raw, "timeline", false))) }
                 Pill("Timeline", view.kind == "Timeline") { patch(jsonOf("board_state" to boardStateWith(view.raw, "timeline", true))) }
             }
+            if (view.kind == "Board") {
+                val ctx = androidx.compose.ui.platform.LocalContext.current
+                T("Board shows (this phone)", Palette.fg, 15.sp, FontWeight.SemiBold)
+                androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Pill("Columns", !BoardStyle.asList) { BoardStyle.set(ctx, false) }
+                    Pill("List by ${Terms.task} status", BoardStyle.asList) { BoardStyle.set(ctx, true) }
+                }
+            }
             T("Group by (list)", Palette.fg, 15.sp, FontWeight.SemiBold)
             androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 val g = state.optString("group_by", "status").ifBlank { "status" }
@@ -190,6 +198,11 @@ private fun LayoutSheet(view: ViewRef, onDismiss: () -> Unit) {
 
 @Composable
 private fun BoardLayout(view: ViewRef, tasks: List<JSONObject>, onLongPress: (JSONObject) -> Unit) {
+    // Settings > Board as a list: the same board, one status under another, instead of columns.
+    if (BoardStyle.asList) {
+        StatusListLayout(view.id, tasks, onLongPress)
+        return
+    }
     val boot = App.boot ?: return
     var shownHidden by remember { mutableStateOf(setOf<Long>()) }
     val byStatus = tasks.groupBy { it.getLong("status_id") }
@@ -318,8 +331,12 @@ object EpicNames {
 // ---------------------------------------------------------------- List
 
 @Composable
-private fun ListLayout(view: ViewRef, tasks: List<JSONObject>, onLongPress: (JSONObject) -> Unit) {
+private fun ListLayout(view: ViewRef, allTasks: List<JSONObject>, onLongPress: (JSONObject) -> Unit) {
     val boot = App.boot ?: return
+    // Tasks in a hidden status (Backlog...) stay out of the list until their button is tapped.
+    var opened by remember(view.id) { mutableStateOf(OpenedStatuses.of(view.id)) }
+    val tasks = withoutHiddenStatuses(allTasks, boot.statuses, opened)
+    val hiddenCounts = boot.statuses.filter { !it.onBoard }.map { s -> s to allTasks.count { it.optLong("status_id", -1) == s.id } }.filter { it.second > 0 }
     val groupBy = view.raw.optJSONObject("board_state")?.optString("group_by")?.ifBlank { null } ?: "status"
     fun keyOf(t: JSONObject): Pair<String, Color> = when (groupBy) {
         "priority" -> boot.priority(t.id("priority_id"))?.let { it.name to it.color } ?: ("No priority" to Palette.subtle)
@@ -338,6 +355,21 @@ private fun ListLayout(view: ViewRef, tasks: List<JSONObject>, onLongPress: (JSO
         Box(Modifier.weight(1f))
         T(Terms.countTasks(tasks.size), Palette.muted, 13.sp)
     }
+    if (hiddenCounts.isNotEmpty()) androidx.compose.foundation.layout.FlowRow(
+        Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        hiddenCounts.forEach { (s, n) ->
+            Pill(
+                "${s.name} $n", on = s.id in opened, dot = s.color, action = true,
+                description = (if (s.id in opened) "Hide ${s.name}" else "Show ${s.name}") + ", ${Terms.countTasks(n)}",
+            ) {
+                opened = if (s.id in opened) opened - s.id else opened + s.id
+                OpenedStatuses.set(view.id, opened)
+            }
+        }
+    }
+    if (tasks.isEmpty() && hiddenCounts.isNotEmpty()) Empty("Nothing to show here. Tap a status above to see its ${Terms.tasks}.")
     LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         items(groups, key = { it.key.first }) { (g, rows) ->
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -358,13 +390,13 @@ private fun ListLayout(view: ViewRef, tasks: List<JSONObject>, onLongPress: (JSO
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ListRowTask(t: JSONObject, onLongPress: (JSONObject) -> Unit) {
+internal fun ListRowTask(t: JSONObject, onLongPress: (JSONObject) -> Unit) {
     val boot = App.boot ?: return
     val overdue = (t.num("days_to_due") ?: 1.0) < 0 && t.optString("behaviour") in setOf("todo", "in_progress")
     val flag = when { t.optBoolean("stalled") -> Palette.red; overdue -> Palette.yellow; else -> Color.Transparent }
     Row(
         Modifier.fillMaxWidth().drawBehind { drawRect(flag, size = androidx.compose.ui.geometry.Size(3.dp.toPx(), size.height)) }
-            .combinedClickable(onLongClick = { onLongPress(t) }) { App.go("task", "id" to t.getLong("id")) }
+            .combinedClickable(onLongClickLabel = "Move to another status", onLongClick = { onLongPress(t) }) { App.go("task", "id" to t.getLong("id")) }
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {

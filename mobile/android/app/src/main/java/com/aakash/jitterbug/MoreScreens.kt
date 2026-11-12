@@ -111,6 +111,9 @@ fun SettingsScreen() {
                 SwitchRow("Day screen", showsDay(boot.settings), "The morning plan and evening readout, with its own tab. Off hides it here and on the web. Nothing is deleted.") {
                     scope.launch { attempt("Not saved") { saveSetting("show_day_screen", it) } }
                 }
+                SwitchRow("Board as a list", BoardStyle.asList, "Show each status one under another, with buttons to jump between them, instead of columns side by side. Only on this phone.") {
+                    BoardStyle.set(ctx, it)
+                }
             }
             Card {
                 ListRow("Names", "What ${Terms.tasks} and ${Terms.epics} are called") { App.go("names") }
@@ -198,14 +201,16 @@ fun LookupScreen(r: Route) {
     editing?.let { o ->
         var name by remember(o) { mutableStateOf(o.optString("name")) }
         var extra by remember(o) { mutableStateOf(if (kind == "energy-types") num(o.optDouble("points_per_hour")) else o.optString("key_prefix")) }
+        var onBoard by remember(o) { mutableStateOf(o.optBoolean("on_board", true)) }
         AlertDialog(
             onDismissRequest = { editing = null }, containerColor = Palette.raised,
             title = { T("Edit", Palette.fg, 18.sp, FontWeight.SemiBold) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     TextBox("Name", name) { name = it }
                     if (kind == "energy-types") TextBox("Points an hour", extra, keyboard = KeyboardType.Decimal) { extra = it }
                     if (kind == "areas") TextBox("${Terms.capTask} key prefix", extra) { extra = it.uppercase() }
+                    if (kind == "statuses") SwitchRow("Show on the board", onBoard, "Off keeps it off the board and out of the list, behind its own button.") { onBoard = it }
                     if (o.optBoolean("is_builtin")) T("Built in: it can be renamed but not deleted.", Palette.subtle, 12.sp)
                 }
             },
@@ -215,6 +220,7 @@ fun LookupScreen(r: Route) {
                     val body = jsonOf("name" to name.trim())
                     if (kind == "energy-types") extra.toDoubleOrNull()?.let { body.put("points_per_hour", it) }
                     if (kind == "areas" && extra.isNotBlank()) body.put("key_prefix", extra)
+                    if (kind == "statuses") body.put("on_board", onBoard)
                     run("Not saved") { Api.patch("/$kind/${o.getLong("id")}", body) }
                 }) { T("Save", Palette.accent, 15.sp, FontWeight.SemiBold) }
             },

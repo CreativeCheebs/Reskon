@@ -184,6 +184,9 @@ The blue page symbol (2026-11-04) did not look good. Tasks now use an outlined t
 ### One version number (owner, 2026-11-13)
 The owner asked for a version to be kept, shown in Settings and in the commits. It is `major.minor.patch` in a `VERSION` file, starting at 0.2.0 (the phone app was 0.1.0). The server and web app share it; the phone's Gradle build reads the same file, and each release is tagged `v<version>` in git. A test fails if `VERSION`, `internal/version/version.go` and `web/package.json` disagree. The health check now also says the version, so the phone can show which server it is connected to. Nothing is checked when a phone and a server of different versions sync; sync already tolerates unknown fields.
 
+### Board as a list on the phone (owner, 2026-11-13)
+The owner finds side-by-side columns hard on a phone and wanted the Todoist way: one list down the screen with a group for each status. It is a choice about this phone's screen, so it is a plain on/off kept in the phone's own preferences (not an account setting, so nothing syncs and the web is unaffected). Hidden statuses (Backlog, Cancelled) are not sections but keep a button, so the list is not filled with the backlog. The same rule now applies to the List layout, and Settings › Statuses on the phone gained the *Show on the board* switch that the web already had. The first version jumps to a status with its button; it does not filter the list to that status.
+
 ### Time zone per person (owner, 2026-11-04)
 "Today" used to be the server's day, which can be wrong near midnight when the server runs in UTC. Now the browser and the phone send their time zone, and the server uses it.
 

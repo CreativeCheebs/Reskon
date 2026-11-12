@@ -184,13 +184,25 @@ fun SectionTitle(text: String, modifier: Modifier = Modifier) =
 
 /** Round outlined chip; selected = accent border on the selected fill. */
 @Composable
-fun Pill(text: String, on: Boolean = false, dot: Color? = null, height: Int = 36, trailing: String? = null, onClick: (() -> Unit)? = null) {
+fun Pill(
+    text: String, on: Boolean = false, dot: Color? = null, height: Int = 36, trailing: String? = null,
+    /** A button that does something (jump, open) rather than choosing: no "selected" state is announced. */
+    action: Boolean = false,
+    /** What a screen reader says instead of the text, when the text alone is not enough. */
+    description: String? = null,
+    onClick: (() -> Unit)? = null,
+) {
     val shape = RoundedCornerShape(height / 2)
     Row(
         Modifier.heightIn(min = height.dp).clip(shape)
             .background(if (on) Palette.selected else Color.Transparent)
             .border(1.dp, if (on) Palette.accent else Palette.strong, shape)
-            .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick).semantics { selected = on } else Modifier)
+            .then(
+                if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick).semantics {
+                    if (!action) selected = on
+                    description?.let { contentDescription = it }
+                } else Modifier,
+            )
             .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
