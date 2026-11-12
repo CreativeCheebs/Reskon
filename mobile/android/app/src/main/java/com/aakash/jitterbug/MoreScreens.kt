@@ -127,6 +127,7 @@ fun SettingsScreen() {
                 Line(); ListRow("Snooze", "Longest snooze") { App.go("snoozeset") }
                 Line(); ListRow("Complete details", "Fields an open ${Terms.task} should have") { App.go("complete") }
                 Line(); ListRow("Card actions", "Buttons and menu on web cards") { App.go("cardactions") }
+                Line(); ListRow("Tags", "${boot.tags.size} tags") { App.go("lookup", "kind" to "tags") }
                 Line(); ListRow("Custom fields", "Extra fields on ${Terms.tasks} and sessions") { App.go("fields") }
             }
             SectionTitle("Time and points")
@@ -159,12 +160,13 @@ fun SettingsScreen() {
 fun LookupScreen(r: Route) {
     val boot = App.boot ?: return
     val kind = r.args["kind"] ?: "areas"
-    val title = mapOf("areas" to "Areas", "statuses" to "Statuses", "priorities" to "Priorities", "energy-types" to "Energy types", "subtypes" to "Subtypes")[kind] ?: kind
+    val title = mapOf("tags" to "Tags", "areas" to "Areas", "statuses" to "Statuses", "priorities" to "Priorities", "energy-types" to "Energy types", "subtypes" to "Subtypes")[kind] ?: kind
     val rows: List<JSONObject> = when (kind) {
         "areas" -> boot.areas.map { it.raw }
         "statuses" -> boot.statuses.map { it.raw }
         "priorities" -> boot.priorities.map { it.raw }
         "energy-types" -> boot.energyTypes.map { it.raw }
+        "tags" -> boot.tags
         else -> boot.subtypes.map { it.raw }
     }
     var editing by remember { mutableStateOf<JSONObject?>(null) }
@@ -182,6 +184,7 @@ fun LookupScreen(r: Route) {
                         if (i > 0) Line()
                         val hint = when (kind) {
                             "areas" -> o.optString("key_prefix")
+                            "tags" -> "${Terms.countTasks(o.optInt("task_count"))} · ${o.optInt("session_count")} sessions"
                             "energy-types" -> "${num(o.optDouble("points_per_hour"))} points an hour"
                             "subtypes" -> boot.type(o.optLong("energy_type_id"))?.name ?: ""
                             "statuses" -> boot.statuses.firstOrNull { it.id == o.getLong("id") }?.let { it.behaviour.replace('_', ' ') + if (!it.onBoard) " · hidden" else "" } ?: ""

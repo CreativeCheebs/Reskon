@@ -28,6 +28,8 @@ class Boot(json: JSONObject) {
             it.optJSONObject("board_state")?.optBoolean("timeline") == true, color(it.str("color"), Palette.accent), it)
     }
     val settings: JSONObject = json.optJSONObject("settings") ?: JSONObject()
+    /** Tags, by name: {id, name, task_count, session_count}. */
+    val tags: List<JSONObject> = json.objs("tags")
 
     fun area(id: Long?) = areas.firstOrNull { it.id == id }
     fun type(id: Long?) = energyTypes.firstOrNull { it.id == id }

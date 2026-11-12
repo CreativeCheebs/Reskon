@@ -286,7 +286,7 @@ fun TaskCard(t: JSONObject, onLongPress: (JSONObject) -> Unit = {}) {
             t.id("epic_id")?.let { id -> EpicNames.of(id)?.let { it to Palette.purple } },
             boot.area(t.id("area_id"))?.let { it.name to it.color },
             boot.type(t.id("energy_type_id"))?.let { it.name to it.color },
-        )
+        ) + boot.tagNames(t.tagIds()).map { "#$it" to Palette.muted }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             labels.forEach { (text, c) -> Tag(text.uppercase(), bg = c.copy(alpha = 0.2f), fg = c, round = 4) }
         }

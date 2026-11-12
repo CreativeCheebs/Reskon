@@ -83,6 +83,10 @@ data class Draft(
     val startedAt: LocalTime? = null,
     val note: String = "",
     val custom: JSONObject = JSONObject(),
+    /** Tags put on this session by hand, by name. */
+    val tags: List<String> = emptyList(),
+    /** Its task's tags, by name: shown, they follow the task. */
+    val inheritedTags: List<String> = emptyList(),
 ) {
     /** Shares must add up to 100 when there is more than one type. */
     val valid get() = (hours ?: 0.0) > 0 && parts.isNotEmpty() && (parts.size == 1 || parts.sumOf { it.share } == 100)
@@ -102,6 +106,7 @@ data class Draft(
             "started_at" to startedAt?.let { loggedFor.atTime(it).atZone(ZoneId.systemDefault()).toInstant().toString() },
             "note" to note.ifBlank { null },
             "custom" to custom,
+            "tags" to tags.asJson(),
         ).apply {
             if (parts.size > 1) put("energies", JSONArray(parts.map { jsonOf("energy_type_id" to it.typeId, "share" to it.share / 100.0, "difficulty" to it.difficulty) }))
         }
@@ -119,6 +124,8 @@ data class Draft(
                 loggedFor = LocalDate.parse(s.getString("logged_for")),
                 startedAt = s.str("started_at")?.let { Instant.parse(it).atZone(ZoneId.systemDefault()).toLocalTime() },
                 note = s.str("note") ?: "", custom = s.optJSONObject("custom") ?: JSONObject(),
+                tags = App.boot?.sessionTagNames(s, fromTask = false) ?: emptyList(),
+                inheritedTags = App.boot?.sessionTagNames(s, fromTask = true) ?: emptyList(),
             )
         }
     }
@@ -179,6 +186,7 @@ fun SessionFields(d: Draft, onDone: (() -> Unit)? = null, set: (Draft) -> Unit) 
     var pickTime by remember { mutableStateOf(false) }
     var pickTask by remember { mutableStateOf(false) }
     var addingSubtype by remember { mutableStateOf(false) }
+    var pickTags by remember { mutableStateOf(false) }
     var showNote by remember { mutableStateOf(d.note.isNotEmpty()) }
 
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -251,6 +259,20 @@ fun SessionFields(d: Draft, onDone: (() -> Unit)? = null, set: (Draft) -> Unit) 
                 }
             }
         }
+        Card {
+            Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                T("Tags", Palette.muted, 14.sp, modifier = Modifier.width(72.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    d.inheritedTags.forEach { Tag("#$it", round = 16) }
+                    d.tags.forEach { n -> Box(Modifier.clickable { set(d.copy(tags = d.tags - n)) }) { Tag("#$n", bg = Palette.selected, round = 16) } }
+                    Box(
+                        Modifier.size(32.dp).clip(RoundedCornerShape(16.dp)).border(1.dp, Palette.strong, RoundedCornerShape(16.dp)).clickable { pickTags = true },
+                        contentAlignment = Alignment.Center,
+                    ) { T("+", Palette.muted, 18.sp) }
+                }
+            }
+            if (d.inheritedTags.isNotEmpty()) T("Tags without a highlight come from the ${Terms.task} and follow it.", Palette.subtle, 12.sp, modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 10.dp))
+        }
         if (showNote) TextBox("Note", d.note, "Anything to remember", single = false) { set(d.copy(note = it)) }
         else TextLink("+ Add a note") { showNote = true }
     }
@@ -267,10 +289,12 @@ fun SessionFields(d: Draft, onDone: (() -> Unit)? = null, set: (Draft) -> Unit) 
     }
     if (pickTask) TaskPicker(onDismiss = { pickTask = false }) { t ->
         set(d.copy(taskId = t?.getLong("id"), taskTitle = t?.getString("title"),
+            inheritedTags = t?.let { boot.tagNames(it.tagIds()) } ?: emptyList(),
             areaId = t?.getLong("area_id") ?: d.areaId,
             parts = if (d.parts.isEmpty() && t?.id("energy_type_id") != null) listOf(Part(t.getLong("energy_type_id"), 100, t.id("difficulty")?.toInt() ?: 2)) else d.parts))
         pickTask = false
     }
+    if (pickTags) TagsSheet("Tags on this session", d.tags, d.inheritedTags, onDone = { set(d.copy(tags = it)) }) { pickTags = false }
     if (addingSubtype) {
         val types = d.parts.map { it.typeId }.toSet()
         val options = boot.subtypes.filter { (types.isEmpty() || it.raw.optLong("energy_type_id") in types) && it.id !in d.subtypes }

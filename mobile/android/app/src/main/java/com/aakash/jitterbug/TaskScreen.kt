@@ -124,6 +124,7 @@ fun TaskScreen(r: Route) {
             Card {
                 val fields = listOf(
                     Triple(Terms.capEpic, t.id("epic_id")?.let { EpicNames.of(it) ?: "#$it" } ?: "None", Palette.purple.takeIf { t.id("epic_id") != null }) to "epic",
+                    Triple("Tags", boot.tagNames(t.tagIds()).joinToString(", ").ifEmpty { "–" }, null) to "tags",
                     Triple("Area", boot.area(t.id("area_id"))?.name ?: "–", boot.area(t.id("area_id"))?.color) to "area",
                     Triple("Energy type", boot.type(t.id("energy_type_id"))?.name ?: "–", boot.type(t.id("energy_type_id"))?.color) to "type",
                     Triple("Priority", boot.priority(t.id("priority_id"))?.name ?: "–", boot.priority(t.id("priority_id"))?.color) to "priority",
@@ -234,6 +235,10 @@ fun TaskScreen(r: Route) {
 
     when (sheet) {
         "status" -> PickSheet("Status", boot.statuses.map { it.id to it.name }, { sheet = null }) { sheet = null; move(it) }
+        "tags" -> TagsSheet("Tags", boot.tagNames(t.tagIds()), onDone = { names ->
+            change(jsonOf("tags" to names.asJson()))
+            scope.launch { App.reloadBoot() }
+        }) { sheet = null }
         "area" -> PickSheet("Area", boot.areas.map { it.id to it.name }, { sheet = null }) { sheet = null; change(jsonOf("area_id" to it)) }
         "type" -> PickSheet("Energy type", listOf(0L to "None") + boot.energyTypes.map { it.id to it.name }, { sheet = null }) { sheet = null; change(jsonOf("energy_type_id" to it.takeIf { it > 0 })) }
         "priority" -> PickSheet("Priority", listOf(0L to "None") + boot.priorities.map { it.id to it.name }, { sheet = null }) { sheet = null; change(jsonOf("priority_id" to it.takeIf { it > 0 })) }
