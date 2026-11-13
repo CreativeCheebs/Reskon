@@ -124,6 +124,31 @@ test("Enter in the Log time form saves only once it is complete", async ({ page 
   await expect(dialog).toBeHidden();
 });
 
+test("the session form's task picker offers Create new task, and Escape leaves both forms as they were", async ({ page }) => {
+  await signIn(page);
+  await page.getByRole("menuitem", { name: /Sessions/ }).click();
+  await page.getByRole("button", { name: /Log time/ }).click();
+  const log = page.getByRole("dialog", { name: "Log time" });
+  await expect(log).toBeVisible();
+  const picker = log.getByRole("combobox", { name: "Task", exact: true });
+  await picker.click();
+  await picker.fill("a task that does not exist yet");
+  await page.getByRole("button", { name: /Create new task/ }).click();
+  const made = page.getByRole("dialog", { name: /New task/ });
+  await expect(made).toBeVisible();
+  // What was typed in the search box is the title.
+  await expect(made.getByLabel("Title")).toHaveValue("a task that does not exist yet");
+  await expect(made.getByLabel("Title")).toBeFocused();
+  // Escape closes the small box only; the Log time form stays. Nothing is created.
+  await page.keyboard.press("Escape");
+  await expect(made).toBeHidden();
+  await expect(log).toBeVisible();
+  // The picker may still be open behind it and takes the first Escape; the form closes with the next.
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
+  await expect(log).toBeHidden();
+});
+
 // The table's own actions. They only open things and cancel: nothing is moved or deleted.
 test("a table row's status is a button that lists the statuses, and Escape closes it", async ({ page }) => {
   await signIn(page);

@@ -315,7 +315,7 @@ export function CaptureModal({ onClose, takeEarlyKeys, initialText, onSaved }: P
                 {!e.intent && <Typography.Text type="secondary">Is this {T.task} to do, or a session that happened?</Typography.Text>}
                 {e.intent === "task" && <TaskFields draft={e.task} onChange={(task) => update(e.id, { task })} />}
                 {e.intent === "session" && (
-                  <SessionFields draft={e.session} onChange={(session) => update(e.id, { session })} tasks={tasks} disabled={!online} />
+                  <SessionFields draft={e.session} onChange={(session) => update(e.id, { session })} tasks={tasks} onTaskCreated={(t) => setTasks((all) => [...all, t])} disabled={!online} />
                 )}
               </div>
             ))}

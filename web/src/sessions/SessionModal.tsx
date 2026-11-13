@@ -99,6 +99,7 @@ export function SessionModal({
         draft={draft}
         onChange={setDraft}
         tasks={tasks}
+        onTaskCreated={(t) => setTasks((all) => [...all, t])}
         disabled={!online}
         autoFocus={!editing}
         // Enter in a single-line box saves, the same as the Save button.

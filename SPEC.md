@@ -231,6 +231,7 @@ A view has an icon (emoji, or an icon from Fluent UI or PrimeIcons), a colour, a
 
 - **Hours** (more than 0, at most 24), the **date** it was for, and optionally a **start time**.
 - **Description** (shown as the session's title), an optional **task**, an **area**, and **task or event**.
+- The task picker ends with **Create new task** (on the web: in the Log time and Edit session forms and in each entry of quick capture; on the phone: in the session form's task picker). It asks only for a title (starting with what was typed in the picker's search box) and an area (the session's, else the first), makes the task in the first to-do status, and picks it for the session. Everything else on the new task can be filled in later on the task. It is not offered when the picker is only filtering (the Sessions screen's task filter).
 - **Energy types**: one, or up to four with shares in whole percents that add up to 100% ("70% Engineering, 30% Admin"). Each part has its own level. An hour is never counted twice, so a day can't pass 24 hours.
 - **Subtypes**: up to four, ranked by dragging, or with the keyboard (focus the handle, Space, arrow keys). Each has a Remove button. Rank weights are a setting (default 100%, 50%, 25%, 25%). Percentages are never typed.
 - A **note**, and custom fields.
