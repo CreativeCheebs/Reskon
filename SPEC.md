@@ -359,7 +359,7 @@ Bar, line, cumulative (only rises), number, list, bands (states across days, dra
 | Days over plan | Days where any type went over its ceiling. |
 | Ceiling vs actual | Hours as a share of the planned ceiling, per type. |
 
-- Each metric says which groupings (day, week, month, area, subtype, energy type, status, task, session…) and filters (area, energy type, subtype, status, task/event, task) it allows. The widget editor only offers what the server supports.
+- Each metric says which groupings (day, week, month, area, subtype, energy type, status, task, session…) and filters (area, energy type, subtype, status, task/event, task, tag) it allows. The session metrics' tag filter means what it means on the Sessions list: the task's tags or the session's own, and "no tags" for none. The widget editor only offers what the server supports.
 - Ranges: today, 7 days, 30 days, 90 days, this month, 1 year, all, or chosen dates.
 - Weeks start on the day set in Settings › Reflection (default Monday).
 - Totals, running totals and shares come from the server, never added up on screen. A share is a part of the sum of all types, never one type divided by another.

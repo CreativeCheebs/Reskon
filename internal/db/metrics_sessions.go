@@ -16,7 +16,7 @@ import (
 // back up to the whole session.
 
 func init() {
-	sessionFilters := []string{"area", "energy_type", "subtype", "kind", "task_id"}
+	sessionFilters := []string{"area", "energy_type", "subtype", "kind", "task_id", "tag"}
 	register(&metricDef{
 		Name: "session_hours", Label: "Session hours", Unit: "hours",
 		Description: "Hours logged, across every energy type unless filtered. By subtype, hours are weighted by rank.",
@@ -144,6 +144,14 @@ func (d *DB) loadSessions(ctx context.Context, r *metricRun, energy map[int64]bo
 			return nil, err
 		}
 		where = append(where, inList("s.task_id", tasks, &args))
+	}
+	if v := r.q.Filters["tag"]; len(v) > 0 {
+		// The task's tags or its own; 0 is "no tags" (the same rule as the sessions list).
+		tags, err := int64Values("tag", v)
+		if err != nil {
+			return nil, err
+		}
+		where = append(where, sessionTagCond(tags, &args))
 	}
 	if v := r.q.Filters["subtype"]; len(v) > 0 {
 		subs, err := resolveIDs("subtype", v, r.subtypes)

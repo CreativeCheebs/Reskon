@@ -349,3 +349,27 @@ func (d *DB) attachSessionTags(ctx context.Context, sessions []*Session) error {
 	}
 	return nil
 }
+
+// sessionTagCond is the SQL (on a session aliased s) for "has any of these tags, the task's or put
+// on by hand"; the tag id 0 means "has no tags at all". The sessions list and the session metrics
+// both use it, so a filter means the same in both.
+func sessionTagCond(tags []int64, args *[]any) string {
+	var ids []int64
+	none := false
+	for _, g := range tags {
+		if g == 0 {
+			none = true
+		} else {
+			ids = append(ids, g)
+		}
+	}
+	var conds []string
+	if len(ids) > 0 {
+		conds = append(conds, "s.id IN (SELECT session_id FROM session_tag WHERE "+inList("tag_id", ids, args)+")",
+			"s.task_id IN (SELECT task_id FROM task_tag WHERE "+inList("tag_id", ids, args)+")")
+	}
+	if none {
+		conds = append(conds, "(NOT EXISTS (SELECT 1 FROM session_tag st WHERE st.session_id = s.id) AND NOT EXISTS (SELECT 1 FROM task_tag tt WHERE tt.task_id = s.task_id))")
+	}
+	return "(" + strings.Join(conds, " OR ") + ")"
+}
