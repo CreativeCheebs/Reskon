@@ -36,6 +36,9 @@ func captureWords(text string) []string {
 // similar open tasks.
 const maxCaptureWords = 40
 
+// maxCaptureLookupTags is how many tag names are offered to the model.
+const maxCaptureLookupTags = 200
+
 // CaptureLookups gathers what the model may answer with, including the open
 // tasks whose titles share the most words with text (matching happens here,
 // in SQLite, not in the model).
@@ -65,12 +68,15 @@ func (d *DB) CaptureLookups(ctx context.Context, text string, limit int) (captur
 	for _, a := range areas {
 		l.Areas = append(l.Areas, a.Name)
 	}
-	tags, err := d.ListTags(ctx)
-	if err != nil {
-		return l, err
-	}
-	for _, t := range tags {
-		l.Tags = append(l.Tags, t.Name)
+	// Tags are a hint: if they cannot be read, capture goes on without them (it never fails), and a
+	// very long list is cut so the prompt stays small.
+	if tags, err := d.ListTags(ctx); err == nil {
+		for _, t := range tags {
+			if len(l.Tags) == maxCaptureLookupTags {
+				break
+			}
+			l.Tags = append(l.Tags, t.Name)
+		}
 	}
 
 	words := captureWords(text)

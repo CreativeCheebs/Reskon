@@ -50,7 +50,7 @@ var syncJSONFields = map[string]map[string]func(v any, swap idSwap) any{
 			if !ok {
 				return m
 			}
-			for name, table := range map[string]string{"area": "area", "energy_type": "energy_type", "subtype": "subtype", "status": "status", "task_id": "task"} {
+			for name, table := range map[string]string{"area": "area", "energy_type": "energy_type", "subtype": "subtype", "status": "status", "task_id": "task", "tag": "tag"} {
 				list, ok := f[name].([]any)
 				if !ok {
 					continue
@@ -58,6 +58,10 @@ var syncJSONFields = map[string]map[string]func(v any, swap idSwap) any{
 				out := []any{}
 				for _, x := range list {
 					s, _ := x.(string)
+					if name == "tag" && s == "0" {
+						out = append(out, s) // 0 = sessions with no tags, the same on every device
+						continue
+					}
 					// Filters may be names too; only ids and uids are swapped.
 					if r, ok := swap(table, s); ok {
 						out = append(out, r)

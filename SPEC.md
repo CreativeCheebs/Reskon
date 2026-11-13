@@ -167,7 +167,7 @@ Deleting a task hides it (its key stays used). Its sessions stay, without a task
 
 A **tag** is a short free word on a task ("backend", "q4"), beside its area and epic. A task can have several (up to 20).
 
-- A tag name is 1 to 32 characters, with no commas or hidden characters. A leading `#` and extra spaces are dropped. "Backend" and "backend" are the same tag. Settings › Tags lists them with how many tasks and sessions have each; a tag can be renamed (everywhere at once) or deleted (taken off everything).
+- A tag name is 1 to 32 characters, with no commas or hidden characters. A leading `#` and extra spaces are dropped. "Backend" and "backend" are the same tag (case is ignored for the letters a to z only: "Éa" and "éa" count as two tags). Settings › Tags lists them with how many tasks and sessions have each; a tag can be renamed (everywhere at once) or deleted (taken off everything).
 - Saving a task with `tags: null` or an empty list removes all its tags; leaving `tags` out keeps them.
 - Naming a tag that does not exist yet creates it, so tags are made by using them: in the task panel, in the new-task form, in the session form, or in quick capture.
 - **Sessions.** A session shows the tags of its task **as they are now**, and its own tags. The task's tags are never copied: change a task's tags and every session of it changes at once, on every device. A tag put on a session by hand belongs to that session and stays when the task's tags change. A session with no task has only its own tags, so they are chosen by hand; detaching a session from its task drops the tags it had from the task. The session shows which tags come from the task (they follow it) and which are its own.

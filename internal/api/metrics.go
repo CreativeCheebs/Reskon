@@ -18,7 +18,8 @@ func (s *Server) metricRoutes() {
 // or the query in full for the widget editor's preview:
 // ?metric=&group=&range= (or from=&to=)&split=&reduce=&cumulative=1&share=1
 // and filters as filters[name]=value, repeated or comma-separated. Filter
-// values are ids, or names matched without regard to case. A widget may be
+// values are ids, or names matched without regard to case (the tag filter takes ids only, and 0 means
+// "no tags"). A widget may be
 // given from=&to= too: the dashboard's date picker runs every widget over
 // those dates instead of its own range.
 func (s *Server) getMetric(w http.ResponseWriter, r *http.Request) {

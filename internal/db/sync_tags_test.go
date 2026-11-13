@@ -283,3 +283,40 @@ func TestSyncAViewsTagFilterMeansTheSameTagOnTheOtherDevice(t *testing.T) {
 		t.Errorf("the phone's filter is %s, want the phone's own id for target in it (%s)", filter, want)
 	}
 }
+
+// A saved widget's tag filter follows the tag to the other device, and "no tags" (0) stays 0.
+func TestSyncAWidgetsTagFilterMeansTheSameTagOnTheOtherDevice(t *testing.T) {
+	ctx := context.Background()
+	srv, phone := openTest(t), openTest(t)
+	for _, n := range []string{"decoy-one", "decoy-two"} { // different ids on the two devices
+		if _, err := phone.CreateTag(ctx, n); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := srv.CreateTag(ctx, "target"); err != nil {
+		t.Fatal(err)
+	}
+	w, err := srv.CreateWidget(ctx, fields(t, fmt.Sprintf(`{"dashboard_id":1,"viz":"bar","query":{"metric":"session_hours","filters":{"tag":["%d","0"]}}}`, tagID(t, srv, "target"))))
+	if err != nil {
+		t.Fatal(err)
+	}
+	syncOnce(t, phone, srv)
+	syncOnce(t, phone, srv)
+
+	var uid string
+	if err := srv.QueryRowContext(ctx, `SELECT uid FROM sync_idmap WHERE tbl = 'widget' AND id = ?`, w.ID).Scan(&uid); err != nil {
+		t.Fatal(err)
+	}
+	pw, ok := idOf(ctx, phone, "widget", uid)
+	if !ok {
+		t.Fatal("the widget did not reach the phone")
+	}
+	var query string
+	if err := phone.QueryRowContext(ctx, `SELECT query FROM widget WHERE id = ?`, pw).Scan(&query); err != nil {
+		t.Fatal(err)
+	}
+	want := fmt.Sprintf(`"tag":["%d","0"]`, tagID(t, phone, "target"))
+	if !strings.Contains(strings.ReplaceAll(query, " ", ""), want) {
+		t.Errorf("the phone's widget query is %s, want the phone's own id for target and the 0 kept (%s)", query, want)
+	}
+}
