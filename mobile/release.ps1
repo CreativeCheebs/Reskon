@@ -37,9 +37,14 @@ try {
 
     # Prove it is signed with the Reskon key, not just signed.
     $apksigner = (Get-ChildItem "$env:ANDROID_HOME\build-tools" | Sort-Object Name | Select-Object -Last 1).FullName + '\apksigner.bat'
-    $certs = & $apksigner verify --print-certs $built
+    # Newer Java prints a harmless warning on stderr; under 'Stop' PowerShell 5.1 would turn it into an error,
+    # so these two tools run with errors off and are judged by their exit codes instead.
+    $ErrorActionPreference = 'Continue'
+    $certs = & $apksigner verify --print-certs $built 2>$null
     if ($LASTEXITCODE -ne 0) { throw 'apksigner verify failed' }
-    $want = ((& "$env:JAVA_HOME\bin\keytool.exe" -list -keystore $jks -storepass:env RESKON_KEY_PASS) -join "`n")
+    $want = ((& "$env:JAVA_HOME\bin\keytool.exe" -list -keystore $jks -storepass:env RESKON_KEY_PASS 2>$null) -join "`n")
+    if ($LASTEXITCODE -ne 0) { throw 'keytool failed' }
+    $ErrorActionPreference = 'Stop'
     $wantSha = ([regex]::Match($want, 'SHA-256\):\s*([0-9A-F:]+)').Groups[1].Value -replace ':', '').ToLower()
     $gotSha = ([regex]::Match(($certs -join "`n"), 'SHA-256 digest:\s*([0-9a-f]+)').Groups[1].Value).ToLower()
     if (-not $wantSha -or $wantSha -ne $gotSha) { throw "APK certificate $gotSha is not the Reskon key $wantSha" }
