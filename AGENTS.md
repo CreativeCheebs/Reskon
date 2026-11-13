@@ -3,6 +3,16 @@
 **What this is:** Reskon (the repo, program, Go module and Kotlin package still say `jitterbug`/JitterBug; only the name people see changed), a self-hosted task board and time log. Several people can sign in to one server; each has a completely separate database.
 **The spec:** [`SPEC.md`](SPEC.md) says what the app does, in plain English. [`docs/decisions.md`](docs/decisions.md) says why, and lists the open questions. These are the only two docs besides this file, the README, [`docs/next-phase.md`](docs/next-phase.md) (the open to-do list) and [`docs/engineering-toolchain.md`](docs/engineering-toolchain.md). When you change what the app does, update `SPEC.md` in the same commit (and `docs/decisions.md` if a choice was made). The owner decides what the app does: a change of behaviour needs their yes. Write docs in plain English, with examples, for a reader who is new to web and database terms.
 
+## Working with the owner (read before you write a report)
+
+The owner is an embedded developer who manages this project: they decide what the app does and check the result, and the AI team does the engineering. They are not a web or Android developer and do not want to follow how the code works.
+
+- **Report like an engineering team to its manager:** what is done, what works (and how you checked it), what is not done, what needs their decision. Short, plain words, no code, file names or tool jargon unless they ask. One line per change is better than a paragraph.
+- **Do the engineering yourself.** Do not hand them technical choices; pick the sensible one, note it in `docs/decisions.md`, and mention it only if it changes what they will see or do. Ask only when the answer changes what the app does, or when an action is hard to undo (live server, rewriting history, deleting data).
+- **Be honest about status:** say plainly what was tested and what was not. "Done" means tested, reviewed, committed, and (for phone changes) a signed release built.
+- **Their standing wishes:** test every change, have review agents check it, commit after each step; the live server needs a backup first and only when they ask; the test server and test phone are disposable (data loss there is fine); phone changes also get a signed release APK (`mobile/release.ps1`); commits are all by `CreativeCheebs`.
+- Their login for the test server is in `tools/perf-test-login.txt` (not in git).
+
 ## Stack
 
 - Go (`net/http`, stdlib mux), `modernc.org/sqlite` — pure Go, **no cgo**. Do not swap in `mattn/go-sqlite3`.
