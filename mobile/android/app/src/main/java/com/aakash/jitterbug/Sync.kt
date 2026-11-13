@@ -96,7 +96,12 @@ object Sync {
                     sent = req.getJSONArray("changes").length()
                     received = res.optInt("received")
                     done = true
-                    if (received > 0) App.version++
+                    if (received > 0) {
+                        App.version++
+                        // The lists (views, areas, statuses, tags...) come from the bootstrap, so reload it
+                        // here: a manual "Sync now" would otherwise leave views deleted elsewhere on screen.
+                        runCatching { App.reloadBoot() }
+                    }
                     null
                 }
                 401 -> "Signed out on the server; connect again"
