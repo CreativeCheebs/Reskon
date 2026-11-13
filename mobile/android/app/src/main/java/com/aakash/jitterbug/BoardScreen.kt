@@ -11,6 +11,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -94,19 +99,22 @@ fun BoardScreen(r: Route) {
                         decorationBox = { inner -> if (query.isEmpty()) T("Search ${view.name}", Palette.subtle, 17.sp); inner() },
                     )
                 } else {
-                    Row(
-                        Modifier.weight(1f).height(48.dp).clip(RoundedCornerShape(12.dp)).clickable { choosingView = true }.padding(horizontal = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Box(Modifier.size(12.dp).clip(RoundedCornerShape(3.dp)).background(view.color))
-                        T(view.name, Palette.fg, 22.sp, FontWeight.SemiBold, oneLine = true)
-                        Icon(Icons.down, Palette.muted, 20)
+                    // The view's name, then the Snoozed / Blocked / Incomplete buttons right after it (they wrap when there is no room).
+                    FlowRow(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(
+                            Modifier.align(Alignment.CenterVertically).height(48.dp).clip(RoundedCornerShape(12.dp)).clickable { choosingView = true }.padding(horizontal = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Box(Modifier.size(12.dp).clip(RoundedCornerShape(3.dp)).background(view.color))
+                            T(view.name, Palette.fg, 22.sp, FontWeight.SemiBold, oneLine = true)
+                            Icon(Icons.down, Palette.muted, 20)
+                        }
+                        split?.let { HiddenGroup(it, Modifier.align(Alignment.CenterVertically)) { which -> hiddenSheet = which } }
                     }
                     IconButton(Icons.search, "Search this view", size = 44) { searching = true }
                 }
                 IconButton(Icons.filters, "Layout, grouping and filters", size = 44) { layoutSheet = true }
             }
-            split?.let { HiddenGroup(it) { which -> hiddenSheet = which } }
             val list = split?.shown
             if (list != null) when (view.kind) {
                 "Timeline" -> TimelineLayout(list)
@@ -200,13 +208,22 @@ object EpicNames {
 
 // ---------------------------------------------------------------- List
 
+/** One section of the list: a status, priority, area... and the tasks in it. */
+private class Group(val key: String, val name: String, val color: Color, val rows: List<JSONObject>, val hiddenStatus: Long? = null)
+
+/**
+ * The phone's only layout for a view: a section for each group (by default each status), one under
+ * another, so nothing scrolls sideways. A wrapping row of buttons, one per group with its count,
+ * jumps to that section. Grouped by status, a hidden status (Backlog, Cancelled...) has a button too
+ * and opens as a section when tapped.
+ */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ListLayout(view: ViewRef, allTasks: List<JSONObject>, onLongPress: (JSONObject) -> Unit) {
     val boot = App.boot ?: return
     // Tasks in a hidden status (Backlog...) stay out of the list until their button is tapped.
     var opened by remember(view.id) { mutableStateOf(OpenedStatuses.of(view.id)) }
     val tasks = withoutHiddenStatuses(allTasks, boot.statuses, opened)
-    val hiddenCounts = boot.statuses.filter { !it.onBoard }.map { s -> s to allTasks.count { it.optLong("status_id", -1) == s.id } }.filter { it.second > 0 }
     val groupBy = view.raw.optJSONObject("board_state")?.optString("group_by")?.ifBlank { null } ?: "status"
     fun keyOf(t: JSONObject): Pair<String, Color> = when (groupBy) {
         "priority" -> boot.priority(t.id("priority_id"))?.let { it.name to it.color } ?: ("No priority" to Palette.subtle)
@@ -216,39 +233,66 @@ private fun ListLayout(view: ViewRef, allTasks: List<JSONObject>, onLongPress: (
         "none" -> "All" to Palette.accent
         else -> boot.status(t.id("status_id"))?.let { it.name to it.color } ?: ("?" to Palette.subtle)
     }
-    val order = if (groupBy == "status") boot.statuses.map { it.name } else emptyList()
-    val groups = tasks.groupBy { keyOf(it) }.entries.sortedBy { e -> order.indexOf(e.key.first).let { if (it < 0) Int.MAX_VALUE else it } }
-
-    Row(Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Pill("Time in status", true)
-        Pill("Group: ${if (groupBy == "epic") Terms.epic else groupBy.replace('_', ' ')}")
-        Box(Modifier.weight(1f))
-        T(Terms.countTasks(tasks.size), Palette.muted, 13.sp)
+    val groups: List<Group> = if (groupBy == "status") {
+        // Every status on the board is a section, even an empty one; a hidden one is a section once opened.
+        boot.statuses.filter { it.onBoard || it.id in opened }.map { s ->
+            Group("s${s.id}", s.name, s.color, tasks.filter { it.optLong("status_id", -1) == s.id }, hiddenStatus = s.id.takeIf { !s.onBoard })
+        }
+    } else {
+        tasks.groupBy { keyOf(it) }.entries.map { (k, rows) -> Group(k.first, k.first, k.second, rows) }
     }
-    if (hiddenCounts.isNotEmpty()) androidx.compose.foundation.layout.FlowRow(
-        Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
+    // The status to scroll to once the list has been rebuilt with it (a hidden one is added first).
+    var pending by remember { mutableStateOf<String?>(null) }
+    val listState = rememberLazyListState()
+    LaunchedEffect(pending, groups.size) {
+        val key = pending ?: return@LaunchedEffect
+        groups.indexOfFirst { it.key == key }.takeIf { it >= 0 }?.let { listState.animateScrollToItem(it) }
+        pending = null
+    }
+
+    // At a large text size the buttons could fill the screen, so the row has its own height limit and scrolls inside it.
+    FlowRow(
+        Modifier.fillMaxWidth().heightIn(max = 150.dp).verticalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        hiddenCounts.forEach { (s, n) ->
-            Pill(
-                "${s.name} $n", on = s.id in opened, dot = s.color, action = true,
-                description = (if (s.id in opened) "Hide ${s.name}" else "Show ${s.name}") + ", ${Terms.countTasks(n)}",
-            ) {
-                opened = if (s.id in opened) opened - s.id else opened + s.id
-                OpenedStatuses.set(view.id, opened)
+        if (groupBy == "status") {
+            boot.statuses.forEach { s ->
+                val n = allTasks.count { it.optLong("status_id", -1) == s.id }
+                val open = !s.onBoard && s.id in opened
+                Pill(
+                    "${s.name} $n", on = open, dot = s.color, action = true, rect = true,
+                    description = (if (!s.onBoard) (if (open) "Close ${s.name}" else "Show ${s.name}") else "Go to ${s.name}") + ", ${Terms.countTasks(n)}",
+                ) {
+                    // A shown hidden status closes again; any other button jumps to its section.
+                    opened = when {
+                        open -> opened - s.id
+                        !s.onBoard -> opened + s.id
+                        else -> opened
+                    }
+                    OpenedStatuses.set(view.id, opened)
+                    if (!open) pending = "s${s.id}"
+                }
+            }
+        } else {
+            groups.forEach { g ->
+                Pill("${g.name} ${g.rows.size}", dot = g.color, action = true, rect = true, description = "Go to ${g.name}, ${Terms.countTasks(g.rows.size)}") { pending = g.key }
             }
         }
     }
-    if (tasks.isEmpty() && hiddenCounts.isNotEmpty()) Empty("Nothing to show here. Tap a status above to see its ${Terms.tasks}.")
-    LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        items(groups, key = { it.key.first }) { (g, rows) ->
+    if (tasks.isEmpty() && allTasks.isNotEmpty()) Empty("Nothing to show here. Tap a status above to see its ${Terms.tasks}.")
+    LazyColumn(state = listState, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        items(groups, key = { it.key }) { g ->
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Dot(g.second)
-                    T("${g.first} · ${rows.size}", Palette.fg, 14.sp, FontWeight.SemiBold)
+                Row(
+                    Modifier.semantics(mergeDescendants = true) { heading(); contentDescription = "${g.name}, ${Terms.countTasks(g.rows.size)}" },
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Dot(g.color)
+                    T("${g.name} · ${g.rows.size}", Palette.fg, 14.sp, FontWeight.SemiBold)
                 }
-                Card {
-                    rows.forEachIndexed { i, t ->
+                if (g.rows.isEmpty()) T("No ${Terms.tasks}", Palette.subtle, 13.sp, modifier = Modifier.padding(start = 4.dp))
+                else Card {
+                    g.rows.forEachIndexed { i, t ->
                         if (i > 0) Line()
                         ListRowTask(t, onLongPress)
                     }

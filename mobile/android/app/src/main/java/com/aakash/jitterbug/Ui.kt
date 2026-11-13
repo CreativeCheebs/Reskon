@@ -190,9 +190,13 @@ fun Pill(
     action: Boolean = false,
     /** What a screen reader says instead of the text, when the text alone is not enough. */
     description: String? = null,
+    /** A rectangle with small corners, like the cards and fields, instead of a capsule. */
+    rect: Boolean = false,
+    /** Smaller text and padding, for a button that sits in a header line. */
+    small: Boolean = false,
     onClick: (() -> Unit)? = null,
 ) {
-    val shape = RoundedCornerShape(height / 2)
+    val shape = RoundedCornerShape(if (rect) 8.dp else (height / 2).dp)
     Row(
         Modifier.heightIn(min = height.dp).clip(shape)
             .background(if (on) Palette.selected else Color.Transparent)
@@ -203,11 +207,11 @@ fun Pill(
                     description?.let { contentDescription = it }
                 } else Modifier,
             )
-            .padding(horizontal = 14.dp),
+            .padding(horizontal = if (small) 10.dp else 14.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         dot?.let { Dot(it) }
-        T(text, if (on) Palette.accentFg else Palette.muted, 14.sp, FontWeight.Medium, oneLine = true)
+        T(text, if (on) Palette.accentFg else Palette.muted, if (small) 12.sp else 14.sp, FontWeight.Medium, oneLine = true)
         trailing?.let { Icon(it, if (on) Palette.accentFg else Palette.muted, 16) }
     }
 }

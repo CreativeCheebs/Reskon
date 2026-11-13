@@ -47,41 +47,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.json.JSONObject
 
-/**
- * Buttons joined into one control (Snoozed · Blocked · Incomplete). Each button is a
- * real 48 dp tall tap area; the outline drawn round them is 40 dp. At a large text size
- * the row scrolls sideways instead of squeezing a button out of reach.
- */
-@Composable
-fun SegmentedButtons(items: List<String>, onClick: (Int) -> Unit) {
-    Row(
-        Modifier.horizontalScroll(rememberScrollState()).drawBehind {
-            val inset = 4.dp.toPx()
-            drawRoundRect(
-                Palette.strong, Offset(0.5.dp.toPx(), inset), Size(size.width - 1.dp.toPx(), size.height - 2 * inset),
-                CornerRadius(20.dp.toPx()), style = Stroke(1.dp.toPx()),
-            )
-        },
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        items.forEachIndexed { i, text ->
-            Box(
-                Modifier.heightIn(min = 48.dp).drawBehind {
-                    if (i > 0) drawLine(Palette.strong, Offset(0f, 4.dp.toPx()), Offset(0f, size.height - 4.dp.toPx()), 1.dp.toPx())
-                }.clickable(role = Role.Button) { onClick(i) }.padding(horizontal = 16.dp),
-                contentAlignment = Alignment.Center,
-            ) { T(text, Palette.muted, 14.sp, FontWeight.Medium) }
-        }
-    }
-}
-
 /** The web's Snoozed, Blocked and Incomplete buttons; each shows only when it has tasks. Calls back with "snoozed", "blocked" or "incomplete". */
 @Composable
-fun HiddenGroup(split: ListSplit, onOpen: (String) -> Unit) {
+fun HiddenGroup(split: ListSplit, modifier: Modifier = Modifier, onOpen: (String) -> Unit) {
     val items = listOf("snoozed" to split.snoozed.size, "blocked" to split.blocked.size, "incomplete" to split.incomplete.size).filter { it.second > 0 }
-    if (items.isEmpty()) return
-    Row(Modifier.padding(start = 16.dp, end = 16.dp)) {
-        SegmentedButtons(items.map { (k, n) -> "${k.replaceFirstChar { it.uppercase() }} $n" }) { onOpen(items[it].first) }
+    items.forEach { (k, n) ->
+        Box(modifier) { Pill("${k.replaceFirstChar { it.uppercase() }} $n", height = 28, action = true, rect = true, small = true) { onOpen(k) } }
     }
 }
 
