@@ -180,10 +180,13 @@ object Sync {
         Reply(code, text, set)
     }
 
-    /** The version a Reskon server says it is (its health check), or null if it does not answer or does not say. */
-    suspend fun serverVersion(base: String): String? = runCatching {
+    /** The version a Reskon server says it is, and the day it was updated (its health check), or null if it does not answer or does not say. */
+    suspend fun serverVersion(base: String): ServerVersion? = runCatching {
         val r = http("GET", "$base/api/health")
-        if (r.code == 200) JSONObject(r.body).optString("version").ifBlank { null } else null
+        if (r.code != 200) return@runCatching null
+        val j = JSONObject(r.body)
+        val v = j.optString("version").ifBlank { null } ?: return@runCatching null
+        ServerVersion(v, j.optString("updated").ifBlank { null })
     }.getOrNull()
 
     /**

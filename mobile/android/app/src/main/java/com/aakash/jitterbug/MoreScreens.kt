@@ -101,7 +101,7 @@ fun SettingsScreen() {
     val ctx = LocalContext.current
     val sync = remember { Sync.state(ctx) }
     // The connected server's version, from its health check; nothing is shown until it answers.
-    var serverVersion by remember { mutableStateOf<String?>(null) }
+    var serverVersion by remember { mutableStateOf<ServerVersion?>(null) }
     LaunchedEffect(sync.server) { serverVersion = sync.server?.let { Sync.serverVersion(it) } }
     Column(Modifier.fillMaxSize()) {
         TopBar("Settings", onBack = { App.back() })
@@ -144,7 +144,8 @@ fun SettingsScreen() {
             SectionTitle("You")
             Card {
                 ListRow("Appearance", "Dark, as the web app", chevron = false) {}
-                Line(); ListRow("About", "Reskon ${appVersion(ctx)}${serverVersion?.let { " · server $it" } ?: ""}", chevron = false) {}
+                Line(); ListRow("About", "Reskon ${appVersion(ctx)}", chevron = false) {}
+                serverVersion?.let { Line(); ListRow("Server", it.label, chevron = false) {} }
             }
         }
     }

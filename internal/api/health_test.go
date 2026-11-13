@@ -23,11 +23,12 @@ func TestHealthSaysTheVersionWithoutSigningIn(t *testing.T) {
 	var got struct {
 		OK      bool   `json:"ok"`
 		Version string `json:"version"`
+		Updated string `json:"updated"`
 	}
 	if err := json.NewDecoder(res.Body).Decode(&got); err != nil {
 		t.Fatal(err)
 	}
-	if !got.OK || got.Version != version.Version {
-		t.Errorf("health = %+v, want ok and version %s", got, version.Version)
+	if !got.OK || got.Version != version.Version || got.Updated != version.Updated {
+		t.Errorf("health = %+v, want ok, version %s and updated %s", got, version.Version, version.Updated)
 	}
 }

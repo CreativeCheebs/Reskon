@@ -184,6 +184,9 @@ The blue page symbol (2026-11-04) did not look good. Tasks now use an outlined t
 ### One version number (owner, 2026-11-13)
 The owner asked for a version to be kept, shown in Settings and in the commits. It is `major.minor.patch` in a `VERSION` file, starting at 0.2.0 (the phone app was 0.1.0). The server and web app share it; the phone's Gradle build reads the same file, and each release is tagged `v<version>` in git. A test fails if `VERSION`, `internal/version/version.go` and `web/package.json` disagree. The health check now also says the version, so the phone can show which server it is connected to. Nothing is checked when a phone and a server of different versions sync; sync already tolerates unknown fields.
 
+### The version is shown with its update day (owner, 2026-11-13)
+The owner asked to see which version a server is on, and when it was updated, in plain words rather than a commit date. `Updated` is a day written in `internal/version/version.go` and set by hand when a build goes out (a test checks it is a real day, not in the future). It is not read from git or the build clock on purpose: the container build has no git history, and a build clock would change on every rebuild of the same code. The cost is that someone can forget to set it.
+
 ### No "Board as a list" on the phone (owner, 2026-11-13)
 The first version of item 7 added a phone-only switch that drew the Board layout as one list with a section per status. The owner then pointed out that it looked the same as the List layout, so there were two layouts that did the same thing. It was taken out again: Board is always columns, List is the vertical list. What stayed from that round: hidden statuses (Backlog, Cancelled) are left out of the List layout until their button is tapped, and Settings › Statuses on the phone has the *Show on the board* switch.
 

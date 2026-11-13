@@ -62,6 +62,8 @@ cd web && npm run dev       # Vite on :5173, proxies /api to :8080
 
 Reskon has one version number, `major.minor.patch` (for example `0.2.0`), written in the `VERSION` file at the top of the repository. The server, the web app and the phone app all show it: the web app on the sign-in page and under Settings › About, the phone under Settings › About (with the server's version when it is connected to one), and the server in `GET /api/health`. The phone's `versionName` is read from the same file, and its `versionCode` is `major × 10000 + minor × 100 + patch`.
 
+Next to the version is the day it was last updated, `Updated` in `internal/version/version.go` (year-month-day, for example `2026-11-13`). Set it to today whenever you send a build to the test or live server, even if the number did not change. Settings › About shows it as "Updated 13 Nov 2026", and `GET /api/health` returns it.
+
 To release a new version: change the number in three places that must agree, `VERSION`, `internal/version/version.go` and `web/package.json` (a test fails if they differ), commit, and tag the commit `v<version>` (`git tag v0.2.0`). Raise the middle number when the app gains something people will notice, and the last one for fixes only.
 
 ## Themes

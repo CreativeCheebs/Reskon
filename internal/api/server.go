@@ -94,7 +94,7 @@ func (s *Server) routes() {
 	m := s.mux
 	m.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
 		// The version lets the sign-in page and the phone say which Reskon this is.
-		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "version": version.Version})
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "version": version.Version, "updated": version.Updated})
 	})
 	s.authRoutes()
 	m.HandleFunc("GET /api/bootstrap", s.bootstrap)
