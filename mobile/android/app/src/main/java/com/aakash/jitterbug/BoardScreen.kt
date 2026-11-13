@@ -174,14 +174,6 @@ private fun LayoutSheet(view: ViewRef, onDismiss: () -> Unit) {
                 Pill("List", view.kind == "List") { patch(jsonOf("layout" to "table", "board_state" to boardStateWith(view.raw, "timeline", false))) }
                 Pill("Timeline", view.kind == "Timeline") { patch(jsonOf("board_state" to boardStateWith(view.raw, "timeline", true))) }
             }
-            if (view.kind == "Board") {
-                val ctx = androidx.compose.ui.platform.LocalContext.current
-                T("Board shows (this phone)", Palette.fg, 15.sp, FontWeight.SemiBold)
-                androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Pill("Columns", !BoardStyle.asList) { BoardStyle.set(ctx, false) }
-                    Pill("List by ${Terms.task} status", BoardStyle.asList) { BoardStyle.set(ctx, true) }
-                }
-            }
             T("Group by (list)", Palette.fg, 15.sp, FontWeight.SemiBold)
             androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 val g = state.optString("group_by", "status").ifBlank { "status" }
@@ -198,11 +190,6 @@ private fun LayoutSheet(view: ViewRef, onDismiss: () -> Unit) {
 
 @Composable
 private fun BoardLayout(view: ViewRef, tasks: List<JSONObject>, onLongPress: (JSONObject) -> Unit) {
-    // Settings > Board as a list: the same board, one status under another, instead of columns.
-    if (BoardStyle.asList) {
-        StatusListLayout(view.id, tasks, onLongPress)
-        return
-    }
     val boot = App.boot ?: return
     var shownHidden by remember { mutableStateOf(setOf<Long>()) }
     val byStatus = tasks.groupBy { it.getLong("status_id") }

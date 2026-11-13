@@ -111,9 +111,6 @@ fun SettingsScreen() {
                 SwitchRow("Day screen", showsDay(boot.settings), "The morning plan and evening readout, with its own tab. Off hides it here and on the web. Nothing is deleted.") {
                     scope.launch { attempt("Not saved") { saveSetting("show_day_screen", it) } }
                 }
-                SwitchRow("Board as a list", BoardStyle.asList, "Show each status one under another, with buttons to jump between them, instead of columns side by side. Only on this phone.") {
-                    BoardStyle.set(ctx, it)
-                }
             }
             Card {
                 ListRow("Names", "What ${Terms.tasks} and ${Terms.epics} are called") { App.go("names") }

@@ -76,29 +76,10 @@ object OpenedStatuses {
 }
 
 /**
- * The statuses a vertical list shows as sections, in order: those on the board, plus any hidden
- * one (Backlog, Cancelled...) the person has opened with its button.
- */
-fun visibleStatuses(statuses: List<StatusRef>, opened: Set<Long>): List<StatusRef> = statuses.filter { it.onBoard || it.id in opened }
-
-/**
  * Drops the tasks that sit in a hidden status (Backlog...) unless the person opened it, so a list
  * grouped any way does not fill up with them. Tasks are kept in their order.
  */
 fun withoutHiddenStatuses(tasks: List<JSONObject>, statuses: List<StatusRef>, opened: Set<Long>): List<JSONObject> {
     val hidden = statuses.filter { !it.onBoard && it.id !in opened }.map { it.id }.toSet()
     return if (hidden.isEmpty()) tasks else tasks.filter { t -> t.optLong("status_id", -1) !in hidden }
-}
-
-/**
- * Where each section starts in a flat list that has, for every status, one header row and then one
- * row per task (or one "no tasks" row when it has none). Used to jump to a status.
- */
-fun sectionStarts(statusIds: List<Long>, counts: Map<Long, Int>): Map<Long, Int> {
-    var at = 0
-    return statusIds.associateWith { id ->
-        val start = at
-        at += 1 + maxOf(1, counts[id] ?: 0)
-        start
-    }
 }

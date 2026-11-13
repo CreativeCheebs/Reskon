@@ -128,7 +128,6 @@ class MainActivity : ComponentActivity() {
         // Only when the app is really started by the link: turning the phone or changing the theme
         // recreates the activity with the same intent, and must not push the screen again.
         if (savedInstanceState == null) handle(intent)
-        BoardStyle.load(applicationContext)
         setContent { JbTheme { Root(this) } }
     }
 
