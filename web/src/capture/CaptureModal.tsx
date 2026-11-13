@@ -74,7 +74,7 @@ export function CaptureModal({ onClose, takeEarlyKeys, initialText, onSaved }: P
   // one is said before anything is typed rather than after.
   const [noProvider, setNoProvider] = useState(false);
   useEffect(() => {
-    api.get<TaskBrief[]>("/tasks?brief=1").then(setTasks).catch(() => undefined);
+    api.get<TaskBrief[]>("/tasks?brief=1").then((list) => setTasks((all) => [...list, ...all.filter((n) => !list.some((x) => x.id === n.id))])).catch(() => undefined);
     api
       .get<{ endpoint: string; model: string }>("/capture/config")
       .then((c) => setNoProvider(!c.endpoint || !c.model))

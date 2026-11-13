@@ -51,7 +51,7 @@ export function SessionModal({
   const [recalc, setRecalc] = useState(false);
 
   useEffect(() => {
-    api.get<TaskBrief[]>("/tasks?brief=1").then(setTasks).catch(() => undefined);
+    api.get<TaskBrief[]>("/tasks?brief=1").then((list) => setTasks((all) => [...list, ...all.filter((n) => !list.some((x) => x.id === n.id))])).catch(() => undefined);
   }, []);
 
   const save = async () => {

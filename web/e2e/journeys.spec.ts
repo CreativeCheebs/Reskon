@@ -133,7 +133,9 @@ test("the session form's task picker offers Create new task, and Escape leaves b
   const picker = log.getByRole("combobox", { name: "Task", exact: true });
   await picker.click();
   await picker.fill("a task that does not exist yet");
-  await page.getByRole("button", { name: /Create new task/ }).click();
+  // Only the keyboard is needed: typing narrows the list to the create entry, which is the one option left.
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
   const made = page.getByRole("dialog", { name: /New task/ });
   await expect(made).toBeVisible();
   // What was typed in the search box is the title.

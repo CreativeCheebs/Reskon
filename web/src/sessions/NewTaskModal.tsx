@@ -48,6 +48,8 @@ export function NewTaskModal({
   const [title, setTitle] = useState(initialTitle);
   const [area, setArea] = useState<number | undefined>(areaId ?? boot.areas[0]?.id);
   const [busy, setBusy] = useState(false);
+  // Enter can reach create() twice in one go (the box, the form around it) before `busy` has updated.
+  const inFlight = useRef(false);
   const titleRef = useRef<InputRef>(null);
   // The picker it was opened from takes the focus back as its list closes, so take it again just after.
   useEffect(() => {
@@ -57,7 +59,8 @@ export function NewTaskModal({
 
   const ready = title.trim() !== "" && area !== undefined && online;
   const create = async () => {
-    if (!ready || busy) return;
+    if (!ready || inFlight.current) return;
+    inFlight.current = true;
     setBusy(true);
     try {
       const t = await api.post<Task>("/tasks", { title: title.trim(), area_id: area, today: today() });
@@ -65,6 +68,7 @@ export function NewTaskModal({
       onClose();
     } catch (e) {
       message.error((e as Error).message);
+      inFlight.current = false;
       setBusy(false);
     }
   };

@@ -99,12 +99,15 @@ export function SessionsScreen() {
   useEffect(() => {
     load();
   }, [load, reloadKey]);
-  useEffect(() => {
+  const loadTitles = useCallback(() => {
     api
       .get<{ id: number; title: string; key: string }[]>("/tasks?brief=1")
       .then((t) => setTasks(t.map(({ id, title, key }) => ({ id, title, key }))))
       .catch(() => undefined);
-  }, [reloadKey]);
+  }, []);
+  useEffect(() => {
+    loadTitles();
+  }, [loadTitles, reloadKey]);
 
   const titleOf = useMemo(() => new Map(tasks.map((t) => [t.id, t.title])), [tasks]);
   const energy = (id: number) => boot.energy_types.find((e) => e.id === id);
@@ -441,7 +444,10 @@ export function SessionsScreen() {
           </div>
         );
       })}
-      {modal && <SessionModal editing={modal.editing} onClose={() => setModal(null)} onSaved={() => load()} />}
+      {modal && <SessionModal editing={modal.editing} onClose={() => setModal(null)} onSaved={() => {
+          load();
+          loadTitles(); // a task made from the form
+        }} />}
     </div>
   );
 }

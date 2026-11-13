@@ -84,13 +84,16 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
     onChanged(t);
   };
 
-  const patch = async (changes: Record<string, unknown>) => {
-    if (!task) return;
+  /** Saves a change; true when it was saved. */
+  const patch = async (changes: Record<string, unknown>): Promise<boolean> => {
+    if (!task) return false;
     try {
       apply(await patchWithRetry<Task>(`/tasks/${task.id}`, task.updated_at, changes));
+      return true;
     } catch (e) {
       message.error((e as Error).message);
       load(true);
+      return false;
     }
   };
 
@@ -273,9 +276,9 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
                 size="small"
                 disabled={ro}
                 value={namesOf(task.tag_ids)}
-                onChange={(names) => {
-                  patch({ tags: names });
-                  refreshIfNew(names);
+                onChange={async (names) => {
+                  // A new name is only in the tag list once the save has gone through.
+                  if (await patch({ tags: names })) refreshIfNew(names);
                 }}
               />
             </Descriptions.Item>

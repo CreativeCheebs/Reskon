@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Button, DatePicker, Divider, Form, Input, Segmented, Select, TimePicker, Typography, type GetRef } from "antd";
-import { DownOutlined, PlusOutlined, RightOutlined } from "@ant-design/icons";
+import { DatePicker, Form, Input, Segmented, Select, TimePicker, Typography, type GetRef } from "antd";
+import { DownOutlined, RightOutlined } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
 import { useApp } from "../store";
 import { today } from "../format";
@@ -156,6 +156,9 @@ export function sessionBody(d: SessionDraft) {
   };
 }
 
+/** The task picker's "Create new task" entry; no task has this id. */
+const NEW_TASK = -1;
+
 export function SessionFields({
   draft,
   onChange,
@@ -181,6 +184,13 @@ export function SessionFields({
   const { namesOf } = useTags();
   // The tags the chosen task has right now; the session shows them and they follow the task.
   const inherited = namesOf(tasks.find((t) => t.id === draft.task_id)?.tag_ids);
+  const inheritedKey = inherited.join("\u0000").toLowerCase();
+  const tagsKey = draft.tags.join("\u0000");
+  useEffect(() => {
+    const has = new Set(inherited.map((n) => n.toLowerCase()));
+    if (draft.tags.some((n) => has.has(n.toLowerCase()))) onChange({ ...draft, tags: draft.tags.filter((n) => !has.has(n.toLowerCase())) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when the task's tags or the own tags change
+  }, [inheritedKey, tagsKey]);
   const set = (patch: Partial<SessionDraft>) => onChange({ ...draft, ...patch });
   // "Create new task" in the task picker: what was typed in its search box becomes the title.
   const [taskSearch, setTaskSearch] = useState("");
@@ -328,31 +338,26 @@ export function SessionFields({
           <Form.Item label={T.Task} htmlFor="session-task" style={tight}>
             <Select
               id="session-task"
-            ref={pickerRef}
+              ref={pickerRef}
               size="middle"
               allowClear
               showSearch
               optionFilterProp="label"
               placeholder={`No ${T.task} (optional)`}
               value={draft.task_id ?? undefined}
-              onChange={(v) => chooseTask(v ?? null, tasks.find((x) => x.id === v))}
-              options={openTasks.map((t) => ({ value: t.id, label: t.title }))}
+              onChange={(v) => {
+                // "Create new task" is the last option of the list: it opens the small box instead of picking.
+                if (v === NEW_TASK) setCreating(taskSearch.trim());
+                else chooseTask(v ?? null, tasks.find((x) => x.id === v));
+              }}
+              options={[
+                ...openTasks.map((t) => ({ value: t.id, label: t.title })),
+                ...(onTaskCreated ? [{ value: NEW_TASK, label: `+ Create new ${T.task}${taskSearch.trim() ? ` "${taskSearch.trim()}"` : ""}` }] : []),
+              ]}
+              // Typing narrows the tasks; the create option always stays.
+              filterOption={(input, o) => o?.value === NEW_TASK || String(o?.label ?? "").toLowerCase().includes(input.toLowerCase())}
               onSearch={setTaskSearch}
               onOpenChange={(open) => !open && setTaskSearch("")}
-              popupRender={
-                onTaskCreated
-                  ? (menu) => (
-                      <>
-                        {menu}
-                        <Divider style={{ margin: "4px 0" }} />
-                        <Button type="text" block icon={<PlusOutlined />} disabled={disabled} onClick={() => setCreating(taskSearch.trim())} style={{ justifyContent: "flex-start" }}>
-                          Create new {T.task}
-                          {taskSearch.trim() ? ` "${taskSearch.trim()}"` : ""}
-                        </Button>
-                      </>
-                    )
-                  : undefined
-              }
             />
           </Form.Item>
         )}

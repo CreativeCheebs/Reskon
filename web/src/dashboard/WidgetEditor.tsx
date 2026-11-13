@@ -9,6 +9,7 @@ import type { MetricCatalog, MetricDef, Viz, Widget, WidgetOptions, WidgetQuery 
 import { TIME_GROUPS } from "./types";
 import { useMetric, VizBody } from "./WidgetFrame";
 import { useTerms } from "../terms";
+import { useTags } from "../tags/tags";
 
 // Builds a widget from the metrics catalog: only metrics, groupings, splits
 // and filters the server lists are offered, so nothing built here can be
@@ -102,6 +103,7 @@ export function WidgetEditor({
 }) {
   const { boot, online } = useApp();
   const T = useTerms();
+  const { tags } = useTags();
   const groupLabel = (g: string) => (g === "task" ? T.Task : GROUP_LABEL[g] ?? g);
   const [catalog, setCatalog] = useState<MetricCatalog | null>(null);
   const [tasks, setTasks] = useState<TaskBrief[]>([]);
@@ -305,6 +307,12 @@ export function WidgetEditor({
             <Form.Item label="Subtypes" {...item}>
               <Select mode="multiple" allowClear placeholder="All" value={filters.subtype?.map(Number)} onChange={(v) => setFilter("subtype", v)}
                 options={boot.subtypes.map((s) => ({ value: s.id, label: s.name }))} />
+            </Form.Item>
+          )}
+          {metric?.filters?.includes("tag") && (
+            <Form.Item label="Tags" {...item}>
+              <Select mode="multiple" allowClear placeholder="All" value={filters.tag?.map(Number)} onChange={(v) => setFilter("tag", v)}
+                options={[{ value: 0, label: "No tags" }, ...tags.map((g) => ({ value: g.id, label: g.name }))]} />
             </Form.Item>
           )}
           {metric?.filters?.includes("status") && (

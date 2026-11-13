@@ -19,7 +19,7 @@ export function TaskExtras({
   onTaskChanged,
 }: {
   task: Task;
-  patch: (changes: Record<string, unknown>) => Promise<void>;
+  patch: (changes: Record<string, unknown>) => Promise<unknown>;
   onTaskChanged: () => void;
 }) {
   const { boot, online } = useApp();
