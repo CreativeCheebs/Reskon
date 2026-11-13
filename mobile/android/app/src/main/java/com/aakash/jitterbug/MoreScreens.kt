@@ -67,7 +67,7 @@ fun MoreScreen() {
         Card {
             boot.views.sortedBy { it.raw.optInt("position") }.forEachIndexed { i, v ->
                 if (i > 0) Line()
-                ListRow(v.name, v.kind, if (v.kind == "List") Icons.table else if (v.kind == "Timeline") Icons.timeline else Icons.board, v.color) { App.go("board", "view" to v.id) }
+                ListRow(v.name, v.kind, if (v.kind == "Timeline") Icons.timeline else Icons.table, v.color) { App.go("board", "view" to v.id) }
             }
             Line()
             ListRow("New view", icon = Icons.plus, iconColor = Palette.accent, chevron = false) {

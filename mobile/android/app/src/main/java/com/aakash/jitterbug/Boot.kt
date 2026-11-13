@@ -9,8 +9,8 @@ data class Ref(val id: Long, val name: String, val color: Color, val raw: JSONOb
 data class StatusRef(val id: Long, val name: String, val color: Color, val behaviour: String, val onBoard: Boolean, val raw: JSONObject)
 
 data class ViewRef(val id: Long, val name: String, val layout: String, val timeline: Boolean, val color: Color, val raw: JSONObject) {
-    /** Board, List or Timeline, as the More screen names them. */
-    val kind get() = if (timeline) "Timeline" else if (layout == "table") "List" else "Board"
+    /** List or Timeline, as the More screen names them. The phone has no columns layout: a Board or Table view is a List here. */
+    val kind get() = if (timeline) "Timeline" else "List"
 }
 
 /** GET /api/bootstrap: every lookup the screens need, loaded once and after admin edits. */

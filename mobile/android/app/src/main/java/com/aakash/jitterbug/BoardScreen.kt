@@ -109,9 +109,8 @@ fun BoardScreen(r: Route) {
             split?.let { HiddenGroup(it) { which -> hiddenSheet = which } }
             val list = split?.shown
             if (list != null) when (view.kind) {
-                "List" -> ListLayout(view, list) { moving = it }
                 "Timeline" -> TimelineLayout(list)
-                else -> BoardLayout(view, list) { moving = it }
+                else -> ListLayout(view, list) { moving = it }
             }
         }
         Fab(null, Modifier.align(Alignment.BottomEnd).padding(16.dp)) { App.go("newtask", "view" to view.id) }
@@ -170,8 +169,9 @@ private fun LayoutSheet(view: ViewRef, onDismiss: () -> Unit) {
         Column(Modifier.padding(start = 20.dp, end = 20.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             T("Layout", Palette.fg, 18.sp, FontWeight.SemiBold)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Pill("Board", view.kind == "Board") { patch(jsonOf("layout" to "board", "board_state" to boardStateWith(view.raw, "timeline", false))) }
-                Pill("List", view.kind == "List") { patch(jsonOf("layout" to "table", "board_state" to boardStateWith(view.raw, "timeline", false))) }
+                // The phone has no columns layout: a Board or Table view of the web app shows as this list.
+                // Choosing it only turns the timeline off; the view's own layout (as the web app sees it) is left alone.
+                Pill("List", view.kind == "List") { patch(jsonOf("board_state" to boardStateWith(view.raw, "timeline", false))) }
                 Pill("Timeline", view.kind == "Timeline") { patch(jsonOf("board_state" to boardStateWith(view.raw, "timeline", true))) }
             }
             T("Group by (list)", Palette.fg, 15.sp, FontWeight.SemiBold)
@@ -186,124 +186,7 @@ private fun LayoutSheet(view: ViewRef, onDismiss: () -> Unit) {
     }
 }
 
-// ---------------------------------------------------------------- Board
-
-@Composable
-private fun BoardLayout(view: ViewRef, tasks: List<JSONObject>, onLongPress: (JSONObject) -> Unit) {
-    val boot = App.boot ?: return
-    var shownHidden by remember { mutableStateOf(setOf<Long>()) }
-    val byStatus = tasks.groupBy { it.getLong("status_id") }
-    val columns = boot.statuses.filter { it.onBoard || it.id in shownHidden }
-    val limits = view.raw.optJSONObject("board_state")?.optJSONObject("limits")
-    val listState = rememberLazyListState()
-    val scope = rememberCoroutineScope()
-    var current by remember { mutableStateOf(columns.firstOrNull { it.behaviour == "in_progress" }?.id ?: columns.firstOrNull()?.id) }
-    // Open on the highlighted column.
-    androidx.compose.runtime.LaunchedEffect(Unit) {
-        columns.indexOfFirst { it.id == current }.takeIf { it > 0 }?.let { listState.scrollToItem(it) }
-    }
-
-    Row(Modifier.horizontalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        boot.statuses.forEach { s ->
-            val hidden = !s.onBoard
-            val on = s.id == current
-            Row(
-                Modifier.height(36.dp).clip(RoundedCornerShape(18.dp)).background(if (on) Palette.selected else Color.Transparent)
-                    .border(1.dp, if (on) Palette.accent else Palette.strong, RoundedCornerShape(18.dp))
-                    .clickable {
-                        if (hidden && s.id !in shownHidden) shownHidden = shownHidden + s.id
-                        current = s.id
-                        scope.launch {
-                            val idx = boot.statuses.filter { it.onBoard || it.id in shownHidden }.indexOfFirst { it.id == s.id }
-                            if (idx >= 0) listState.animateScrollToItem(idx)
-                        }
-                    }.padding(horizontal = 14.dp),
-                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Dot(s.color)
-                T(s.name, if (on) Palette.fg else if (hidden) Palette.subtle else Palette.muted, 14.sp, FontWeight.Medium)
-                T((byStatus[s.id]?.size ?: 0).toString(), Palette.subtle, 14.sp)
-            }
-        }
-    }
-    LazyRow(state = listState, contentPadding = PaddingValues(start = 12.dp, end = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxSize()) {
-        items(columns, key = { it.id }) { s ->
-            val cards = byStatus[s.id].orEmpty()
-            val limit = limits?.optJSONObject(s.id.toString())
-            LazyColumn(
-                Modifier.width(326.dp).fillMaxHeight().clip(RoundedCornerShape(16.dp)).background(Palette.column).border(1.dp, Palette.chip, RoundedCornerShape(16.dp)),
-                contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 10.dp, bottom = 96.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                item {
-                    Row(Modifier.padding(horizontal = 4.dp)) {
-                        T(s.name, Palette.muted, 13.sp, modifier = Modifier.weight(1f))
-                        T(if (limit != null && limit.optString("unit", "tasks") == "tasks") "${cards.size} of ${limit.optInt("max")}" else cards.size.toString(), Palette.muted, 13.sp)
-                    }
-                }
-                if (cards.isEmpty()) item { T("No cards", Palette.subtle, 13.sp, modifier = Modifier.padding(8.dp)) }
-                items(cards, key = { it.getLong("id") }) { t -> TaskCard(t, onLongPress) }
-            }
-        }
-    }
-}
-
-/** A board card. Every number on it comes from the task as the API returns it. */
-@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
-@Composable
-fun TaskCard(t: JSONObject, onLongPress: (JSONObject) -> Unit = {}) {
-    val boot = App.boot ?: return
-    val epic = t.optString("type") == "epic"
-    val overdue = (t.num("days_to_due") ?: 1.0) < 0 && t.optString("behaviour") in setOf("todo", "in_progress")
-    val edge = when { t.optBoolean("stalled") -> Palette.red; overdue -> Palette.yellow; else -> Color.Transparent }
-    Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Palette.panel).border(1.dp, Color(0xFF2E353C), RoundedCornerShape(10.dp))
-            .drawBehind { drawRect(edge, size = androidx.compose.ui.geometry.Size(3.dp.toPx(), size.height)) }
-            .combinedClickable(onLongClick = { onLongPress(t) }) { App.go("task", "id" to t.getLong("id")) }
-            .padding(horizontal = 13.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(9.dp),
-    ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Box(Modifier.padding(top = 2.dp).size(16.dp).clip(RoundedCornerShape(4.dp)).background(if (epic) Palette.purple else Palette.accent), contentAlignment = Alignment.Center) {
-                Icon(if (epic) Icons.bolt else Icons.check, Palette.onAccent, 12, 3.5f)
-            }
-            T(t.optString("title"), Palette.fg, 15.sp, FontWeight.Medium, strike = t.optString("behaviour") == "cancelled")
-        }
-        val labels = listOfNotNull(
-            t.id("epic_id")?.let { id -> EpicNames.of(id)?.let { it to Palette.purple } },
-            boot.area(t.id("area_id"))?.let { it.name to it.color },
-            boot.type(t.id("energy_type_id"))?.let { it.name to it.color },
-        ) + boot.tagNames(t.tagIds()).map { "#$it" to Palette.muted }
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            labels.forEach { (text, c) -> Tag(text.uppercase(), bg = c.copy(alpha = 0.2f), fg = c, round = 4) }
-        }
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            boot.priority(t.id("priority_id"))?.let { Tag(it.name, it.color, round = 11) }
-            t.id("difficulty")?.let { Tag(it.toString(), Palette.intensity[(it - 1).toInt().coerceIn(0, 4)], round = 11) }
-            if (t.optInt("subtask_count") > 0) Tag("☑ ${t.optInt("subtask_done")}/${t.optInt("subtask_count")}", round = 11)
-            if (epic && t.id("epic_tasks") != null) Tag("${t.optInt("epic_done")}/${t.optInt("epic_tasks")} done", Palette.purple, round = 11)
-            if (t.optBoolean("stalled")) Tag("Stalled ${age(t.num("time_in_status_h"))}", bg = Palette.red.copy(alpha = 0.18f), fg = Palette.red, round = 11)
-            else Tag("⧗ ${age(t.num("time_in_status_h"))}", round = 11)
-            if (t.optBoolean("blocked")) Tag("Blocked", bg = Palette.yellow.copy(alpha = 0.18f), fg = Palette.yellow, round = 11)
-            t.str("due_at")?.let { if (overdue) Tag("Overdue ${shortDate(it)}", bg = Palette.yellow.copy(alpha = 0.18f), fg = Palette.yellow, round = 11) else Tag("Due ${shortDate(it)}", round = 11) }
-        }
-        t.num("progress_pct")?.let { pct ->
-            if (t.num("estimate_h") != null && t.optDouble("logged_h") > 0) {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    val over = (t.num("remaining_h") ?: 0.0) < 0
-                    BoxWithConstraints(Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)).background(Palette.dim)) {
-                        Box(Modifier.width(maxWidth * (pct / 100).toFloat().coerceIn(0f, 1f)).fillMaxHeight().background(if (over) Palette.red else Palette.accent))
-                    }
-                    T("${hm(t.optDouble("logged_h"))} of ${hm(t.num("estimate_h"))} · " +
-                        if (over) "${hm(-(t.num("remaining_h") ?: 0.0))} over" else "${hm(t.num("remaining_h"))} left",
-                        if (over) Palette.red else Palette.muted, 12.sp)
-                }
-            }
-        }
-    }
-}
-
-/** Epic titles for the labels on cards. */
+/** Epic titles, for grouping the list by epic and for the task screen. */
 object EpicNames {
     private var names: Map<Long, String> = emptyMap()
     private var version = -1
@@ -392,7 +275,8 @@ internal fun ListRowTask(t: JSONObject, onLongPress: (JSONObject) -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Dot(boot.priority(t.id("priority_id"))?.color ?: Palette.subtle, 7)
                 val meta = listOfNotNull(boot.area(t.id("area_id"))?.name, boot.type(t.id("energy_type_id"))?.name,
-                    t.str("due_at")?.let { if (overdue) "overdue ${shortDate(it)}" else "due ${shortDate(it)}" })
+                    t.str("due_at")?.let { if (overdue) "overdue ${shortDate(it)}" else "due ${shortDate(it)}" }) +
+                    boot.tagNames(t.tagIds()).map { "#$it" }
                 T(meta.joinToString(" · "), Palette.muted, 13.sp, oneLine = true)
             }
         }
