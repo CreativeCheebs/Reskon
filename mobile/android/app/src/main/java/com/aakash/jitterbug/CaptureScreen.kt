@@ -50,7 +50,11 @@ import kotlinx.coroutines.launch
 import org.json.JSONObject
 
 /** One thing quick capture read from the line: a session or a task. */
-data class Entry(val key: Int, val intent: String, val session: Draft, val taskTitle: String, val taskArea: Long?, val parse: JSONObject)
+data class Entry(
+    val key: Int, val intent: String, val session: Draft, val taskTitle: String, val taskArea: Long?, val parse: JSONObject,
+    /** Tags for a new task, by name (a session's are in its draft). The model picks only tags that exist. */
+    val taskTags: List<String> = emptyList(),
+)
 
 private var nextKey = 1
 
@@ -151,6 +155,8 @@ fun CaptureScreen(r: Route) {
                     busy = false
                     if (entries.isEmpty()) {
                         r.long("inbox")?.let { attempt("Inbox not updated") { Api.post("/inbox/$it/triage") } }
+                        // A tag added by hand may be new, so the lists that name tags are read again.
+                        App.reloadBoot()
                         App.changed()
                         App.back()
                         App.say("Saved")
@@ -177,6 +183,8 @@ private fun toEntry(p: JSONObject, raw: String): Entry {
     val subtypes = p.strs("subtypes").mapNotNull { n -> boot.subtypes.firstOrNull { it.name.equals(n, true) && (energy == null || it.raw.optLong("energy_type_id") == energy) }?.id }.take(4)
     val matched = p.id("matched_task_id")
     val title = p.str("title")
+    // Only tags that exist, in their own spelling; capture never makes one.
+    val tags = p.strs("tags").mapNotNull { n -> boot.tags.map { it.optString("name") }.firstOrNull { it.equals(n, true) } }.distinctBy { it.lowercase() }.take(5)
     return Entry(
         nextKey++, if (p.str("intent") == "task") "task" else "session",
         Draft(
@@ -184,8 +192,9 @@ private fun toEntry(p: JSONObject, raw: String): Entry {
             label = if (matched != null) "" else title ?: raw, areaId = area,
             kind = if (p.str("kind") == "event") "event" else "task", parts = parts, subtypes = subtypes,
             note = if (raw.isNotEmpty() && !p.optBoolean("fallback") && title != null && title != raw) raw else "",
+            tags = tags,
         ),
-        title ?: raw, area ?: boot.areas.firstOrNull()?.id, p,
+        title ?: raw, area ?: boot.areas.firstOrNull()?.id, p, tags,
     )
 }
 
@@ -194,7 +203,7 @@ private suspend fun save(e: Entry, raw: String, count: Int) {
     if (e.intent == "task") {
         val t = e.session.parts.firstOrNull()
         Api.post("/tasks", jsonOf("title" to e.taskTitle.trim(), "area_id" to e.taskArea, "custom" to audit, "today" to today(),
-            "energy_type_id" to t?.typeId, "difficulty" to t?.difficulty))
+            "energy_type_id" to t?.typeId, "difficulty" to t?.difficulty, "tags" to e.taskTags.asJson()))
     } else {
         val body = e.session.body()
         body.getJSONObject("custom").put("_capture", audit.getJSONObject("_capture"))
@@ -218,14 +227,17 @@ private fun EntryCard(e: Entry, onRemove: () -> Unit, onEdit: () -> Unit, onSwit
                 if (e.intent != "task") T(d.hours?.let { durationText(it).replace(" ", "") } ?: "? h", if (d.hours == null) Palette.red else Palette.fg, 26.sp, FontWeight.SemiBold)
                 T(if (e.intent == "task") e.taskTitle else d.label.ifBlank { d.taskTitle ?: "" }, Palette.fg, 15.sp, modifier = Modifier.padding(bottom = 3.dp))
             }
+            val tagText = (if (e.intent == "task") e.taskTags else d.inheritedTags + d.tags).joinToString(", ") { "#$it" }.ifEmpty { "–" }
             val fields = if (e.intent == "task") listOf(
                 Triple("Area", boot.area(e.taskArea)?.name ?: "Choose…", null),
                 Triple("Energy type", boot.type(first?.typeId)?.name ?: "–", boot.type(first?.typeId)?.color),
+                Triple("Tags", tagText, null),
             ) else listOf(
                 Triple("Energy type", if (d.parts.size > 1) d.parts.joinToString(" + ") { boot.type(it.typeId)?.name ?: "?" } else boot.type(first?.typeId)?.name ?: "Choose…", boot.type(first?.typeId)?.color),
                 Triple("Level", first?.difficulty?.let { "$it of 5" } ?: "–", first?.difficulty?.let { Palette.intensity[it - 1] }),
                 Triple("Area", boot.area(d.areaId)?.name ?: "–", null),
                 if (d.taskId != null) Triple(Terms.capTask, d.taskTitle ?: "#${d.taskId}", null) else Triple("Date", relDay(d.loggedFor.toString()), null),
+                Triple("Tags", tagText, null),
             )
             fields.chunked(2).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(end = 8.dp)) {
@@ -242,6 +254,7 @@ private fun EntryCard(e: Entry, onRemove: () -> Unit, onEdit: () -> Unit, onSwit
 private fun EditEntrySheet(e: Entry, update: (Entry) -> Unit, onDismiss: () -> Unit) {
     val boot = App.boot ?: return
     var text by remember { mutableStateOf(durationText(e.session.hours)) }
+    var pickTags by remember { mutableStateOf(false) }
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = Palette.bg) {
         Column(
             Modifier.fillMaxHeight(0.92f).verticalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, bottom = 32.dp),
@@ -257,10 +270,16 @@ private fun EditEntrySheet(e: Entry, update: (Entry) -> Unit, onDismiss: () -> U
                 androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     boot.areas.forEach { a -> Pill(a.name, e.taskArea == a.id) { update(e.copy(taskArea = a.id)) } }
                 }
+                SectionTitle("Tags")
+                androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    e.taskTags.forEach { n -> Pill("#$n", true, action = true, description = "Remove tag $n") { update(e.copy(taskTags = e.taskTags - n)) } }
+                    Pill("+ Tags", action = true, description = "Choose tags") { pickTags = true }
+                }
             } else {
                 DurationCard(e.session, text, { text = it }) { update(e.copy(session = it)) }
                 SessionFields(e.session) { update(e.copy(session = it)) }
             }
         }
     }
+    if (pickTags) TagsSheet("Tags on this ${Terms.task}", e.taskTags, onDone = { update(e.copy(taskTags = it)) }) { pickTags = false }
 }

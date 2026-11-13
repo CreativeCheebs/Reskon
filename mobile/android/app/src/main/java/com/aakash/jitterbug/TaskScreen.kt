@@ -341,6 +341,8 @@ fun NewTaskScreen(r: Route) {
     var due by remember { mutableStateOf<LocalDate?>(null) }
     var epic by remember { mutableStateOf(false) }
     var pickDue by remember { mutableStateOf(false) }
+    var tags by remember { mutableStateOf(listOf<String>()) }
+    var pickTags by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     Column(Modifier.fillMaxSize()) {
         TopBar("New ${Terms.task}", onBack = { App.back() })
@@ -369,6 +371,11 @@ fun NewTaskScreen(r: Route) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 (1..5).forEach { n -> Box(Modifier.weight(1f)) { Pill(n.toString(), difficulty == n, Palette.intensity[n - 1]) { difficulty = if (difficulty == n) null else n } } }
             }
+            SectionTitle("Tags")
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                tags.forEach { n -> Pill("#$n", true, action = true, description = "Remove tag $n") { tags = tags - n } }
+                Pill("+ Tags", action = true, description = "Choose tags") { pickTags = true }
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Box(Modifier.weight(1f)) { TextBox("Estimate", estimate, "e.g. 2h", keyboard = KeyboardType.Text) { estimate = it } }
                 FieldBox("Due", due?.let { dayLabel(it.toString()) } ?: "–", Modifier.weight(1f)) { pickDue = true }
@@ -381,7 +388,9 @@ fun NewTaskScreen(r: Route) {
                         "title" to title.trim(), "area_id" to area, "type" to if (epic) "epic" else "task", "energy_type_id" to type,
                         "priority_id" to priority, "difficulty" to difficulty, "estimate_h" to parseHours(estimate),
                         "due_at" to due?.toString(), "today" to today(),
-                    ))
+                    ).apply { if (tags.isNotEmpty()) put("tags", tags.asJson()) })
+                    // A tag typed here may be new, so the lists that name tags are read again.
+                    if (tags.isNotEmpty()) App.reloadBoot()
                     App.changed()
                     App.back()
                     App.go("task", "id" to t.getLong("id"))
@@ -390,4 +399,5 @@ fun NewTaskScreen(r: Route) {
         }
     }
     if (pickDue) DateDialog(due, { pickDue = false }, "No due date", { due = null }) { due = it }
+    if (pickTags) TagsSheet("Tags on this ${Terms.task}", tags, onDone = { tags = it }) { pickTags = false }
 }

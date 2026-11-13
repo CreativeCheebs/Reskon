@@ -57,19 +57,23 @@ fun SessionsScreen() {
     var area by remember { mutableStateOf<Long?>(null) }
     var type by remember { mutableStateOf<Long?>(null) }
     var task by remember { mutableStateOf<JSONObject?>(null) }
+    // A tag's id, 0 for sessions with no tags, null for any.
+    var tag by remember { mutableStateOf<Long?>(null) }
     var picking by remember { mutableStateOf<String?>(null) }
     var selecting by remember { mutableStateOf(false) }
     var selected by remember { mutableStateOf(setOf<Long>()) }
     val scope = rememberCoroutineScope()
 
     val (from, to) = rangeOf(range)
-    val data by loaded(range, area, type, task) {
+    val data by loaded(range, area, type, task, tag) {
         SessionTitles.load()
         val q = StringBuilder("from=$from&to=$to")
         val mf = StringBuilder("from=$from&to=$to")
         area?.let { q.append("&area=$it"); mf.append("&filters[area]=$it") }
         type?.let { q.append("&energy_type=$it"); mf.append("&filters[energy_type]=$it") }
         task?.let { q.append("&task_id=${it.getLong("id")}"); mf.append("&filters[task_id]=${it.getLong("id")}") }
+        // The task's tags or its own: the same rule for the list and the day totals (the server works both out).
+        tag?.let { q.append("&tag=$it"); mf.append("&filters[tag]=$it") }
         Triple(
             Api.arr("/sessions?$q").objs(),
             Api.obj("/metrics?metric=session_hours&group=day&split=energy_type&$mf").objs("points"),
@@ -98,6 +102,7 @@ fun SessionsScreen() {
                 Pill(boot.area(area)?.name ?: "Area", area != null, trailing = Icons.down) { picking = "area" }
                 Pill(boot.type(type)?.name ?: "Energy type", type != null, trailing = Icons.down) { picking = "type" }
                 Pill(task?.optString("title")?.take(18) ?: Terms.capTask, task != null, trailing = Icons.down) { picking = "task" }
+                Pill(tag?.let { if (it == 0L) "No tags" else boot.tagNames(listOf(it)).firstOrNull() } ?: "Tags", tag != null, trailing = Icons.down) { picking = "tag" }
             }
             val (sessions, split, totals) = data ?: Triple(emptyList(), emptyList(), emptyList())
             val days = sessions.groupBy { it.getString("logged_for") }.toSortedMap(compareByDescending { it })
@@ -144,6 +149,7 @@ fun SessionsScreen() {
         "area" -> PickSheet("Area", listOf(0L to "Every area") + boot.areas.map { it.id to it.name }, { picking = null }) { area = it.takeIf { it > 0 }; picking = null }
         "type" -> PickSheet("Energy type", listOf(0L to "Every type") + boot.energyTypes.map { it.id to it.name }, { picking = null }) { type = it.takeIf { it > 0 }; picking = null }
         "task" -> TaskPicker(onDismiss = { picking = null }) { task = it; picking = null }
+        "tag" -> PickSheet("Tag", listOf(-1L to "Any tag", 0L to "No tags") + boot.tags.map { it.optLong("id") to it.optString("name") }, { picking = null }) { tag = it.takeIf { it >= 0 }; picking = null }
     }
 }
 

@@ -43,9 +43,9 @@ Where a choice is recorded, it is in [`decisions.md`](decisions.md) (the "Open q
 - **Done when:** each built-in theme passes the contrast check Settings already runs (`checkContrast`), with the border colour included, and no screen hard-codes a colour a theme already names.
 
 ### 2.4 Left over from the 2026-11-13 round
-- **Tags, not finished on the phone:** a tag filter on the Sessions screen, tags on the New task form, and tags in phone quick capture.
-- **Tags, not reviewed by an agent:** the web tag screens, quick-capture tags and the phone tag screens were built and checked (types, lint, unit tests, one on-device check) but not reviewed. The server side was.
-- **Browser journeys not run:** the new `web/e2e` journeys (Enter to save, status button, right-click menu, bulk delete) need a sign-in on the test server (:8097). Run `npm run test:e2e` with `JB_E2E_URL`, `JB_E2E_USER`, `JB_E2E_PASS`.
+- **Tags are finished on every screen.** Reviewed by agents (server, web, phone). Not done, on purpose: the web table's tag chips are not clickable; deleting a tag leaves its id in saved view and widget filters; names fold case for a to z only (see decisions.md).
+- **A sync gap found while testing "connect an offline phone" (2026-11-13).** A phone that made an area on its own ("Personal", prefix `PR`) and then connected to a server that already had an area with the same prefix, now deleted (`Personal [deleted #1]`, prefix `PR`, kept by soft delete), does not get that area onto the server (key prefixes are unique), so the tasks made in it never arrive there, silently. Nothing is lost on the phone. Fix idea: when an incoming area clashes on its prefix with a deleted one, free the deleted area's prefix (or merge with it) as the name rename already does; and tell the person when something could not be applied. Needs the owner's yes for the behaviour.
+- **Browser journeys:** run against the test server with the `perf` login (`JB_E2E_URL=http://192.168.0.8:8097 JB_E2E_USER=perf JB_E2E_PASS=perf-test-123 npm run test:e2e`): 16 pass, 1 is skipped when the view has no Status column.
 - **Touch targets:** the phone's status jump buttons and other pills are 36 dp tall (see 2.2).
 - **Push:** the repository has no git remote; add one, then push `phase-2`.
 

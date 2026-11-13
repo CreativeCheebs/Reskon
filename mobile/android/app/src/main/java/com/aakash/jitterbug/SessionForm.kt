@@ -287,9 +287,12 @@ fun SessionFields(d: Draft, onDone: (() -> Unit)? = null, set: (Draft) -> Unit) 
             dismissButton = { TextButton({ set(d.copy(startedAt = null)); pickTime = false }) { T("No time", Palette.muted, 15.sp) } },
         ) { Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { TimePicker(state) } }
     }
-    if (pickTask) TaskPicker(onDismiss = { pickTask = false }) { t ->
+    if (pickTask) TaskPicker(onDismiss = { pickTask = false }, createIn = d.areaId ?: 0L) { t ->
+        val fromTask = t?.let { boot.tagNames(it.tagIds()) } ?: emptyList()
         set(d.copy(taskId = t?.getLong("id"), taskTitle = t?.getString("title"),
-            inheritedTags = t?.let { boot.tagNames(it.tagIds()) } ?: emptyList(),
+            inheritedTags = fromTask,
+            // Own tags never repeat the task's: those follow the task, and a copy would outlive a change to it.
+            tags = d.tags.filter { n -> fromTask.none { it.equals(n, true) } },
             areaId = t?.getLong("area_id") ?: d.areaId,
             parts = if (d.parts.isEmpty() && t?.id("energy_type_id") != null) listOf(Part(t.getLong("energy_type_id"), 100, t.id("difficulty")?.toInt() ?: 2)) else d.parts))
         pickTask = false
@@ -421,11 +424,15 @@ fun PickSheet(title: String, options: List<Pair<Long, String>>, onDismiss: () ->
     }
 }
 
-/** Search every task (GET /api/tasks?brief=1). Picks null for "No task". */
+/**
+ * Search every task (GET /api/tasks?brief=1). Picks null for "No task". With [createIn] (the area
+ * to start from, or 0 for none yet) the list starts with "Create new task", which makes one and picks it.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TaskPicker(onDismiss: () -> Unit, allowNone: Boolean = true, onPick: (JSONObject?) -> Unit) {
+fun TaskPicker(onDismiss: () -> Unit, allowNone: Boolean = true, createIn: Long? = null, onPick: (JSONObject?) -> Unit) {
     var query by remember { mutableStateOf("") }
+    var creating by remember { mutableStateOf(false) }
     val tasks by loaded { Api.arr("/tasks?brief=1").objs() }
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = Palette.raised) {
         Column(Modifier.fillMaxHeight(0.85f)) {
@@ -437,6 +444,11 @@ fun TaskPicker(onDismiss: () -> Unit, allowNone: Boolean = true, onPick: (JSONOb
             Spacer(Modifier.height(8.dp))
             val shown = tasks.orEmpty().filter { (query.isBlank() || it.optString("title").contains(query, true)) && it.optString("behaviour") != "cancelled" }
             LazyColumn {
+                if (createIn != null) item {
+                    Box(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button) { creating = true }.padding(horizontal = 16.dp), contentAlignment = Alignment.CenterStart) {
+                        T("+ Create new ${Terms.task}" + if (query.isNotBlank()) " “${query.trim()}”" else "", Palette.accent, 15.sp, FontWeight.Medium)
+                    }
+                }
                 if (allowNone && query.isBlank()) item {
                     Box(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button) { onPick(null) }.padding(horizontal = 16.dp), contentAlignment = Alignment.CenterStart) { T("No ${Terms.task}", Palette.muted) }
                 }
@@ -449,4 +461,5 @@ fun TaskPicker(onDismiss: () -> Unit, allowNone: Boolean = true, onPick: (JSONOb
             }
         }
     }
+    if (creating) NewTaskSheet(query.trim(), createIn?.takeIf { it > 0 }, onCreated = { onPick(it) }) { creating = false }
 }
