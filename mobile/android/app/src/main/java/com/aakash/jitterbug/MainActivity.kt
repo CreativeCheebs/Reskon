@@ -29,6 +29,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Snackbar
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -83,8 +85,13 @@ object App {
         return true
     }
 
+    private var bootSeq = 0
+
     suspend fun reloadBoot() {
-        boot = Boot(Api.obj("/bootstrap"))
+        // Several things can ask at once (a sync, a save); the answer to the newest question wins even if an older one is slower.
+        val mine = ++bootSeq
+        val b = Boot(Api.obj("/bootstrap"))
+        if (mine == bootSeq) boot = b
     }
 
     /** Opens the home screen: Today when the Day screen is on, else Board. */
@@ -183,7 +190,7 @@ private fun Root(activity: MainActivity) {
                 lastPoke = Sync.pokedAt
                 last = now
                 Sync.syncNow(activity.applicationContext)
-                if (App.version > 0) App.reloadBoot()
+                if (App.version > 0) runCatching { App.reloadBoot() }
             }
             delay(1000)
         }
@@ -202,7 +209,8 @@ private fun Root(activity: MainActivity) {
         App.toast?.let { msg ->
             LaunchedEffect(msg) { delay(3500); App.toast = null }
             Snackbar(
-                Modifier.align(Alignment.BottomCenter).windowInsetsPadding(WindowInsets.navigationBars).padding(start = 16.dp, end = 16.dp, bottom = 96.dp),
+                Modifier.align(Alignment.BottomCenter).windowInsetsPadding(WindowInsets.navigationBars).padding(start = 16.dp, end = 16.dp, bottom = 96.dp)
+                    .semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite },
                 containerColor = Palette.raised, contentColor = Palette.fg,
             ) { T(msg, Palette.fg, 14.sp) }
         }

@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -36,28 +38,45 @@ fun NewTaskSheet(initialTitle: String, areaId: Long?, onCreated: (JSONObject) ->
     val scope = rememberCoroutineScope()
     val ready = title.isNotBlank() && area != null && !busy
 
+    // An error is shown in the sheet itself: the toast is drawn under a sheet's own window and would not be seen.
+    var error by remember { mutableStateOf<String?>(null) }
+
     fun create() {
-        if (!ready) return
+        // `busy` is read live (not the `ready` of this composition), so a second tap in the same frame does nothing.
+        if (busy || title.isBlank() || area == null) return
         busy = true
+        error = null
         scope.launch {
-            val t = attempt("Not created") { Api.post("/tasks", jsonOf("title" to title.trim(), "area_id" to area, "today" to today())) }
-            busy = false
-            if (t != null) {
+            try {
+                val t = Api.post("/tasks", jsonOf("title" to title.trim(), "area_id" to area, "today" to today()))
                 App.changed()
                 onCreated(t)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                error = "Not created: ${e.message}"
+            } finally {
+                busy = false
             }
         }
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = Palette.raised) {
-        Column(Modifier.padding(start = 20.dp, end = 20.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            T("New ${Terms.task}", Palette.fg, 18.sp, FontWeight.SemiBold)
-            TextBox("Title", title, "What needs doing?", onDone = { create() }) { title = it }
-            SectionTitle("Area")
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                boot.areas.forEach { a -> Pill(a.name, area == a.id) { area = a.id } }
+    // Closing while the request is going would drop its result (the task would exist but not be picked).
+    ModalBottomSheet(onDismissRequest = { if (!busy) onDismiss() }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = Palette.raised) {
+        Column(Modifier.padding(bottom = 16.dp)) {
+            Column(
+                Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()).padding(start = 20.dp, end = 20.dp, bottom = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                T("New ${Terms.task}", Palette.fg, 18.sp, FontWeight.SemiBold)
+                TextBox("Title", title, "What needs doing?", onDone = { create() }) { title = it }
+                SectionTitle("Area")
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    boot.areas.forEach { a -> Pill(a.name, area == a.id) { area = a.id } }
+                }
+                error?.let { T(it, Palette.red, 13.sp) }
             }
-            TextLink(if (busy) "Creating…" else "Create ${Terms.task}") { create() }
+            BottomAction(if (busy) "Creating…" else "Create ${Terms.task}", enabled = ready) { create() }
         }
     }
 }

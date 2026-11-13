@@ -236,8 +236,8 @@ fun TaskScreen(r: Route) {
     when (sheet) {
         "status" -> PickSheet("Status", boot.statuses.map { it.id to it.name }, { sheet = null }) { sheet = null; move(it) }
         "tags" -> TagsSheet("Tags", boot.tagNames(t.tagIds()), onDone = { names ->
-            change(jsonOf("tags" to names.asJson()))
-            scope.launch { App.reloadBoot() }
+            // Save first, then read the lists (a new name only exists once the save is through), then redraw.
+            scope.launch { attempt("Not saved") { patchTask(t, jsonOf("tags" to names.asJson())); runCatching { App.reloadBoot() }; App.changed() } }
         }) { sheet = null }
         "area" -> PickSheet("Area", boot.areas.map { it.id to it.name }, { sheet = null }) { sheet = null; change(jsonOf("area_id" to it)) }
         "type" -> PickSheet("Energy type", listOf(0L to "None") + boot.energyTypes.map { it.id to it.name }, { sheet = null }) { sheet = null; change(jsonOf("energy_type_id" to it.takeIf { it > 0 })) }
@@ -343,6 +343,7 @@ fun NewTaskScreen(r: Route) {
     var pickDue by remember { mutableStateOf(false) }
     var tags by remember { mutableStateOf(listOf<String>()) }
     var pickTags by remember { mutableStateOf(false) }
+    var creating by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     Column(Modifier.fillMaxSize()) {
         TopBar("New ${Terms.task}", onBack = { App.back() })
@@ -381,19 +382,25 @@ fun NewTaskScreen(r: Route) {
                 FieldBox("Due", due?.let { dayLabel(it.toString()) } ?: "–", Modifier.weight(1f)) { pickDue = true }
             }
         }
-        BottomAction("Create ${Terms.task}", enabled = title.isNotBlank()) {
+        BottomAction("Create ${Terms.task}", enabled = title.isNotBlank() && !creating) {
+            if (creating) return@BottomAction
+            creating = true // before launching, so a second tap in the same frame is ignored
             scope.launch {
-                attempt("Not created") {
+                try {
+                  attempt("Not created") {
                     val t = Api.post("/tasks", jsonOf(
                         "title" to title.trim(), "area_id" to area, "type" to if (epic) "epic" else "task", "energy_type_id" to type,
                         "priority_id" to priority, "difficulty" to difficulty, "estimate_h" to parseHours(estimate),
                         "due_at" to due?.toString(), "today" to today(),
                     ).apply { if (tags.isNotEmpty()) put("tags", tags.asJson()) })
                     // A tag typed here may be new, so the lists that name tags are read again.
-                    if (tags.isNotEmpty()) App.reloadBoot()
+                    if (tags.isNotEmpty()) runCatching { App.reloadBoot() }
                     App.changed()
                     App.back()
                     App.go("task", "id" to t.getLong("id"))
+                  }
+                } finally {
+                    creating = false
                 }
             }
         }

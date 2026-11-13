@@ -97,7 +97,10 @@ fun SessionsScreen() {
                     TextLink("Done") { selecting = false; selected = emptySet() }
                 } else IconButton(Icons.select, "Select sessions") { selecting = true }
             }
-            Row(Modifier.horizontalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(
+                Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 Pill(range, true, trailing = Icons.down) { picking = "range" }
                 Pill(boot.area(area)?.name ?: "Area", area != null, trailing = Icons.down) { picking = "area" }
                 Pill(boot.type(type)?.name ?: "Energy type", type != null, trailing = Icons.down) { picking = "type" }
@@ -110,7 +113,7 @@ fun SessionsScreen() {
                 Modifier.weight(1f), contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, bottom = 120.dp),
                 verticalArrangement = Arrangement.spacedBy(18.dp),
             ) {
-                if (data != null && days.isEmpty()) item { Empty("No sessions in this range.") }
+                if (data != null && days.isEmpty()) item { Empty(if (area != null || type != null || task != null || tag != null) "No sessions match these filters." else "No sessions in this range.") }
                 items(days.entries.toList(), key = { it.key }) { (day, rows) ->
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(verticalAlignment = Alignment.Bottom) {
@@ -149,7 +152,7 @@ fun SessionsScreen() {
         "area" -> PickSheet("Area", listOf(0L to "Every area") + boot.areas.map { it.id to it.name }, { picking = null }) { area = it.takeIf { it > 0 }; picking = null }
         "type" -> PickSheet("Energy type", listOf(0L to "Every type") + boot.energyTypes.map { it.id to it.name }, { picking = null }) { type = it.takeIf { it > 0 }; picking = null }
         "task" -> TaskPicker(onDismiss = { picking = null }) { task = it; picking = null }
-        "tag" -> PickSheet("Tag", listOf(-1L to "Any tag", 0L to "No tags") + boot.tags.map { it.optLong("id") to it.optString("name") }, { picking = null }) { tag = it.takeIf { it >= 0 }; picking = null }
+        "tag" -> PickSheet("Tag", listOf(-1L to "Every tag", 0L to "No tags") + boot.tags.map { it.optLong("id") to it.optString("name") }, { picking = null }) { tag = it.takeIf { it >= 0 }; picking = null }
     }
 }
 

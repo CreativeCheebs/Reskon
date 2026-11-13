@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -73,12 +75,21 @@ fun TagsSheet(title: String, chosen: List<String>, fixed: List<String> = emptyLi
         val n = cleanTag(typed)
         val p = tagProblem(n)
         problem = p
-        if (p == null && names.none { it.equals(n, true) }) names = names + n
+        if (p == null && names.none { it.equals(n, true) } && n.lowercase() !in fixedKeys) names = names + n
         if (p == null) typed = ""
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = Palette.raised) {
-        Column(Modifier.padding(start = 20.dp, end = 20.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    // However the sheet is left (Done, swipe down, Back) what was ticked is kept, and a name that was
+    // typed but not yet added is added: nothing the person did is thrown away.
+    fun finish() {
+        val n = cleanTag(typed)
+        val picked = if (n.isNotEmpty() && tagProblem(n) == null && names.none { it.equals(n, true) }) names + n else names
+        if (picked.map { it.lowercase() }.toSet() != chosen.map { it.lowercase() }.toSet()) onDone(picked)
+        onDismiss()
+    }
+
+    ModalBottomSheet(onDismissRequest = { finish() }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = Palette.raised) {
+        Column(Modifier.verticalScroll(rememberScrollState()).padding(start = 20.dp, end = 20.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             T(title, Palette.fg, 18.sp, FontWeight.SemiBold)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 fixed.forEach { Pill(it, on = true, action = true, description = "$it, from the ${Terms.task}") }
@@ -90,7 +101,7 @@ fun TagsSheet(title: String, chosen: List<String>, fixed: List<String> = emptyLi
             TextBox("New tag", typed, "e.g. backend", onDone = { add() }) { typed = it.take(MAX_TAG_LENGTH + 8) }
             problem?.let { T(it, Palette.red, 13.sp) }
             TextLink("Add tag") { add() }
-            TextLink("Done") { onDone(names); onDismiss() }
+            BottomAction("Done") { finish() }
         }
     }
 }

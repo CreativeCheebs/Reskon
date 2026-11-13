@@ -102,11 +102,11 @@ fun BoardScreen(r: Route) {
                     // The view's name, then the Snoozed / Blocked / Incomplete buttons right after it (they wrap when there is no room).
                     FlowRow(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Row(
-                            Modifier.align(Alignment.CenterVertically).height(48.dp).clip(RoundedCornerShape(12.dp)).clickable { choosingView = true }.padding(horizontal = 8.dp),
+                            Modifier.align(Alignment.CenterVertically).heightIn(min = 48.dp).clip(RoundedCornerShape(12.dp)).clickable { choosingView = true }.padding(horizontal = 8.dp),
                             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             Box(Modifier.size(12.dp).clip(RoundedCornerShape(3.dp)).background(view.color))
-                            T(view.name, Palette.fg, 22.sp, FontWeight.SemiBold, oneLine = true)
+                            T(view.name, Palette.fg, 22.sp, FontWeight.SemiBold, oneLine = true, modifier = Modifier.weight(1f, fill = false))
                             Icon(Icons.down, Palette.muted, 20)
                         }
                         split?.let { HiddenGroup(it, Modifier.align(Alignment.CenterVertically)) { which -> hiddenSheet = which } }
@@ -114,6 +114,12 @@ fun BoardScreen(r: Route) {
                     IconButton(Icons.search, "Search this view", size = 44) { searching = true }
                 }
                 IconButton(Icons.filters, "Layout, grouping and filters", size = 44) { layoutSheet = true }
+            }
+            // While searching the header is the search box; the buttons (with counts that follow the search) go below it.
+            if (searching) split?.let { sp ->
+                FlowRow(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    HiddenGroup(sp) { which -> hiddenSheet = which }
+                }
             }
             val list = split?.shown
             if (list != null) when (view.kind) {
@@ -239,7 +245,7 @@ private fun ListLayout(view: ViewRef, allTasks: List<JSONObject>, onLongPress: (
             Group("s${s.id}", s.name, s.color, tasks.filter { it.optLong("status_id", -1) == s.id }, hiddenStatus = s.id.takeIf { !s.onBoard })
         }
     } else {
-        tasks.groupBy { keyOf(it) }.entries.map { (k, rows) -> Group(k.first, k.first, k.second, rows) }
+        tasks.groupBy { keyOf(it) }.entries.map { (k, rows) -> Group("${k.first}|${k.second.value}", k.first, k.second, rows) }
     }
     // The status to scroll to once the list has been rebuilt with it (a hidden one is added first).
     var pending by remember { mutableStateOf<String?>(null) }
@@ -274,12 +280,25 @@ private fun ListLayout(view: ViewRef, allTasks: List<JSONObject>, onLongPress: (
                 }
             }
         } else {
+            // Hidden statuses (Backlog, Cancelled) can be opened whatever the list is grouped by.
+            boot.statuses.filter { !it.onBoard }.forEach { s ->
+                val n = allTasks.count { it.optLong("status_id", -1) == s.id }
+                val open = s.id in opened
+                Pill(
+                    "${s.name} $n", on = open, dot = s.color, action = true, rect = true,
+                    description = (if (open) "Close ${s.name}" else "Show ${s.name}") + ", ${Terms.countTasks(n)}",
+                ) {
+                    opened = if (open) opened - s.id else opened + s.id
+                    OpenedStatuses.set(view.id, opened)
+                }
+            }
             groups.forEach { g ->
                 Pill("${g.name} ${g.rows.size}", dot = g.color, action = true, rect = true, description = "Go to ${g.name}, ${Terms.countTasks(g.rows.size)}") { pending = g.key }
             }
         }
     }
-    if (tasks.isEmpty() && allTasks.isNotEmpty()) Empty("Nothing to show here. Tap a status above to see its ${Terms.tasks}.")
+    if (allTasks.isEmpty()) Empty("No ${Terms.tasks} in this view.")
+    else if (tasks.isEmpty()) Empty("Nothing to show here. Tap a status above to see its ${Terms.tasks}.")
     LazyColumn(state = listState, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         items(groups, key = { it.key }) { g ->
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -319,10 +338,11 @@ internal fun ListRowTask(t: JSONObject, onLongPress: (JSONObject) -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Dot(boot.priority(t.id("priority_id"))?.color ?: Palette.subtle, 7)
                 val meta = listOfNotNull(boot.area(t.id("area_id"))?.name, boot.type(t.id("energy_type_id"))?.name,
-                    t.str("due_at")?.let { if (overdue) "overdue ${shortDate(it)}" else "due ${shortDate(it)}" }) +
-                    boot.tagNames(t.tagIds()).map { "#$it" }
+                    t.str("due_at")?.let { if (overdue) "overdue ${shortDate(it)}" else "due ${shortDate(it)}" })
                 T(meta.joinToString(" · "), Palette.muted, 13.sp, oneLine = true)
             }
+            // Tags get their own line, so the area and due date do not push them out of sight.
+            boot.tagNames(t.tagIds()).takeIf { it.isNotEmpty() }?.let { names -> T(names.joinToString(" ") { "#$it" }, Palette.subtle, 12.sp, oneLine = true) }
         }
         T(age(t.num("time_in_status_h")), if (t.optBoolean("stalled")) Palette.red else Palette.fg, 14.sp, FontWeight.SemiBold)
     }

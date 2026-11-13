@@ -97,10 +97,11 @@ object Sync {
                     received = res.optInt("received")
                     done = true
                     if (received > 0) {
-                        App.version++
                         // The lists (views, areas, statuses, tags...) come from the bootstrap, so reload it
                         // here: a manual "Sync now" would otherwise leave views deleted elsewhere on screen.
+                        // First, so the screens that reload on the version change see the new lists.
                         runCatching { App.reloadBoot() }
+                        App.version++
                     }
                     null
                 }

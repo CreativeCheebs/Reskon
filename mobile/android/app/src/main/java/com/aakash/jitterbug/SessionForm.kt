@@ -264,9 +264,10 @@ fun SessionFields(d: Draft, onDone: (() -> Unit)? = null, set: (Draft) -> Unit) 
                 T("Tags", Palette.muted, 14.sp, modifier = Modifier.width(72.dp))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     d.inheritedTags.forEach { Tag("#$it", round = 16) }
-                    d.tags.forEach { n -> Box(Modifier.clickable { set(d.copy(tags = d.tags - n)) }) { Tag("#$n", bg = Palette.selected, round = 16) } }
+                    d.tags.forEach { n -> Box(Modifier.clickable(role = Role.Button, onClickLabel = "Remove tag $n") { set(d.copy(tags = d.tags - n)) }) { Tag("#$n", bg = Palette.selected, round = 16) } }
                     Box(
-                        Modifier.size(32.dp).clip(RoundedCornerShape(16.dp)).border(1.dp, Palette.strong, RoundedCornerShape(16.dp)).clickable { pickTags = true },
+                        Modifier.size(40.dp).clip(RoundedCornerShape(20.dp)).border(1.dp, Palette.strong, RoundedCornerShape(20.dp))
+                            .clickable(role = Role.Button, onClickLabel = "Add a tag") { pickTags = true },
                         contentAlignment = Alignment.Center,
                     ) { T("+", Palette.muted, 18.sp) }
                 }

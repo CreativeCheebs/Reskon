@@ -88,7 +88,7 @@ fun CaptureScreen(r: Route) {
             parsed = p
             entries.clear()
             val list = p.objs("entries").ifEmpty { listOf(p) }
-            entries.addAll(list.map { toEntry(it, text.trim()) })
+            entries.addAll(list.map { withTaskTags(toEntry(it, text.trim())) })
         }
     }
 
@@ -143,6 +143,7 @@ fun CaptureScreen(r: Route) {
                 if (entries.size > 1) "Save ${entries.size} entries" else "Save", enabled = can && !busy,
                 secondary = "Cancel", onSecondary = { App.back() },
             ) {
+                if (busy) return@BottomAction
                 busy = true
                 scope.launch {
                     // Saves one by one; a saved entry leaves the list, so after an error only the rest remain.
@@ -153,11 +154,11 @@ fun CaptureScreen(r: Route) {
                         entries.removeAt(0)
                     }
                     busy = false
+                    App.changed() // also after a partial save, so what was saved shows
                     if (entries.isEmpty()) {
                         r.long("inbox")?.let { attempt("Inbox not updated") { Api.post("/inbox/$it/triage") } }
                         // A tag added by hand may be new, so the lists that name tags are read again.
-                        App.reloadBoot()
-                        App.changed()
+                        runCatching { App.reloadBoot() }
                         App.back()
                         App.say("Saved")
                     }
@@ -170,6 +171,15 @@ fun CaptureScreen(r: Route) {
         val i = entries.indexOfFirst { it.key == key }
         if (i < 0) editing = null else EditEntrySheet(entries[i], { entries[i] = it }) { editing = null }
     }
+}
+
+/** An entry matched to an existing task shows that task's tags (they follow it); its own tags never repeat them. */
+private suspend fun withTaskTags(e: Entry): Entry {
+    val id = e.session.taskId ?: return e
+    val boot = App.boot ?: return e
+    val t = runCatching { Api.obj("/tasks/$id") }.getOrNull() ?: return e
+    val fromTask = boot.tagNames(t.tagIds())
+    return e.copy(session = e.session.copy(inheritedTags = fromTask, tags = e.session.tags.filter { n -> fromTask.none { it.equals(n, true) } }))
 }
 
 private fun toEntry(p: JSONObject, raw: String): Entry {

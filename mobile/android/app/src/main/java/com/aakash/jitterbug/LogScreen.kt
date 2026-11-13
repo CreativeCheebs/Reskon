@@ -41,8 +41,11 @@ fun LogScreen(r: Route) {
     LaunchedEffect(Unit) {
         val id = r.long("task") ?: d.taskId ?: return@LaunchedEffect
         runCatching { Api.obj("/tasks/$id") }.getOrNull()?.let { t ->
+            val fromTask = App.boot?.tagNames(t.tagIds()) ?: emptyList()
             d = d.copy(
                 taskId = id, taskTitle = t.getString("title"), areaId = d.areaId ?: t.id("area_id"),
+                // The task's tags follow the task; the session's own never repeat them.
+                inheritedTags = fromTask, tags = d.tags.filter { n -> fromTask.none { it.equals(n, true) } },
                 parts = d.parts.ifEmpty { t.id("energy_type_id")?.let { listOf(Part(it, 100, t.id("difficulty")?.toInt() ?: 2)) } ?: emptyList() },
             )
         }
@@ -58,6 +61,8 @@ fun LogScreen(r: Route) {
                     attempt("Not saved") {
                         val s = if (editing != null) Api.patch("/sessions/${editing.getLong("id")}", d.body())
                         else Api.post("/sessions", d.body())
+                        // A tag typed here may be new: read the lists again, or the next edit would not know it and drop it.
+                        if (d.tags.isNotEmpty()) runCatching { App.reloadBoot() }
                         App.changed()
                         App.back()
                         App.say("Saved: ${hrs(s.optDouble("hours"))}, ${num(s.num("points"))} points")
