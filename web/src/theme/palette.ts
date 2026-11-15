@@ -1,12 +1,6 @@
 // The whole palette. Every colour in the UI comes from here.
 //
-// The default theme's surfaces and text follow Atlassian's (Jira's) 2022-2024 dark palette:
-// distinct surface levels so page, columns, cards and overlays read as
-// layers, softer text than pure white, borders that are visible. Checked on
-// 2026-10-29 against the published @atlaskit/tokens 20.8.2 (whose current
-// dark theme moved to neutral greys, page #1F1F21) and @primer/primitives
-// 11.10.0; every text colour here passes WCAG AA (4.5:1) on cards. See
-// docs/decisions.md for the measured comparison.
+// The default theme uses Reskon's warm charcoal and periwinkle palette.
 export const PALETTE_KEYS = [
   "bg",
   "panel",
@@ -41,29 +35,28 @@ export type Palette = Record<PaletteKey, string>;
 
 /** Reskon's own default theme. */
 export const DEFAULT_COLORS: Palette = {
-  bg: "#1D2125", // page (elevation.surface)
-  panel: "#22272B", // cards, tables, raised things (surface.raised)
-  panelDim: "#161A1D", // board columns, sunken wells (surface.sunken)
-  overlay: "#282E33", // drawers, modals, menus (surface.overlay)
-  hover: "#2C333A", // hovered rows and cards
-  selected: "#1C2B41", // selected nav item / row
-  border: "#38414A", // dividers, card and column outlines
-  borderStrong: "#4B5560", // input outlines, scrollbars
-  fg: "#DCE2E8", // primary text
-  muted: "#9FADBC", // secondary text
-  subtle: "#8C9BAB", // least important text, placeholders
-  accent: "#579DFF", // links, primary buttons, focus
-  success: "#4BCE97",
-  warn: "#F5CD47",
-  danger: "#F87168",
-  epic: "#9F8FEF", // the epic symbol and labels
-  shadow: "#030404", // card and menu shadows (drawn semi-transparent)
-  // Level 1-5 (stored as difficulty): pale to deep blue. No red: a restful level 5 is not a warning.
-  difficulty1: "#C7D1DE",
-  difficulty2: "#A3BDE6",
-  difficulty3: "#7DAEF0",
-  difficulty4: "#579DFF",
-  difficulty5: "#3B82F6",
+  bg: "#17171B",
+  panel: "#242329",
+  panelDim: "#201F23",
+  overlay: "#2D2B31",
+  hover: "#35333A",
+  selected: "#353650",
+  border: "#454249",
+  borderStrong: "#827C85",
+  fg: "#F0EAE5",
+  muted: "#BDB6B8",
+  subtle: "#B5ADB1",
+  accent: "#A6AFF8",
+  success: "#A3CDA4",
+  warn: "#EFC979",
+  danger: "#F3988F",
+  epic: "#C2B2EF",
+  shadow: "#08070A",
+  difficulty1: "#D7D9F2",
+  difficulty2: "#C3C8F4",
+  difficulty3: "#AFB8F7",
+  difficulty4: "#A6AFF8",
+  difficulty5: "#929CF1",
 };
 
 /** The active colours. Components read this at render time; the theme

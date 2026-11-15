@@ -2,7 +2,7 @@ import { theme, type ThemeConfig } from "antd";
 import { blend, palette } from "./palette";
 
 // One token block for the whole app: dark surface levels from the active
-// theme, dense, 6px radii, 24–30px controls, no button shadows. Built from
+// theme, compact controls, rounded corners and no button shadows. Built from
 // the palette each time the theme changes. Motion is about a third of
 // Ant's default (0.1/0.2/0.3s), so panels and menus open without a wait.
 export const makeAntTheme = (): ThemeConfig => ({
@@ -30,9 +30,9 @@ export const makeAntTheme = (): ThemeConfig => ({
     controlItemBgHover: palette.hover,
     controlItemBgActive: palette.selected,
     controlItemBgActiveHover: palette.selected,
-    borderRadius: 6,
+    borderRadius: 8,
     borderRadiusSM: 6,
-    borderRadiusLG: 6,
+    borderRadiusLG: 10,
     controlHeight: 28,
     controlHeightSM: 24,
     controlHeightLG: 30,
@@ -70,7 +70,7 @@ export const makeAntTheme = (): ThemeConfig => ({
       itemHeight: 32,
       itemMarginInline: 8,
       itemMarginBlock: 2,
-      itemBorderRadius: 6,
+      itemBorderRadius: 7,
       iconSize: 16,
       collapsedIconSize: 16,
       iconMarginInlineEnd: 10,

@@ -127,9 +127,8 @@ export function Column(props: Props) {
         <span
           style={{
             fontWeight: 600,
-            fontSize: 12,
-            textTransform: "uppercase",
-            letterSpacing: 0.4,
+            fontSize: 13,
+            letterSpacing: 0,
             color: palette.fg,
             overflow: "hidden",
             textOverflow: "ellipsis",

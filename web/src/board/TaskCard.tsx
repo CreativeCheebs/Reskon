@@ -1,6 +1,6 @@
 import { useApp } from "../store";
 import { formatAge, formatHours } from "../format";
-import { blend, palette } from "../theme/palette";
+import { palette } from "../theme/palette";
 import { Chip } from "../theme/Chip";
 import { Lozenge } from "../theme/Lozenge";
 import { levelName, type CardConfig, type Task } from "../types";
@@ -155,7 +155,7 @@ export function TaskCard({
       className={classes}
       style={{
         position: "relative",
-        border: `1px solid ${blend(palette.border, palette.panel, 0.55)}`,
+        border: `1px solid ${palette.border}`,
         boxShadow: `0 1px 2px ${palette.shadow}66${edge ? `, inset 3px 0 0 ${edge}` : ""}`,
         borderRadius: 8,
         padding: compact ? "9px 11px 10px" : "12px 13px",
@@ -170,7 +170,7 @@ export function TaskCard({
         <span style={{ flex: "none", display: "flex", height: 19, alignItems: "center" }}>
           <TypeIcon type={task.type} />
         </span>
-        <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, lineHeight: "19px", fontWeight: 500, color: palette.fg, overflowWrap: "anywhere" }}>
+        <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, lineHeight: "19px", fontWeight: 600, color: palette.fg, overflowWrap: "anywhere" }}>
           {task.title}
         </span>
       </div>

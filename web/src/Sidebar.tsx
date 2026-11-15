@@ -30,7 +30,7 @@ import { SEARCH_SHORTCUT } from "./search/GlobalSearch";
 // 768px it folds away entirely behind a tab, so phones get the full width.
 // Its look (rows, hover, the selected row) lives in interactionStyles.ts.
 
-const WIDE = 216;
+const WIDE = 228;
 const RAIL = 56;
 const COLLAPSED_KEY = "jb.sider.collapsed";
 
@@ -161,7 +161,7 @@ export function Sidebar(props: {
       style={{ borderRight: `1px solid ${palette.border}`, position: "relative", zIndex: 10 }}
     >
       <div className={rail ? "jb-sider-top jb-sider-top-rail" : "jb-sider-top"}>
-        {!rail && <span className="jb-sider-name">Reskon</span>}
+        {!rail && <span className="jb-sider-name"><span className="jb-brand-mark" aria-hidden="true">&#9685;</span>Reskon</span>}
         <CaptureButton />
         {!narrow && foldButton}
       </div>

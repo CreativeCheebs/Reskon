@@ -112,8 +112,8 @@ export const WidgetFrame = memo(function WidgetFrame({
         flexDirection: "column",
         background: palette.panel,
         border: `1px solid ${editing ? palette.borderStrong : palette.border}`,
-        borderRadius: 8,
-        padding: "8px 12px 10px",
+        borderRadius: 10,
+        padding: "12px 14px 14px",
         fontSize: 13,
         cursor: editing ? "grab" : undefined,
       }}

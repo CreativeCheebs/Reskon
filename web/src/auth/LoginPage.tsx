@@ -40,11 +40,11 @@ export function LoginPage({ setup, tokenRequired = false, onSignedIn }: { setup:
           maxWidth: 360,
           background: palette.panel,
           border: `1px solid ${palette.border}`,
-          borderRadius: 6,
-          padding: 24,
+          borderRadius: 10,
+          padding: 28,
         }}
       >
-        <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>
+        <div style={{ fontFamily: "Georgia, serif", fontSize: 26, fontWeight: 600, marginBottom: 8 }}>
           Reskon <span style={{ fontSize: 12, fontWeight: 400, color: palette.muted }}>{APP_VERSION}</span>
         </div>
         <Typography.Paragraph type="secondary" style={{ marginBottom: 16 }}>

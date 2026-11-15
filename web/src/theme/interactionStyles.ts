@@ -188,7 +188,8 @@ export function interactionCss(): string {
        a group wraps whole. Heights are whole pixels so 1px outlines stay
        sharp at any zoom. */
     .jb-page-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; min-height: 28px; margin-bottom: 10px; }
-    .jb-page-title { margin: 0; font-size: 18px; line-height: 28px; font-weight: 650; letter-spacing: -0.2px; color: ${palette.fg}; white-space: nowrap; }
+    .jb-content h1 { font-family: Georgia, serif; }
+    .jb-page-title { margin: 0; font-family: Georgia, serif; font-size: 22px; line-height: 30px; font-weight: 400; letter-spacing: -0.2px; color: ${palette.fg}; white-space: nowrap; }
     .jb-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; }
     .jb-toolbar-group { display: flex; align-items: center; gap: 6px; flex: none; }
     .jb-toolbar-end { margin-left: auto; display: flex; align-items: center; gap: 6px; }
@@ -213,7 +214,8 @@ export function interactionCss(): string {
     .jb-sider .ant-layout-sider-children { display: flex; flex-direction: column; overflow: hidden; }
     .jb-sider-top { display: flex; align-items: center; gap: 6px; padding: 12px 10px 10px 20px; min-height: 52px; box-sizing: border-box; }
     .jb-sider-top-rail { flex-direction: column; gap: 8px; padding: 12px 0 10px; }
-    .jb-sider-name { flex: 1; min-width: 0; font-weight: 700; font-size: 15px; letter-spacing: .2px; color: ${palette.fg}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .jb-sider-name { display: flex; align-items: center; gap: 9px; flex: 1; min-width: 0; font-family: Georgia, serif; font-weight: 600; font-size: 19px; letter-spacing: .2px; color: ${palette.fg}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .jb-brand-mark { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; flex: none; border-radius: 8px; background: ${blend(palette.accent, palette.panel, 0.3)}; color: ${palette.accent}; font-family: sans-serif; font-size: 20px; }
     /* Small icon buttons get a click area of at least 32 x 32 px, even
        where the glyph inside is tiny. */
     .jb-hit.ant-btn { min-width: 32px; min-height: 32px; }
