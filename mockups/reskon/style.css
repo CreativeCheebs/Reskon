@@ -8,3 +8,7 @@
 /* Compact board heading leaves more room for tasks. */
 .content{padding-top:27px}.page-heading h1{font-size:28px;line-height:38px;margin:0}.toolbar{margin-top:22px}@media(max-width:650px){.content{padding-top:22px}.page-heading h1{font-size:25px;line-height:38px}.page-heading .button{margin-top:0}}
 
+
+/* The bars share the baseline; day labels sit below it. */
+.chart{padding:20px 16px 0;margin-bottom:24px}.chart>div{position:relative;justify-content:flex-end;gap:0}.chart small{position:absolute;top:calc(100% + 8px);transform:none;white-space:nowrap}
+
