@@ -14,6 +14,10 @@ export interface WidgetQuery {
   reduce?: string;
   /** Small multiples: running totals, one per series. */
   cumulative?: boolean;
+  /** App page widgets only (source "app_page"): the app's id and its page's
+   *  id, from the app's description file. Such a widget has no metric. */
+  app?: string;
+  widget?: string;
 }
 
 export interface WidgetOptions {
@@ -23,8 +27,9 @@ export interface WidgetOptions {
   min_width_px?: number;
 }
 
-/** Where a widget's content comes from. Only "metric" exists so far; the
- *  others are planned (docs/next-phase.md section 0). */
+/** Where a widget's content comes from: a metric, or a connected app's own
+ *  page ("app_page", whose viz is always "page"). "view" and "app_data" are
+ *  planned (docs/next-phase.md section 0). */
 export type WidgetSource = "metric" | "view" | "app_data" | "app_page";
 
 export interface Widget {

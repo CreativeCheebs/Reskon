@@ -6,6 +6,7 @@ import { useApp } from "../store";
 import { palette } from "../theme/palette";
 import { MIN_WIDTH, type DateOverride, type MetricResult, type Widget } from "./types";
 import { VIZZES } from "./viz/registry";
+import { AppPageBody } from "./AppPageBody";
 
 // One widget: fetches its metric on mount (and on refresh, never by
 // polling) by widget id, then hands the result to its viz. Narrower than
@@ -88,12 +89,20 @@ export const WidgetFrame = memo(function WidgetFrame({
   // The path carries only the widget's id, so a saved change to its query
   // refetches through dep.
   const over = dates ? `&from=${dates.from}&to=${dates.to}` : "";
-  // Only metric widgets exist so far; one of a planned source (made by a
-  // newer Reskon on another device) is not run as a metric.
+  // Metric widgets and app pages are built; one of a planned source (made
+  // by a newer Reskon on another device) is not run as a metric, and can
+  // only be moved or removed here.
+  const page = widget.source === "app_page";
   const known = widget.source === undefined || widget.source === "metric";
   const metric = useMetric(known ? `/metrics?widget=${widget.id}${over}` : null, JSON.stringify(widget.query));
-  const { res, loading, reload } = metric;
-  const error = known ? metric.error : "This widget needs a newer version of Reskon.";
+  // An app's page reloads, with a fresh sign-in ticket, on Refresh.
+  const [pageLoads, setPageLoads] = useState(0);
+  const { res } = metric;
+  // A page widget's Refresh spins while its page is being launched.
+  const [pageLoading, setPageLoading] = useState(false);
+  const loading = page ? pageLoading : metric.loading;
+  const reload = page ? () => setPageLoads((n) => n + 1) : metric.reload;
+  const error = known || page ? metric.error : "This widget needs a newer version of Reskon.";
 
   return (
     <div
@@ -112,13 +121,13 @@ export const WidgetFrame = memo(function WidgetFrame({
       <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 6, minHeight: 22 }}>
         {editing && <HolderOutlined style={{ color: palette.subtle }} />}
         <span style={{ flex: 1, fontWeight: 600, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {widget.title || widget.query.metric}
+          {widget.title || widget.query.metric || widget.query.widget}
         </span>
         <span className="no-drag" style={{ display: "inline-flex" }}>
-          <Tooltip title="Refresh">
+          {(known || page) && <Tooltip title="Refresh">
             <Button size="small" type="text" icon={<ReloadOutlined spin={loading} />} onClick={reload} />
-          </Tooltip>
-          {editing && onEdit && (
+          </Tooltip>}
+          {editing && onEdit && (known || page) && (
             <Tooltip title="Edit widget">
               <Button size="small" type="text" icon={<EditOutlined />} onClick={() => onEdit(widget)} disabled={!online} />
             </Tooltip>
@@ -130,7 +139,9 @@ export const WidgetFrame = memo(function WidgetFrame({
           )}
         </span>
       </div>
-      {error ? (
+      {page ? (
+        <AppPageBody widget={widget} loads={pageLoads} editing={editing} onLoading={setPageLoading} />
+      ) : error ? (
         <div style={{ color: palette.muted, fontSize: 12 }}>{error}</div>
       ) : res ? (
         <VizBody widget={widget} res={res} />

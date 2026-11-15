@@ -70,8 +70,9 @@ func TestDefaultDashboardsAndLayout(t *testing.T) {
 	}
 }
 
-// Every widget so far is a metric; the planned sources are refused until
-// they are built, and an unknown one always is (migration 019).
+// Seeded widgets are metrics; the planned sources are refused until they
+// are built, an unknown one always is (migration 019), and an app page
+// widget's shape is refused for a metric query.
 func TestWidgetSource(t *testing.T) {
 	d := openTest(t)
 	ctx := context.Background()
@@ -118,5 +119,68 @@ func TestWidgetSource(t *testing.T) {
 	}
 	if _, err := d.WidgetQuery(ctx, w.ID); err == nil {
 		t.Error("an app_page widget ran as a metric")
+	}
+}
+
+// An app page widget names an app and one of its pages, nothing else; its
+// viz is always "page", and a widget keeps the source it was made with.
+func TestAppPageWidget(t *testing.T) {
+	d := openTest(t)
+	ctx := context.Background()
+	all, err := d.ListDashboards(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := func(s string) Fields { return fields(t, s) }
+	dash := itoa(all[0].ID)
+	w, err := d.CreateWidget(ctx, f(`{"dashboard_id":`+dash+`,"source":"app_page","title":"Today's habits","query":{"app":"habits","widget":"today"},"w":4,"h":4}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if w.Source != SourceAppPage || w.Viz != VizPage || string(w.Query) != `{"app":"habits","widget":"today"}` {
+		t.Fatalf("saved %+v", w)
+	}
+	for _, bad := range []string{
+		`{"dashboard_id":` + dash + `,"source":"app_page","query":{"app":"habits"}}`,
+		`{"dashboard_id":` + dash + `,"source":"app_page","query":{"app":"Habits!","widget":"today"}}`,
+		`{"dashboard_id":` + dash + `,"source":"app_page","query":{"app":"habits","widget":"today","metric":"points"}}`,
+		`{"dashboard_id":` + dash + `,"source":"app_page","query":{"app":1,"widget":"today"}}`,
+		`{"dashboard_id":` + dash + `,"source":"app_page","viz":"bar","query":{"app":"habits","widget":"today"}}`,
+		`{"dashboard_id":` + dash + `,"viz":"page","query":{"metric":"points"}}`,
+		`{"dashboard_id":` + dash + `,"viz":"bar","query":{"app":"habits","widget":"today"}}`,
+	} {
+		if _, err := d.CreateWidget(ctx, f(bad)); err == nil {
+			t.Errorf("accepted %s", bad)
+		}
+	}
+	// A patch's query is checked against the widget's own source.
+	if _, err := d.PatchWidget(ctx, w.ID, f(`{"query":{"app":"habits","widget":"last_days"},"title":"Other"}`)); err != nil {
+		t.Errorf("patch query: %v", err)
+	}
+	if _, err := d.PatchWidget(ctx, w.ID, f(`{"query":{"metric":"points","range":"today"}}`)); err == nil {
+		t.Error("an app page widget took a metric query")
+	}
+	if _, err := d.PatchWidget(ctx, w.ID, f(`{"source":"metric","viz":"number","query":{"metric":"points","range":"today"}}`)); err == nil {
+		t.Error("an app page widget became a metric")
+	}
+	if _, err := d.PatchWidget(ctx, w.ID, f(`{"source":"app_page","x":2}`)); err != nil {
+		t.Errorf("same source again: %v", err)
+	}
+	if _, err := d.WidgetQuery(ctx, w.ID); err == nil {
+		t.Error("an app page widget ran as a metric")
+	}
+	// A widget of a source not built here (from a newer device) can still be
+	// moved, but not changed.
+	if _, err := d.ExecContext(ctx, `UPDATE widget SET source = 'view' WHERE id = ?`, w.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.PatchWidget(ctx, w.ID, f(`{"y":3}`)); err != nil {
+		t.Errorf("move: %v", err)
+	}
+	if _, err := d.PatchWidget(ctx, w.ID, f(`{"source":"view","x":2}`)); err != nil {
+		t.Errorf("move, repeating its own source: %v", err)
+	}
+	if _, err := d.PatchWidget(ctx, w.ID, f(`{"query":{"metric":"points"}}`)); err == nil {
+		t.Error("changed the query of a widget of an unbuilt source")
 	}
 }

@@ -32,6 +32,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -223,7 +224,10 @@ fun StateFormScreen(r: Route) {
 
 private val DASH_RANGES = listOf("Each widget's own dates" to 0L, "Today" to 1L, "Last 7 days" to 7L, "Last 30 days" to 30L)
 
-/** Dashboards: widgets stacked in their saved order, each from GET /api/metrics?widget=:id. */
+/**
+ * Dashboards: widgets stacked in their saved order. A metric widget comes from
+ * GET /api/metrics?widget=:id; any other kind is only named here (see DashWidget).
+ */
 @Composable
 fun DashboardsScreen() {
     val dashboards by loaded { Api.arr("/dashboards").objs() }
@@ -256,12 +260,12 @@ fun DashboardsScreen() {
                 val next = widgets.getOrNull(i + 1)
                 if (w.optString("viz") == "number" && next?.optString("viz") == "number") {
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Box(Modifier.weight(1f)) { Widget(w, range.second, from, to) }
-                        Box(Modifier.weight(1f)) { Widget(next, range.second, from, to) }
+                        Box(Modifier.weight(1f)) { DashWidget(w, range.second, from, to) }
+                        Box(Modifier.weight(1f)) { DashWidget(next, range.second, from, to) }
                     }
                     i += 2
                 } else {
-                    Widget(w, range.second, from, to); i++
+                    DashWidget(w, range.second, from, to); i++
                 }
             }
             if (d != null && widgets.isEmpty()) Empty("This dashboard has no widgets.")
@@ -273,6 +277,28 @@ fun DashboardsScreen() {
         "range" -> PickSheet("Dates", DASH_RANGES.mapIndexed { i, r -> i.toLong() to r.first }, { choosing = null }) { range = DASH_RANGES[it.toInt()]; choosing = null }
     }
 }
+
+/**
+ * One widget. Only metric widgets are drawn here; any other source (a
+ * connected app's page, or one this version does not know) is shown in the
+ * web app, so the metrics API is not asked for it.
+ */
+@Composable
+private fun DashWidget(w: JSONObject, days: Long, from: LocalDate, to: LocalDate) {
+    if (drawnOnPhone(w)) {
+        Widget(w, days, from, to)
+    } else {
+        // One stop for TalkBack: the title and the note are read together.
+        Card(Modifier.semantics(mergeDescendants = true) {}, pad = 16.dp) {
+            T(w.optString("title").ifBlank { "Widget" }, Palette.muted, 13.sp, FontWeight.SemiBold)
+            Gap(6)
+            T("Shown in the web app.", Palette.subtle, 13.sp)
+        }
+    }
+}
+
+/** Whether the phone draws a widget itself: only metric widgets (no source means metric). */
+internal fun drawnOnPhone(w: JSONObject): Boolean = w.optString("source", "metric").ifBlank { "metric" } == "metric"
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable

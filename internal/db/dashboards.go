@@ -10,8 +10,8 @@ import (
 )
 
 // Dashboards and widgets (Phase 2). A widget is a source (where its content
-// comes from; so far always a metric query) plus a visualisation; it has no
-// data-fetching code of its own.
+// comes from: a metric query, or a connected app's page) plus a
+// visualisation; it has no data-fetching code of its own.
 
 type Dashboard struct {
 	ID        int64     `json:"id"`
@@ -164,37 +164,71 @@ var widgetColumns = columns{
 }
 
 // WidgetSources are where a widget's content can come from (migration 019).
-// SourceMetric is every widget so far; the others are planned
-// (docs/next-phase.md section 0) and are refused until built.
-const SourceMetric = "metric"
+// "view" and "app_data" are planned (docs/next-phase.md section 0) and are
+// refused until built.
+const (
+	SourceMetric  = "metric"
+	SourceAppPage = "app_page"
+)
 
-var WidgetSources = []string{SourceMetric, "view", "app_data", "app_page"}
+var WidgetSources = []string{SourceMetric, "view", "app_data", SourceAppPage}
 
 // builtSources can be saved today.
-var builtSources = []string{SourceMetric}
+var builtSources = []string{SourceMetric, SourceAppPage}
 
 // checkWidget rejects a source or viz that does not exist and a query the
 // metrics API would refuse, so a saved widget never fails for its shape.
-func checkWidget(f Fields) error {
+// cur is the widget being changed (nil for a new one): a patch's query is
+// checked against the source the widget already has.
+func checkWidget(f Fields, cur *Widget) error {
+	source := SourceMetric
+	if cur != nil {
+		source = cur.Source
+	}
 	if v, ok, err := f.stringField("source"); err != nil {
 		return err
-	} else if ok && !contains(WidgetSources, v) {
-		return invalid("source must be one of %s", strings.Join(WidgetSources, ", "))
-	} else if ok && !contains(builtSources, v) {
-		return invalid("widgets with source %q are not available yet", v)
+	} else if ok {
+		if !contains(WidgetSources, v) {
+			return invalid("source must be one of %s", strings.Join(WidgetSources, ", "))
+		}
+		// The query means something else for each source, so a widget keeps
+		// its source; another one is a new widget. Repeating its own source
+		// (even one not built here) changes nothing.
+		if cur != nil && v != cur.Source {
+			return invalid("a widget's source cannot be changed; add a new widget instead")
+		}
+		if cur == nil && !contains(builtSources, v) {
+			return invalid("widgets with source %q are not available yet", v)
+		}
+		source = v
+	}
+	_, hasViz := f["viz"]
+	_, hasQuery := f["query"]
+	if !contains(builtSources, source) && (hasViz || hasQuery) {
+		// A widget made by a newer Reskon: it can be moved, renamed or
+		// removed here, not changed.
+		return invalid("widgets with source %q are not available yet", source)
 	}
 	if v, ok, err := f.stringField("viz"); err != nil {
 		return err
-	} else if ok && !contains(WidgetVizzes, v) {
+	} else if ok && source == SourceAppPage && v != VizPage {
+		return invalid("an app page widget's viz is %q", VizPage)
+	} else if ok && source != SourceAppPage && !contains(WidgetVizzes, v) {
 		return invalid("viz must be one of %s", strings.Join(WidgetVizzes, ", "))
 	}
 	if raw, ok := f["query"]; ok {
-		q, err := ParseWidgetQuery(raw)
-		if err != nil {
-			return err
-		}
-		if _, err := CheckMetricQuery(&q); err != nil {
-			return err
+		if source == SourceAppPage {
+			if _, err := ParseAppPageQuery(raw); err != nil {
+				return err
+			}
+		} else {
+			q, err := ParseWidgetQuery(raw)
+			if err != nil {
+				return err
+			}
+			if _, err := CheckMetricQuery(&q); err != nil {
+				return err
+			}
 		}
 	}
 	for _, k := range []string{"w", "h"} {
@@ -216,12 +250,18 @@ func (d *DB) GetWidget(ctx context.Context, id int64) (*Widget, error) {
 }
 
 func (d *DB) CreateWidget(ctx context.Context, f Fields) (*Widget, error) {
+	if src, _, _ := f.stringField("source"); src == SourceAppPage {
+		// An app's page draws itself: its viz is always "page".
+		if _, ok := f["viz"]; !ok {
+			f["viz"], _ = json.Marshal(VizPage)
+		}
+	}
 	for _, req := range []string{"dashboard_id", "viz", "query"} {
 		if _, ok := f[req]; !ok {
 			return nil, invalid("%s is required", req)
 		}
 	}
-	if err := checkWidget(f); err != nil {
+	if err := checkWidget(f, nil); err != nil {
 		return nil, err
 	}
 	dash, _, _ := f.int64Field("dashboard_id")
@@ -251,10 +291,11 @@ func (d *DB) CreateWidget(ctx context.Context, f Fields) (*Widget, error) {
 }
 
 func (d *DB) PatchWidget(ctx context.Context, id int64, f Fields) (*Widget, error) {
-	if err := d.exists(ctx, "widget", id); err != nil {
+	cur, err := d.GetWidget(ctx, id)
+	if err != nil {
 		return nil, err
 	}
-	if err := checkWidget(f); err != nil {
+	if err := checkWidget(f, cur); err != nil {
 		return nil, err
 	}
 	if err := d.patchRow(ctx, "widget", id, f, widgetColumns); err != nil {

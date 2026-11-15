@@ -7,6 +7,7 @@ import { WriteButton } from "../offline";
 import { palette } from "../theme/palette";
 import { formatDateTime } from "../format";
 import type { AppManifest, AuthKind, ConnectedApp, Credentials } from "../apps/types";
+import { SameHostWarning } from "../apps/sameHost";
 
 // Settings › Apps: connect an app (a plugin) by its address, sign in to it
 // once, and see whether it answers. Reskon keeps the sign-in on the server;
@@ -137,6 +138,7 @@ function AddApp({ onAdded }: { onAdded: () => void }) {
           <div style={{ border: `1px solid ${palette.border}`, borderRadius: 8, padding: 12, marginBottom: 12 }}>
             <Typography.Text strong>{preview.manifest.name}</Typography.Text>{" "}
             {preview.manifest.version && <Typography.Text type="secondary">version {preview.manifest.version}</Typography.Text>}
+            <SameHostWarning address={preview.address} />
             <div style={{ margin: "6px 0 10px" }}>
               Offers:
               <WidgetList m={preview.manifest} />
@@ -225,6 +227,7 @@ function AppRow({ app, onChanged }: { app: ConnectedApp; onChanged: () => void }
         {app.address} · checked {formatDateTime(app.checked_at)}
       </Typography.Text>
       {app.status_detail && <div style={{ color: palette.muted, fontSize: 12, marginTop: 4 }}>{app.status_detail}</div>}
+      <SameHostWarning address={app.address} />
       {app.manifest && (
         <div style={{ marginTop: 6 }}>
           <WidgetList m={app.manifest} />

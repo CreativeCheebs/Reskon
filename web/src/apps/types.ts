@@ -47,3 +47,13 @@ export interface Credentials {
   username?: string;
   password?: string;
 }
+
+/** What POST /api/apps/launch answers for an app page widget: the page's
+ *  address (with a one-minute sign-in ticket after "#" when the app signs
+ *  in) and its origin, the only address Reskon sends it messages to. */
+export interface PageLink {
+  url: string;
+  origin: string;
+  style: "reskon" | "own";
+  title: string;
+}

@@ -1,6 +1,7 @@
 // Package appstest is a pretend plugin: a small habit tracker that serves a
-// description file and a login, as docs/plugins.md describes. Tests use it,
-// and cmd/example-plugin runs it on the test server.
+// description file, a login, tickets and a web page widget ("Today's
+// habits", fake_page.go), as docs/plugins.md describes. Tests use it, and
+// cmd/example-plugin runs it on the test server.
 package appstest
 
 import (
@@ -8,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"sync"
+	"time"
 )
 
 // Fake is a running pretend plugin.
@@ -23,6 +25,17 @@ type Fake struct {
 	Token string
 	// Logins counts calls to the login address.
 	Logins int
+	// Launches counts tickets handed out.
+	Launches int
+	// ReskonOrigin is the Reskon allowed to show the widget pages in a frame
+	// (their frame-ancestors), e.g. http://192.168.0.8:8097. Empty: none.
+	ReskonOrigin string
+	// Now is the clock for tickets; tests move it.
+	Now func() time.Time
+
+	tickets  map[string]time.Time // ticket -> when it stops working
+	sessions map[string]time.Time // page session -> when it stops working
+	done     map[string]map[string]bool
 }
 
 // New starts a pretend habit tracker that signs in with a password, on a
@@ -37,6 +50,7 @@ func New() *Fake {
 func NewFake() *Fake {
 	return &Fake{
 		User: "aakash", Password: "habits-123", Token: "tok-123",
+		Now: time.Now, tickets: map[string]time.Time{}, sessions: map[string]time.Time{}, done: map[string]map[string]bool{},
 		Manifest: map[string]any{
 			"reskon_app": 1,
 			"id":         "habits",
@@ -64,11 +78,11 @@ func (f *Fake) Handler() http.Handler {
 		_ = json.NewEncoder(w).Encode(f.Manifest)
 	})
 	mux.HandleFunc("POST /api/reskon/login", func(w http.ResponseWriter, r *http.Request) {
+		var body struct{ Username, Password string }
+		readBody(w, r, &body)
 		f.mu.Lock()
 		defer f.mu.Unlock()
 		f.Logins++
-		var body struct{ Username, Password string }
-		_ = json.NewDecoder(r.Body).Decode(&body)
 		if body.Username != f.User || body.Password != f.Password {
 			w.WriteHeader(http.StatusUnauthorized)
 			_, _ = w.Write([]byte(`{"error":"secret detail that must not be shown"}`))
@@ -77,6 +91,7 @@ func (f *Fake) Handler() http.Handler {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]string{"token": f.Token})
 	})
+	f.pageRoutes(mux)
 	return mux
 }
 

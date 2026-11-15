@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Alert, Checkbox, Form, Input, Modal, Select } from "antd";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Alert, Checkbox, Form, Input, Modal, Segmented, Select } from "antd";
 import { message } from "../theme/feedback";
 import { api } from "../api";
 import { useApp } from "../store";
@@ -10,10 +10,12 @@ import { TIME_GROUPS } from "./types";
 import { useMetric, VizBody } from "./WidgetFrame";
 import { useTerms } from "../terms";
 import { useTags } from "../tags/tags";
+import { AppPageEditor } from "./AppPageEditor";
 
 // Builds a widget from the metrics catalog: only metrics, groupings, splits
 // and filters the server lists are offered, so nothing built here can be
-// refused. A live preview runs the query as it is edited.
+// refused. A live preview runs the query as it is edited. A new widget can
+// instead be a connected app's page (AppPageEditor.tsx).
 
 const VIZ_LABEL: Record<Viz, string> = {
   bar: "Bars",
@@ -90,17 +92,51 @@ export function metricPath(q: WidgetQuery, viz: Viz): string {
   return `/metrics?${p}`;
 }
 
-export function WidgetEditor({
-  dashboardId,
-  editing,
-  onClose,
-  onSaved,
-}: {
+interface EditorProps {
   dashboardId: number;
   editing?: Widget;
   onClose: () => void;
   onSaved: (w: Widget) => void;
-}) {
+}
+
+type Kind = "metric" | "app_page";
+
+/** Adds or edits a widget. A new one can be a chart or an app's page; an
+ *  existing one opens the editor for its own source. */
+export function WidgetEditor(props: EditorProps) {
+  const [kind, setKind] = useState<Kind>(props.editing?.source === "app_page" ? "app_page" : "metric");
+  const [switched, setSwitched] = useState(false);
+  const switcher = props.editing ? undefined : (
+    <div role="group" aria-label="Kind of widget">
+    <Segmented<Kind>
+      value={kind}
+      onChange={(k) => {
+        setKind(k);
+        setSwitched(true);
+      }}
+      options={[
+        { value: "metric", label: "Chart" },
+        { value: "app_page", label: "App page" },
+      ]}
+      style={{ marginBottom: 14 }}
+    />
+    </div>
+  );
+  return kind === "app_page" ? (
+    <AppPageEditor {...props} switcher={switcher} animate={!switched} />
+  ) : (
+    <MetricWidgetEditor {...props} switcher={switcher} animate={!switched} />
+  );
+}
+
+function MetricWidgetEditor({
+  dashboardId,
+  editing,
+  onClose,
+  onSaved,
+  switcher,
+  animate,
+}: EditorProps & { switcher?: ReactNode; animate: boolean }) {
   const { boot, online } = useApp();
   const T = useTerms();
   const { tags } = useTags();
@@ -203,7 +239,9 @@ export function WidgetEditor({
       onOk={save}
       onCancel={onClose}
       okButtonProps={{ loading: busy, disabled: !online || !metric || !!preview.error }}
+      {...(animate ? {} : { transitionName: "", maskTransitionName: "" })}
     >
+      {switcher}
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 20 }}>
         <Form layout="vertical" size="small">
           <Form.Item label="Title" {...item}>

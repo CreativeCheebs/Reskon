@@ -73,6 +73,7 @@ func (s *Server) appRoutes() {
 		}
 		s.appRespond(w, map[string]bool{"ok": true}, st.Remove(r.Context(), id))
 	}))
+	s.appPageRoutes()
 }
 
 func (s *Server) appClient() *apps.Client {

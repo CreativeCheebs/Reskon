@@ -41,7 +41,11 @@ func (c *Client) http() *http.Client {
 
 // Unreachable means the app did not answer usefully. Its message is safe
 // to show: it names the address and the status, never the app's reply.
-type Unreachable struct{ Msg string }
+// Status is the app's HTTP status, if it answered at all.
+type Unreachable struct {
+	Msg    string
+	Status int
+}
 
 func (e *Unreachable) Error() string { return e.Msg }
 
@@ -86,7 +90,7 @@ func (c *Client) do(ctx context.Context, method, url, token string, body any) ([
 		return nil, &Unreachable{Msg: fmt.Sprintf("%s answered with a redirect (HTTP %d); use the address it points to", url, res.StatusCode)}
 	}
 	if res.StatusCode != http.StatusOK {
-		return nil, &Unreachable{Msg: fmt.Sprintf("%s answered HTTP %d", url, res.StatusCode)}
+		return nil, &Unreachable{Msg: fmt.Sprintf("%s answered HTTP %d", url, res.StatusCode), Status: res.StatusCode}
 	}
 	data, err := io.ReadAll(io.LimitReader(res.Body, MaxReply+1))
 	if err != nil {

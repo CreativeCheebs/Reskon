@@ -21,8 +21,20 @@ func (s *Server) dashboardRoutes() {
 		list: func(ctx context.Context, r *http.Request) (any, error) {
 			return nil, &db.InvalidError{Msg: "widgets come with GET /api/dashboards"}
 		},
-		create: func(ctx context.Context, f db.Fields) (any, error) { return dbOf(ctx).CreateWidget(ctx, f) },
+		create: func(ctx context.Context, f db.Fields) (any, error) {
+			if err := s.checkAppPage(ctx, nil, f); err != nil {
+				return nil, err
+			}
+			return dbOf(ctx).CreateWidget(ctx, f)
+		},
 		patch: func(ctx context.Context, id int64, f db.Fields) (any, error) {
+			cur, err := dbOf(ctx).GetWidget(ctx, id)
+			if err != nil {
+				return nil, err
+			}
+			if err := s.checkAppPage(ctx, cur, f); err != nil {
+				return nil, err
+			}
 			return dbOf(ctx).PatchWidget(ctx, id, f)
 		},
 		delete: func(ctx context.Context, id int64, r *http.Request) error { return dbOf(ctx).DeleteWidget(ctx, id) },

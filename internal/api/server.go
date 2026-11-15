@@ -75,6 +75,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.Set("X-Frame-Options", "DENY")
 	h.Set("Referrer-Policy", "same-origin")
 	h.Set("Content-Security-Policy", "frame-ancestors 'none'")
+	// A tab opened from an app's page (its links may open new tabs) gets no
+	// handle on Reskon's tab, so it cannot send it elsewhere.
+	h.Set("Cross-Origin-Opener-Policy", "same-origin")
 	if !sameOrigin(r) {
 		writeError(w, http.StatusForbidden, "forbidden", "cross-origin request refused")
 		return

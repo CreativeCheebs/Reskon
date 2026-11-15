@@ -116,7 +116,10 @@ POST /api/reskon/launch          (Authorization: Bearer <token>)
 A ticket:
 - works **once**;
 - lasts at most **60 seconds**;
-- is good only for that person.
+- is good only for that person;
+- is at most 1024 characters of plain ASCII with no spaces (letters, digits and `-_.~` are safest). Reskon refuses anything else.
+
+Reskon asks for a new ticket each time the widget is shown and each time the person presses the widget's refresh button, and loads the page again with it.
 
 Reskon then opens the page with the ticket after `#`, so it is never sent in a request or written to a log:
 
@@ -126,7 +129,9 @@ http://192.168.0.8:5000/widgets/today#ticket=one-time-string&theme=...
 
 The page reads `location.hash` and sends the ticket to its own server to swap it for a session. It keeps that session **in memory or `sessionStorage`, not a cookie**: browsers block or partition cookies inside a frame from another site, so a cookie may not be kept. Then the page removes the hash with `history.replaceState`.
 
-With `"auth": {"kind": "none"}` there is no ticket, and Reskon just opens the address.
+With `"auth": {"kind": "none"}` there is no ticket, and Reskon just opens the address (with only `#theme=...`).
+
+If the launch call answers `401` or `403`, Reskon tells the person to sign in to the app again in Settings › Apps.
 
 ### 4.2 Being allowed in a frame
 By default many web servers refuse to be shown in a frame. The widget pages must allow Reskon:
@@ -139,11 +144,14 @@ Do **not** send `X-Frame-Options: DENY` or `SAMEORIGIN` on widget pages. A good 
 
 ### 4.3 The frame is walled off
 Reskon shows the page in a sandboxed frame. The page:
-- can run its own scripts, call its own server and open forms;
-- cannot reach Reskon's page, cookies or storage;
-- cannot open pop-ups or move the top window.
+- can run its own scripts, call its own server and send forms;
+- can open links in a new tab; links that should open the full plugin need `target="_blank"`;
+- cannot reach Reskon's page or storage from its scripts;
+- cannot move the top window (the Reskon tab) to another address, and neither can a tab it opens (Reskon sends `Cross-Origin-Opener-Policy: same-origin`).
 
-Links that should open the full plugin need `target="_blank"`.
+The page must be on a different address (scheme, machine or port) from Reskon. Reskon refuses to show a page on its own address, because there the walls would not hold.
+
+**Same machine name, shared cookies.** Browsers send a site's cookies to every port on the same machine name. A plugin at `http://192.168.0.8:8098` beside Reskon at `http://192.168.0.8:8080` therefore receives Reskon's sign-in cookie with every request the browser makes to it (its widget pages and its home page). The cookie is HttpOnly, so the page's scripts cannot read it, but the plugin's server can see it. A plugin must never log, keep or use cookies it did not set. People should connect only plugins they trust on Reskon's machine name, and Reskon warns them in Settings › Apps. A plugin on a different machine name (or behind HTTPS with its own name) does not receive it.
 
 ### 4.4 Size
 Fill the frame (`width: 100%; height: 100%`) and scroll inside if needed. Widgets can be as narrow as about 300 px.
@@ -158,7 +166,7 @@ Fill the frame (`width: 100%; height: 100%`) and scroll inside if needed. Widget
   "font": "system-ui, sans-serif", "radius": 6 }
 ```
 
-Set these as CSS variables, with a transparent or `bg` background. When the person changes theme, Reskon sends the new colours as a message (section 7). Pages with `"style": "own"` can ignore all of this.
+Set these as CSS variables, with a transparent or `bg` background. `bg` is the colour of the widget around the page, so either blends in; `surface` is for boxes and rows on it. When the person changes theme, Reskon sends the new colours as a message (section 7); it also sends them once each time the page has loaded. Pages with `"style": "own"` can ignore all of this.
 
 ## 6. Data widgets
 
@@ -250,6 +258,7 @@ Authorization: Bearer random-key-for-this-app-and-person
 { reskon: 1, type: "theme", theme: { ...as in section 5 } }   // the person changed theme
 { reskon: 1, type: "refresh" }                                   // the person pressed the widget's refresh button
 ```
+In this version Reskon does not send `refresh`: its refresh button loads the page again with a new ticket. A page should still handle `refresh` (reload its data), as a later Reskon may send it.
 Check `event.origin` equals Reskon's address before acting on a message.
 
 ## 8. Checklist before saying a plugin is done

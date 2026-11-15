@@ -141,3 +141,110 @@ test("a connected app is listed under Apps in the sidebar and opens in a new tab
   await expect(sider.getByText("Apps", { exact: true })).toHaveCount(0);
   await expect(sider.getByRole("link", { name: /Habits/ })).toHaveCount(0);
 });
+
+test("an app's page shows in a dashboard widget, signed in, and can be ticked", async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 1600, height: 1000 });
+  await signIn(page);
+  await page.goto("/#/settings/apps");
+  const removeButtons = page.getByRole("button", { name: /^Remove / });
+  await expect(page.getByText("No apps connected yet.").or(removeButtons.first())).toBeVisible();
+  while ((await removeButtons.count()) > 0) {
+    const before = await removeButtons.count();
+    await removeButtons.first().click();
+    await page.getByRole("button", { name: "Remove", exact: true }).last().click();
+    await expect(removeButtons).toHaveCount(before - 1);
+  }
+  await page.getByLabel("App address").fill(plugin!);
+  await page.getByLabel("App address").press("Enter");
+  await page.getByLabel("Habits username").fill("aakash");
+  await page.getByLabel("Habits password").fill("habits-123");
+  await page.getByRole("button", { name: "Connect Habits" }).click();
+  await expect(page.getByText("Reachable", { exact: true })).toBeVisible();
+  // On the test server the app shares Reskon's machine name: said plainly.
+  if (new URL(plugin!).hostname === new URL(page.url()).hostname) {
+    await expect(page.getByText(/same machine name as Reskon/).first()).toBeVisible();
+  }
+
+  try {
+    // A dashboard of its own, removed at the end with its widget (and here
+    // first, if an earlier run stopped half way).
+    await page.getByRole("menuitem", { name: /Dashboards/ }).click();
+    await page.getByRole("button", { name: /^(edit )?Edit$/ }).click();
+    const ours = page.locator(".ant-segmented-item", { hasText: "E2E app page" });
+    const deleteDashboard = async () => {
+      await page.locator(".jb-dashboard-toolbar .anticon-delete, button:has(.anticon-delete)").first().click();
+      await page.getByRole("button", { name: "Delete", exact: true }).click();
+    };
+    while ((await ours.count()) > 0) {
+      const before = await ours.count();
+      await ours.first().click();
+      await deleteDashboard();
+      await expect(ours).toHaveCount(before - 1);
+    }
+    await page.getByRole("button", { name: "New dashboard" }).click();
+    const name = page.locator("input:focus");
+    await name.fill("E2E app page");
+    await name.press("Enter");
+    await expect(page.locator(".ant-segmented-item-selected", { hasText: "E2E app page" })).toBeVisible();
+
+    // Add widget › App page: the one app and its one page are picked, and
+    // the title and size come from the app.
+    await page.getByRole("button", { name: "Add widget" }).first().click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByText("App page", { exact: true }).click();
+    await expect(dialog.getByText("Habits", { exact: true })).toBeVisible();
+    await expect(dialog.getByRole("textbox", { name: "Title" })).toHaveValue("Today's habits");
+    const saved = page.waitForResponse((r) => r.request().method() === "POST" && new URL(r.url()).pathname === "/api/widgets");
+    await dialog.getByRole("button", { name: "Save" }).click();
+    expect((await saved).status()).toBe(200);
+    await page.getByRole("button", { name: /^(check )?Done$/ }).click();
+
+    // The page loads in a sandboxed frame from the app itself, signed in by
+    // the ticket: today's habits, no sign-in screen.
+    const frameEl = page.locator('iframe[title="Today\'s habits"]');
+    await expect(frameEl).toHaveAttribute("sandbox", /allow-scripts/);
+    const src = (await frameEl.getAttribute("src")) ?? "";
+    expect(src.startsWith(`${plugin}/widgets/today#ticket=`)).toBe(true);
+    expect(src).toMatch(/#ticket=[0-9a-f]+&theme=%7B/);
+    const frame = page.frameLocator('iframe[title="Today\'s habits"]');
+    const walk = frame.getByRole("checkbox", { name: "Walk" });
+    await expect(walk).toBeVisible();
+    await expect(frame.getByRole("textbox")).toHaveCount(0);
+    // Reskon's colours reached the page (style "reskon").
+    const sent = JSON.parse(new URLSearchParams(src.split("#")[1]).get("theme")!) as { accent: string };
+    const pageAccent = await frame.locator("html").evaluate((el) => getComputedStyle(el).getPropertyValue("--accent").trim());
+    expect(pageAccent.toLowerCase()).toBe(sent.accent.toLowerCase());
+    // Ticks stay in the pretend app between runs: flip, check, flip back.
+    const was = await walk.isChecked();
+    await walk.click();
+    await expect(walk).toBeChecked({ checked: !was });
+    await expect(walk).toBeEnabled();
+
+    // Refresh shows the page again with a fresh ticket: still ticked.
+    const ticketOf = (a: string) => new URLSearchParams(a.split("#")[1] ?? "").get("ticket");
+    const relaunched = page.waitForResponse((r) => new URL(r.url()).pathname === "/api/apps/launch");
+    await page.locator(".react-grid-item").filter({ has: frameEl }).getByRole("button", { name: /Refresh widget|reload/ }).click();
+    expect((await relaunched).status()).toBe(200);
+    await expect.poll(async () => ticketOf((await frameEl.getAttribute("src")) ?? "")).not.toBe(ticketOf(src));
+    await expect(walk).toBeChecked({ checked: !was });
+    await walk.click();
+    await expect(walk).toBeChecked({ checked: was });
+    await expect(walk).toBeEnabled();
+
+    // Leave nothing behind: the dashboard (and its widget), then the app.
+    await page.getByRole("button", { name: /^(edit )?Edit$/ }).click();
+    await deleteDashboard();
+    await expect(ours).toHaveCount(0);
+    await page.goto("/#/settings/apps");
+    await page.getByRole("button", { name: "Remove Habits" }).click();
+    await page.getByRole("button", { name: "Remove", exact: true }).last().click();
+    await expect(page.getByText("No apps connected yet.")).toBeVisible();
+  } finally {
+    // However the journey ended, take its dashboard and the app away again.
+    const dashboards = (await (await page.request.get("/api/dashboards")).json()) as { id: number; name: string }[];
+    for (const d of dashboards.filter((d) => d.name === "E2E app page")) await page.request.delete(`/api/dashboards/${d.id}`);
+    const connected = (await (await page.request.get("/api/apps")).json()) as { id: number; app_id: string }[];
+    for (const a of connected.filter((a) => a.app_id === "habits")) await page.request.delete(`/api/apps/${a.id}`);
+  }
+});
