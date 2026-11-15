@@ -7,8 +7,8 @@ import { useCallback, useLayoutEffect, useRef, useState } from "react";
 // Also reports which edges have more content past them, for the fade cues.
 
 export const COL_MIN = 248;
-const COL_MAX = 360;
-export const COL_GAP = 10;
+const COL_MAX = 420;
+export const COL_GAP = 14;
 export const COLLAPSED_W = 36;
 const PEEK = 0.3; // fraction of a column left showing when the board scrolls
 

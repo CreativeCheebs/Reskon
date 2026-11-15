@@ -158,19 +158,19 @@ export function TaskCard({
         border: `1px solid ${palette.border}`,
         boxShadow: `0 1px 2px ${palette.shadow}66${edge ? `, inset 3px 0 0 ${edge}` : ""}`,
         borderRadius: 8,
-        padding: compact ? "9px 11px 10px" : "12px 13px",
+        padding: compact ? "12px 13px" : "16px",
         cursor: onOpen ? "pointer" : "grabbing",
         userSelect: "none",
         display: "flex",
         flexDirection: "column",
-        gap: compact ? 7 : 9,
+        gap: compact ? 9 : 12,
       }}
     >
       <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
         <span style={{ flex: "none", display: "flex", height: 19, alignItems: "center" }}>
           <TypeIcon type={task.type} />
         </span>
-        <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, lineHeight: "19px", fontWeight: 600, color: palette.fg, overflowWrap: "anywhere" }}>
+        <span style={{ flex: 1, minWidth: 0, fontSize: 14, lineHeight: "19px", fontWeight: 600, color: palette.fg, overflowWrap: "anywhere" }}>
           {task.title}
         </span>
       </div>
@@ -179,7 +179,7 @@ export function TaskCard({
       {details.length > 0 && (
         <div style={{ ...row, gap: "2px 10px", fontSize: 12, lineHeight: "17px", color: palette.subtle, whiteSpace: "nowrap" }}>{details}</div>
       )}
-      {bar && <TimeBar task={task} pace={false} />}
+      {bar && <div style={{ borderTop: `1px solid ${palette.border}`, paddingTop: 10 }}><TimeBar task={task} pace={false} /></div>}
       {rail}
     </div>
   );

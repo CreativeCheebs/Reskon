@@ -87,8 +87,8 @@ export function Column(props: Props) {
           boxSizing: "border-box",
           background: isOver ? palette.border : columnBg(surface),
           border: `1px solid ${columnBorder(surface)}`,
-          borderTop: `3px solid ${color}`,
-          borderRadius: 8,
+          borderTop: `3px solid ${columnBorder(surface)}`,
+          borderRadius: 10,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -117,12 +117,12 @@ export function Column(props: Props) {
         background: columnBg(surface),
         border: `1px solid ${overLimit ? (limit!.limit.hard ? palette.danger : palette.warn) : columnBorder(surface)}`,
         // The status colour as a slim cap: the column's identity at a glance.
-        borderTop: `3px solid ${color}`,
-        borderRadius: 8,
+        borderTop: `3px solid ${columnBorder(surface)}`,
+        borderRadius: 10,
         maxHeight: inLane ? undefined : "100%",
       }}
     >
-      <div style={{ padding: "3px 4px 3px 12px", display: "flex", alignItems: "center", gap: 8, minHeight: 38, boxSizing: "border-box" }}>
+      <div style={{ padding: "8px 8px 8px 14px", display: "flex", alignItems: "center", gap: 8, minHeight: 38, boxSizing: "border-box" }}>
         {dot}
         <span
           style={{
@@ -164,7 +164,7 @@ export function Column(props: Props) {
           </Button>
         </Tooltip>
       </div>
-      <div ref={setNodeRef} style={{ flex: 1, overflowY: inLane ? undefined : "auto", padding: "2px 8px 8px", minHeight: 40 }}>
+      <div ref={setNodeRef} style={{ flex: 1, overflowY: inLane ? undefined : "auto", padding: "4px 10px 10px", minHeight: 40 }}>
         {taskIds.length === 0 && (
           <EmptyColumn
             done={behaviour === "done"}
@@ -173,7 +173,7 @@ export function Column(props: Props) {
           />
         )}
         <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {taskIds.map((id) => {
               const t = byId.get(id);
               return t ? (
@@ -271,8 +271,8 @@ function EmptyColumn({ done, isOver, onAdd }: { done: boolean; isOver: boolean; 
         flexDirection: "column",
         alignItems: "center",
         gap: 6,
-        padding: "18px 10px",
-        borderRadius: 8,
+        padding: "28px 14px",
+        borderRadius: 10,
         border: `1px dashed ${isOver ? palette.accent : blend(palette.border, palette.bg, 0.8)}`,
         background: isOver ? blend(palette.accent, palette.bg, 0.08) : "transparent",
         color: palette.subtle,

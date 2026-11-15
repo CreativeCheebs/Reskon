@@ -165,7 +165,7 @@ export function interactionCss(): string {
     .ant-segmented .ant-segmented-item { border-radius: 4px; }
     .ant-segmented.ant-segmented .ant-segmented-item-label {
       display: flex; align-items: center; justify-content: center;
-      min-height: 18px; line-height: 18px; min-width: 48px; padding: 0 12px; box-sizing: border-box; font-weight: 400;
+      min-height: 26px; line-height: 26px; min-width: 48px; padding: 0 12px; box-sizing: border-box; font-weight: 400;
     }
     .ant-segmented .ant-segmented-item-selected, .ant-segmented .ant-segmented-thumb {
       background: ${segSelected}; box-shadow: inset 0 0 0 1px ${segSelectedEdge}; border-radius: 4px;
@@ -190,12 +190,14 @@ export function interactionCss(): string {
     .jb-page-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; min-height: 28px; margin-bottom: 10px; }
     .jb-content h1 { font-family: Georgia, serif; }
     .jb-page-title { margin: 0; font-family: Georgia, serif; font-size: 22px; line-height: 30px; font-weight: 400; letter-spacing: -0.2px; color: ${palette.fg}; white-space: nowrap; }
+    .jb-content { padding: 24px !important; }
+    .jb-content > div { min-width: 0; }
     .jb-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; }
     .jb-toolbar-group { display: flex; align-items: center; gap: 6px; flex: none; }
     .jb-toolbar-end { margin-left: auto; display: flex; align-items: center; gap: 6px; }
     /* Small buttons and pickers share the selects' outline and padding. */
     .ant-btn-sm { padding-inline: 9px; }
-    .ant-btn-sm.ant-btn-icon-only { padding-inline: 0; width: 24px; }
+    .ant-btn-sm.ant-btn-icon-only { padding-inline: 0; width: 32px; }
     .ant-btn .anticon { line-height: 0; }
     .ant-btn-sm .anticon { font-size: 12px; }
     .ant-btn-sm.ant-btn-icon-only .anticon { font-size: 14px; }
@@ -206,13 +208,13 @@ export function interactionCss(): string {
     .jb-kind .ant-segmented-item { flex: 1 1 0; min-width: 120px; }
     /* Colour pickers: the swatch centred in its box, one size on every row. */
     .ant-color-picker-trigger { display: inline-flex !important; align-items: center; justify-content: center; padding: 0 !important; box-sizing: border-box; }
-    .ant-color-picker-trigger-sm { width: 24px; height: 24px; min-width: 24px; }
+    .ant-color-picker-trigger-sm { width: 32px; height: 32px; min-width: 32px; }
     .ant-color-picker-trigger-sm .ant-color-picker-color-block { width: 16px !important; height: 16px !important; border-radius: 4px !important; }
 
     /* Sidebar (Sidebar.tsx). Rows, headings, footer and the name all start
        20px in; the icon rail centres everything instead. */
     .jb-sider .ant-layout-sider-children { display: flex; flex-direction: column; overflow: hidden; }
-    .jb-sider-top { display: flex; align-items: center; gap: 6px; padding: 12px 10px 10px 20px; min-height: 52px; box-sizing: border-box; }
+    .jb-sider-top { display: flex; align-items: center; gap: 6px; padding: 20px 10px 20px 20px; min-height: 72px; box-sizing: border-box; }
     .jb-sider-top-rail { flex-direction: column; gap: 8px; padding: 12px 0 10px; }
     .jb-sider-name { display: flex; align-items: center; gap: 9px; flex: 1; min-width: 0; font-family: Georgia, serif; font-weight: 600; font-size: 19px; letter-spacing: .2px; color: ${palette.fg}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .jb-brand-mark { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; flex: none; border-radius: 8px; background: ${blend(palette.accent, palette.panel, 0.3)}; color: ${palette.accent}; font-family: sans-serif; font-size: 20px; }

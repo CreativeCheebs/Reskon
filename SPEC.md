@@ -394,7 +394,7 @@ See decisions. In short: it would be a second program to run, embedding it secur
 | Time and points | Energy types (name, colour, points per hour), subtypes, subtype rank weights, reflection (week start) |
 | Connections | Quick capture model, duplicate search model, sync server (phone) |
 | Data | Download database (phone) |
-| You | Screens (the Day screen switch), Names (what tasks and epics are called), About (the version), Appearance (themes: Default, Jira, Jira high contrast, GitHub Dark, GitHub Dark Dimmed; Default uses warm charcoal surfaces and periwinkle accents; download one as a file, edit it, upload it; in any theme, grey secondary text is lightened just enough to be readable, at least 4.5:1 on every surface), account |
+| You | Screens (the Day screen switch), Names (what tasks and epics are called), About (the version), Appearance (themes: Default, Jira, Jira high contrast, GitHub Dark, GitHub Dark Dimmed; Default uses warm charcoal surfaces and periwinkle accents; web controls have roomier targets, cards separate progress from labels, and board columns use quiet outlines with coloured status dots; download one as a file, edit it, upload it; in any theme, grey secondary text is lightened just enough to be readable, at least 4.5:1 on every surface), account |
 | Admin | People |
 
 ### 12.1 Deleting something that is in use

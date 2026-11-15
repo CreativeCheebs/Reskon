@@ -24,10 +24,10 @@ export function Lozenge({
     <span
       style={{
         display: "inline-block",
-        padding: "0 6px",
-        borderRadius: 3,
+        padding: "0 8px",
+        borderRadius: 5,
         fontSize: 11,
-        lineHeight: "18px",
+        lineHeight: "24px",
         fontWeight: strong ? 700 : 600,
         textTransform: strong ? "uppercase" : undefined,
         letterSpacing: strong ? 0.2 : undefined,
