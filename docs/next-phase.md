@@ -18,7 +18,7 @@ Task management stays in Reskon; other things come from plugins. The reasons are
 
 Each step below is built, tested, reviewed and committed on its own.
 
-1. **Live updates (WebSocket).** An open tab updates by itself when your data changes anywhere: another tab, the phone, a plugin. Done when: a change made on the phone shows in an open browser tab within a few seconds, with no refresh.
+1. **Live updates (WebSocket). Done 2026-11-15:** checked with two browser tabs on the test server, and the container starts on empty and existing data. An open tab updates by itself when your data changes anywhere: another tab, the phone, a plugin. Done when: a change made on the phone shows in an open browser tab within a few seconds, with no refresh.
 2. **Groundwork (a refactor, its own commit, no visible change).** The dashboard picks how to draw a widget from one list of chart types instead of a chain of "if this, else that". Widgets get a "source": a metric (all of today's widgets), a view, an app's data, or an app's web page. Done when: every existing dashboard looks and works exactly as before.
 3. **Settings → Apps.** Add an app by its address, sign in to it once, and see whether it is reachable. App settings, tokens and the cache go in each person's separate apps file. Done when: the habit tracker (or the test plugin) connects, and the token never reaches the browser or the phone.
 4. **"Apps" in the sidebar.** A new Apps heading, with one entry per connected app below it, opening the app's own page.
