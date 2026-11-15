@@ -2,6 +2,8 @@
 // straight to it, nothing is queued, and a network failure flips the app to
 // offline (read-only) until /api/health answers again.
 
+import { tabId } from "./live";
+
 export class ApiError extends Error {
   status: number;
   detail: string;
@@ -39,7 +41,8 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     res = await fetch("/api" + path, {
       method,
       // A Blob (an uploaded file) goes as it is; anything else as JSON.
-      headers: body === undefined || body instanceof Blob ? undefined : { "Content-Type": "application/json" },
+      // The tab's name lets the server leave this tab out of the live note.
+      headers: body === undefined || body instanceof Blob ? { "X-Reskon-Tab": tabId } : { "Content-Type": "application/json", "X-Reskon-Tab": tabId },
       body: body === undefined ? undefined : body instanceof Blob ? body : JSON.stringify(body),
     });
   } catch {

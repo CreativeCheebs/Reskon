@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, DatePicker, Spin } from "antd";
 import { LeftOutlined, RightOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
@@ -19,22 +19,30 @@ export function DayScreen({ date, onDate }: { date?: string; onDate: (d: string)
   const { reloadKey } = useApp();
   const day = date ?? today();
   const [data, setData] = useState<DayData | null>(null);
+  // Only the newest answer is shown: a reload started before a save but
+  // answered after it must not put the old numbers back.
+  const seq = useRef(0);
 
   const load = useCallback(async () => {
+    const n = ++seq.current;
     try {
-      setData(await api.get<DayData>(`/day/${day}`));
+      const d = await api.get<DayData>(`/day/${day}`);
+      if (n === seq.current) setData(d);
     } catch (e) {
       message.error((e as Error).message);
     }
   }, [day]);
+  // Another day starts blank; a reload of the same day keeps it on screen.
+  useEffect(() => setData(null), [day]);
   useEffect(() => {
-    setData(null);
     load();
   }, [load, reloadKey]);
 
   const save = async (patch: Record<string, unknown>) => {
+    const n = ++seq.current;
     try {
-      setData(await api.patch<DayData>(`/day/${day}`, patch));
+      const d = await api.patch<DayData>(`/day/${day}`, patch);
+      if (n === seq.current) setData(d);
     } catch (e) {
       message.error((e as Error).message);
       load();

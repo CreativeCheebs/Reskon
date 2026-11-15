@@ -3,7 +3,7 @@ import { deleteTaskAsking } from "./deleteTask";
 import { Alert, DatePicker, Descriptions, Divider, Drawer, Input, InputNumber, Select, Space, Spin, Typography } from "antd";
 import { message } from "../theme/feedback";
 import dayjs from "dayjs";
-import { api, patchWithRetry } from "../api";
+import { api, ApiError, patchWithRetry } from "../api";
 import { useApp } from "../store";
 import { WriteButton } from "../offline";
 import { formatAge, formatDateTime, formatHours, today } from "../format";
@@ -45,22 +45,45 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
   const [title, setTitle] = useState(initial?.title ?? "");
   const [desc, setDesc] = useState(initial?.description ?? "");
 
+  // The task as last loaded, to tell unsaved typing from what was saved.
+  const shown = useRef(task);
+  shown.current = task;
+
   // notify: the task changed underneath (a session was logged), so the
   // board's copy needs the new derived values too.
-  const load = (notify = false) =>
-    api
+  // keep: a reload (a live update from another device) keeps a title or
+  // description still being typed here; only untouched text is replaced.
+  // Only the newest answer is shown: a reload answered after a save made
+  // here must not bring the old task back (apply() bumps it too).
+  const seq = useRef(0);
+  const load = (notify = false, keep = false) => {
+    const n = ++seq.current;
+    return api
       .get<Task>(`/tasks/${taskId}`)
       .then((t) => {
+        if (n !== seq.current) return;
+        const prev = keep && shown.current?.id === t.id ? shown.current : null;
         setTask(t);
-        setTitle(t.title);
-        setDesc(t.description ?? "");
+        setTitle((cur) => (prev && cur !== prev.title ? cur : t.title));
+        setDesc((cur) => (prev && cur !== (prev.description ?? "") ? cur : t.description ?? ""));
         if (notify) onChanged(t);
       })
-      // Offline: keep whatever is already shown.
-      .catch((e) => online && message.error((e as Error).message));
+      .catch((e) => {
+        // Deleted elsewhere (another tab, the phone): close, once.
+        if (e instanceof ApiError && e.status === 404 && n === seq.current) {
+          seq.current++;
+          message.info("This task was deleted elsewhere.");
+          onDeleted(taskId);
+          onClose();
+          return;
+        }
+        // Offline: keep whatever is already shown.
+        if (online) message.error((e as Error).message);
+      });
+  };
 
   useEffect(() => {
-    load();
+    load(false, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskId, reloadKey]);
 
@@ -78,6 +101,7 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
   }, []);
 
   const apply = (t: Task) => {
+    seq.current++;
     setTask(t);
     setTitle(t.title);
     setDesc(t.description ?? "");
@@ -237,7 +261,9 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
                 step={0.5}
                 disabled={ro}
                 defaultValue={task.estimate_h ?? undefined}
-                key={task.updated_at}
+                // Starts over only when the estimate itself changed, so a live
+                // update to another field keeps a number still being typed.
+                key={`${task.id}:${task.estimate_h}`}
                 onBlur={(e) => {
                   const v = e.target.value === "" ? null : Number(e.target.value);
                   if (v !== task.estimate_h) patch({ estimate_h: v });

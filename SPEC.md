@@ -337,7 +337,7 @@ The plan is carried forward from your last plan, so most mornings are one tap (*
 
 - A dashboard is a page of widgets on a grid (12 columns). Edit mode is a switch, so nothing moves by accident while you read. In edit mode, drag and resize; the layout saves when you drop.
 - Every widget is **a question to the metrics API plus a way to draw it**. No widget has its own special code. Adding something new to measure is one entry in the metric list; adding a new chart type is one drawing component.
-- Each widget loads when shown and has a refresh button. No background polling.
+- Each widget loads when shown and has a refresh button. No background polling: a widget reloads when your data changes (see 14, live updates).
 - A dashboard can run every widget over one chosen day or a span of dates instead of each widget's own range. That choice isn't saved.
 - On a narrow screen (under 768px), widgets stack in one column in saved order, with no editing. A chart too narrow to read shows as a single number instead. The Android app shows dashboards this way.
 
@@ -469,6 +469,7 @@ Phones only ever sync through a server, never with each other.
 - Dates you pick (logged for, due, start, end) are plain calendar days. Times (created, moved, changed) are stored in UTC.
 - **A new day reloads everything.** The web app checks the date every 30 seconds and when you come back to the tab, and reloads its data (not the page) when it changes, so snoozes wake and the day screen moves on.
 - **The web app needs the server.** When the connection drops, what is on screen stays, read only, with a banner. Buttons are greyed out with an explanation, not hidden. On reconnect everything reloads. Nothing is queued while offline. (The phone is the offline app.)
+- **Live updates.** An open tab updates by itself when your data changes anywhere else: another tab, the phone's sync, and later a plugin. Example: you log a session on the phone, and the Sessions screen already open on your laptop shows it within a second or two, with no refresh. The server sends each of your tabs a short note ("tasks changed"), never the data, and the tab reloads what it shows. It waits while the tab is hidden or while you are dragging a card, then reloads once. A title or description you are typing in the task panel is kept. The tab that made a change gets no note about it. Notes only go to your own tabs, never another person's. A phone sync that only fetched sends no note. An open tab on its own does not keep you signed in: only using the app does.
 - **When a screen can't load, it says so.** A board, table or session list that fails to load while the server is reachable (an error from the server, not a dropped connection) shows what went wrong with a **Retry** button. If older data is already on screen it stays, under a warning that it may be out of date. A slow answer for a view, range or filter you have already left never replaces what you are looking at.
 
 ---
@@ -552,6 +553,7 @@ JSON over HTTP. Every `/api` call except health and sign-in needs the session co
 | `POST /api/images`, `GET /api/images/:id` | Background images. |
 | `POST /api/sync` | Sync: a device sends its changes and gets back what it hasn't seen. The `X-Sync-Size` header gives the answer's size before compression, for the phone's progress bar. |
 | `POST /api/sync/outgoing`, `POST /api/sync/incoming` | Used by the phone's built-in core: get the request to send, apply the answer. |
+| `GET /api/live` | A WebSocket: a note `{topic, tab}` each time your data changes (topic is the changed part, such as `tasks`; tab is the `X-Reskon-Tab` header of the request that changed it). At most 32 open per person; closed after you sign out. |
 
 ---
 

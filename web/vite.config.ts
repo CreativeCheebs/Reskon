@@ -5,7 +5,8 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
   server: {
-    proxy: { "/api": "http://localhost:8080" },
+    // ws: the live-update connection (/api/live) is a WebSocket.
+    proxy: { "/api": { target: "http://localhost:8080", ws: true } },
   },
   build: {
     outDir: "dist",

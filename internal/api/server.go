@@ -18,6 +18,7 @@ import (
 	"jitterbug/internal/capture"
 	"jitterbug/internal/db"
 	"jitterbug/internal/embed"
+	"jitterbug/internal/live"
 	"jitterbug/internal/version"
 )
 
@@ -39,13 +40,15 @@ type Server struct {
 	// SecureCookie marks the session cookie Secure even when the request
 	// does not look like HTTPS (JITTERBUG_SECURE_COOKIE=1).
 	SecureCookie bool
-	warnProxy    sync.Once
-	mux          *http.ServeMux
+	// Live tells each person's open tabs when their data changed.
+	Live      *live.Hub
+	warnProxy sync.Once
+	mux       *http.ServeMux
 }
 
 // New wires every route. web is the built frontend (may be nil in tests).
 func New(a *auth.Store, p *capture.Parser, web fs.FS) *Server {
-	s := &Server{Auth: a, Capture: p, mux: http.NewServeMux()}
+	s := &Server{Auth: a, Capture: p, Live: live.New(), mux: http.NewServeMux()}
 	s.routes()
 	// Unknown API paths are a JSON 404, never the SPA's index.html.
 	s.mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
@@ -79,12 +82,20 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ctx := db.WithDB(context.WithValue(r.Context(), userKey{}, u), d)
 		r = r.WithContext(ctx)
 	}
+	if r.URL.Path == "/api/live" {
+		// The live connection takes over the socket: no compression wrapper.
+		s.mux.ServeHTTP(w, r)
+		return
+	}
 	if strings.HasPrefix(r.URL.Path, "/api/") && acceptsGzip(r) {
 		g := &gzipJSON{ResponseWriter: w}
 		defer g.close()
 		w = g
 	}
-	s.mux.ServeHTTP(w, r)
+	rec := &statusRecorder{ResponseWriter: w}
+	r = withUnchanged(r)
+	s.mux.ServeHTTP(rec, r)
+	s.announce(r, rec.code)
 }
 
 // dbOf is the signed-in user's database for this request.
@@ -112,6 +123,7 @@ func (s *Server) routes() {
 	s.dashboardRoutes()
 	s.syncRoutes()
 	s.inboxRoutes()
+	m.HandleFunc("GET /api/live", s.liveSocket)
 }
 
 func (s *Server) bootstrap(w http.ResponseWriter, r *http.Request) {

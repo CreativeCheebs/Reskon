@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, Empty, Input, Popconfirm, Segmented, Spin, Tooltip } from "antd";
 import { CheckOutlined, DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
 import GridLayout, { WidthProvider, type Layout } from "react-grid-layout";
@@ -45,9 +45,14 @@ export function DashboardScreen({ id, onOpen }: { id?: number; onOpen: (id: numb
   const [dates, setDates] = useState<DateOverride | null>(null);
   const editing = editMode && !narrow;
 
+  // Only the newest answer counts: a reload answered after a save made
+  // here must not put the old layout back (replace() bumps it too).
+  const seq = useRef(0);
   const load = useCallback(async () => {
+    const n = ++seq.current;
     try {
-      setDashboards(await api.get<Dashboard[]>("/dashboards"));
+      const all = await api.get<Dashboard[]>("/dashboards");
+      if (n === seq.current) setDashboards(all);
     } catch (e) {
       message.error((e as Error).message);
     }
@@ -57,7 +62,10 @@ export function DashboardScreen({ id, onOpen }: { id?: number; onOpen: (id: numb
   }, [load, reloadKey]);
 
   const current = dashboards?.find((d) => d.id === id) ?? dashboards?.[0];
-  const replace = (d: Dashboard) => setDashboards((all) => all?.map((x) => (x.id === d.id ? d : x)) ?? all);
+  const replace = (d: Dashboard) => {
+    seq.current++;
+    setDashboards((all) => all?.map((x) => (x.id === d.id ? d : x)) ?? all);
+  };
   const replaceWidget = (w: Widget) =>
     setDashboards((all) =>
       all?.map((d) =>

@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"jitterbug/internal/db"
 )
@@ -120,5 +121,43 @@ func TestBackupDoesNotMigrate(t *testing.T) {
 	}
 	if _, err := Backup(dir, dest); err == nil {
 		t.Error("backup overwrote an existing backup")
+	}
+}
+
+// A live connection's check must not extend the sign-in; a real request does.
+func TestSessionAliveDoesNotExtend(t *testing.T) {
+	s, err := Open(t.TempDir(), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	ctx := context.Background()
+	s.Setup(ctx, "alice", "right password")
+	_, token, err := s.Login(ctx, "alice", "right password", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	soon := db.FormatTime(time.Now().Add(24 * time.Hour))
+	s.sql.Exec(`UPDATE login_session SET expires_at = ?`, soon)
+	expiry := func() string {
+		var e string
+		s.sql.QueryRow(`SELECT expires_at FROM login_session`).Scan(&e)
+		return e
+	}
+	if _, err := s.SessionAlive(ctx, token); err != nil {
+		t.Fatal(err)
+	}
+	if expiry() != soon {
+		t.Fatal("SessionAlive extended the sign-in")
+	}
+	if _, err := s.SessionUser(ctx, token); err != nil {
+		t.Fatal(err)
+	}
+	if expiry() == soon {
+		t.Fatal("SessionUser did not extend the sign-in")
+	}
+	s.Logout(ctx, token)
+	if _, err := s.SessionAlive(ctx, token); !errors.Is(err, ErrNoSession) {
+		t.Fatalf("after sign-out: %v", err)
 	}
 }

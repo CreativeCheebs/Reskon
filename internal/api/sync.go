@@ -52,6 +52,9 @@ func (s *Server) sync(w http.ResponseWriter, r *http.Request) {
 		respond(w, nil, &db.InvalidError{Msg: "device is required"})
 		return
 	}
+	if len(req.Changes) == 0 {
+		markUnchanged(r) // only fetched: the open tabs have nothing to reload
+	}
 	d := dbOf(r.Context())
 	if err := d.StartSync(r.Context()); err != nil {
 		respond(w, nil, err)

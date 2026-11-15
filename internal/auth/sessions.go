@@ -47,6 +47,17 @@ func (s *Store) newSession(ctx context.Context, userID int64, userAgent string) 
 
 // SessionUser resolves a cookie token to its user and slides the expiry.
 func (s *Store) SessionUser(ctx context.Context, token string) (*User, error) {
+	return s.session(ctx, token, true)
+}
+
+// SessionAlive is SessionUser without sliding the expiry. An open live
+// connection checks with it, so a forgotten tab does not keep a sign-in
+// alive for ever: only real requests do.
+func (s *Store) SessionAlive(ctx context.Context, token string) (*User, error) {
+	return s.session(ctx, token, false)
+}
+
+func (s *Store) session(ctx context.Context, token string, slide bool) (*User, error) {
 	if token == "" {
 		return nil, ErrNoSession
 	}
@@ -71,7 +82,7 @@ func (s *Store) SessionUser(ctx context.Context, token string) (*User, error) {
 		return nil, ErrNoSession
 	}
 	// Slide the expiry at most once an hour, to avoid a write per request.
-	if exp, _ := db.ParseTime(expires); exp.Sub(now) < SessionTTL-time.Hour {
+	if exp, _ := db.ParseTime(expires); slide && exp.Sub(now) < SessionTTL-time.Hour {
 		// If this fails the session simply keeps its old expiry.
 		_, _ = s.sql.ExecContext(ctx, `UPDATE login_session SET expires_at = ? WHERE token_hash = ?`,
 			db.FormatTime(now.Add(SessionTTL)), h)

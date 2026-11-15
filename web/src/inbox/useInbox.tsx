@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { api } from "../api";
 import { useApp } from "../store";
 
@@ -30,17 +30,26 @@ export function useInbox(): InboxState {
 export function InboxProvider({ children }: { children: ReactNode }) {
   const { reloadKey } = useApp();
   const [items, setItems] = useState<InboxItem[]>([]);
+  // A reload answered after a change made here would bring back the old
+  // list; each change bumps this so that answer is dropped.
+  const seq = useRef(0);
 
   useEffect(() => {
-    api.get<InboxItem[]>("/inbox").then(setItems).catch(() => undefined);
+    const n = ++seq.current;
+    api
+      .get<InboxItem[]>("/inbox")
+      .then((xs) => n === seq.current && setItems(xs))
+      .catch(() => undefined);
   }, [reloadKey]);
 
   const add = useCallback(async (text: string) => {
     const it = await api.post<InboxItem>("/inbox", { text });
+    seq.current++;
     setItems((xs) => [...xs, it]);
   }, []);
   const close = (path: string, method: "post" | "del") => async (id: number) => {
     await (method === "post" ? api.post(path.replace(":id", String(id)), {}) : api.del(path.replace(":id", String(id))));
+    seq.current++;
     setItems((xs) => xs.filter((x) => x.id !== id));
   };
   // eslint-disable-next-line react-hooks/exhaustive-deps

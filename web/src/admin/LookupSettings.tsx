@@ -199,7 +199,11 @@ function RankWeights() {
   const { boot, saveSetting, online } = useApp();
   const saved = (boot.settings.subtype_weights as number[]) ?? [1, 0.5, 0.25, 0.25];
   const [weights, setWeights] = useState<(number | null)[]>(saved);
-  useEffect(() => setWeights(saved), [boot.settings.subtype_weights]);
+  // By value: every reload (a live update) brings a new but equal list, and
+  // that must not wipe weights still being typed.
+  const savedKey = JSON.stringify(saved);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => setWeights(saved), [savedKey]);
 
   const save = (ws: (number | null)[]) => {
     const clean = ws.map((w) => w ?? 0);

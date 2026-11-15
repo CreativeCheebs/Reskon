@@ -32,13 +32,18 @@ export function CycleTimeScreen() {
   const [order, setOrder] = useState<Order>("longest");
   const [openTask, setOpenTask] = useState<number | null>(null);
 
+  // Another view starts blank; a reload of the same view keeps it on screen.
+  useEffect(() => setData(null), [viewId]);
   useEffect(() => {
     if (!viewId) return;
-    setData(null);
+    let current = true;
     api
       .get<CycleTime>(`/cycle-time?view=${viewId}`)
-      .then(setData)
+      .then((d) => current && setData(d))
       .catch((e) => message.error((e as Error).message));
+    return () => {
+      current = false;
+    };
   }, [viewId, reloadKey]);
 
   const rows = useMemo(() => {

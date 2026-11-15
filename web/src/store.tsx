@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { api, isOnline, onOnlineChange } from "./api";
 import type { Behaviour, Bootstrap, Status, View } from "./types";
 import { today } from "./format";
+import { reloadScheduler, startLive } from "./live";
 
 // App-wide state: the bootstrap lookups, online/offline, and a reload
 // counter that screens watch to refetch their own data on reconnect and
@@ -23,6 +24,9 @@ interface AppState {
 
 const Ctx = createContext<AppState | null>(null);
 
+/** This tab has told the server its time zone (see reloadBootstrap). */
+let zoneSent = false;
+
 export function useApp(): AppState {
   const v = useContext(Ctx);
   if (!v) throw new Error("useApp outside AppProvider");
@@ -39,9 +43,12 @@ export function AppProvider({ children, fallback }: { children: ReactNode; fallb
     setBoot(b);
     setReloadKey((k) => k + 1);
     // The server works out "today" (due dates, snoozes, charts) in your own
-    // time zone; tell it which one this browser is in.
+    // time zone; tell it which one this browser is in. Once per tab: on every
+    // reload, two tabs (or a tab and the phone) in different zones would
+    // each write theirs, and each write's live note would reload the other.
     const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (zone && b.settings.time_zone !== zone) api.put("/settings/time_zone", zone).catch(() => undefined);
+    if (!zoneSent && zone && b.settings.time_zone !== zone) api.put("/settings/time_zone", zone).catch(() => undefined);
+    zoneSent = true;
   }, []);
 
   useEffect(() => {
@@ -74,6 +81,26 @@ export function AppProvider({ children, fallback }: { children: ReactNode; fallb
       window.clearInterval(t);
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", check);
+    };
+  }, [reloadBootstrap]);
+
+  // Live updates: a change made anywhere else (another tab, the phone, a
+  // plugin) reloads what this tab shows, as a reconnect does.
+  useEffect(() => {
+    const s = reloadScheduler(() => {
+      reloadBootstrap().catch(() => undefined);
+    });
+    // A connection refused before it opened may mean the sign-in ended
+    // elsewhere; one signed-in call lets the usual 401 handling sign out.
+    const stop = startLive(
+      () => s.note(),
+      () => {
+        api.get("/inbox").catch(() => undefined);
+      },
+    );
+    return () => {
+      stop();
+      s.stop();
     };
   }, [reloadBootstrap]);
 
