@@ -4,6 +4,38 @@ Everything here is something the review and fix round (branch `phase-2`) did **n
 
 Where a choice is recorded, it is in [`decisions.md`](decisions.md) (the "Open questions" part). This file is the to-do list; that file is the reasoning.
 
+## 0. Plugins and the personal dashboard — **Decided (owner, 2026-11-15), build in this order**
+
+**The goal, in the owner's words, shortened:** open the dashboard and see what I'm doing and what I need to do:
+- my open tasks as a small board (to do and in progress);
+- how much time and how many points I did yesterday, and a 7-day chart;
+- what I did each day (my session notes, like a journal);
+- today's habits and the last few days of them (from the habit tracker plugin).
+
+Later, food macros, protein and a healthiness rating for the last 7 days (from a food plugin).
+
+Task management stays in Reskon; other things come from plugins. The reasons are in [`decisions.md`](decisions.md) ("Plugins (connected apps) and live updates"), and the guide for plugin writers is [`plugins.md`](plugins.md).
+
+Each step below is built, tested, reviewed and committed on its own.
+
+1. **Live updates (WebSocket).** An open tab updates by itself when your data changes anywhere: another tab, the phone, a plugin. Done when: a change made on the phone shows in an open browser tab within a few seconds, with no refresh.
+2. **Groundwork (a refactor, its own commit, no visible change).** The dashboard picks how to draw a widget from one list of chart types instead of a chain of "if this, else that". Widgets get a "source": a metric (all of today's widgets), a view, an app's data, or an app's web page. Done when: every existing dashboard looks and works exactly as before.
+3. **Settings → Apps.** Add an app by its address, sign in to it once, and see whether it is reachable. App settings, tokens and the cache go in each person's separate apps file. Done when: the habit tracker (or the test plugin) connects, and the token never reaches the browser or the phone.
+4. **"Apps" in the sidebar.** A new Apps heading, with one entry per connected app below it, opening the app's own page.
+5. **Web page widget.** Shows an app's small page on the dashboard, already signed in (one-minute ticket), in its own look or in Reskon's colours. Done when: today's habits show and can be ticked inside the widget.
+6. **Data widgets and the cache.** An app's numbers, lists, tables and checklists are drawn by Reskon in Reskon's style, using Reskon's chart types; a kind Reskon can't draw yet needs a new chart type in Reskon first. Changing the date range asks the app again. The cache keeps up to 10 MB per app per person, dropping the least recently read first. Done when: with the app switched off, the widget still shows the last data and when it was fetched.
+7. **Plugins say "my data changed".** From inside the widget (a message to the page) or from the plugin's server (a key given at connect time). Reskon fetches again and updates the widgets live. Done when: ticking a habit in the web page widget updates the habit data widget beside it.
+8. **Board widget.** A small board of open tasks (to do and in progress) on the dashboard, built from a saved view so the filter is still worked out on the server.
+9. **"Yesterday" and the 7-day chart.** Add a "yesterday" date range for widgets (today's ranges are today, 7 days, 30 days and longer), then a home dashboard with yesterday's hours and points and a 7-day points chart, from the existing metrics.
+10. **Journal.** A dashboard widget listing each day's sessions with their notes, and on the Sessions screen a **Copy day as Markdown** button that copies a day's sessions (time, task, notes) ready to paste into a journal.
+
+**Later phase (not now):**
+- plugin data counting in Reskon's totals and charts;
+- Reskon telling a plugin what happened;
+- tasks pointing at items in an app;
+- the food and macros plugin;
+- plugin widgets on the phone. The phone can open the web dashboard instead; there is no plan for a phone version.
+
 ## 1. Do first
 
 ### 1.1 Push the branch and let CI run

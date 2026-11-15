@@ -282,6 +282,89 @@ SQLite sometimes needs a scratch file, for example to sort a big result or to un
 ### Download database
 A clean copy is made with SQLite's `VACUUM INTO`, so changes still waiting in the write-ahead log are included, which a plain file copy could miss.
 
+## Plugins (connected apps) and live updates (owner, 2026-11-15)
+
+The owner wants Reskon to be a personal management system: the dashboard shows what you are doing and what you should be doing, and things outside task management (a habit tracker now, a food and macros log later) come from **plugins**, separate apps that Reskon connects to. Task management itself stays in Reskon. The to-do list is in [`next-phase.md`](next-phase.md) section 0; how to write a plugin is in [`plugins.md`](plugins.md).
+
+### The architecture check: add parts, don't rebuild
+Before building, the code was checked against this plan. The base holds up, so nothing is rebuilt:
+- **The API → database split stays.** Each person's own database file stays.
+- **The metric list stays.** A new measure is still one entry in it.
+- **Go stays (not Kotlin or Compose Multiplatform).** The plugin work is all server and web page, so another language would not make it easier. Compose Multiplatform would mean rewriting every web screen in a younger toolkit, and the phone already shares Reskon's Go code, which keeps its calculations identical to the server's.
+
+What is added, each one as its own part, so later features plug in without touching the rest:
+1. **A live-update part** (`internal/live`). It tells each open tab when that person's data changed.
+2. **A connected-apps part** (`internal/apps`). It holds app settings, sign-in, fetching and the cache. It sits beside the database part, never inside it, because the phone runs the database part and must never make network calls of its own (see "The phone's networking is in Kotlin").
+3. **Widgets get a "source".** Today a widget is always a metric drawn by a chart. A widget's source can now also be a view (for the board widget), an app's data feed, or an app's web page. This is an additive migration, and old widgets keep working unchanged. SPEC 10.1 ("no widget has its own special code") changes with it, in the same commit.
+4. **Chart drawing becomes a lookup table.** Today the dashboard picks a chart with a long chain of "if this, else that". It becomes one list of chart types, so a new chart (board, checklist, journal) is one entry.
+
+### Live updates use WebSocket
+The owner asked for WebSocket. It is also the better fit here. Without HTTPS, a browser opens at most 6 normal connections to one server. The other kind of live connection ("server-sent events") uses one of those 6 for every open tab, so a few open tabs could hold up ordinary loading. WebSocket connections are not counted against that limit.
+
+How it works:
+- The server sends only a short "this kind of thing changed" message, for example "tasks" or "sessions". The tab then reloads what it shows, the same way it already reloads after reconnecting.
+- Messages are sent in one place: after any successful change made by that person. This covers changes made in the web app, on the phone (its sync is a change) and by a plugin.
+- No data travels over the live connection.
+
+Go's standard library has no WebSocket, so one small pure-Go library is added (`github.com/coder/websocket`, no C compiler needed). The compression wrapper is skipped for the live connection.
+
+### App settings and the cache live in a separate file per person
+Each person gets a second file next to their database, `users/<name>-<id>.apps.db`. It holds:
+- the connected apps;
+- their sign-in tokens;
+- the cache.
+
+Why a separate file:
+- The phone sync copies the main database, so tokens there would reach the phone.
+- The generic settings are sent to the browser at start, so tokens there would reach the browser.
+- The cache can be thrown away without touching real data.
+
+A backup copies the app settings too, but not the cache, because the cache is rebuilt by fetching again.
+
+### The cache: SQLite in a file, 10 MB per app, oldest out first
+The cache is a SQLite file on disk, not a separate cache program like Redis. That is the normal choice for a single-server app: nothing extra to install or keep running, it survives restarts, and it uses disk rather than memory. Only the answer being sent is held in memory.
+
+The rules:
+- Each answer an app gives is saved with its size and the time it was last read.
+- When one app's answers for one person pass **10 MB**, the least recently read are deleted until it fits. Nothing expires by age (owner).
+- The file is set to give freed space back as it goes, so its size on disk tracks the limit.
+- When the app can't be reached, the widget shows the saved answer and when it was fetched.
+
+### A plugin's web page is signed in without its own login screen
+The web page widget shows the plugin's own page inside a walled-off frame. The browser loads that page straight from the plugin, so Reskon has to hand it a sign-in.
+
+How it works:
+1. You sign in to the app once, in **Settings → Apps**.
+2. Reskon keeps the token on the server. It never goes to the browser.
+3. To show the widget, Reskon's server asks the app for a **ticket** that lasts one minute.
+4. Reskon opens the page with that ticket, and the page swaps it for its own sign-in.
+5. Reskon also tells the page its theme colours, so the page can match Reskon's look if it chooses to.
+
+Why not run the plugin's page through Reskon's own address? Then the page could use your Reskon sign-in to read and change all your Reskon data. Keeping it in a separate, walled-off frame is the safe way, and it is how other apps embed third-party widgets.
+
+### Plugins only send data to Reskon in this phase (owner)
+Data widgets are read-only. Reskon only asks an app for data, and asks again when you change the date range. It never sends ticks, edits or events to the app. Anything you click, such as ticking a habit, happens inside the plugin's own web page, and the plugin deals with it.
+
+A plugin tells Reskon "my data changed" in one of two ways:
+- **From its web page inside Reskon:** a message to the Reskon page around it. This is used for ticks made in the widget and needs no key.
+- **From its own server:** a call with a key Reskon gave it when you connected the app. This is used for changes made elsewhere, such as on the plugin's own site.
+
+Reskon then fetches fresh data and updates the widgets live.
+
+Later phase:
+- plugin data counting in Reskon's totals;
+- Reskon telling the plugin what happened;
+- tasks pointing at items in an app.
+
+### Fetching from an address the person typed
+An app's address can be anywhere on the home network, just like the capture model's. Fetching uses the same protections as capture:
+- no following of redirects;
+- a size limit;
+- a time limit;
+- the app's error text is never shown back to the browser.
+
+The open question about capture's reach applies here too.
+
 ---
 
 ## Open questions
@@ -301,4 +384,5 @@ A clean copy is made with SQLite's `VACUUM INTO`, so changes still waiting in th
 - **Touch targets under 48 dp on the phone (owner: do with mockups).** Pills, tags and icon buttons are smaller than Android's 48 dp guide. Draw mockups first, then change the sizes, so the layouts are agreed before any code moves.
 - **Border and hard-coded colours (owner decision).** `borderStrong` is about 2.1:1 against the background (3:1 is the guide for a control's outline), and a few colours are written as fixed values. The fix is to change the colours **inside each theme**, not to add code around themes. The theme system itself stays as it is.
 - **Session totals on the server.** The Sessions screen adds up hours in the browser for the "in total" line, and the Inbox works out ages from the clock. AGENTS.md says totals come from the server; moving them needs an API change.
+- **Plugin addresses** reach the home network the same way capture does (see "Capture endpoint reach"). Should connecting an app be limited to admins?
 - **The Jira import** maps worklogs to each area's default energy type (Main job and Freelance → Engineering, Personal → Admin). Check before importing.
