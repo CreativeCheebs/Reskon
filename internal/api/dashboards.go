@@ -25,6 +25,9 @@ func (s *Server) dashboardRoutes() {
 			if err := s.checkAppPage(ctx, nil, f); err != nil {
 				return nil, err
 			}
+			if err := s.checkAppData(ctx, nil, f); err != nil {
+				return nil, err
+			}
 			return dbOf(ctx).CreateWidget(ctx, f)
 		},
 		patch: func(ctx context.Context, id int64, f db.Fields) (any, error) {
@@ -33,6 +36,9 @@ func (s *Server) dashboardRoutes() {
 				return nil, err
 			}
 			if err := s.checkAppPage(ctx, cur, f); err != nil {
+				return nil, err
+			}
+			if err := s.checkAppData(ctx, cur, f); err != nil {
 				return nil, err
 			}
 			return dbOf(ctx).PatchWidget(ctx, id, f)

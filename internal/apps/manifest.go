@@ -156,7 +156,8 @@ func Resolve(base, ref string) (string, error) {
 }
 
 // plainText checks a name or title from an app: a length limit, and no
-// control or direction-changing characters (they could disguise text).
+// control, direction-changing or invisible format characters (zero-width
+// spaces, byte-order marks, soft hyphens, tags), which could disguise text.
 func plainText(field, s string, max int, required bool) error {
 	if required && s == "" {
 		return invalid("%s must not be empty", field)
@@ -165,7 +166,7 @@ func plainText(field, s string, max int, required bool) error {
 		return invalid("%s must be %d characters at most", field, max)
 	}
 	for _, r := range s {
-		if unicode.IsControl(r) || unicode.Is(unicode.Bidi_Control, r) {
+		if unicode.IsControl(r) || unicode.Is(unicode.Bidi_Control, r) || unicode.Is(unicode.Cf, r) {
 			return invalid("%s holds a control character", field)
 		}
 	}

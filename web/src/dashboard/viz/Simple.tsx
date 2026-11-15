@@ -1,6 +1,6 @@
 import { Table } from "antd";
 import { palette } from "../../theme/palette";
-import { formatValue, keyLabel } from "../format";
+import { formatValue, keyLabel, resultValue } from "../format";
 import { TIME_GROUPS, type MetricResult } from "../types";
 
 // number, list and table: plain markup over the server's points.
@@ -14,14 +14,14 @@ export function NumberViz({ res }: { res: MetricResult }) {
     return (
       <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 20px", alignContent: "center", height: "100%" }}>
         {res.points.map((p) => (
-          <Figure key={p.key} value={formatValue(p.value, res.unit, res.metric)} label={p.label} />
+          <Figure key={p.key} value={resultValue(p.value, res)} label={p.label} />
         ))}
       </div>
     );
   }
   return (
     <div style={{ display: "flex", alignItems: "center", height: "100%" }}>
-      <Figure value={res.unit === "list" ? String(res.total) : formatValue(res.total, res.unit, res.metric)} big />
+      <Figure value={res.shape ? resultValue(res.total, res) : res.unit === "list" ? String(res.total) : formatValue(res.total, res.unit, res.metric)} big />
     </div>
   );
 }

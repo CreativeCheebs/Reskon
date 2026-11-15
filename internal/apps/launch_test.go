@@ -92,11 +92,11 @@ func TestLaunchGivesAOneTimeTicket(t *testing.T) {
 	}
 
 	// The app withdrew the token: sign in again, and its reply is not shown.
-	f.Token = "tok-other"
+	f.SetToken("tok-other")
 	if _, err := s.Launch(ctx, c, "habits", "today"); err == nil || !strings.Contains(err.Error(), "sign in to Habits again") || strings.Contains(err.Error(), "secret") {
 		t.Errorf("withdrawn token: %v", err)
 	}
-	f.Token = "tok-123"
+	f.SetToken("tok-123")
 
 	// Another app answers at the address now: it is never sent the token.
 	f.Set("id", "food")

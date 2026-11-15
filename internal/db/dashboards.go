@@ -164,17 +164,17 @@ var widgetColumns = columns{
 }
 
 // WidgetSources are where a widget's content can come from (migration 019).
-// "view" and "app_data" are planned (docs/next-phase.md section 0) and are
-// refused until built.
+// "view" is planned (docs/next-phase.md section 0) and is refused until
+// built.
 const (
 	SourceMetric  = "metric"
 	SourceAppPage = "app_page"
 )
 
-var WidgetSources = []string{SourceMetric, "view", "app_data", SourceAppPage}
+var WidgetSources = []string{SourceMetric, "view", SourceAppData, SourceAppPage}
 
 // builtSources can be saved today.
-var builtSources = []string{SourceMetric, SourceAppPage}
+var builtSources = []string{SourceMetric, SourceAppPage, SourceAppData}
 
 // checkWidget rejects a source or viz that does not exist and a query the
 // metrics API would refuse, so a saved widget never fails for its shape.
@@ -213,15 +213,23 @@ func checkWidget(f Fields, cur *Widget) error {
 		return err
 	} else if ok && source == SourceAppPage && v != VizPage {
 		return invalid("an app page widget's viz is %q", VizPage)
-	} else if ok && source != SourceAppPage && !contains(WidgetVizzes, v) {
+	} else if ok && source == SourceAppData && !appDataVizAny(v) {
+		// Which of these suits the app's shape is checked by the API.
+		return invalid("an app data widget's viz must be one of number, bar, line, cumulative, split_bar, table, list, checklist")
+	} else if ok && source == SourceMetric && !contains(WidgetVizzes, v) {
 		return invalid("viz must be one of %s", strings.Join(WidgetVizzes, ", "))
 	}
 	if raw, ok := f["query"]; ok {
-		if source == SourceAppPage {
+		switch source {
+		case SourceAppPage:
 			if _, err := ParseAppPageQuery(raw); err != nil {
 				return err
 			}
-		} else {
+		case SourceAppData:
+			if _, err := ParseAppDataQuery(raw); err != nil {
+				return err
+			}
+		default:
 			q, err := ParseWidgetQuery(raw)
 			if err != nil {
 				return err

@@ -67,7 +67,10 @@ type Store struct {
 	pool    map[int64]*db.DB
 	// appsPool holds each person's connected-apps file (see apps.go).
 	appsPool map[int64]*apps.Store
-	fails    map[string]*failures
+	// appsOpening holds one lock per person while their apps file is opened
+	// (and perhaps upgraded), so that never holds up anyone else.
+	appsOpening map[int64]*sync.Mutex
+	fails       map[string]*failures
 }
 
 // Open opens (creating if needed) dataDir/auth.db. legacyDB is the path of
@@ -82,7 +85,7 @@ func Open(dataDir, legacyDB string) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Store{sql: sqldb, dataDir: dataDir, legacy: legacyDB, pool: map[int64]*db.DB{}, appsPool: map[int64]*apps.Store{}, fails: map[string]*failures{}}, nil
+	return &Store{sql: sqldb, dataDir: dataDir, legacy: legacyDB, pool: map[int64]*db.DB{}, appsPool: map[int64]*apps.Store{}, appsOpening: map[int64]*sync.Mutex{}, fails: map[string]*failures{}}, nil
 }
 
 func (s *Store) Close() error {

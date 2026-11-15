@@ -110,7 +110,7 @@ func TestConnectCheckSignInRemove(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if a.Name != "Habits" || a.Address != f.URL || !a.SignedIn || a.Token() != "tok-123" || a.Status != apps.StatusOK || len(a.Manifest.Widgets) != 2 {
+	if a.Name != "Habits" || a.Address != f.URL || !a.SignedIn || a.Token() != "tok-123" || a.Status != apps.StatusOK || len(a.Manifest.Widgets) != 5 {
 		t.Fatalf("connected: %+v", a)
 	}
 	if _, err := s.Connect(ctx, c, f.URL, apps.Credentials{Username: "aakash", Password: "habits-123"}); err == nil {
@@ -138,7 +138,7 @@ func TestConnectCheckSignInRemove(t *testing.T) {
 	}
 
 	// The password changed in the app: sign in again.
-	f.Password, f.Token = "new-pass", "tok-456"
+	f.SetLogin("new-pass", "tok-456")
 	if a, err = s.SignIn(ctx, c, a.ID, apps.Credentials{Username: "aakash", Password: "new-pass"}); err != nil || a.Token() != "tok-456" {
 		t.Fatalf("sign in again: %+v %v", a, err)
 	}

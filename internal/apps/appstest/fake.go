@@ -1,6 +1,7 @@
 // Package appstest is a pretend plugin: a small habit tracker that serves a
-// description file, a login, tickets and a web page widget ("Today's
-// habits", fake_page.go), as docs/plugins.md describes. Tests use it, and
+// description file, a login, tickets, a web page widget ("Today's
+// habits", fake_page.go) and data widgets (fake_data.go), as
+// docs/plugins.md describes. Tests use it, and
 // cmd/example-plugin runs it on the test server.
 package appstest
 
@@ -32,6 +33,9 @@ type Fake struct {
 	ReskonOrigin string
 	// Now is the clock for tickets; tests move it.
 	Now func() time.Time
+	// FeedsOff makes every data feed answer 503 (SetFeedsOff, or POST
+	// /api/test/feeds).
+	FeedsOff bool
 
 	tickets  map[string]time.Time // ticket -> when it stops working
 	sessions map[string]time.Time // page session -> when it stops working
@@ -48,7 +52,7 @@ func New() *Fake {
 
 // NewFake is the pretend habit tracker without a server, for Handler.
 func NewFake() *Fake {
-	return &Fake{
+	f := &Fake{
 		User: "aakash", Password: "habits-123", Token: "tok-123",
 		Now: time.Now, tickets: map[string]time.Time{}, sessions: map[string]time.Time{}, done: map[string]map[string]bool{},
 		Manifest: map[string]any{
@@ -60,12 +64,13 @@ func NewFake() *Fake {
 			"icon":       "check",
 			"auth":       map[string]any{"kind": "password", "login_url": "/api/reskon/login"},
 			"launch_url": "/api/reskon/launch",
-			"widgets": []any{
+			"widgets": append([]any{
 				map[string]any{"id": "today", "title": "Today's habits", "kind": "page", "url": "/widgets/today", "size": map[string]any{"w": 4, "h": 4}, "style": "reskon"},
-				map[string]any{"id": "last_days", "title": "Habits, last days", "kind": "data", "shape": "series", "url": "/api/reskon/feeds/done-per-day", "ranged": true, "groups": []any{"day", "week"}},
-			},
+			}, dataWidgets()...),
 		},
 	}
+	f.seedHistory()
+	return f
 }
 
 // Handler serves the pretend app (the example plugin program uses it).
@@ -92,7 +97,23 @@ func (f *Fake) Handler() http.Handler {
 		_ = json.NewEncoder(w).Encode(map[string]string{"token": f.Token})
 	})
 	f.pageRoutes(mux)
+	f.dataRoutes(mux)
 	return mux
+}
+
+// SetToken changes the token the app accepts (a withdrawn sign-in), safely
+// while it is serving.
+func (f *Fake) SetToken(t string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.Token = t
+}
+
+// SetLogin changes the password and the token a good login hands out.
+func (f *Fake) SetLogin(password, token string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.Password, f.Token = password, token
 }
 
 // Set changes one top-level field of the description file.

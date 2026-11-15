@@ -14,7 +14,7 @@ import {
   YAxis,
 } from "recharts";
 import { palette } from "../../theme/palette";
-import { formatShare, formatValue, keyLabel, optionColor, seriesColors } from "../format";
+import { formatShare, formatValue, keyLabel, optionColor, resultValue, seriesColors } from "../format";
 import type { MetricResult, Viz, WidgetOptions } from "../types";
 
 // bar, line, cumulative, split_bar and share_bar, drawn with Recharts.
@@ -68,7 +68,8 @@ export function Chart({ res, viz, options }: { res: MetricResult; viz: Viz; opti
         width={56} tickMargin={8}
         domain={share ? [0, 100] : undefined}
         ticks={share ? [0, 25, 50, 75, 100] : undefined}
-        tickFormatter={(v: number) => (share ? `${v}%` : formatValue(v, res.unit, res.metric))}
+        // An app's unit goes in the tooltip, not on every tick.
+        tickFormatter={(v: number) => (share ? `${v}%` : res.shape ? String(v) : formatValue(v, res.unit, res.metric))}
       />
       <Tooltip
         cursor={{ fill: palette.hover, stroke: palette.borderStrong }}
@@ -78,7 +79,7 @@ export function Chart({ res, viz, options }: { res: MetricResult; viz: Viz; opti
         labelFormatter={(_, payload) => (payload?.[0]?.payload as Row | undefined)?.long ?? ""}
         formatter={(v: number, key: string, item: { payload?: Row }) => {
           const raw = item?.payload?.[`raw:${key}`] as number | undefined;
-          const shown = share ? `${formatShare(v / 100)} · ${formatValue(raw ?? 0, res.unit, res.metric)}` : formatValue(v, res.unit, res.metric);
+          const shown = share ? `${formatShare(v / 100)} · ${resultValue(raw ?? 0, res)}` : resultValue(v, res);
           return [shown, split ? names[keys.indexOf(key)] : undefined];
         }}
       />

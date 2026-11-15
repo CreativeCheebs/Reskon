@@ -131,11 +131,11 @@ func TestAppPageWidgets(t *testing.T) {
 		t.Errorf("metric widget launch = %d %s", code, body)
 	}
 	// The app withdrew Reskon's token: never a 401 (that means Reskon signed you out).
-	f.Token = "tok-new"
+	f.SetToken("tok-new")
 	if code, body := alice.raw("POST", "/api/apps/launch", launch); code != 400 || !strings.Contains(body, "sign in to Habits again") || strings.Contains(body, "secret") {
 		t.Errorf("withdrawn token = %d %s", code, body)
 	}
-	f.Token = "tok-123"
+	f.SetToken("tok-123")
 	// Removed app: a clear 404.
 	if code, _ := alice.raw("DELETE", "/api/apps/1", ""); code != 200 {
 		t.Fatal("remove failed")

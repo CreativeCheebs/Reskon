@@ -177,11 +177,11 @@ GET /api/reskon/feeds/done-per-day?from=2026-11-09&to=2026-11-15&group=day&tz=As
 Authorization: Bearer <token>
 ```
 
-- **`from`, `to`**: whole days, `YYYY-MM-DD`, both included. Only sent if `ranged` is true.
-- **`group`**: one of the widget's `groups`.
-- **`tz`**: the person's time zone. Use it for "today" and day boundaries.
+- **`from`, `to`**: whole days, `YYYY-MM-DD`, both included. Only sent if `ranged` is true. The person picks today, 7, 30 or 90 days, a year or this month, counted back from their today; or the dashboard's own dates, at most 400 days apart.
+- **`group`**: one of the widget's `groups`, the first if the person chose none. Only sent if the widget lists `groups`.
+- **`tz`**: the person's time zone, for example `Asia/Kolkata` (`UTC` until their browser has told Reskon). Use it for "today" and day boundaries.
 
-When the person changes the dashboard's dates, Reskon asks again with the new range. Answer within **5 seconds**, and keep each answer under **1 MB**. Reskon gives up past either limit and shows its cached copy.
+Reskon asks each time the widget is drawn: when it is shown, on its refresh button, when the person's Reskon data changes, and when they change the dashboard's dates. Answer within **5 seconds**, and keep each answer under **1 MB**. Reskon gives up past either limit and shows its cached copy. A `401` or `403` means Reskon's token is no longer good: Reskon shows its cached copy and asks the person to sign in again.
 
 ### 6.2 The shapes
 Every answer has `shape`, plus the fields for that shape. Reskon draws each shape with its own charts, so the person can pick the chart type (bar, line, number and so on) where the shape allows.
@@ -224,12 +224,27 @@ Every answer has `shape`, plus the fields for that shape. Reskon draws each shap
 Only these shapes exist. A plugin that needs something else asks for a new shape in Reskon first. Until then, use a web page widget.
 
 **Rules for every shape:**
-- Numbers are plain JSON numbers.
-- Text is plain text, never HTML. Reskon shows it as text, so markup is shown as it is.
+- Numbers are plain JSON numbers (not `"12"`), between -10¹² and 10¹².
+- Text is plain text, never HTML. Reskon shows it as text, so markup is shown as it is. No control, direction-changing or invisible format characters (zero-width spaces, byte-order marks, soft hyphens). This also holds for names and titles in the description file.
+- A `unit` is shown as written ("days", "glasses"), after the number.
 - An empty range is `points: []`, `rows: []` or `items: []` with status `200`, never an error.
+- `shape` must be the one the description file promises for that widget.
+
+**What Reskon checks.** An answer that breaks any of these is not used at all: Reskon shows its cached copy and says the app "sent data Reskon cannot use".
+
+| Field | Limit |
+| --- | --- |
+| `points` | at most 2000; each needs `key` and `value`; a `key` (with its `split`) only once; either every point has a `split` or none has |
+| `series` | at most 24; a split that `series` does not name gets one named after it; `color` is `#rrggbb` or ignored |
+| `columns` | 1 to 12; `key` is 1 to 40 letters, digits or `_`, used once |
+| `rows` | at most 500; each value is text, a number, `true`/`false` or `null`; keys no column names are dropped |
+| `items` | at most 500; a checklist item needs `label` and `done` (`true` or `false`), its `key` is optional; a list item needs `label`, and `value` is text or a number |
+| text | keys 100 characters, labels 120, details, list values and table text 200, units 20 |
 
 ### 6.3 Caching
-Reskon keeps the last answer for each widget and range, up to 10 MB per plugin per person, dropping the least recently read first. When the plugin can't be reached, Reskon shows that copy with "fetched at ...". A plugin doesn't need to do anything for this. It can send `"fetched_at"` (a UTC time) when the data is older than the request.
+Reskon keeps the last answer for each widget and range, up to 10 MB per plugin per person, dropping the least recently read first. When the plugin can't be reached, Reskon shows that copy with "fetched at ...". A plugin doesn't need to do anything for this. It can send `"fetched_at"` (a time such as `"2026-11-15T08:30:00Z"`) when the data is older than the request; a time later than the request is ignored.
+
+A copy is kept per range as the person chose it ("the last 7 days"), not per dates, so on a new day with the plugin down the widget still shows yesterday's copy, with its time.
 
 ## 7. Telling Reskon "my data changed"
 
@@ -281,5 +296,8 @@ Check `event.origin` equals Reskon's address before acting on a message.
 | Today | data | `checklist` | Today's habits, read-only, in Reskon's style |
 | Done per day | data | `series` | Habits done each day over the chosen range |
 | Streaks | data | `table` | Each habit's current and longest streak |
+| Longest streak | data | `number` | The longest streak of any habit |
+
+The pretend habit tracker Reskon's tests use (`cmd/example-plugin`) offers these five, with ids `today`, `today_list`, `last_days`, `streaks` and `best_streak`.
 
 A tick in "Today's habits" posts `changed`, and "Today", "Done per day" and "Streaks" refresh on their own.

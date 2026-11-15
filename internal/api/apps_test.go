@@ -77,7 +77,7 @@ func TestConnectedApps(t *testing.T) {
 	if code, body = alice.raw("POST", "/api/apps/1/check", ""); code != 200 || !strings.Contains(body, `"status":"ok"`) {
 		t.Errorf("check = %d %s", code, body)
 	}
-	f.Password, f.Token = "changed", "tok-new"
+	f.SetLogin("changed", "tok-new")
 	if code, body = alice.raw("POST", "/api/apps/1/sign-in", `{"username":"aakash","password":"changed"}`); code != 200 || strings.Contains(body, "tok-new") {
 		t.Errorf("sign in again = %d %s", code, body)
 	}

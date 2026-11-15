@@ -21,6 +21,17 @@ export function formatValue(v: number, unit: string, metric = ""): string {
   }
 }
 
+/** A number an app sent, with its unit exactly as the app wrote it
+ *  ("12 days", "3 glasses"): Reskon's own units are not applied to it. */
+export function appValue(v: number, unit = ""): string {
+  return unit ? `${round(v)} ${unit}` : String(round(v));
+}
+
+/** A value of a result: an app's with its own unit, a metric's formatted. */
+export function resultValue(v: number, res: MetricResult): string {
+  return res.shape ? appValue(v, res.unit) : formatValue(v, res.unit, res.metric);
+}
+
 /** A share from the server (0..1) as a whole percent. */
 export function formatShare(share: number | undefined): string {
   return share === undefined ? "" : `${Math.round(share * 100)}%`;

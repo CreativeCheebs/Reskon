@@ -35,17 +35,21 @@ function setOnline(v: boolean) {
   listeners.forEach((fn) => fn(v));
 }
 
-async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+async function request<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
   let res: Response;
   try {
     res = await fetch("/api" + path, {
       method,
+      signal,
       // A Blob (an uploaded file) goes as it is; anything else as JSON.
       // The tab's name lets the server leave this tab out of the live note.
       headers: body === undefined || body instanceof Blob ? { "X-Reskon-Tab": tabId } : { "Content-Type": "application/json", "X-Reskon-Tab": tabId },
       body: body === undefined ? undefined : body instanceof Blob ? body : JSON.stringify(body),
     });
-  } catch {
+  } catch (e) {
+    // Called off by the caller (a newer request took its place): the server
+    // is fine, so this says nothing about being online.
+    if (signal?.aborted) throw e;
     setOnline(false);
     throw new ApiError(0, "offline", "The server cannot be reached.");
   }
@@ -63,7 +67,8 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 }
 
 export const api = {
-  get: <T>(path: string) => request<T>("GET", path),
+  /** signal: a request the caller may call off (AbortController). */
+  get: <T>(path: string, opts?: { signal?: AbortSignal }) => request<T>("GET", path, undefined, opts?.signal),
   post: <T>(path: string, body?: unknown) => request<T>("POST", path, body ?? {}),
   patch: <T>(path: string, body: unknown) => request<T>("PATCH", path, body),
   put: <T>(path: string, body: unknown) => request<T>("PUT", path, body),

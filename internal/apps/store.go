@@ -26,6 +26,10 @@ func Open(path string) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err := incrementalVacuum(context.Background(), d); err != nil {
+		d.Close()
+		return nil, err
+	}
 	return &Store{sql: d}, nil
 }
 
@@ -251,7 +255,8 @@ func (s *Store) SignIn(ctx context.Context, c *Client, id int64, cr Credentials)
 	return s.Get(ctx, id)
 }
 
-// Remove forgets an app and its sign-in.
+// Remove forgets an app, its sign-in and its cached answers (the cache's
+// foreign key deletes them with it).
 func (s *Store) Remove(ctx context.Context, id int64) error {
 	res, err := s.sql.ExecContext(ctx, `DELETE FROM app WHERE id = ?`, id)
 	if err != nil {
@@ -260,5 +265,8 @@ func (s *Store) Remove(ctx context.Context, id int64) error {
 	if n, _ := res.RowsAffected(); n == 0 {
 		return ErrNotFound
 	}
+	// Give the cached answers' space back. The app is removed either way:
+	// space not given back now is given back after the next drop.
+	_ = s.giveBack(ctx)
 	return nil
 }

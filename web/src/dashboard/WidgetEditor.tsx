@@ -11,35 +11,14 @@ import { useMetric, VizBody } from "./WidgetFrame";
 import { useTerms } from "../terms";
 import { useTags } from "../tags/tags";
 import { AppPageEditor } from "./AppPageEditor";
+import { AppDataEditor } from "./AppDataEditor";
+import { RANGE_LABEL, VIZ_LABEL } from "./labels";
 
 // Builds a widget from the metrics catalog: only metrics, groupings, splits
 // and filters the server lists are offered, so nothing built here can be
 // refused. A live preview runs the query as it is edited. A new widget can
-// instead be a connected app's page (AppPageEditor.tsx).
-
-const VIZ_LABEL: Record<Viz, string> = {
-  bar: "Bars",
-  line: "Line",
-  cumulative: "Cumulative (only rises)",
-  number: "Number",
-  list: "List",
-  bands: "Bands (states across days)",
-  split_bar: "Stacked bars",
-  small_multiples: "Small multiples (one chart per type)",
-  table: "Table",
-  pie: "Pie (each part's share)",
-  share_bar: "Share bars (each day to 100%)",
-};
-
-const RANGE_LABEL: Record<string, string> = {
-  today: "Today",
-  "7d": "7 days",
-  "30d": "30 days",
-  "90d": "90 days",
-  "1y": "Year",
-  month: "This month",
-  all: "All",
-};
+// instead be a connected app's data (AppDataEditor.tsx) or page
+// (AppPageEditor.tsx).
 
 const GROUP_LABEL: Record<string, string> = {
   day: "Day",
@@ -99,12 +78,13 @@ interface EditorProps {
   onSaved: (w: Widget) => void;
 }
 
-type Kind = "metric" | "app_page";
+type Kind = "metric" | "app_data" | "app_page";
 
-/** Adds or edits a widget. A new one can be a chart or an app's page; an
- *  existing one opens the editor for its own source. */
+/** Adds or edits a widget. A new one can be a chart, an app's data or an
+ *  app's page; an existing one opens the editor for its own source. */
 export function WidgetEditor(props: EditorProps) {
-  const [kind, setKind] = useState<Kind>(props.editing?.source === "app_page" ? "app_page" : "metric");
+  const own = props.editing?.source;
+  const [kind, setKind] = useState<Kind>(own === "app_page" || own === "app_data" ? own : "metric");
   const [switched, setSwitched] = useState(false);
   const switcher = props.editing ? undefined : (
     <div role="group" aria-label="Kind of widget">
@@ -116,6 +96,7 @@ export function WidgetEditor(props: EditorProps) {
       }}
       options={[
         { value: "metric", label: "Chart" },
+        { value: "app_data", label: "App data" },
         { value: "app_page", label: "App page" },
       ]}
       style={{ marginBottom: 14 }}
@@ -124,6 +105,8 @@ export function WidgetEditor(props: EditorProps) {
   );
   return kind === "app_page" ? (
     <AppPageEditor {...props} switcher={switcher} animate={!switched} />
+  ) : kind === "app_data" ? (
+    <AppDataEditor {...props} switcher={switcher} animate={!switched} />
   ) : (
     <MetricWidgetEditor {...props} switcher={switcher} animate={!switched} />
   );

@@ -5,10 +5,11 @@ import { ListViz, NumberViz, TableViz } from "./Simple";
 import { BandsViz } from "./Bands";
 import { SmallMultiplesViz } from "./SmallMultiples";
 import { PieViz } from "./Pie";
+import { AppTableViz, ChecklistViz } from "./Checklist";
 
 // Every way a widget can be drawn, in one list. A new chart type is one
-// entry here (and its name in the server's WidgetVizzes); nothing else in
-// the dashboard needs to change.
+// entry here (and its name in the server's WidgetVizzes, or for app data
+// only in AppDataVizzes); nothing else in the dashboard needs to change.
 
 export interface DrawProps {
   res: MetricResult;
@@ -37,9 +38,12 @@ export const VIZZES: Record<Viz, VizEntry> = {
   share_bar: chart("share_bar"),
   number: { draw: ({ res }) => <NumberViz res={res} />, drawsEmpty: true },
   list: { draw: ({ res }) => <ListViz res={res} />, scrolls: true },
-  table: { draw: ({ res }) => <TableViz res={res} />, scrolls: true },
+  // An app's table brings its own columns; a metric's is drawn from points.
+  table: { draw: ({ res }) => (res.table ? <AppTableViz res={res} /> : <TableViz res={res} />), scrolls: true },
   bands: { draw: ({ res }) => <BandsViz res={res} />, drawsEmpty: true },
   pie: { draw: ({ res }) => <PieViz res={res} />, scrolls: true },
   // Small multiples fall back per type, never to one summed number.
   small_multiples: { draw: ({ res, narrow }) => <SmallMultiplesViz res={res} narrow={narrow} />, scrolls: true, keepsWhenNarrow: true },
+  // An app's checklist (app data widgets only): read-only ticks.
+  checklist: { draw: ({ res }) => <ChecklistViz res={res} />, scrolls: true, keepsWhenNarrow: true },
 };
