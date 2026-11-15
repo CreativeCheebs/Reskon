@@ -4,3 +4,7 @@
 /* Keep secondary text readable and provide navigation on small screens. */
 .brand small,.sidebar-bottom small,.breadcrumbs,.swatches small{color:#b6afb2}.nav kbd,.faint{color:#bfb8bb}.mobile-nav{display:none}@media(max-width:650px){.mobile-nav{display:block;position:relative;margin-right:12px}.mobile-nav summary{list-style:none;cursor:pointer;padding:8px;color:#eee}.mobile-nav summary::-webkit-details-marker{display:none}.mobile-nav nav{position:absolute;top:38px;left:0;z-index:3;min-width:180px;padding:10px;background:#29282d;border:1px solid #55515a;border-radius:8px;box-shadow:0 8px 25px #0008}.mobile-nav nav strong,.mobile-nav nav a{display:block;padding:9px;color:#e7e1e0}.mobile-nav nav a:hover{background:#3b3a40}.topbar{justify-content:flex-start}.top-actions{margin-left:auto}}
 
+
+/* Compact board heading leaves more room for tasks. */
+.content{padding-top:27px}.page-heading h1{font-size:28px;line-height:38px;margin:0}.toolbar{margin-top:22px}@media(max-width:650px){.content{padding-top:22px}.page-heading h1{font-size:25px;line-height:38px}.page-heading .button{margin-top:0}}
+
