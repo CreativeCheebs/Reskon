@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 
+	"jitterbug/internal/apps"
 	"jitterbug/internal/auth"
 	"jitterbug/internal/capture"
 	"jitterbug/internal/db"
@@ -41,7 +42,12 @@ type Server struct {
 	// does not look like HTTPS (JITTERBUG_SECURE_COOKIE=1).
 	SecureCookie bool
 	// Live tells each person's open tabs when their data changed.
-	Live      *live.Hub
+	Live *live.Hub
+	// AppsEnabled turns on connected apps (Settings › Apps). The server sets
+	// it; the phone's built-in server leaves it off (no network calls in Go there).
+	AppsEnabled bool
+	// AppClient calls connected apps; nil uses the default.
+	AppClient *apps.Client
 	warnProxy sync.Once
 	mux       *http.ServeMux
 }
@@ -123,6 +129,7 @@ func (s *Server) routes() {
 	s.dashboardRoutes()
 	s.syncRoutes()
 	s.inboxRoutes()
+	s.appRoutes()
 	m.HandleFunc("GET /api/live", s.liveSocket)
 }
 

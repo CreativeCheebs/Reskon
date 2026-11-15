@@ -93,6 +93,7 @@ func main() {
 	srv.SetupToken = os.Getenv("JITTERBUG_SETUP_TOKEN")
 	srv.TrustProxy = os.Getenv("JITTERBUG_BEHIND_PROXY") == "1"
 	srv.SecureCookie = os.Getenv("JITTERBUG_SECURE_COOKIE") == "1"
+	srv.AppsEnabled = true
 	if need, err := store.NeedsSetup(context.Background()); err == nil && need && srv.SetupToken == "" {
 		log.Printf("jitterbug: no account exists yet, and anyone who can reach %s can create the first one. Set JITTERBUG_SETUP_TOKEN to require a secret.", addr)
 	}

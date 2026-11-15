@@ -1,0 +1,88 @@
+// Package appstest is a pretend plugin: a small habit tracker that serves a
+// description file and a login, as docs/plugins.md describes. Tests use it,
+// and cmd/example-plugin runs it on the test server.
+package appstest
+
+import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"sync"
+)
+
+// Fake is a running pretend plugin.
+type Fake struct {
+	*httptest.Server
+	mu sync.Mutex
+	// Manifest is served at /.well-known/reskon-app.json; change it to test
+	// other descriptions.
+	Manifest map[string]any
+	// User and Password are what /api/reskon/login accepts.
+	User, Password string
+	// Token is what a good login hands out.
+	Token string
+	// Logins counts calls to the login address.
+	Logins int
+}
+
+// New starts a pretend habit tracker that signs in with a password, on a
+// local test address.
+func New() *Fake {
+	f := NewFake()
+	f.Server = httptest.NewServer(f.Handler())
+	return f
+}
+
+// NewFake is the pretend habit tracker without a server, for Handler.
+func NewFake() *Fake {
+	return &Fake{
+		User: "aakash", Password: "habits-123", Token: "tok-123",
+		Manifest: map[string]any{
+			"reskon_app": 1,
+			"id":         "habits",
+			"name":       "Habits",
+			"version":    "1.0.0",
+			"home_url":   "/",
+			"icon":       "check",
+			"auth":       map[string]any{"kind": "password", "login_url": "/api/reskon/login"},
+			"launch_url": "/api/reskon/launch",
+			"widgets": []any{
+				map[string]any{"id": "today", "title": "Today's habits", "kind": "page", "url": "/widgets/today", "size": map[string]any{"w": 4, "h": 4}, "style": "reskon"},
+				map[string]any{"id": "last_days", "title": "Habits, last days", "kind": "data", "shape": "series", "url": "/api/reskon/feeds/done-per-day", "ranged": true, "groups": []any{"day", "week"}},
+			},
+		},
+	}
+}
+
+// Handler serves the pretend app (the example plugin program uses it).
+func (f *Fake) Handler() http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /.well-known/reskon-app.json", func(w http.ResponseWriter, r *http.Request) {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(f.Manifest)
+	})
+	mux.HandleFunc("POST /api/reskon/login", func(w http.ResponseWriter, r *http.Request) {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+		f.Logins++
+		var body struct{ Username, Password string }
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		if body.Username != f.User || body.Password != f.Password {
+			w.WriteHeader(http.StatusUnauthorized)
+			_, _ = w.Write([]byte(`{"error":"secret detail that must not be shown"}`))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]string{"token": f.Token})
+	})
+	return mux
+}
+
+// Set changes one top-level field of the description file.
+func (f *Fake) Set(key string, v any) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.Manifest[key] = v
+}

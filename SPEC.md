@@ -392,7 +392,7 @@ See decisions. In short: it would be a second program to run, embedding it secur
 | --- | --- |
 | Workflow | Areas (name, key prefix, colour, default energy type), statuses, priorities, task dates, snooze, complete details, card actions, custom fields |
 | Time and points | Energy types (name, colour, points per hour), subtypes, subtype rank weights, reflection (week start) |
-| Connections | Quick capture model, duplicate search model, sync server (phone) |
+| Connections | Apps (connected apps, see 12.4), quick capture model, duplicate search model, sync server (phone) |
 | Data | Download database (phone) |
 | You | Screens (the Day screen switch), Names (what tasks and epics are called), About (the version), Appearance (themes: Default, Jira, Jira high contrast, GitHub Dark, GitHub Dark Dimmed; Default uses warm charcoal surfaces and periwinkle accents; web controls have roomier targets, cards separate progress from labels, and board columns use quiet outlines with coloured status dots; download one as a file, edit it, upload it; in any theme, grey secondary text is lightened just enough to be readable, at least 4.5:1 on every surface), account |
 | Admin | People |
@@ -419,6 +419,18 @@ Areas, statuses, priorities, energy types and subtypes all work the same way, li
 ### 12.3 Importing from Jira
 
 `jitterbug import-jira <export.db> <username> [--dry-run]` copies a Jira export into a person's data in one go (a dry run reports and changes nothing). Keys are kept (`OM2-N`). Labels become areas, and `--area label=Name` sends a label to an existing area. Statuses, priorities and difficulty map to Reskon's, creating the missing ones (Planned, Paused, Highest, Lowest). The status history becomes the move log, so dates and cycle time are Jira's real history. Worklogs become work sessions with the area's default energy type. Story points, links and comments are kept as custom fields or in the description. It refuses to run if any key already exists.
+
+### 12.4 Connected apps (plugins)
+
+Other apps you run can show on your dashboards: a habit tracker now, a food log later. Task management stays in Reskon; other things come from apps. How to make an app work with Reskon is in `docs/plugins.md`; why it works this way is in `docs/decisions.md` ("Plugins (connected apps) and live updates").
+
+- **Settings › Apps** connects an app by its address, for example `http://192.168.0.8:5000`. **Look up** reads the app's description file (`/.well-known/reskon-app.json`) and shows its name and the widgets it offers, before anything is saved.
+- **Sign in once.** The app says how: no sign-in, a token you paste, or a username and password. A password is used once to get a token from the app and is not kept. Reskon keeps the token on its server: it is never sent to the browser and never synced to the phone.
+- Each app shows whether Reskon could reach it (**Connected**, **Can't reach it**, **Problem**), with the reason and when it was last checked. **Check again** reads the description again (a new name or new widgets show up). **Sign in again** is for a password changed in the app. **Remove** forgets the app and its sign-in; the app and its own data are not touched.
+- An app's addresses must all be under the address you connected (same machine and port, inside its path); Reskon refuses one that points elsewhere. The description file must be readable without signing in. Reskon follows no redirects, gives an app 5 seconds and 1 MB per answer, and never shows what an app answered on an error, only its status (for example "answered HTTP 500").
+- Anyone signed in can connect apps, and each person's apps are their own.
+- Connected apps are a server feature: the phone app has none.
+- Coming next (see `docs/next-phase.md` section 0): an Apps heading in the sidebar, the app's widgets on dashboards, a cache of what apps send, and apps telling Reskon their data changed.
 
 ---
 
@@ -480,6 +492,7 @@ Phones only ever sync through a server, never with each other.
 
 - `<data>/auth.db`: accounts and sign-in sessions.
 - `<data>/users/<name>-<id>.db`: one database per person, all with the same tables.
+- `<data>/users/<name>-<id>.apps.db`: that person's connected apps and their sign-ins (12.4), made when first needed. Kept apart so a sign-in never syncs to a phone or reaches the browser. A backup copies it.
 - `<data>/models/`: the duplicate search model, shared by everyone, if downloaded.
 - On the phone: the same kind of database in the app's private storage.
 
@@ -554,6 +567,7 @@ JSON over HTTP. Every `/api` call except health and sign-in needs the session co
 | `POST /api/sync` | Sync: a device sends its changes and gets back what it hasn't seen. The `X-Sync-Size` header gives the answer's size before compression, for the phone's progress bar. |
 | `POST /api/sync/outgoing`, `POST /api/sync/incoming` | Used by the phone's built-in core: get the request to send, apply the answer. |
 | `GET /api/live` | A WebSocket: a note `{topic, tab}` each time your data changes (topic is the changed part, such as `tasks`; tab is the `X-Reskon-Tab` header of the request that changed it). At most 32 open per person; closed after you sign out. |
+| `GET /api/apps`, `POST /api/apps` (`address` plus `token`, or `username` and `password`), `POST /api/apps/preview`, `POST /api/apps/:id/check`, `POST /api/apps/:id/sign-in`, `DELETE /api/apps/:id` | Connected apps (12.4). Answers never contain the sign-in token. An app that could not be reached answers 502 with the reason. Not on the phone. |
 
 ---
 

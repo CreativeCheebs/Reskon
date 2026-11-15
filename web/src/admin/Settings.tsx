@@ -18,6 +18,7 @@ import { useTerms, type Terms } from "../terms";
 import { NamesSettings } from "./NamesSettings";
 import { TagsSettings } from "./TagsSettings";
 import { AboutSettings } from "./AboutSettings";
+import { AppsSettings } from "./AppsSettings";
 
 // Settings: sections grouped in a menu on the left, or in a picker above
 // the section when the screen is too narrow for both. The open section is
@@ -121,6 +122,17 @@ const groupsFor = (T: Terms): { label: string; sections: Section[] }[] => [
   {
     label: "Connections",
     sections: [
+      {
+        key: "apps",
+        label: "Apps",
+        intro: (
+          <>
+            Connect other apps you run, such as a habit tracker, so their widgets can show on your dashboards. Sign in once here; Reskon keeps the
+            sign-in on its server. How to make an app work with Reskon is in <code>docs/plugins.md</code>.
+          </>
+        ),
+        render: () => <AppsSettings />,
+      },
       {
         key: "capture",
         label: "Quick capture",

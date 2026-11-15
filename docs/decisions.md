@@ -368,6 +368,19 @@ An app's address can be anywhere on the home network, just like the capture mode
 
 Anyone signed in can connect an app; it is not limited to admins (owner, 2026-11-15). Reskon is a private, self-hosted system, and whoever hosts their own copy controls who has an account.
 
+### App sign-ins are kept as plain text in the apps file (2026-11-15)
+An app's token is stored as it is in the person's apps file, the same way the capture model's key is stored in their settings. Encrypting it would need a key the server can read without a person present (to fetch widgets), so it would sit on the same disk and add little. What protects it:
+- the file sits in the data folder that only the server can read;
+- the token never goes to the browser or the phone;
+- a password is never stored at all, only the token the app gives in exchange.
+
+The backup copies the apps file (as `apps/<name>.db` in the backup folder), so a backup holds the tokens too: keep backups as private as the data folder.
+
+Left as they are, after the security review (2026-11-15): a password typed for an app on an `http://` address crosses the home network unencrypted (as everything does until HTTPS, next-phase 2.1); there is no limit on how often someone looks apps up; backup folders use the default file permissions, as before; and for the very first account, made from a pre-accounts database outside the data folder, the apps file sits beside that database.
+
+### A pretend plugin for testing (2026-11-15)
+`cmd/example-plugin` runs a pretend habit tracker (the same one the Go tests use, `internal/apps/appstest`) so a test server can connect a real app before the owner's own tracker supports the contract. Its username and password are fixed and only for testing. It grows with each step (widgets, data, the "changed" message).
+
 ---
 
 ## Open questions

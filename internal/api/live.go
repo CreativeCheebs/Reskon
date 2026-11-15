@@ -28,6 +28,7 @@ var noChange = map[string]bool{
 	"/api/capture":           true, // capture only reads (it never writes)
 	"/api/semantic/download": true, // a shared model file, not anyone's data
 	"/api/sync/outgoing":     true, // only builds the request a device will send
+	"/api/apps/preview":      true, // only reads an app's description
 }
 
 // changeTopic says which part of a person's data a request changed, or ""

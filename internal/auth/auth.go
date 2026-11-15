@@ -21,6 +21,7 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
+	"jitterbug/internal/apps"
 	"jitterbug/internal/db"
 )
 
@@ -64,7 +65,9 @@ type Store struct {
 	setupMu sync.Mutex // serialises first-admin setup
 	mu      sync.Mutex // guards pool and fails
 	pool    map[int64]*db.DB
-	fails   map[string]*failures
+	// appsPool holds each person's connected-apps file (see apps.go).
+	appsPool map[int64]*apps.Store
+	fails    map[string]*failures
 }
 
 // Open opens (creating if needed) dataDir/auth.db. legacyDB is the path of
@@ -79,7 +82,7 @@ func Open(dataDir, legacyDB string) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Store{sql: sqldb, dataDir: dataDir, legacy: legacyDB, pool: map[int64]*db.DB{}, fails: map[string]*failures{}}, nil
+	return &Store{sql: sqldb, dataDir: dataDir, legacy: legacyDB, pool: map[int64]*db.DB{}, appsPool: map[int64]*apps.Store{}, fails: map[string]*failures{}}, nil
 }
 
 func (s *Store) Close() error {
@@ -87,6 +90,9 @@ func (s *Store) Close() error {
 	defer s.mu.Unlock()
 	for _, d := range s.pool {
 		d.Close()
+	}
+	for _, a := range s.appsPool {
+		a.Close()
 	}
 	return s.sql.Close()
 }
@@ -288,6 +294,21 @@ func Backup(dataDir, dest string) ([]string, error) {
 			return written, err
 		}
 		written = append(written, out)
+		// Their connected apps (with the sign-ins), if any.
+		out, err = backupApps(path, dest, u.name, func(p, name string) (string, error) {
+			a, err := readOnly(p)
+			if err != nil {
+				return "", err
+			}
+			defer a.Close()
+			return copyTo(a, name)
+		})
+		if err != nil {
+			return written, fmt.Errorf("%s apps: %w", u.name, err)
+		}
+		if out != "" {
+			written = append(written, out)
+		}
 	}
 	return written, nil
 }

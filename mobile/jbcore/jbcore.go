@@ -111,9 +111,11 @@ func Export(destDir string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	want := strings.ToLower(user.Username) + ".db"
+	// The full path: a backup also has apps/<name>.db (the server's
+	// connected apps), which must never be taken for the database.
+	want := filepath.Join(destDir, strings.ToLower(user.Username)+".db")
 	for _, f := range written {
-		if filepath.Base(f) == want {
+		if filepath.Clean(f) == filepath.Clean(want) {
 			return f, nil
 		}
 	}

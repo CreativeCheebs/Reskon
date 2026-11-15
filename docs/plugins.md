@@ -81,7 +81,7 @@ Every answer is JSON (`Content-Type: application/json`), except the widget pages
 - **`widgets[].ranged`** (data widgets only): `true` if the feed accepts a date range.
 - **`widgets[].groups`** (data widgets only): which groupings the feed accepts.
 
-Addresses can be relative to the plugin's own address (recommended) or full. Reskon refuses any address on another host.
+Addresses can be relative to the plugin's own address (recommended) or full. Every address must be under the address the person connected: the same scheme, machine and port, and inside its path. Connected at `http://192.168.0.8:5000/habits`, the address `/api/x` means `http://192.168.0.8:5000/habits/api/x`, and `http://192.168.0.8:5000/food/x` is refused. The description file itself must be readable without signing in.
 
 ## 3. Signing in
 

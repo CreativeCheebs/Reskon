@@ -1,0 +1,47 @@
+// Connected apps (plugins). The contract is docs/plugins.md; these are the
+// shapes GET /api/apps sends. The sign-in token never reaches the browser.
+
+export type AuthKind = "none" | "token" | "password";
+export type AppStatus = "ok" | "unreachable" | "invalid";
+
+export interface AppWidget {
+  id: string;
+  title: string;
+  kind: "page" | "data";
+  url: string;
+  size: { w: number; h: number };
+  style?: "reskon" | "own";
+  shape?: "number" | "series" | "table" | "checklist" | "list";
+  ranged?: boolean;
+  groups?: string[];
+}
+
+export interface AppManifest {
+  reskon_app: number;
+  id: string;
+  name: string;
+  version: string;
+  home_url: string;
+  icon: string;
+  auth: { kind: AuthKind; login_url?: string };
+  widgets: AppWidget[];
+}
+
+export interface ConnectedApp {
+  id: number;
+  app_id: string;
+  name: string;
+  address: string;
+  auth_kind: AuthKind;
+  signed_in: boolean;
+  status: AppStatus;
+  status_detail: string;
+  checked_at: string;
+  manifest: AppManifest | null;
+}
+
+export interface Credentials {
+  token?: string;
+  username?: string;
+  password?: string;
+}

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -159,5 +160,40 @@ func TestSessionAliveDoesNotExtend(t *testing.T) {
 	s.Logout(ctx, token)
 	if _, err := s.SessionAlive(ctx, token); !errors.Is(err, ErrNoSession) {
 		t.Fatalf("after sign-out: %v", err)
+	}
+}
+
+// A person's connected apps live in their own file beside their database,
+// and a backup copies it.
+func TestAppsFileBesideTheDatabaseAndBackedUp(t *testing.T) {
+	dir := t.TempDir()
+	s, err := Open(dir, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	u, err := s.Setup(ctx, "alice", "right password")
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, err := s.AppsFor(ctx, u.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	again, _ := s.AppsFor(ctx, u.ID)
+	if a != again {
+		t.Error("the apps file was opened twice")
+	}
+	want := filepath.Join(dir, "users", strings.TrimSuffix(filepath.Base(u.dbFile), ".db")+".apps.db")
+	if _, err := os.Stat(want); err != nil {
+		t.Fatalf("apps file not at %s: %v", want, err)
+	}
+	s.Close()
+	written, err := Backup(dir, filepath.Join(dir, "bk"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(written) != 3 || written[2] != filepath.Join(dir, "bk", "apps", "alice.db") {
+		t.Fatalf("written = %v", written)
 	}
 }
