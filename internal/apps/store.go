@@ -50,7 +50,10 @@ type App struct {
 	StatusDetail string    `json:"status_detail"`
 	CheckedAt    string    `json:"checked_at"`
 	Manifest     *Manifest `json:"manifest"`
-	token        string
+	// HomeLink is the app's own page as a full address, worked out here so the
+	// browser never has to resolve addresses itself. Empty if it cannot be.
+	HomeLink string `json:"home_link"`
+	token    string
 }
 
 // Token is what Reskon signs in to the app with. Server side only.
@@ -78,6 +81,9 @@ func scanApp(r interface{ Scan(...any) error }) (*App, error) {
 	var m Manifest
 	if json.Unmarshal([]byte(manifest), &m) == nil {
 		a.Manifest = &m
+		if link, err := Resolve(a.Address, m.HomeURL); err == nil {
+			a.HomeLink = link
+		}
 	}
 	return &a, nil
 }

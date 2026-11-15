@@ -2,6 +2,7 @@ package apps_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -204,5 +205,35 @@ func TestClientLimits(t *testing.T) {
 		if !errors.As(err, &un) || !strings.Contains(un.Msg, want) || strings.Contains(un.Msg, "secret") {
 			t.Errorf("%s: %v", path, err)
 		}
+	}
+}
+
+// The browser opens an app's page from home_link and never works out
+// addresses itself; the sign-in token must not be in what it is sent.
+func TestHomeLinkIsResolvedAndTokenNeverSent(t *testing.T) {
+	f := appstest.New()
+	defer f.Close()
+	s := open(t)
+	c := &apps.Client{}
+	ctx := context.Background()
+
+	f.Set("home_url", "/today")
+	a, err := s.Connect(ctx, c, f.URL, apps.Credentials{Username: "aakash", Password: "habits-123"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.HomeLink != f.URL+"/today" {
+		t.Errorf("home_link = %q, want %q", a.HomeLink, f.URL+"/today")
+	}
+	listed, err := s.List(ctx)
+	if err != nil || len(listed) != 1 || listed[0].HomeLink != f.URL+"/today" {
+		t.Fatalf("list: %+v %v", listed, err)
+	}
+	raw, err := json.Marshal(listed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), `"home_link"`) || strings.Contains(string(raw), "tok-123") {
+		t.Errorf("app JSON: %s", raw)
 	}
 }

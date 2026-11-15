@@ -383,6 +383,9 @@ Left as they are, after the security review (2026-11-15): a password typed for a
 
 ---
 
+### Apps in the sidebar (2026-11-15)
+An unreachable app stays clickable in the sidebar, because its page may still load even when Reskon could not read its description. It is shown with a warning icon and quieter text, and its reason is in the tooltip. The browser never works out an app's page address itself; the server sends it ready (`home_link`). Settings > Apps tells the sidebar in the same tab by reloading the app's start-up data; other tabs hear about it through live updates.
+
 ## Open questions
 
 - **"Too low" on the ceiling question.** It only cancels a "too high" hold. Should it suggest more hours for the next days?

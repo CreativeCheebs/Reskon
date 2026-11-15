@@ -38,6 +38,8 @@ export interface ConnectedApp {
   status_detail: string;
   checked_at: string;
   manifest: AppManifest | null;
+  /** The app's own page as a full address, resolved by the server; empty if it cannot be. */
+  home_link: string;
 }
 
 export interface Credentials {

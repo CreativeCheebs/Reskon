@@ -429,8 +429,9 @@ Other apps you run can show on your dashboards: a habit tracker now, a food log 
 - Each app shows whether Reskon could reach it (**Connected**, **Can't reach it**, **Problem**), with the reason and when it was last checked. **Check again** reads the description again (a new name or new widgets show up). **Sign in again** is for a password changed in the app. **Remove** forgets the app and its sign-in; the app and its own data are not touched.
 - An app's addresses must all be under the address you connected (same machine and port, inside its path); Reskon refuses one that points elsewhere. The description file must be readable without signing in. Reskon follows no redirects, gives an app 5 seconds and 1 MB per answer, and never shows what an app answered on an error, only its status (for example "answered HTTP 500").
 - Anyone signed in can connect apps, and each person's apps are their own.
+- **Apps in the sidebar.** The left sidebar has an **Apps** heading with one row per connected app, shown only when at least one is connected. A row shows the app's name and icon and opens the app's own page (its `home_url`, worked out by the server from the app's address) in a new browser tab. An app that cannot be reached stays in the list and still opens, with a warning icon, quieter text and the reason in its tooltip ("can't be reached" or "has a problem"). The list updates by itself when apps are connected or removed in another tab.
 - Connected apps are a server feature: the phone app has none.
-- Coming next (see `docs/next-phase.md` section 0): an Apps heading in the sidebar, the app's widgets on dashboards, a cache of what apps send, and apps telling Reskon their data changed.
+- Coming next (see `docs/next-phase.md` section 0): the app's widgets on dashboards, a cache of what apps send, and apps telling Reskon their data changed.
 
 ---
 

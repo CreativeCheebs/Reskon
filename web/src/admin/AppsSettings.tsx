@@ -256,7 +256,7 @@ function AppRow({ app, onChanged }: { app: ConnectedApp; onChanged: () => void }
 }
 
 export function AppsSettings() {
-  const { reloadKey } = useApp();
+  const { reloadKey, reloadBootstrap } = useApp();
   const [list, setList] = useState<ConnectedApp[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const load = useCallback(() => {
@@ -269,6 +269,12 @@ export function AppsSettings() {
       .catch((e) => setError((e as Error).message));
   }, []);
   useEffect(load, [load, reloadKey]);
+  // This tab's own changes are not echoed back by the live updates, so tell
+  // the rest of the app (the sidebar's Apps list) ourselves. Reloading bumps
+  // reloadKey, which also reloads this list.
+  const changed = useCallback(() => {
+    reloadBootstrap().catch(() => undefined);
+  }, [reloadBootstrap]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -282,7 +288,7 @@ export function AppsSettings() {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {list.map((a) => (
-              <AppRow key={a.id} app={a} onChanged={load} />
+              <AppRow key={a.id} app={a} onChanged={changed} />
             ))}
           </div>
         ))
@@ -291,7 +297,7 @@ export function AppsSettings() {
         <Typography.Title level={5} style={{ marginTop: 0 }}>
           Connect an app
         </Typography.Title>
-        <AddApp onAdded={load} />
+        <AddApp onAdded={changed} />
       </div>
     </div>
   );
