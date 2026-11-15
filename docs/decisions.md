@@ -363,7 +363,7 @@ An app's address can be anywhere on the home network, just like the capture mode
 - a time limit;
 - the app's error text is never shown back to the browser.
 
-The open question about capture's reach applies here too.
+Anyone signed in can connect an app; it is not limited to admins (owner, 2026-11-15). Reskon is a private, self-hosted system, and whoever hosts their own copy controls who has an account.
 
 ---
 
@@ -384,5 +384,4 @@ The open question about capture's reach applies here too.
 - **Touch targets under 48 dp on the phone (owner: do with mockups).** Pills, tags and icon buttons are smaller than Android's 48 dp guide. Draw mockups first, then change the sizes, so the layouts are agreed before any code moves.
 - **Border and hard-coded colours (owner decision).** `borderStrong` is about 2.1:1 against the background (3:1 is the guide for a control's outline), and a few colours are written as fixed values. The fix is to change the colours **inside each theme**, not to add code around themes. The theme system itself stays as it is.
 - **Session totals on the server.** The Sessions screen adds up hours in the browser for the "in total" line, and the Inbox works out ages from the clock. AGENTS.md says totals come from the server; moving them needs an API change.
-- **Plugin addresses** reach the home network the same way capture does (see "Capture endpoint reach"). Should connecting an app be limited to admins?
 - **The Jira import** maps worklogs to each area's default energy type (Main job and Freelance → Engineering, Personal → Admin). Check before importing.
