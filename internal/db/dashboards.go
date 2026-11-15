@@ -9,8 +9,9 @@ import (
 	"strings"
 )
 
-// Dashboards and widgets (Phase 2). A widget is a metric query plus a
-// visualisation; it has no data-fetching code of its own.
+// Dashboards and widgets (Phase 2). A widget is a source (where its content
+// comes from; so far always a metric query) plus a visualisation; it has no
+// data-fetching code of its own.
 
 type Dashboard struct {
 	ID        int64     `json:"id"`
@@ -24,6 +25,7 @@ type Widget struct {
 	ID          int64           `json:"id"`
 	DashboardID int64           `json:"dashboard_id"`
 	Title       *string         `json:"title"`
+	Source      string          `json:"source"`
 	Viz         string          `json:"viz"`
 	Query       json.RawMessage `json:"query"`
 	Options     json.RawMessage `json:"options"`
@@ -34,12 +36,12 @@ type Widget struct {
 	Position    int64           `json:"position"`
 }
 
-const widgetCols = `id, dashboard_id, title, viz, query, options, x, y, w, h, position`
+const widgetCols = `id, dashboard_id, title, source, viz, query, options, x, y, w, h, position`
 
 func scanWidget(r interface{ Scan(...any) error }) (*Widget, error) {
 	var w Widget
 	var q, o string
-	err := r.Scan(&w.ID, &w.DashboardID, &w.Title, &w.Viz, &q, &o, &w.X, &w.Y, &w.W, &w.H, &w.Position)
+	err := r.Scan(&w.ID, &w.DashboardID, &w.Title, &w.Source, &w.Viz, &q, &o, &w.X, &w.Y, &w.W, &w.H, &w.Position)
 	w.Query, w.Options = json.RawMessage(q), json.RawMessage(o)
 	return &w, err
 }
@@ -157,13 +159,30 @@ func (d *DB) DeleteDashboard(ctx context.Context, id int64) error {
 }
 
 var widgetColumns = columns{
-	"dashboard_id": kInt, "title": kTextNull, "viz": kText, "query": kJSONObject, "options": kJSONObject,
+	"dashboard_id": kInt, "title": kTextNull, "source": kText, "viz": kText, "query": kJSONObject, "options": kJSONObject,
 	"x": kInt, "y": kInt, "w": kInt, "h": kInt, "position": kInt,
 }
 
-// checkWidget rejects a viz that does not exist and a query the metrics
-// API would refuse, so a saved widget never fails for its shape.
+// WidgetSources are where a widget's content can come from (migration 019).
+// SourceMetric is every widget so far; the others are planned
+// (docs/next-phase.md section 0) and are refused until built.
+const SourceMetric = "metric"
+
+var WidgetSources = []string{SourceMetric, "view", "app_data", "app_page"}
+
+// builtSources can be saved today.
+var builtSources = []string{SourceMetric}
+
+// checkWidget rejects a source or viz that does not exist and a query the
+// metrics API would refuse, so a saved widget never fails for its shape.
 func checkWidget(f Fields) error {
+	if v, ok, err := f.stringField("source"); err != nil {
+		return err
+	} else if ok && !contains(WidgetSources, v) {
+		return invalid("source must be one of %s", strings.Join(WidgetSources, ", "))
+	} else if ok && !contains(builtSources, v) {
+		return invalid("widgets with source %q are not available yet", v)
+	}
 	if v, ok, err := f.stringField("viz"); err != nil {
 		return err
 	} else if ok && !contains(WidgetVizzes, v) {
@@ -311,6 +330,9 @@ func (d *DB) WidgetQuery(ctx context.Context, id int64) (MetricQuery, error) {
 	w, err := d.GetWidget(ctx, id)
 	if err != nil {
 		return MetricQuery{}, err
+	}
+	if w.Source != SourceMetric {
+		return MetricQuery{}, invalid("widget %d shows %s, not a metric", id, w.Source)
 	}
 	q, err := ParseWidgetQuery(w.Query)
 	// A cumulative widget shows running totals, summed here, not in the

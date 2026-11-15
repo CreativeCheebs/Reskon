@@ -23,10 +23,15 @@ export interface WidgetOptions {
   min_width_px?: number;
 }
 
+/** Where a widget's content comes from. Only "metric" exists so far; the
+ *  others are planned (docs/next-phase.md section 0). */
+export type WidgetSource = "metric" | "view" | "app_data" | "app_page";
+
 export interface Widget {
   id: number;
   dashboard_id: number;
   title: string | null;
+  source: WidgetSource;
   viz: Viz;
   query: WidgetQuery;
   options: WidgetOptions;

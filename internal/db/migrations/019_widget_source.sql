@@ -1,0 +1,11 @@
+-- Migration 019: where a widget's content comes from (2026-11-15). Additive only.
+--
+-- Until now every widget was a metric drawn by a chart. Plugins and the
+-- personal dashboard add other sources (docs/next-phase.md section 0):
+--   metric    a question to the metrics API (every widget so far)
+--   view      a saved view's tasks, drawn as a small board
+--   app_data  a connected app's data feed, drawn by Reskon
+--   app_page  a connected app's own small page
+-- Only "metric" can be saved until the others are built; Go checks the
+-- value, not the database, so a newer device's widget still syncs here.
+ALTER TABLE widget ADD COLUMN source TEXT NOT NULL DEFAULT 'metric';

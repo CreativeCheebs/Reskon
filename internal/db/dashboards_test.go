@@ -69,3 +69,54 @@ func TestDefaultDashboardsAndLayout(t *testing.T) {
 		t.Error(err)
 	}
 }
+
+// Every widget so far is a metric; the planned sources are refused until
+// they are built, and an unknown one always is (migration 019).
+func TestWidgetSource(t *testing.T) {
+	d := openTest(t)
+	ctx := context.Background()
+	all, err := d.ListDashboards(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, x := range all {
+		for _, w := range x.Widgets {
+			if w.Source != SourceMetric {
+				t.Errorf("seeded widget %d has source %q", w.ID, w.Source)
+			}
+		}
+	}
+	base := func(source string) Fields {
+		f := Fields{}
+		f["dashboard_id"] = []byte(itoa(all[0].ID))
+		f["viz"] = []byte(`"number"`)
+		f["query"] = []byte(`{"metric":"points","range":"today"}`)
+		if source != "" {
+			f["source"] = []byte(`"` + source + `"`)
+		}
+		return f
+	}
+	w, err := d.CreateWidget(ctx, base(""))
+	if err != nil || w.Source != SourceMetric {
+		t.Fatalf("no source given: %+v, %v", w, err)
+	}
+	if _, err := d.CreateWidget(ctx, base("metric")); err != nil {
+		t.Fatalf("source metric: %v", err)
+	}
+	for _, s := range []string{"view", "app_data", "app_page", "nonsense"} {
+		if _, err := d.CreateWidget(ctx, base(s)); err == nil {
+			t.Errorf("source %q accepted", s)
+		}
+	}
+	if _, err := d.PatchWidget(ctx, w.ID, Fields{"source": []byte(`"app_page"`)}); err == nil {
+		t.Error("patched to a source that is not built")
+	}
+
+	// A widget of another source (say, from a newer device) is not run as a metric.
+	if _, err := d.ExecContext(ctx, `UPDATE widget SET source = 'app_page' WHERE id = ?`, w.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.WidgetQuery(ctx, w.ID); err == nil {
+		t.Error("an app_page widget ran as a metric")
+	}
+}

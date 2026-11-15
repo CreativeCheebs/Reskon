@@ -336,7 +336,7 @@ The plan is carried forward from your last plan, so most mornings are one tap (*
 ### 10.1 How it works
 
 - A dashboard is a page of widgets on a grid (12 columns). Edit mode is a switch, so nothing moves by accident while you read. In edit mode, drag and resize; the layout saves when you drop.
-- Every widget is **a question to the metrics API plus a way to draw it**. No widget has its own special code. Adding something new to measure is one entry in the metric list; adding a new chart type is one drawing component.
+- Every widget is **a source plus a way to draw it**. The source says where its content comes from: so far always a question to the metrics API; planned are a saved view's tasks (a small board), and a connected app's data or its own small page (docs/next-phase.md section 0). No widget has its own special code. Adding something new to measure is one entry in the metric list; adding a new chart type is one entry in the list of chart types. A widget of a source this version does not know (made by a newer Reskon) says it needs a newer version instead of showing anything.
 - Each widget loads when shown and has a refresh button. No background polling: a widget reloads when your data changes (see 14, live updates).
 - A dashboard can run every widget over one chosen day or a span of dates instead of each widget's own range. That choice isn't saved.
 - On a narrow screen (under 768px), widgets stack in one column in saved order, with no editing. A chart too narrow to read shows as a single number instead. The Android app shows dashboards this way.
@@ -507,7 +507,7 @@ The database is SQLite in WAL mode (several readers, one writer). There is one c
 | `inbox_item` | Inbox lines. |
 | `view` | Saved views: filter, layout, card settings, board settings (grouping, sorting, column limits, collapsed columns, timeline), icon, colour, background. |
 | `image` | Uploaded background images. |
-| `dashboard`, `widget` | Dashboards and their widgets: the metric question, the chart type, position. |
+| `dashboard`, `widget` | Dashboards and their widgets: the source (`metric` so far; `view`, `app_data` and `app_page` are planned and refused until built, migration 019), the metric question, the chart type, position. |
 | `custom_field` | Custom field definitions. |
 | `setting` | Your settings, each a JSON value: subtype weights, capture model, week start, task dates, snooze, complete details, card actions, epic columns, time zone, theme… |
 | `task_embedding` | A cache for duplicate search (can be emptied, nothing is lost). |

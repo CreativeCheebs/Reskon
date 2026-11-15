@@ -5,11 +5,7 @@ import { api } from "../api";
 import { useApp } from "../store";
 import { palette } from "../theme/palette";
 import { MIN_WIDTH, type DateOverride, type MetricResult, type Widget } from "./types";
-import { Chart } from "./viz/Charts";
-import { ListViz, NumberViz, TableViz } from "./viz/Simple";
-import { BandsViz } from "./viz/Bands";
-import { SmallMultiplesViz } from "./viz/SmallMultiples";
-import { PieViz } from "./viz/Pie";
+import { VIZZES } from "./viz/registry";
 
 // One widget: fetches its metric on mount (and on refresh, never by
 // polling) by widget id, then hands the result to its viz. Narrower than
@@ -58,28 +54,18 @@ export function VizBody({ widget, res }: { widget: Pick<Widget, "viz" | "options
   const { ref, width } = useWidth();
   const min = widget.options.min_width_px ?? MIN_WIDTH[widget.viz];
   const narrow = width > 0 && width < min;
-  // Small multiples fall back per type, never to one summed number.
-  const viz = narrow && widget.viz !== "small_multiples" ? "number" : widget.viz;
-  const empty = res.points.length === 0 && viz !== "number" && viz !== "bands";
-  const scrolls = viz === "list" || viz === "table" || viz === "small_multiples" || viz === "pie";
+  // A chart type this version does not know (from a newer Reskon) draws as bars.
+  const own = VIZZES[widget.viz] ? widget.viz : "bar";
+  const viz = narrow && !VIZZES[own].keepsWhenNarrow ? "number" : own;
+  const entry = VIZZES[viz];
+  const empty = res.points.length === 0 && !entry.drawsEmpty;
+  const scrolls = !!entry.scrolls;
   return (
     <div ref={ref} style={{ flex: 1, minHeight: 0, overflow: scrolls ? "auto" : "hidden" }}>
       {empty ? (
         <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Nothing in this range" style={{ margin: "8px 0" }} />
-      ) : viz === "pie" ? (
-        <PieViz res={res} />
-      ) : viz === "small_multiples" ? (
-        <SmallMultiplesViz res={res} narrow={narrow} />
-      ) : viz === "number" ? (
-        <NumberViz res={res} />
-      ) : viz === "list" ? (
-        <ListViz res={res} />
-      ) : viz === "table" ? (
-        <TableViz res={res} />
-      ) : viz === "bands" ? (
-        <BandsViz res={res} />
       ) : (
-        <Chart res={res} viz={viz} options={widget.options} />
+        entry.draw({ res, options: widget.options, narrow })
       )}
     </div>
   );
@@ -102,7 +88,12 @@ export const WidgetFrame = memo(function WidgetFrame({
   // The path carries only the widget's id, so a saved change to its query
   // refetches through dep.
   const over = dates ? `&from=${dates.from}&to=${dates.to}` : "";
-  const { res, error, loading, reload } = useMetric(`/metrics?widget=${widget.id}${over}`, JSON.stringify(widget.query));
+  // Only metric widgets exist so far; one of a planned source (made by a
+  // newer Reskon on another device) is not run as a metric.
+  const known = widget.source === undefined || widget.source === "metric";
+  const metric = useMetric(known ? `/metrics?widget=${widget.id}${over}` : null, JSON.stringify(widget.query));
+  const { res, loading, reload } = metric;
+  const error = known ? metric.error : "This widget needs a newer version of Reskon.";
 
   return (
     <div
