@@ -66,19 +66,24 @@ export function ViewScreen({ view }: { view: View }) {
   // Only the newest request may change the screen: an older, slower answer
   // (for a view or search the user has already left) must not overwrite it.
   const fetchSeq = useRef(0);
+  const loading = useRef(false);
   const refetch = useCallback(() => {
     const seq = ++fetchSeq.current;
+    loading.current = true;
     const q = query ? `&q=${encodeURIComponent(query)}` : "";
     api
       .get<Task[]>(`/tasks?view=${view.id}${q}`)
       .then((t) => {
         if (seq !== fetchSeq.current) return;
+        loading.current = false;
         setTasks(t);
         setError(null);
       })
       // Keep showing the last loaded data, but say it could not be refreshed.
       .catch((e) => {
-        if (seq === fetchSeq.current) setError((e as Error).message);
+        if (seq !== fetchSeq.current) return;
+        loading.current = false;
+        setError((e as Error).message);
       });
   }, [view.id, query]);
 
@@ -91,7 +96,16 @@ export function ViewScreen({ view }: { view: View }) {
 
   // Stable, so the memoised board skips re-rendering when only a panel or
   // drawer opens.
-  const update = useCallback((fn: (prev: Task[]) => Task[]) => setTasks((prev) => fn(prev ?? [])), []);
+  // A reload already on its way when a change is made here may have been
+  // read before the change (a live update started just before a move); its
+  // answer would put the card back. So ask again, and only the new answer counts.
+  const update = useCallback(
+    (fn: (prev: Task[]) => Task[]) => {
+      setTasks((prev) => fn(prev ?? []));
+      if (loading.current) refetch();
+    },
+    [refetch],
+  );
   const replace = useCallback((t: Task) => update((prev) => prev.map((x) => (x.id === t.id ? t : x))), [update]);
   // A move can take tasks out of this view's filter, so ask again after it.
   const moved = useCallback(

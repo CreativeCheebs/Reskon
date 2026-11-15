@@ -8,6 +8,10 @@ import { defineConfig } from "@playwright/test";
 export default defineConfig({
   testDir: "e2e",
   timeout: 30_000,
+  // One at a time: every journey signs in to the same test account, and with
+  // live updates each one sees the others' changes (a layout switched to
+  // Table in one tab switches the board in another).
+  workers: 1,
   use: { baseURL: process.env.JB_E2E_URL, trace: "retain-on-failure" },
   projects: [{ name: "chromium", use: { browserName: "chromium" } }],
 });

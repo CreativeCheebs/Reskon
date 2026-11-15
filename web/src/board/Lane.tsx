@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -90,11 +90,20 @@ export function Lane(props: Props) {
     return cols;
   }, [tasks, boardStatuses, compare]);
 
-  const [columns, setColumns] = useState<Columns>(buildColumns);
+  const [columns, setColumnsState] = useState<Columns>(buildColumns);
+  // The newest columns, even before the board redraws. Drag events can come
+  // faster than redraws; read from `columns`, a drop saw the board a frame
+  // old and a card dragged straight back landed where it had been.
+  const latest = useRef(columns);
+  const setColumns = useCallback((next: Columns | ((prev: Columns) => Columns)) => {
+    const value = typeof next === "function" ? next(latest.current) : next;
+    latest.current = value;
+    setColumnsState(value);
+  }, []);
   const [activeId, setActiveId] = useState<number | null>(null);
   useEffect(() => {
     if (activeId === null) setColumns(buildColumns());
-  }, [buildColumns, activeId]);
+  }, [buildColumns, activeId, setColumns]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -106,9 +115,9 @@ export function Lane(props: Props) {
   );
 
   // Container ids are "col-<statusId>"; card ids are task ids (numbers).
-  const containerOf = (id: string | number): number | undefined => {
+  const containerOf = (id: string | number, cols: Columns = latest.current): number | undefined => {
     if (typeof id === "string" && id.startsWith("col-")) return Number(id.slice(4));
-    for (const [sid, ids] of Object.entries(columns)) if (ids.includes(Number(id))) return Number(sid);
+    for (const [sid, ids] of Object.entries(cols)) if (ids.includes(Number(id))) return Number(sid);
     return undefined;
   };
 
@@ -144,50 +153,67 @@ export function Lane(props: Props) {
       return;
     }
     setColumns((prev) => {
-      const fromIds = prev[from].filter((id) => id !== Number(active.id));
-      const toIds = [...prev[to]];
+      // Work from prev, not from `from`: drag-over events can come faster than
+      // the screen redraws, and `from` is then a frame old. Taken from it, the
+      // card was added to the new column twice; when the copy went, it took the
+      // card's drag registration with it, and the card could no longer be
+      // picked up (a press opened the task instead).
+      const id = Number(active.id);
+      if (prev[to]?.includes(id)) return prev;
+      const next: Columns = {};
+      for (const [sid, ids] of Object.entries(prev)) next[Number(sid)] = ids.filter((x) => x !== id);
+      const toIds = next[to] ?? [];
       const overIndex = toIds.indexOf(Number(over.id));
       // Over the lower half of a card: land below it, not above.
       const dragged = active.rect.current.translated;
       const below = dragged !== null && dragged.top > over.rect.top + over.rect.height / 2;
-      toIds.splice(overIndex >= 0 ? overIndex + (below ? 1 : 0) : toIds.length, 0, Number(active.id));
-      return { ...prev, [from]: fromIds, [to]: toIds };
+      toIds.splice(overIndex >= 0 ? overIndex + (below ? 1 : 0) : toIds.length, 0, id);
+      next[to] = toIds;
+      return next;
     });
   };
 
   const onDragEnd = async (e: DragEndEvent) => {
     const { active, over } = e;
+    // The columns as the drag left them, taken first: once the drag is over,
+    // the board resets its columns from the saved tasks (the effect above),
+    // which can happen before the code below runs (and always while the
+    // limit question is open).
+    const snap = latest.current;
     setActiveId(null);
     if (!over) {
       setColumns(buildColumns());
       return;
     }
     const taskId = Number(active.id);
-    const to = containerOf(over.id);
+    const to = containerOf(over.id, snap);
     if (to === undefined) return;
     const moving = byId.get(taskId);
-    if (moving && moving.status_id !== to && !(await withinLimit(moving, to))) {
-      setColumns(buildColumns());
-      return;
-    }
+    // Where the card was last sent: a move still being saved is not in the
+    // saved tasks yet, and a card dragged straight back must not be taken
+    // for "not moved".
+    const unsaved = (pending.current.get(taskId) ?? 0) > 0;
+    const status = sentStatus.current.get(taskId) ?? moving?.status_id;
+    // Cancelled: the board has already gone back to the saved columns.
+    if (moving && status !== to && !(await withinLimit(moving, to))) return;
     if (sorted) {
       const task = byId.get(taskId);
       setColumns(buildColumns());
-      if (!task || task.status_id === to) return;
+      if (!task || status === to) return;
       await send(taskId, { status_id: to, before_id: null, after_id: null });
       return;
     }
-    let ids = columns[to];
+    let ids = snap[to];
     const oldIndex = ids.indexOf(taskId);
     const overIndex = ids.indexOf(Number(over.id));
     if (overIndex >= 0 && oldIndex !== overIndex) ids = arrayMove(ids, oldIndex, overIndex);
-    setColumns((prev) => ({ ...prev, [to]: ids }));
+    setColumns({ ...snap, [to]: ids });
 
     const i = ids.indexOf(taskId);
     const task = byId.get(taskId);
     const before_id = i > 0 ? ids[i - 1] : null;
     const after_id = i < ids.length - 1 ? ids[i + 1] : null;
-    if (task && task.status_id === to && before_id === prevNeighbour(task) && after_id === nextNeighbour(task)) return;
+    if (!unsaved && task && task.status_id === to && before_id === prevNeighbour(task) && after_id === nextNeighbour(task)) return;
     await send(taskId, { status_id: to, before_id, after_id });
   };
 
@@ -209,16 +235,46 @@ export function Lane(props: Props) {
     );
   };
 
-  const send = async (taskId: number, body: { status_id: number; before_id: number | null; after_id: number | null }) => {
-    try {
-      const { column_renumbered, ...updated } = await api.post<Task & { column_renumbered?: boolean }>(`/tasks/${taskId}/move`, { ...body, today: today() });
-      setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
-      // The server made room by renumbering the column: reload the others.
-      if (column_renumbered) refetch();
-    } catch (err) {
-      message.error(String((err as Error).message));
-      refetch();
-    }
+  // Moves go to the server one at a time, in the order they were made: sent
+  // together, two quick moves of one card could be saved in the wrong order
+  // and the card would end where it was before the last drop.
+  const queue = useRef<Promise<void>>(Promise.resolve());
+  // The newest move of each card; an older move's answer is not shown, so a
+  // card dragged across and straight back does not flick between columns.
+  const lastMove = useRef(new Map<number, number>());
+  const moveSeq = useRef(0);
+  // Per card: moves not answered yet, and the column of the newest one sent.
+  const pending = useRef(new Map<number, number>());
+  const sentStatus = useRef(new Map<number, number>());
+  const send = (taskId: number, body: { status_id: number; before_id: number | null; after_id: number | null }) => {
+    const n = ++moveSeq.current;
+    lastMove.current.set(taskId, n);
+    pending.current.set(taskId, (pending.current.get(taskId) ?? 0) + 1);
+    sentStatus.current.set(taskId, body.status_id);
+    const run = async () => {
+      try {
+        // A move that never answers must not hold up every later one.
+        const reply = api.post<Task & { column_renumbered?: boolean }>(`/tasks/${taskId}/move`, { ...body, today: today() });
+        const timeout = new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error("The move took too long; the board was reloaded.")), 15_000));
+        const { column_renumbered, ...updated } = await Promise.race([reply, timeout]);
+        if (lastMove.current.get(taskId) === n) setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+        // The server made room by renumbering the column: reload the others.
+        if (column_renumbered) refetch();
+      } catch (err) {
+        message.error(String((err as Error).message));
+        refetch();
+      } finally {
+        const left = (pending.current.get(taskId) ?? 1) - 1;
+        if (left > 0) pending.current.set(taskId, left);
+        else {
+          pending.current.delete(taskId);
+          sentStatus.current.delete(taskId);
+        }
+      }
+    };
+    const p = queue.current.then(run);
+    queue.current = p;
+    return p;
   };
 
   // Neighbours as currently persisted, to skip no-op drops.
@@ -277,7 +333,9 @@ export function Lane(props: Props) {
           />
         ))}
       </div>
-      <DragOverlay>{active ? <TaskCard task={active} config={config} /> : null}</DragOverlay>
+      {/* No drop animation: while it ran (a quarter second), a card picked up
+          again landed in the wrong column. The card now sits where it was dropped at once. */}
+      <DragOverlay dropAnimation={null}>{active ? <TaskCard task={active} config={config} /> : null}</DragOverlay>
     </DndContext>
   );
 }
