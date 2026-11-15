@@ -54,18 +54,18 @@ export function Chart({ res, viz, options }: { res: MetricResult; viz: Viz; opti
   const tick = { fill: palette.subtle, fontSize: 11 };
   const common = {
     data: rows,
-    margin: { top: 4, right: 8, bottom: 0, left: axis ? -12 : 0 },
+    margin: { top: 12, right: 12, bottom: 8, left: 0 },
   };
   const parts = (
     <>
       <CartesianGrid stroke={palette.border} strokeDasharray="2 4" vertical={false} />
-      <XAxis dataKey="name" hide={!axis} tick={tick} tickLine={false} axisLine={{ stroke: palette.border }} minTickGap={12} />
+      <XAxis dataKey="name" hide={!axis} tick={tick} tickLine={false} axisLine={{ stroke: palette.border }} minTickGap={16} tickMargin={8} />
       <YAxis
         hide={!axis}
         tick={tick}
         tickLine={false}
         axisLine={false}
-        width={44}
+        width={56} tickMargin={8}
         domain={share ? [0, 100] : undefined}
         ticks={share ? [0, 25, 50, 75, 100] : undefined}
         tickFormatter={(v: number) => (share ? `${v}%` : formatValue(v, res.unit, res.metric))}

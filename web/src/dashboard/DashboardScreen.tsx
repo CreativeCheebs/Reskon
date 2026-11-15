@@ -9,6 +9,7 @@ import { api } from "../api";
 import { useApp } from "../store";
 import { WriteButton } from "../offline";
 import { palette } from "../theme/palette";
+import { PageHeader } from "../theme/Toolbar";
 import type { Dashboard, DateOverride, Widget } from "./types";
 import { DatesPicker, type DatesMode } from "./DatesPicker";
 import { WidgetFrame } from "./WidgetFrame";
@@ -125,7 +126,8 @@ export function DashboardScreen({ id, onOpen }: { id?: number; onOpen: (id: numb
   if (!dashboards) return <Spin style={{ margin: 40 }} />;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10, minHeight: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+      <PageHeader title={current?.name || "Dashboards"} />
+      <div className="jb-dashboard-toolbar" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
         {editing && renaming !== null ? (
           <Input
             autoFocus

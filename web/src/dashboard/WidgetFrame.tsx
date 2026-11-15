@@ -62,9 +62,9 @@ export function VizBody({ widget, res }: { widget: Pick<Widget, "viz" | "options
   const empty = res.points.length === 0 && !entry.drawsEmpty;
   const scrolls = !!entry.scrolls;
   return (
-    <div ref={ref} style={{ flex: 1, minHeight: 0, overflow: scrolls ? "auto" : "hidden" }}>
+    <div ref={ref} style={{ flex: 1, minHeight: 0, overflow: scrolls || empty ? "auto" : "hidden" }}>
       {empty ? (
-        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Nothing in this range" style={{ margin: "8px 0" }} />
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={<span>No data in this range<br /><small>Try another date range to see your records.</small></span>} style={{ margin: "auto", padding: "24px 12px" }} />
       ) : (
         entry.draw({ res, options: widget.options, narrow })
       )}
@@ -113,28 +113,28 @@ export const WidgetFrame = memo(function WidgetFrame({
         background: palette.panel,
         border: `1px solid ${editing ? palette.borderStrong : palette.border}`,
         borderRadius: 10,
-        padding: "12px 14px 14px",
+        padding: widget.h <= 2 ? "4px 10px" : "12px 14px 14px",
         fontSize: 13,
         cursor: editing ? "grab" : undefined,
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 6, minHeight: 22 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: widget.h <= 2 ? 2 : 14, paddingBottom: widget.h <= 2 ? 0 : 10, borderBottom: `1px solid ${palette.border}`, minHeight: 32 }}>
         {editing && <HolderOutlined style={{ color: palette.subtle }} />}
         <span style={{ flex: 1, fontWeight: 600, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {widget.title || widget.query.metric || widget.query.widget}
         </span>
         <span className="no-drag" style={{ display: "inline-flex" }}>
           {(known || page) && <Tooltip title="Refresh">
-            <Button size="small" type="text" icon={<ReloadOutlined spin={loading} />} onClick={reload} />
+            <Button size="small" type="text" aria-label="Refresh widget" icon={<ReloadOutlined spin={loading} />} onClick={reload} />
           </Tooltip>}
           {editing && onEdit && (known || page) && (
             <Tooltip title="Edit widget">
-              <Button size="small" type="text" icon={<EditOutlined />} onClick={() => onEdit(widget)} disabled={!online} />
+              <Button size="small" type="text" aria-label="Edit widget" icon={<EditOutlined />} onClick={() => onEdit(widget)} disabled={!online} />
             </Tooltip>
           )}
           {editing && onDelete && (
             <Popconfirm title="Remove this widget?" onConfirm={() => onDelete(widget)} okText="Remove">
-              <Button size="small" type="text" icon={<DeleteOutlined />} disabled={!online} />
+              <Button size="small" type="text" aria-label="Remove widget" icon={<DeleteOutlined />} disabled={!online} />
             </Popconfirm>
           )}
         </span>
@@ -142,11 +142,11 @@ export const WidgetFrame = memo(function WidgetFrame({
       {page ? (
         <AppPageBody widget={widget} loads={pageLoads} editing={editing} onLoading={setPageLoading} />
       ) : error ? (
-        <div style={{ color: palette.muted, fontSize: 12 }}>{error}</div>
+        <div role="alert" style={{ color: palette.muted, fontSize: 12, padding: 8, flex: 1, minHeight: 0, overflow: "auto" }}>{error}<br /><Button size="small" onClick={reload} style={{ marginTop: 8 }}>Retry</Button></div>
       ) : res ? (
         <VizBody widget={widget} res={res} />
       ) : (
-        <Spin size="small" />
+        <div role="status" aria-label="Loading widget" style={{ display: "grid", placeItems: "center", flex: 1 }}><Spin size="small" /></div>
       )}
     </div>
   );

@@ -140,6 +140,7 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
 
   return (
     <Drawer
+      rootClassName="jb-task-panel"
       open
       width={task?.type === "epic" ? 860 : 520}
       onClose={onClose}
@@ -164,17 +165,17 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
       {!task ? (
         <Spin />
       ) : (
-        <Space direction="vertical" style={{ width: "100%" }} size={10}>
+        <Space direction="vertical" style={{ width: "100%" }} size={18}>
           <Input
             variant="borderless"
-            style={{ fontSize: 17, fontWeight: 600, padding: 0 }}
+            style={{ fontSize: 20, fontWeight: 600, padding: 0 }}
             value={title}
             disabled={ro}
             onChange={(e) => setTitle(e.target.value)}
             onBlur={() => title.trim() && title !== task.title && patch({ title: title.trim() })}
             onPressEnter={(e) => (e.target as HTMLInputElement).blur()}
           />
-          <Descriptions column={2} size="small" colon={false} labelStyle={{ color: palette.muted, width: 90 }}>
+          <Descriptions title="Details" column={1} size="small" colon={false} labelStyle={{ color: palette.muted, width: 90 }}>
             <Descriptions.Item label="Type">
               <Select
                 size="small"
@@ -341,7 +342,7 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
               <Divider plain orientation="left" style={{ margin: "4px 0" }}>
                 Dates
               </Divider>
-              <Descriptions column={2} size="small" colon={false} labelStyle={{ color: palette.muted, width: 110 }}>
+              <Descriptions column={1} size="small" colon={false} labelStyle={{ color: palette.muted, width: 110 }}>
                 <Descriptions.Item label="Created">{formatDateTime(task.created_at)}</Descriptions.Item>
                 <Descriptions.Item label="Created age">{formatAge(task.created_age_h)}</Descriptions.Item>
                 <Descriptions.Item label="First started">{formatDateTime(task.first_started_at)}</Descriptions.Item>

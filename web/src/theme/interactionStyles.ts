@@ -290,6 +290,35 @@ export function interactionCss(): string {
     .jb-add-task.ant-btn { color: ${palette.muted}; }
     .jb-add-task.ant-btn:not(:disabled):hover { color: ${palette.fg}; background: ${palette.hover}; }
 
+    /* A quiet frame groups view controls without hiding any active settings. */
+    .jb-toolbar, .jb-dashboard-toolbar {
+      padding: 10px 12px; border: 1px solid ${palette.border};
+      border-radius: 10px; background: ${blend(palette.panel, palette.bg, 0.45)};
+      gap: 10px 20px;
+    }
+    .jb-toolbar-group { flex-wrap: wrap; row-gap: 8px; }
+    .jb-toolbar-group + .jb-toolbar-group { padding-left: 16px; border-left: 1px solid ${palette.border}; }
+    .jb-settings-title { font-size: 17px; line-height: 28px; }
+    .jb-settings-intro { margin-bottom: 20px; }
+    .jb-settings-panel { padding: 18px; border-radius: 10px; }
+    .ant-form-vertical .ant-form-item-label > label { font-weight: 600; }
+    .ant-form-item-explain, .ant-form-item-extra { padding-top: 5px; }
+    .ant-modal-footer { padding-top: 16px; border-top: 1px solid ${palette.border}; }
+    .jb-task-panel .ant-descriptions { padding: 16px; background: ${palette.panel}; border: 1px solid ${palette.border}; border-radius: 10px; }
+    .jb-task-panel .ant-descriptions-item-label { font-size: 12px; }
+    .jb-task-panel .ant-divider-inner-text { font-size: 13px; font-weight: 600; }
+    .ant-btn:focus-visible, .ant-select-focused .ant-select-selector, .ant-input:focus-visible {
+      outline: 2px solid ${palette.accent}; outline-offset: 3px;
+    }
+    .ant-empty-description { color: ${palette.muted}; line-height: 1.7; }
+    .ant-alert { border-radius: 8px; }
+    .ant-message-notice-content { border: 1px solid ${palette.border}; }
+    @media (max-width: 767px) {
+      .jb-toolbar-group + .jb-toolbar-group { padding-left: 0; border-left: 0; }
+      .jb-toolbar-group { max-width: 100%; }
+      .jb-content { padding-inline: 16px !important; }
+    }
+
     ${similarStyles()}
 
     @media (prefers-reduced-motion: reduce) {

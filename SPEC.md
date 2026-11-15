@@ -397,6 +397,8 @@ See decisions. In short: it would be a second program to run, embedding it secur
 | You | Screens (the Day screen switch), Names (what tasks and epics are called), About (the version), Appearance (themes: Default, Jira, Jira high contrast, GitHub Dark, GitHub Dark Dimmed; Default uses warm charcoal surfaces and periwinkle accents; web controls have roomier targets, cards separate progress from labels, and board columns use quiet outlines with coloured status dots; download one as a file, edit it, upload it; in any theme, grey secondary text is lightened just enough to be readable, at least 4.5:1 on every surface), account |
 | Admin | People |
 
+The web app serves its reading font with the app, so it works without an outside font service. Toolbars group related controls; task details sit in a labelled panel. Dashboards show their name above the controls. Empty chart widgets explain that another date range may have records, and a failed widget offers Retry. Keyboard focus has a visible outline.
+
 ### 12.1 Deleting something that is in use
 
 Areas, statuses, priorities, energy types and subtypes all work the same way, like Jira:

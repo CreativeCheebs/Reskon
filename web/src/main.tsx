@@ -9,7 +9,7 @@ import { FeedbackBridge } from "./theme/feedback";
 import { ThemeProvider } from "./theme/ThemeProvider";
 
 document.body.style.margin = "0";
-document.body.style.fontFamily = "Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
+document.body.style.fontFamily = "DM Sans, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
 
 startHealthCheck();
 

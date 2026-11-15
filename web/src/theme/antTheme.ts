@@ -37,6 +37,7 @@ export const makeAntTheme = (): ThemeConfig => ({
     controlHeightSM: 32,
     controlHeightLG: 40,
     fontSize: 13,
+    fontFamily: "DM Sans, system-ui, sans-serif",
     motionDurationFast: "0.05s",
     motionDurationMid: "0.08s",
     motionDurationSlow: "0.12s",

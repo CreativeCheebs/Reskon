@@ -177,7 +177,7 @@ export function TaskCard({
       {labels.length > 0 && <div style={row}>{labels}</div>}
       {chips.length > 0 && <div style={row}>{chips}</div>}
       {details.length > 0 && (
-        <div style={{ ...row, gap: "2px 10px", fontSize: 12, lineHeight: "17px", color: palette.subtle, whiteSpace: "nowrap" }}>{details}</div>
+        <div style={{ ...row, gap: "4px 12px", borderTop: `1px solid ${palette.border}`, paddingTop: 10, fontSize: 12, lineHeight: "17px", color: palette.subtle, whiteSpace: "nowrap" }}>{details}</div>
       )}
       {bar && <div style={{ borderTop: `1px solid ${palette.border}`, paddingTop: 10 }}><TimeBar task={task} pace={false} /></div>}
       {rail}

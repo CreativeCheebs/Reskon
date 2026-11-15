@@ -47,6 +47,7 @@ function applyGlobalStyles() {
   document.body.style.background = palette.bg;
   document.body.style.color = palette.fg;
   style.textContent = `
+    @font-face { font-family: "DM Sans"; src: url("/fonts/DM-Sans.ttf") format("truetype"); font-weight: 100 1000; font-style: normal; font-display: swap; }
     :root { color-scheme: dark; }
     * { scrollbar-width: thin; scrollbar-color: ${palette.borderStrong} transparent; }
     ::-webkit-scrollbar { width: 10px; height: 10px; }
