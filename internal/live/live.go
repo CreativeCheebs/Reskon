@@ -11,7 +11,14 @@ import "sync"
 type Event struct {
 	Topic string `json:"topic"`
 	Tab   string `json:"tab,omitempty"`
+	// App names the connected app whose data changed (topic TopicAppData),
+	// for example "habits": a name, never the data.
+	App string `json:"app,omitempty"`
 }
+
+// TopicAppData is a connected app saying its data changed: only that app's
+// data widgets fetch again, nothing else reloads (docs/plugins.md section 7).
+const TopicAppData = "app_data"
 
 // MaxPerUser caps how many tabs one person can hold open at once, so a
 // buggy or hostile client cannot pile up connections.

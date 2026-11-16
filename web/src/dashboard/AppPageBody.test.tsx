@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { ThemeProvider } from "../theme/ThemeProvider";
 import { AppPageBody } from "./AppPageBody";
+import { onAppChanged } from "../apps/appChanged";
 import type { Widget } from "./types";
 
 afterEach(() => vi.unstubAllGlobals());
@@ -72,5 +73,70 @@ describe("AppPageBody", () => {
     const second = await screen.findByTitle("Today's habits");
     expect(fetchSpy).toHaveBeenCalledTimes(2);
     expect(second).not.toBe(first);
+  });
+
+  it("accepts \"changed\" only from its own frame and the app's origin, and tells the other tabs once", async () => {
+    const fetchSpy = launchAnswers("http://habits.example:8098/widgets/today");
+    const { rerender, unmount } = render(<ThemeProvider>{() => <AppPageBody widget={widget} loads={0} editing={false} />}</ThemeProvider>);
+    const frame = (await screen.findByTitle("Today's habits")) as HTMLIFrameElement;
+    const heard = vi.fn();
+    const stop = onAppChanged("habits", heard);
+    const send = (data: unknown, origin: string, source: Window | null) => window.dispatchEvent(new MessageEvent("message", { data, origin, source }));
+    const ORIGIN = "http://habits.example:8098";
+    const own = frame.contentWindow!;
+    vi.useFakeTimers();
+    try {
+      // Ignored: another origin, another window, another type, not an object.
+      send({ reskon: 1, type: "changed" }, "http://evil.example", own);
+      send({ reskon: 1, type: "changed" }, ORIGIN, window);
+      send({ reskon: 1, type: "changed" }, ORIGIN, null);
+      send({ reskon: 1, type: "theme" }, ORIGIN, own);
+      send("changed", ORIGIN, own);
+      send(null, ORIGIN, own);
+      vi.advanceTimersByTime(2000);
+      expect(heard).not.toHaveBeenCalled();
+      // A burst from the app's own frame: one refresh, one note to the server.
+      send({ reskon: 1, type: "changed" }, ORIGIN, own);
+      vi.advanceTimersByTime(100);
+      send({ reskon: 1, type: "changed", extra: "ignored" }, ORIGIN, own);
+      vi.advanceTimersByTime(299);
+      expect(heard).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(1);
+      expect(heard).toHaveBeenCalledTimes(1);
+      expect(fetchSpy.mock.calls.filter((c) => (c as unknown[])[0] === "/api/apps/habits/changed")).toHaveLength(1);
+      // A steady stream still refreshes at least every 1.5 s.
+      heard.mockClear();
+      for (let i = 0; i < 8; i++) {
+        send({ reskon: 1, type: "changed" }, ORIGIN, own);
+        vi.advanceTimersByTime(200);
+      }
+      expect(heard).toHaveBeenCalledTimes(1);
+      vi.advanceTimersByTime(2000);
+      heard.mockClear();
+    } finally {
+      vi.useRealTimers();
+    }
+
+    // After Refresh (a new frame), a post from the old frame is ignored.
+    rerender(<ThemeProvider>{() => <AppPageBody widget={widget} loads={1} editing={false} />}</ThemeProvider>);
+    await vi.waitFor(() => expect(screen.getByTitle("Today's habits")).not.toBe(frame));
+    const fresh = (screen.getByTitle("Today's habits") as HTMLIFrameElement).contentWindow!;
+    vi.useFakeTimers();
+    try {
+      send({ reskon: 1, type: "changed" }, ORIGIN, own);
+      vi.advanceTimersByTime(2000);
+      expect(heard).not.toHaveBeenCalled();
+      send({ reskon: 1, type: "changed" }, ORIGIN, fresh);
+      vi.advanceTimersByTime(2000);
+      expect(heard).toHaveBeenCalledTimes(1);
+      // Gone from the screen: its frame's posts do nothing.
+      unmount();
+      send({ reskon: 1, type: "changed" }, ORIGIN, fresh);
+      vi.advanceTimersByTime(2000);
+      expect(heard).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+      stop();
+    }
   });
 });

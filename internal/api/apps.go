@@ -1,7 +1,9 @@
 package api
 
 import (
+	"context"
 	"errors"
+	"log"
 	"net/http"
 
 	"jitterbug/internal/apps"
@@ -40,6 +42,13 @@ func (s *Server) appRoutes() {
 			return
 		}
 		a, err := st.Connect(r.Context(), s.appClient(), body.Address, body.Credentials)
+		if err == nil {
+			// A key left from an earlier connection of this app never comes back.
+			if derr := s.Auth.DropAppHook(context.WithoutCancel(r.Context()), userOf(r.Context()).ID, a.AppID); derr != nil {
+				log.Printf("apps: dropping %s's old changed key: %v", a.AppID, derr)
+			}
+			a = s.handKey(r, st, a)
+		}
 		s.appRespond(w, a, err)
 	}))
 	m.HandleFunc("POST /api/apps/{id}/check", s.appsHandler(func(st *apps.Store, w http.ResponseWriter, r *http.Request) {
@@ -49,6 +58,11 @@ func (s *Server) appRoutes() {
 			return
 		}
 		a, err := st.Check(r.Context(), s.appClient(), id)
+		// A fresh "changed" key every time, so Check again cures an app
+		// that lost its key (owner, 2026-11-15).
+		if err == nil {
+			a = s.handKey(r, st, a)
+		}
 		s.appRespond(w, a, err)
 	}))
 	m.HandleFunc("POST /api/apps/{id}/sign-in", s.appsHandler(func(st *apps.Store, w http.ResponseWriter, r *http.Request) {
@@ -63,6 +77,9 @@ func (s *Server) appRoutes() {
 			return
 		}
 		a, err := st.SignIn(r.Context(), s.appClient(), id, cr)
+		if err == nil {
+			a = s.handKey(r, st, a)
+		}
 		s.appRespond(w, a, err)
 	}))
 	m.HandleFunc("DELETE /api/apps/{id}", s.appsHandler(func(st *apps.Store, w http.ResponseWriter, r *http.Request) {
@@ -71,10 +88,26 @@ func (s *Server) appRoutes() {
 			respond(w, nil, err)
 			return
 		}
-		s.appRespond(w, map[string]bool{"ok": true}, st.Remove(r.Context(), id))
+		a, err := st.Get(r.Context(), id)
+		if err == nil {
+			// Not during a hand-over, which would store a key after this drop.
+			user := userOf(r.Context()).ID
+			mu := s.handLock(user, a.AppID)
+			mu.Lock()
+			err = st.Remove(r.Context(), id)
+			// Its "changed" key goes with it, so the app's calls do nothing.
+			if err == nil {
+				if derr := s.Auth.DropAppHook(context.WithoutCancel(r.Context()), user, a.AppID); derr != nil {
+					log.Printf("apps: dropping %s's changed key: %v", a.AppID, derr)
+				}
+			}
+			mu.Unlock()
+		}
+		s.appRespond(w, map[string]bool{"ok": true}, err)
 	}))
 	s.appPageRoutes()
 	s.appDataRoutes()
+	s.appChangedRoutes()
 }
 
 func (s *Server) appClient() *apps.Client {
@@ -90,6 +123,11 @@ func (s *Server) appsHandler(h func(*apps.Store, http.ResponseWriter, *http.Requ
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !s.AppsEnabled {
 			writeError(w, http.StatusNotFound, "not available", "connected apps are set up on the Reskon server, in the web app")
+			return
+		}
+		if userOf(r.Context()) == nil {
+			// Never reached signed out (ServeHTTP refuses first); a guard all the same.
+			writeError(w, http.StatusUnauthorized, "unauthenticated", "sign in first")
 			return
 		}
 		st, err := s.Auth.AppsFor(r.Context(), userOf(r.Context()).ID)

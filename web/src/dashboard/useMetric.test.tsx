@@ -39,4 +39,30 @@ describe("useMetric", () => {
     expect(pending.get("/c")).toBe(first);
     expect(first.signal?.aborted).toBe(false);
   });
+
+  it("refetch during a load runs exactly one more, never showing an answer from before the change", async () => {
+    pending.clear();
+    const { result } = renderHook(() => useMetric("/d"));
+    await waitFor(() => expect(pending.has("/d")).toBe(true));
+    await act(async () => pending.get("/d")!.resolve(answer(1)));
+    // Data changed: ask again; the old answer stays while it loads.
+    act(() => result.current.refetch());
+    const second = pending.get("/d")!;
+    expect(result.current.res?.total).toBe(1);
+    // Changed again, several times, mid-load: nothing is called off.
+    act(() => result.current.refetch());
+    act(() => result.current.refetch());
+    expect(second.signal?.aborted).toBe(false);
+    expect(pending.get("/d")).toBe(second);
+    // Its answer was asked before those changes: not shown, one more load instead.
+    await act(async () => second.resolve(answer(2)));
+    expect(result.current.res?.total).toBe(1);
+    const third = pending.get("/d")!;
+    expect(third).not.toBe(second);
+    expect(result.current.loading).toBe(true);
+    await act(async () => third.resolve(answer(3)));
+    expect(result.current.res?.total).toBe(3);
+    expect(result.current.loading).toBe(false);
+    expect(pending.get("/d")).toBe(third);
+  });
 });

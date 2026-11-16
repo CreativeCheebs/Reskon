@@ -90,15 +90,16 @@ func (f *Fake) todayList() map[string]any {
 	return map[string]any{"day": day, "habits": list}
 }
 
-// tick saves one habit's tick for today. Call with f.mu held.
-func (f *Fake) tick(w http.ResponseWriter, key string, done, bodyOK bool) {
+// tick saves one habit's tick for today, and says whether it did. Call with
+// f.mu held.
+func (f *Fake) tick(w http.ResponseWriter, key string, done, bodyOK bool) bool {
 	known := false
 	for _, h := range Habits {
 		known = known || h.Key == key
 	}
 	if !known || !bodyOK {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "no such habit"})
-		return
+		return false
 	}
 	day := f.today()
 	if f.done[day] == nil {
@@ -106,6 +107,7 @@ func (f *Fake) tick(w http.ResponseWriter, key string, done, bodyOK bool) {
 	}
 	f.done[day][key] = done
 	writeJSON(w, http.StatusOK, f.todayList())
+	return true
 }
 
 func (f *Fake) pageRoutes(mux *http.ServeMux) {

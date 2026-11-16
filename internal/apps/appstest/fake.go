@@ -37,9 +37,21 @@ type Fake struct {
 	// /api/test/feeds).
 	FeedsOff bool
 
-	tickets  map[string]time.Time // ticket -> when it stops working
-	sessions map[string]time.Time // page session -> when it stops working
-	done     map[string]map[string]bool
+	tickets      map[string]time.Time // ticket -> when it stops working
+	sessions     map[string]time.Time // page session -> when it stops working
+	done         map[string]map[string]bool
+	hook         Hook // what Reskon handed at connect_url (fake_changed.go)
+	connectFails bool
+	calls        sync.WaitGroup // calls to Reskon's hook still running
+}
+
+// Close waits for calls to Reskon still running, then stops the fake's
+// server (if it has one).
+func (f *Fake) Close() {
+	f.calls.Wait()
+	if f.Server != nil {
+		f.Server.Close()
+	}
 }
 
 // New starts a pretend habit tracker that signs in with a password, on a
@@ -56,14 +68,15 @@ func NewFake() *Fake {
 		User: "aakash", Password: "habits-123", Token: "tok-123",
 		Now: time.Now, tickets: map[string]time.Time{}, sessions: map[string]time.Time{}, done: map[string]map[string]bool{},
 		Manifest: map[string]any{
-			"reskon_app": 1,
-			"id":         "habits",
-			"name":       "Habits",
-			"version":    "1.0.0",
-			"home_url":   "/",
-			"icon":       "check",
-			"auth":       map[string]any{"kind": "password", "login_url": "/api/reskon/login"},
-			"launch_url": "/api/reskon/launch",
+			"reskon_app":  1,
+			"id":          "habits",
+			"name":        "Habits",
+			"version":     "1.0.0",
+			"home_url":    "/",
+			"icon":        "check",
+			"auth":        map[string]any{"kind": "password", "login_url": "/api/reskon/login"},
+			"launch_url":  "/api/reskon/launch",
+			"connect_url": ConnectPath,
 			"widgets": append([]any{
 				map[string]any{"id": "today", "title": "Today's habits", "kind": "page", "url": "/widgets/today", "size": map[string]any{"w": 4, "h": 4}, "style": "reskon"},
 			}, dataWidgets()...),
@@ -98,6 +111,7 @@ func (f *Fake) Handler() http.Handler {
 	})
 	f.pageRoutes(mux)
 	f.dataRoutes(mux)
+	f.changedRoutes(mux)
 	return mux
 }
 

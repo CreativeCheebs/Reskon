@@ -3,6 +3,7 @@ import { api, isOnline, onOnlineChange } from "./api";
 import type { Behaviour, Bootstrap, Status, View } from "./types";
 import { today } from "./format";
 import { reloadScheduler, startLive } from "./live";
+import { appChanged, resetAppChanged } from "./apps/appChanged";
 
 // App-wide state: the bootstrap lookups, online/offline, and a reload
 // counter that screens watch to refetch their own data on reconnect and
@@ -85,7 +86,8 @@ export function AppProvider({ children, fallback }: { children: ReactNode; fallb
   }, [reloadBootstrap]);
 
   // Live updates: a change made anywhere else (another tab, the phone, a
-  // plugin) reloads what this tab shows, as a reconnect does.
+  // plugin) reloads what this tab shows, as a reconnect does. A connected
+  // app saying its data changed only fetches that app's data widgets again.
   useEffect(() => {
     const s = reloadScheduler(() => {
       reloadBootstrap().catch(() => undefined);
@@ -93,14 +95,25 @@ export function AppProvider({ children, fallback }: { children: ReactNode; fallb
     // A connection refused before it opened may mean the sign-in ended
     // elsewhere; one signed-in call lets the usual 401 handling sign out.
     const stop = startLive(
-      () => s.note(),
+      (n) => {
+        // Never a full reload: at most that app's data widgets fetch again.
+        if (n.topic === "app_data") {
+          if (n.app) appChanged(n.app, false);
+          return;
+        }
+        s.note();
+      },
       () => {
         api.get("/inbox").catch(() => undefined);
       },
     );
+    // Signed out: nothing an app said may still fire (or reach the server).
+    window.addEventListener("jitterbug:signed-out", resetAppChanged);
     return () => {
       stop();
       s.stop();
+      window.removeEventListener("jitterbug:signed-out", resetAppChanged);
+      resetAppChanged();
     };
   }, [reloadBootstrap]);
 

@@ -8,6 +8,8 @@ export const tabId: string = Array.from({ length: 4 }, () => Math.random().toStr
 export interface LiveNote {
   topic: string;
   tab?: string;
+  /** With topic "app_data": which connected app's data changed (its id, e.g. "habits"). */
+  app?: string;
 }
 
 /**

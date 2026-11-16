@@ -40,6 +40,10 @@ export interface ConnectedApp {
   manifest: AppManifest | null;
   /** The app's own page as a full address, resolved by the server; empty if it cannot be. */
   home_link: string;
+  /** Whether the app took Reskon's key for saying "my data changed" from its
+   *  own server: "" (it does not offer that), "ok", or "failed" with changes_detail. */
+  changes: "" | "ok" | "failed";
+  changes_detail: string;
 }
 
 export interface Credentials {

@@ -26,6 +26,14 @@ var publicPaths = map[string]bool{
 	"/api/auth/logout": true,
 }
 
+// isPublic says a request needs no sign-in: the paths above, and an app's
+// server calling POST /api/apps/changed with its key instead of a cookie
+// (apps_changed.go). Only POST: any other method there would reach the
+// signed-in /api/apps/{id} routes.
+func isPublic(r *http.Request) bool {
+	return publicPaths[r.URL.Path] || r.URL.Path == HookPath && r.Method == http.MethodPost
+}
+
 type userKey struct{}
 
 func userOf(ctx context.Context) *auth.User {

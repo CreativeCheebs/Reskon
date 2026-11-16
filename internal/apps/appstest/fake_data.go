@@ -11,7 +11,8 @@ import (
 // "Longest streak" (a number). Every feed needs the token Reskon signed in
 // with. For tests there are two more calls, also with the token: one that
 // switches every feed off (they answer 503) and on again, so a journey can
-// see Reskon's kept copy, and one that ticks a habit without the page.
+// see Reskon's kept copy, and one that ticks a habit without the page (and
+// then tells Reskon's server its data changed, fake_changed.go).
 
 // dataWidgets are the data widgets in the description file.
 func dataWidgets() []any {
@@ -164,7 +165,10 @@ func (f *Fake) dataRoutes(mux *http.ServeMux) {
 			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "not signed in"})
 			return
 		}
-		f.tick(w, r.PathValue("key"), body.Done, ok)
+		// A change made "elsewhere" (not in the page): tell Reskon's server.
+		if f.tick(w, r.PathValue("key"), body.Done, ok) {
+			f.tellReskon()
+		}
 	})
 }
 

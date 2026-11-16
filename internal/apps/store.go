@@ -57,7 +57,12 @@ type App struct {
 	// HomeLink is the app's own page as a full address, worked out here so the
 	// browser never has to resolve addresses itself. Empty if it cannot be.
 	HomeLink string `json:"home_link"`
-	token    string
+	// Changes says whether Reskon could give the app its key for saying "my
+	// data changed" from its own server (docs/plugins.md section 7): "" when
+	// the app offers no connect_url, "ok", or "failed" with ChangesDetail.
+	Changes       string `json:"changes"`
+	ChangesDetail string `json:"changes_detail"`
+	token         string
 }
 
 // Token is what Reskon signs in to the app with. Server side only.
@@ -71,13 +76,13 @@ type Credentials struct {
 	Password string `json:"password"`
 }
 
-const appCols = `id, app_id, name, address, manifest, auth_kind, token, status, status_detail, checked_at`
+const appCols = `id, app_id, name, address, manifest, auth_kind, token, status, status_detail, checked_at, changes, changes_detail`
 
 func scanApp(r interface{ Scan(...any) error }) (*App, error) {
 	var a App
 	var manifest string
 	var token sql.NullString
-	if err := r.Scan(&a.ID, &a.AppID, &a.Name, &a.Address, &manifest, &a.AuthKind, &token, &a.Status, &a.StatusDetail, &a.CheckedAt); err != nil {
+	if err := r.Scan(&a.ID, &a.AppID, &a.Name, &a.Address, &manifest, &a.AuthKind, &token, &a.Status, &a.StatusDetail, &a.CheckedAt, &a.Changes, &a.ChangesDetail); err != nil {
 		return nil, err
 	}
 	a.token = token.String

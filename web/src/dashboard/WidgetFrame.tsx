@@ -8,6 +8,7 @@ import { MIN_WIDTH, type DateOverride, type MetricResult, type Widget } from "./
 import { VIZZES } from "./viz/registry";
 import { AppPageBody } from "./AppPageBody";
 import { AppDataNote } from "./AppDataNote";
+import { onAppChanged } from "../apps/appChanged";
 
 // One widget: fetches its metric (or its app's data) on mount, on Refresh
 // and on live updates, never by polling, by widget id, then hands the
@@ -21,7 +22,11 @@ import { AppDataNote } from "./AppDataNote";
  *  off (so a slow app is not kept waiting on), and a late answer cannot
  *  replace a newer one. forPath and forDep say which path and dep the
  *  result (or error) shown belongs to, so a caller can tell an old answer
- *  from the one it asked for. Refresh does nothing while a load runs. */
+ *  from the one it asked for. Refresh does nothing while a load runs.
+ *  refetch is for data known to have changed: with a load running, that
+ *  load's answer (asked before the change) is not shown and exactly one
+ *  more load follows it, so a stream of changes never cancels loads
+ *  forever, and what is shown is never from before the latest change. */
 export function useMetric(path: string | null, dep = "") {
   const { reloadKey } = useApp();
   const [res, setRes] = useState<MetricResult | null>(null);
@@ -32,31 +37,41 @@ export function useMetric(path: string | null, dep = "") {
   const running = useRef<AbortController | null>(null);
   const depNow = useRef(dep);
   depNow.current = dep;
+  // The data changed while the running load was on its way.
+  const stale = useRef(false);
+  const loadRef = useRef<() => Promise<void>>(async () => undefined);
   const load = useCallback(async () => {
     if (!path) return;
     running.current?.abort();
+    stale.current = false;
     const ctrl = new AbortController();
     running.current = ctrl;
     const n = ++seq.current;
     const forDep = depNow.current;
     setLoading(true);
+    let next: MetricResult | null = null;
+    let failed: string | null = null;
     try {
-      const next = await api.get<MetricResult>(path, { signal: ctrl.signal });
-      if (n !== seq.current) return;
+      next = await api.get<MetricResult>(path, { signal: ctrl.signal });
+    } catch (e) {
+      failed = (e as Error).message;
+    }
+    if (n !== seq.current) return;
+    if (stale.current) {
+      // Asked before the latest change: ask once more, show nothing of this.
+      void loadRef.current();
+      return;
+    }
+    if (failed !== null) setError(failed);
+    else {
       setRes(next);
       setError(null);
-      setOwner({ path, dep: forDep });
-    } catch (e) {
-      if (n !== seq.current) return;
-      setError((e as Error).message);
-      setOwner({ path, dep: forDep });
-    } finally {
-      if (n === seq.current) {
-        setLoading(false);
-        running.current = null;
-      }
     }
+    setOwner({ path, dep: forDep });
+    setLoading(false);
+    running.current = null;
   }, [path]);
+  loadRef.current = load;
   useEffect(() => {
     load();
   }, [load, reloadKey, dep]);
@@ -65,7 +80,11 @@ export function useMetric(path: string | null, dep = "") {
   const reload = useCallback(() => {
     if (!running.current) load();
   }, [load]);
-  return { res, error, loading, reload, forPath: owner?.path ?? null, forDep: owner?.dep ?? null };
+  const refetch = useCallback(() => {
+    if (running.current) stale.current = true;
+    else void load();
+  }, [load]);
+  return { res, error, loading, reload, refetch, forPath: owner?.path ?? null, forDep: owner?.dep ?? null };
 }
 
 /** Width of an element, kept up to date. */
@@ -140,6 +159,11 @@ export const WidgetFrame = memo(function WidgetFrame({
   const path = appData ? `/apps/data?widget=${widget.id}${over}` : `/metrics?widget=${widget.id}${over}`;
   const dep = JSON.stringify(widget.query) + widget.viz;
   const metric = useMetric(known ? path : null, dep);
+  // The app said its data changed (its page beside this widget, or its own
+  // server): fetch again. The chart stays on screen while it loads.
+  const appId = appData ? String(widget.query.app ?? "") : "";
+  const { refetch } = metric;
+  useEffect(() => (appId ? onAppChanged(appId, refetch) : undefined), [appId, refetch]);
   // An app's page reloads, with a fresh sign-in ticket, on Refresh.
   const [pageLoads, setPageLoads] = useState(0);
   // After an edit that changed an app widget's data or chart type, the old

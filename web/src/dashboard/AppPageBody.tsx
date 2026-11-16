@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Spin } from "antd";
 import { api } from "../api";
 import type { PageLink } from "../apps/types";
+import { appChanged } from "../apps/appChanged";
 import { pluginTheme } from "../apps/pluginTheme";
 import { useTheme } from "../theme/ThemeProvider";
 import { palette } from "../theme/palette";
@@ -104,6 +105,24 @@ export function AppPageBody({
       loadingRef.current?.(false);
     };
   }, [widget.id, query, loads, retries]);
+
+  // The page says its data changed (docs/plugins.md section 7). Accepted only
+  // from this widget's own frame and from the app's own origin; nothing in
+  // the message is used but its type. The app's data widgets in this tab
+  // fetch again, and the server tells the person's other tabs.
+  const app = String(widget.query.app ?? "");
+  useEffect(() => {
+    if (!frame || !app) return;
+    const onMessage = (e: MessageEvent) => {
+      const d: unknown = e.data;
+      if (typeof d !== "object" || d === null) return;
+      if (e.source === null || e.source !== ref.current?.contentWindow || e.origin !== frame.origin) return;
+      const m = d as { reskon?: unknown; type?: unknown };
+      if (m.reskon === 1 && m.type === "changed") appChanged(app, true);
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [frame, app]);
 
   // The colours go to the page's own origin only, never "*".
   const sendTheme = useCallback(() => {

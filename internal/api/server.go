@@ -48,6 +48,9 @@ type Server struct {
 	AppsEnabled bool
 	// AppClient calls connected apps; nil uses the default.
 	AppClient *apps.Client
+	noteOnce  sync.Once
+	noteLim   *noteLimiter
+	handLocks sync.Map // "<user>/<app>" -> *sync.Mutex (apps_handkey.go)
 	warnProxy sync.Once
 	mux       *http.ServeMux
 }
@@ -82,7 +85,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusForbidden, "forbidden", "cross-origin request refused")
 		return
 	}
-	if strings.HasPrefix(r.URL.Path, "/api/") && !publicPaths[r.URL.Path] {
+	if strings.HasPrefix(r.URL.Path, "/api/") && !isPublic(r) {
 		u, d, err := s.signedIn(r)
 		if err != nil {
 			writeError(w, http.StatusUnauthorized, "unauthenticated", "sign in first")

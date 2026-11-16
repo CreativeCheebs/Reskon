@@ -156,6 +156,18 @@ function AddApp({ onAdded }: { onAdded: () => void }) {
 
 type Busy = "check" | "sign" | "remove" | null;
 
+/** Says when Reskon could not give the app its "my data changed" key, or
+ *  the address handed over may not work (docs/plugins.md section 7). */
+function ChangesWarning({ app }: { app: ConnectedApp }) {
+  if (!app.changes_detail || (app.changes !== "failed" && app.changes !== "ok")) return null;
+  const retry = /sign in to .* again/i.test(app.changes_detail) ? "Sign in again" : "Check again";
+  const message =
+    app.changes === "failed"
+      ? `Reskon won't hear about changes made elsewhere in ${app.name} (its widgets still update on Refresh and when changed in its page widgets): ${app.changes_detail}. Press ${retry} to retry.`
+      : `Reskon may not hear about changes made elsewhere in ${app.name}: ${app.changes_detail}.`;
+  return <Alert type="warning" showIcon style={{ margin: "8px 0" }} message={message} />;
+}
+
 function AppRow({ app, onChanged }: { app: ConnectedApp; onChanged: () => void }) {
   const [signing, setSigning] = useState(false);
   const [creds, setCreds] = useState<Credentials>({});
@@ -227,6 +239,7 @@ function AppRow({ app, onChanged }: { app: ConnectedApp; onChanged: () => void }
         {app.address} · checked {formatDateTime(app.checked_at)}
       </Typography.Text>
       {app.status_detail && <div style={{ color: palette.muted, fontSize: 12, marginTop: 4 }}>{app.status_detail}</div>}
+      <ChangesWarning app={app} />
       <SameHostWarning address={app.address} />
       {app.manifest && (
         <div style={{ marginTop: 6 }}>

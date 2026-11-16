@@ -73,6 +73,8 @@ Every answer is JSON (`Content-Type: application/json`), except the widget pages
   - `"none"` means no sign-in, for a home-network app.
   - `"token"` means the person pastes a token the plugin gave them.
   - `"password"` means Reskon asks for a username and password once, swaps them at `login_url` for a token, and forgets the password.
+- **`launch_url`** (optional): where Reskon gets a ticket for a web page widget (section 4.1).
+- **`connect_url`** (optional): where Reskon hands the plugin a key for saying "my data changed" from its own server (section 7).
 - **`widgets[].id`**: stable, unique within the plugin.
 - **`widgets[].kind`**: `"page"` (web page widget) or `"data"` (data widget).
 - **`widgets[].size`**: the starting size on Reskon's 12-column grid. People can resize it.
@@ -248,25 +250,30 @@ A copy is kept per range as the person chose it ("the last 7 days"), not per dat
 
 ## 7. Telling Reskon "my data changed"
 
-So that Reskon's widgets update live, for example a ticked habit updating the habit chart beside it.
+So that Reskon's widgets update live, for example a ticked habit updating the habit chart beside it. Reskon then asks the plugin's data feeds again. It doesn't matter what changed, and Reskon never asks.
 
 **From a widget page:** post a message to the Reskon page around it.
 ```js
-window.parent.postMessage({ reskon: 1, type: "changed" }, "*");
+window.parent.postMessage({ reskon: 1, type: "changed" }, reskonOrigin); // or "*": the message holds no secret
 ```
-Reskon accepts this only from frames it opened for that plugin. It fetches that plugin's data widgets again. It doesn't matter what changed.
+Reskon accepts this only from a frame it opened for that plugin, and only from the plugin's own address (the page's origin). It reads nothing in the message but `type`. The plugin's data widgets on that page fetch again, and so do those in the person's other Reskon tabs. Several messages in a row (a few quick ticks) are folded into one fetch. Reskon does **not** reload the plugin's page widgets: what the person is doing inside them is left alone.
 
-**From the plugin's own server**, for changes made elsewhere. When the person connects the plugin, Reskon calls the plugin's `connect_url` (optional in the description file) once:
+**From the plugin's own server**, for changes made elsewhere (the plugin's own site, another device). Add `connect_url` to the description file (optional), for example `"connect_url": "/api/reskon/connect"`. When the person connects the plugin, Reskon calls it once:
 ```
 POST <connect_url>            (Authorization: Bearer <token>)
 { "changed_url": "http://192.168.0.8:8080/api/apps/changed", "key": "random-key-for-this-app-and-person" }
+→ 200 or 204
 ```
+- `changed_url` is Reskon's address as the person's browser reached it when they connected the plugin, plus `/api/apps/changed`. If the plugin's server cannot reach Reskon at that address, connect from an address it can reach.
+- `key` is a fresh random secret for this person and this plugin, 43 characters. Reskon calls `connect_url` again, with a new key, each time the person presses **Check again** or **Sign in again**: save the new key in place of the old one. Once the plugin has answered, the old key stops working; if the plugin does not take the new one, the old key keeps working. Removing the plugin in Reskon stops the key working.
+- Answer `200` or `204`. Any other answer (or none within 5 seconds) means the plugin is still connected, but Settings › Apps says Reskon won't hear about changes made elsewhere, with the reason. `401` or `403` means "sign in again".
+
 The plugin saves both. After a change it calls:
 ```
 POST http://192.168.0.8:8080/api/apps/changed
 Authorization: Bearer random-key-for-this-app-and-person
 ```
-→ `204`. The key only allows this one call. If the call fails, the plugin just drops it: widgets also refresh when opened and when their refresh button is pressed.
+→ `204`, with no body needed (any body is ignored). The key only allows this one call, and Reskon answers `204` whether or not the key is still good, so the plugin can't tell, and needn't care. At most one change every 2 seconds per plugin per person is passed on (counting messages from its widget pages too); calls in between are folded into one, a moment later. A call without a key gets `401`. If the call fails, the plugin just drops it: widgets also refresh when opened and when their refresh button is pressed. Call it from the plugin's server, never from a browser: a page on another site is refused.
 
 **Messages Reskon sends to a widget page:**
 ```js
@@ -286,6 +293,7 @@ Check `event.origin` equals Reskon's address before acting on a message.
 - [ ] Each feed answers an empty range with an empty list, not an error.
 - [ ] Each feed answers in under 5 seconds, and under 1 MB for a year's range.
 - [ ] Ticking something in a widget page posts `changed`.
+- [ ] With `connect_url`: it answers `204`, keeps `changed_url` and `key`, and a change made outside Reskon calls `changed_url` with the key.
 - [ ] No HTML in any text field. No secrets in any address.
 
 ## 9. Example: the habit tracker
