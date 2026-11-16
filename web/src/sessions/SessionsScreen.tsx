@@ -20,10 +20,17 @@ import { LoadError } from "../views/LoadError";
 import { checkboxLabel } from "../a11y";
 import { useTerms } from "../terms";
 import { useTags } from "../tags/tags";
+import { CopyMarkdownButton } from "../journal/CopyMarkdown";
+import type { Journal } from "../journal/types";
 
 // Sessions by day, with filters (applied on the server) and selection for
 // bulk changes: tick rows, tick a day to take all of it, or select
 // everything the filters show. Day totals are per energy type, in one list.
+// Each day has Copy as Markdown: the text is made by the server (GET
+// /api/journal). It is fetched for the shown dates (not again for each
+// filter or search keystroke) so a click can copy at once; while it is not
+// there (loading, a failed fetch, a change just made) the click asks the
+// server for that day first, so the text copied is never an old one.
 
 interface DayTotals {
   day: string;
@@ -52,6 +59,9 @@ export function SessionsScreen() {
   const [search, setSearch] = useState("");
   const [sessions, setSessions] = useState<Session[]>([]);
   const [days, setDays] = useState<Record<string, DayTotals>>({});
+  // Each shown day's journal text. Always the whole day, whatever the filters.
+  // Empty while a new answer is on its way.
+  const [markdown, setMarkdown] = useState<Record<string, string>>({});
   const [modal, setModal] = useState<{ editing?: Session } | null>(null);
   const [tasks, setTasks] = useState<{ id: number; title: string; key: string }[]>([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -99,6 +109,34 @@ export function SessionsScreen() {
   useEffect(() => {
     load();
   }, [load, reloadKey]);
+
+  const journalSeq = useRef(0);
+  const loadJournal = useCallback(async () => {
+    const seq = ++journalSeq.current;
+    setMarkdown({});
+    try {
+      const j = await api.get<Journal>(`/journal?from=${range[0]}&to=${range[1]}`);
+      if (seq === journalSeq.current) setMarkdown(Object.fromEntries(j.days.map((d) => [d.day, d.markdown])));
+    } catch {
+      // The buttons then ask for their day when clicked.
+    }
+  }, [range]);
+  useEffect(() => {
+    loadJournal();
+  }, [loadJournal, reloadKey]);
+  // One day, asked for on a click when its text is not in hand.
+  const dayMarkdown = useCallback(async (day: string) => {
+    try {
+      return (await api.get<Journal>(`/journal?from=${day}&to=${day}`)).days[0]?.markdown ?? null;
+    } catch {
+      return null;
+    }
+  }, []);
+  // After a change made here: the days, and their text for copying.
+  const changed = () => {
+    load();
+    loadJournal();
+  };
   const loadTitles = useCallback(() => {
     api
       .get<{ id: number; title: string; key: string }[]>("/tasks?brief=1")
@@ -120,7 +158,7 @@ export function SessionsScreen() {
   const remove = async (id: number) => {
     try {
       await api.del(`/sessions/${id}`);
-      load();
+      changed();
     } catch (e) {
       message.error((e as Error).message);
     }
@@ -383,7 +421,7 @@ export function SessionsScreen() {
       )}
 
       {selected.size > 0 && (
-        <BulkBar ids={[...selected]} tasks={tasks} onDone={load} onClear={() => setSelected(new Set())} />
+        <BulkBar ids={[...selected]} tasks={tasks} onDone={changed} onClear={() => setSelected(new Set())} />
       )}
 
       {loadState.error && <LoadError message={loadState.error} onRetry={load} stale={sessions.length > 0} />}
@@ -407,7 +445,8 @@ export function SessionsScreen() {
                   ))}
                 </span>
               )}
-              {filtered && <span style={{ color: palette.subtle, fontSize: 11 }}>(day totals include all sessions)</span>}
+              {filtered && <span style={{ color: palette.subtle, fontSize: 11 }}>(day totals and Copy as Markdown include all sessions)</span>}
+              <CopyMarkdownButton day={day} markdown={markdown[day]} fetchMarkdown={() => dayMarkdown(day)} />
             </Space>
             <Table<Session>
               size="small"
@@ -445,7 +484,7 @@ export function SessionsScreen() {
         );
       })}
       {modal && <SessionModal editing={modal.editing} onClose={() => setModal(null)} onSaved={() => {
-          load();
+          changed();
           loadTitles(); // a task made from the form
         }} />}
     </div>

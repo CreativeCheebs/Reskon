@@ -132,6 +132,7 @@ func (s *Server) routes() {
 	s.stateRoutes()
 	s.imageRoutes()
 	s.metricRoutes()
+	s.journalRoutes()
 	s.dashboardRoutes()
 	s.syncRoutes()
 	s.inboxRoutes()

@@ -10,10 +10,12 @@ import { AppPageBody } from "./AppPageBody";
 import { AppDataNote } from "./AppDataNote";
 import { DatesNote } from "./DatesNote";
 import { ViewBoardBody } from "./ViewBoardBody";
+import { JournalBody } from "./JournalBody";
+import type { Journal } from "../journal/types";
 import type { Task } from "../types";
 import { onAppChanged } from "../apps/appChanged";
 
-// One widget: fetches its metric (or its app's data, or its view's tasks) on mount, on Refresh
+// One widget: fetches its metric (or its app's data, its view's tasks, or its journal) on mount, on Refresh
 // and on live updates, never by polling, by widget id, then hands the
 // result to its viz. Narrower than
 // the viz's minimum width, it shows the number instead of a squashed chart.
@@ -158,6 +160,7 @@ export const WidgetFrame = memo(function WidgetFrame({
   // metric, from the app (or Reskon's kept copy of its last answer).
   const page = widget.source === "app_page";
   const board = widget.source === "view";
+  const journal = widget.source === "journal";
   const appData = widget.source === "app_data";
   const known = widget.source === undefined || widget.source === "metric" || appData;
   // App data with no range of its own ignores the dashboard's dates, so
@@ -172,6 +175,10 @@ export const WidgetFrame = memo(function WidgetFrame({
   const view = board ? boot.views.find((v) => v.id === viewId) : undefined;
   const tasksPath = view ? `/tasks?view=${view.id}` : null;
   const tasks = useMetric<Task[]>(tasksPath, dep);
+  // A journal widget asks the server for its days, by its own id, over the
+  // dashboard's dates when they are on. The server writes each day's totals.
+  const journalPath = journal ? `/journal?widget=${widget.id}${dates ? `&from=${dates.from}&to=${dates.to}` : ""}` : null;
+  const days = useMetric<Journal>(journalPath, dep);
   // The app said its data changed (its page beside this widget, or its own
   // server): fetch again. The chart stays on screen while it loads.
   const appId = appData ? String(widget.query.app ?? "") : "";
@@ -184,9 +191,13 @@ export const WidgetFrame = memo(function WidgetFrame({
   const res = appData && metric.forDep !== dep ? null : metric.res;
   // A page widget's Refresh spins while its page is being launched.
   const [pageLoading, setPageLoading] = useState(false);
-  const loading = page ? pageLoading : board ? tasks.loading : metric.loading;
-  const reload = page ? () => setPageLoads((n) => n + 1) : board ? tasks.reload : metric.reload;
-  const error = board
+  const loading = page ? pageLoading : journal ? days.loading : board ? tasks.loading : metric.loading;
+  const reload = page ? () => setPageLoads((n) => n + 1) : journal ? days.reload : board ? tasks.reload : metric.reload;
+  const error = journal
+    ? days.forDep === dep
+      ? days.error
+      : null
+    : board
     ? view
       ? tasks.error
       : "This view is not available any more. Edit the widget to pick another."
@@ -199,6 +210,9 @@ export const WidgetFrame = memo(function WidgetFrame({
   // drawn under it. Cards already shown stay when a later reload fails: the
   // failure is a small note under them, not a replacement for them.
   const boardTasks = board && tasks.resPath === tasksPath ? tasks.res : null;
+  // After the range is edited, the old range's days are not drawn under it:
+  // forDep says which edit the answer shown was asked for.
+  const journalDays = journal && days.resPath === journalPath && days.forDep === dep ? days.res : null;
 
   return (
     <div
@@ -217,7 +231,7 @@ export const WidgetFrame = memo(function WidgetFrame({
       <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: widget.h <= 2 ? 2 : 14, paddingBottom: widget.h <= 2 ? 0 : 10, borderBottom: `1px solid ${palette.border}`, minHeight: 32 }}>
         {editing && <HolderOutlined style={{ color: palette.subtle }} />}
         <span style={{ flex: 1, fontWeight: 600, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {widget.title || view?.name || widget.query.metric || widget.query.widget}
+          {widget.title || view?.name || (journal ? "Journal" : undefined) || widget.query.metric || widget.query.widget}
         </span>
         <span className="no-drag" style={{ display: "inline-flex" }}>
           {board && view && (
@@ -234,10 +248,10 @@ export const WidgetFrame = memo(function WidgetFrame({
               />
             </Tooltip>
           )}
-          {(known || page || (board && view)) && <Tooltip title="Refresh">
+          {(known || page || journal || (board && view)) && <Tooltip title="Refresh">
             <Button size="small" type="text" aria-label="Refresh widget" icon={<ReloadOutlined spin={loading} />} onClick={reload} />
           </Tooltip>}
-          {editing && onEdit && (known || page || board) && (
+          {editing && onEdit && (known || page || board || journal) && (
             <Tooltip title="Edit widget">
               <Button size="small" type="text" aria-label="Edit widget" icon={<EditOutlined />} onClick={() => onEdit(widget)} disabled={!online} />
             </Tooltip>
@@ -251,8 +265,22 @@ export const WidgetFrame = memo(function WidgetFrame({
       </div>
       {page ? (
         <AppPageBody widget={widget} loads={pageLoads} editing={editing} onLoading={setPageLoading} />
-      ) : error && !(board && boardTasks) ? (
+      ) : error && !(board && boardTasks) && !journalDays ? (
         <div role="alert" style={{ color: palette.muted, fontSize: 12, padding: 8, flex: 1, minHeight: 0, overflow: "auto" }}>{error}{!(board && !view) && <><br /><Button size="small" onClick={reload} style={{ marginTop: 8 }}>Retry</Button></>}</div>
+      ) : journal ? (
+        journalDays ? (
+          <>
+            <JournalBody journal={journalDays} title={widget.title || "Journal"} editing={editing} refetch={days.refetch} />
+            {error && (
+              <div role="alert" style={{ color: palette.muted, fontSize: 12, paddingTop: 6 }}>
+                Could not refresh: {error} <Button size="small" type="link" onClick={reload}>Retry</Button>
+              </div>
+            )}
+            {dates && <DatesNote dates={dates} />}
+          </>
+        ) : (
+          <div role="status" aria-label="Loading widget" style={{ display: "grid", placeItems: "center", flex: 1 }}><Spin size="small" /></div>
+        )
       ) : board ? (
         boardTasks && view ? (
           <>

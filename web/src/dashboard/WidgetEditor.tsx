@@ -13,13 +13,15 @@ import { useTags } from "../tags/tags";
 import { AppPageEditor } from "./AppPageEditor";
 import { AppDataEditor } from "./AppDataEditor";
 import { ViewBoardEditor } from "./ViewBoardEditor";
+import { JournalEditor } from "./JournalEditor";
 import { RANGE_LABEL, VIZ_LABEL } from "./labels";
 
 // Builds a widget from the metrics catalog: only metrics, groupings, splits
 // and filters the server lists are offered, so nothing built here can be
 // refused. A live preview runs the query as it is edited. A new widget can
 // instead be a connected app's data (AppDataEditor.tsx) or page
-// (AppPageEditor.tsx), or a view's open tasks as a board (ViewBoardEditor.tsx).
+// (AppPageEditor.tsx), a view's open tasks as a board (ViewBoardEditor.tsx), or
+// a journal of the days' session notes (JournalEditor.tsx).
 
 const GROUP_LABEL: Record<string, string> = {
   day: "Day",
@@ -79,13 +81,13 @@ interface EditorProps {
   onSaved: (w: Widget) => void;
 }
 
-type Kind = "metric" | "view" | "app_data" | "app_page";
+type Kind = "metric" | "view" | "app_data" | "app_page" | "journal";
 
 /** Adds or edits a widget. A new one can be a chart, a board, an app's data
  *  or an app's page; an existing one opens the editor for its own source. */
 export function WidgetEditor(props: EditorProps) {
   const own = props.editing?.source;
-  const [kind, setKind] = useState<Kind>(own === "app_page" || own === "app_data" || own === "view" ? own : "metric");
+  const [kind, setKind] = useState<Kind>(own === "app_page" || own === "app_data" || own === "view" || own === "journal" ? own : "metric");
   const [switched, setSwitched] = useState(false);
   const switcher = props.editing ? undefined : (
     <div role="group" aria-label="Kind of widget">
@@ -98,6 +100,7 @@ export function WidgetEditor(props: EditorProps) {
       options={[
         { value: "metric", label: "Chart" },
         { value: "view", label: "Board" },
+        { value: "journal", label: "Journal" },
         { value: "app_data", label: "App data" },
         { value: "app_page", label: "App page" },
       ]}
@@ -107,6 +110,8 @@ export function WidgetEditor(props: EditorProps) {
   );
   return kind === "view" ? (
     <ViewBoardEditor {...props} switcher={switcher} animate={!switched} />
+  ) : kind === "journal" ? (
+    <JournalEditor {...props} switcher={switcher} animate={!switched} />
   ) : kind === "app_page" ? (
     <AppPageEditor {...props} switcher={switcher} animate={!switched} />
   ) : kind === "app_data" ? (
