@@ -20,6 +20,8 @@ export interface WidgetQuery {
    *  range and group (above). */
   app?: string;
   widget?: string;
+  /** Board widgets only (source "view"): the saved view whose open tasks it shows. */
+  view_id?: number;
 }
 
 export interface WidgetOptions {
@@ -30,9 +32,9 @@ export interface WidgetOptions {
 }
 
 /** Where a widget's content comes from: a metric, a connected app's data
- *  ("app_data", drawn by Reskon's charts), or its own page ("app_page",
- *  whose viz is always "page"). "view" is planned (docs/next-phase.md
- *  section 0). */
+ *  ("app_data", drawn by Reskon's charts), its own page ("app_page", whose
+ *  viz is always "page"), or a saved view's open tasks ("view", a small
+ *  board; its viz is always "board"). */
 export type WidgetSource = "metric" | "view" | "app_data" | "app_page";
 
 export interface Widget {

@@ -46,6 +46,16 @@ var syncJSONFields = map[string]map[string]func(v any, swap idSwap) any{
 			if !ok {
 				return v
 			}
+			// A view widget names its view by id; another device has its own
+			// id for the same view. With no match the id is kept as it is, not
+			// dropped: no view here has it, so the widget says its view is
+			// gone, and the query stays the one the other device holds (an
+			// emptied query could win a tie on a later push and erase it).
+			if raw, ok := m["view_id"]; ok {
+				if r, ok := swapOne("view", raw, swap); ok {
+					m["view_id"] = r
+				}
+			}
 			f, ok := m["filters"].(map[string]any)
 			if !ok {
 				return m

@@ -164,17 +164,17 @@ var widgetColumns = columns{
 }
 
 // WidgetSources are where a widget's content can come from (migration 019).
-// "view" is planned (docs/next-phase.md section 0) and is refused until
-// built.
+// Every source is built; one this version does not know comes from a newer
+// device and can only be moved, renamed or removed here.
 const (
 	SourceMetric  = "metric"
 	SourceAppPage = "app_page"
 )
 
-var WidgetSources = []string{SourceMetric, "view", SourceAppData, SourceAppPage}
+var WidgetSources = []string{SourceMetric, SourceView, SourceAppData, SourceAppPage}
 
 // builtSources can be saved today.
-var builtSources = []string{SourceMetric, SourceAppPage, SourceAppData}
+var builtSources = []string{SourceMetric, SourceView, SourceAppPage, SourceAppData}
 
 // checkWidget rejects a source or viz that does not exist and a query the
 // metrics API would refuse, so a saved widget never fails for its shape.
@@ -188,17 +188,17 @@ func checkWidget(f Fields, cur *Widget) error {
 	if v, ok, err := f.stringField("source"); err != nil {
 		return err
 	} else if ok {
-		if !contains(WidgetSources, v) {
-			return invalid("source must be one of %s", strings.Join(WidgetSources, ", "))
-		}
 		// The query means something else for each source, so a widget keeps
 		// its source; another one is a new widget. Repeating its own source
-		// (even one not built here) changes nothing.
+		// (even one this version does not know) changes nothing.
 		if cur != nil && v != cur.Source {
+			if !contains(WidgetSources, v) {
+				return invalid("source must be one of %s", strings.Join(WidgetSources, ", "))
+			}
 			return invalid("a widget's source cannot be changed; add a new widget instead")
 		}
-		if cur == nil && !contains(builtSources, v) {
-			return invalid("widgets with source %q are not available yet", v)
+		if cur == nil && !contains(WidgetSources, v) {
+			return invalid("source must be one of %s", strings.Join(WidgetSources, ", "))
 		}
 		source = v
 	}
@@ -213,6 +213,8 @@ func checkWidget(f Fields, cur *Widget) error {
 		return err
 	} else if ok && source == SourceAppPage && v != VizPage {
 		return invalid("an app page widget's viz is %q", VizPage)
+	} else if ok && source == SourceView && v != VizBoard {
+		return invalid("a view widget's viz is %q", VizBoard)
 	} else if ok && source == SourceAppData && !appDataVizAny(v) {
 		// Which of these suits the app's shape is checked by the API.
 		return invalid("an app data widget's viz must be one of number, bar, line, cumulative, split_bar, table, list, checklist")
@@ -223,6 +225,10 @@ func checkWidget(f Fields, cur *Widget) error {
 		switch source {
 		case SourceAppPage:
 			if _, err := ParseAppPageQuery(raw); err != nil {
+				return err
+			}
+		case SourceView:
+			if _, err := ParseViewQuery(raw); err != nil {
 				return err
 			}
 		case SourceAppData:
@@ -258,10 +264,14 @@ func (d *DB) GetWidget(ctx context.Context, id int64) (*Widget, error) {
 }
 
 func (d *DB) CreateWidget(ctx context.Context, f Fields) (*Widget, error) {
-	if src, _, _ := f.stringField("source"); src == SourceAppPage {
-		// An app's page draws itself: its viz is always "page".
-		if _, ok := f["viz"]; !ok {
+	src, _, _ := f.stringField("source")
+	if _, ok := f["viz"]; !ok {
+		// An app's page and a view's board draw themselves: one viz each.
+		switch src {
+		case SourceAppPage:
 			f["viz"], _ = json.Marshal(VizPage)
+		case SourceView:
+			f["viz"], _ = json.Marshal(VizBoard)
 		}
 	}
 	for _, req := range []string{"dashboard_id", "viz", "query"} {
@@ -275,6 +285,11 @@ func (d *DB) CreateWidget(ctx context.Context, f Fields) (*Widget, error) {
 	dash, _, _ := f.int64Field("dashboard_id")
 	if err := d.exists(ctx, "dashboard", dash); err != nil {
 		return nil, invalid("dashboard %d does not exist", dash)
+	}
+	if src == SourceView {
+		if err := d.checkViewExists(ctx, f); err != nil {
+			return nil, err
+		}
 	}
 	// A new widget goes below everything else unless placed.
 	if _, ok := f["y"]; !ok {
@@ -305,6 +320,11 @@ func (d *DB) PatchWidget(ctx context.Context, id int64, f Fields) (*Widget, erro
 	}
 	if err := checkWidget(f, cur); err != nil {
 		return nil, err
+	}
+	if cur.Source == SourceView {
+		if err := d.checkViewExists(ctx, f); err != nil {
+			return nil, err
+		}
 	}
 	if err := d.patchRow(ctx, "widget", id, f, widgetColumns); err != nil {
 		return nil, err

@@ -6,6 +6,7 @@ import { Button, Tooltip } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { useApp } from "../store";
 import { blend, palette, readable } from "../theme/palette";
+import { columnBg, columnBorder } from "./columnStyle";
 import type { CardConfig, ColumnLimit, Status, Task, View } from "../types";
 import { ColumnLimitControl } from "./ColumnLimitControl";
 import { DoneWindow } from "./DoneWindow";
@@ -13,15 +14,9 @@ import { TaskCard } from "./TaskCard";
 import { CardActionRail, CardContextMenu, useCardActions, type CardHandlers } from "./CardActions";
 import { Composer } from "./Composer";
 import { COLLAPSED_W, COL_MIN } from "./useBoardFit";
-import { useSurfaceOpacity, withAlpha } from "../views/ViewBackdrop";
+import { useSurfaceOpacity } from "../views/ViewBackdrop";
 import { pressable } from "../a11y";
 import { useTerms } from "../terms";
-
-// Columns sit half way between the page and the sunken well, with a faint
-// outline, so a mostly empty column reads as space rather than a dark slab.
-// Over a view's background image they let it show through (see ViewBackdrop).
-const columnBg = (surface: number) => withAlpha(blend(palette.panelDim, palette.bg, 0.5), surface);
-const columnBorder = (surface: number) => withAlpha(blend(palette.border, palette.bg, 0.6), Math.max(surface, 0.5));
 
 interface Props {
   status: Status;

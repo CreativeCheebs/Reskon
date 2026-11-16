@@ -444,6 +444,20 @@ How next-phase step 7 works, and why:
 - **Not usable from another site's page.** A browser cannot add the `Authorization` header to a cross-site request without Reskon's permission (which is never given), and a cross-site POST carries an `Origin` header that Reskon refuses (as for every other write). The plugin calls it from its own server, where neither applies.
 - **The pretend plugin** has `connect_url` (`/api/reskon/connect`): it keeps the address and key in memory (a restart forgets them; **Check again** hands a new one), and a successful tick through its test tick call then calls the hook. Its page already posted `changed` after a tick.
 
+### A board of open tasks on the dashboard (2026-11-16)
+How next-phase step 8 works, and why:
+- **A widget names a view, nothing more.** Its question is `{"view_id": 3}` and nothing else is allowed in it. The tab reads the tasks with the call the board already uses (`GET /api/tasks?view=:id`), so the view's filter is still worked out on the server and a change to the view changes the widget. No new endpoint.
+- **Columns mirror the view's own board, minus the finished ones.** The same on-board statuses, narrowed the same way by the view, in the same order, kept only when their category's behaviour is to do or in progress (never by a status's name). So a column the board keeps off (Backlog) is not on the widget either: "what I need to do now" is what is on the board, and Backlog is the parking place. If the owner wants Backlog shown, it is a one-line change.
+- **The same tasks as the board.** Snoozed tasks are left out, and blocked ones unless the view shows them, so a count on the widget matches the same column on the view's board. Cards come in the view's own card order.
+- **Cards show the title, priority, level and due date**, from one fixed small setting, not the view's own card settings (those would make cards too tall for a widget). Overdue, stalled, blocked and subtask counts still show because the card shows them regardless. Never the task key.
+- **20 cards a column, then "+N more".** The widget draws a page, not a whole backlog; **+N more** and an **Open view** button open the full view. The count in each column's header is always the true number.
+- **It ignores the dashboard's dates.** A board shows what is open now; picking a Day or Dates on the dashboard changes the charts but not the board.
+- **Read-only.** No dragging, so nothing on the dashboard can change a status by accident; moving stays on the board. Clicking a card opens the task panel, as on the board; edits made there show in the widget when the panel closes. While the dashboard is in edit mode a click does nothing, so it cannot fight the dragging of the widget itself.
+- **A view that is deleted later leaves the widget in place**, saying so and offering Edit to pick another; it is not removed behind the person's back. Saving a widget for a view that does not exist (or was deleted) is refused.
+- **Between devices the view id is translated**, like the ids inside a view's own filter. If this device has no view for the id it is kept as it came (not dropped): no view here has it, so the widget says its view is gone and never draws some other view, and the query stays whole, so an emptied query can never win a tie on a later sync and erase the other device's widget. Because the phone's own Go core does this translation, it is a phone change and the phone needed a new signed release.
+- **The chart type is always "board" and belongs to this source only**: no metric or app data can be drawn as one, and a board widget cannot take another.
+- **A source this version does not know** (from a newer Reskon) can still be moved, renamed and removed. Before, that worked because "view" was not built yet; now every planned source is built, so repeating a widget's own source is allowed before the list of known sources is checked.
+
 ## Open questions
 
 - **"Too low" on the ceiling question.** It only cancels a "too high" hold. Should it suggest more hours for the next days?

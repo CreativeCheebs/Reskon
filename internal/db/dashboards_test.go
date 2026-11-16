@@ -104,7 +104,7 @@ func TestWidgetSource(t *testing.T) {
 	if _, err := d.CreateWidget(ctx, base("metric")); err != nil {
 		t.Fatalf("source metric: %v", err)
 	}
-	for _, s := range []string{"view", "app_data", "app_page", "nonsense"} {
+	for _, s := range []string{"view", "app_data", "app_page", "nonsense"} { // each needs its own query and viz, so the metric ones fail
 		if _, err := d.CreateWidget(ctx, base(s)); err == nil {
 			t.Errorf("source %q accepted", s)
 		}
@@ -171,13 +171,13 @@ func TestAppPageWidget(t *testing.T) {
 	}
 	// A widget of a source not built here (from a newer device) can still be
 	// moved, but not changed.
-	if _, err := d.ExecContext(ctx, `UPDATE widget SET source = 'view' WHERE id = ?`, w.ID); err != nil {
+	if _, err := d.ExecContext(ctx, `UPDATE widget SET source = 'journal' WHERE id = ?`, w.ID); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := d.PatchWidget(ctx, w.ID, f(`{"y":3}`)); err != nil {
 		t.Errorf("move: %v", err)
 	}
-	if _, err := d.PatchWidget(ctx, w.ID, f(`{"source":"view","x":2}`)); err != nil {
+	if _, err := d.PatchWidget(ctx, w.ID, f(`{"source":"journal","x":2}`)); err != nil {
 		t.Errorf("move, repeating its own source: %v", err)
 	}
 	if _, err := d.PatchWidget(ctx, w.ID, f(`{"query":{"metric":"points"}}`)); err == nil {
