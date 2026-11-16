@@ -67,6 +67,11 @@ export function DatesPicker({
               Today
             </Button>
           )}
+          {!day.isSame(today.subtract(1, "day"), "day") && (
+            <Button size="small" type="link" onClick={() => onChange("day", span(today.subtract(1, "day"), today.subtract(1, "day")))}>
+              Yesterday
+            </Button>
+          )}
         </span>
       )}
       {mode === "dates" && (

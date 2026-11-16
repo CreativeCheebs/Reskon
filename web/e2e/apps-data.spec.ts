@@ -100,6 +100,17 @@ test("an app's data shows in Reskon's charts, and its kept copy when the app is 
     await bars.getByRole("button", { name: "Edit widget" }).click();
     await expect(dialog.getByRole("textbox", { name: "Title" })).toHaveValue("Done per day");
     await choose(page, "Show as", "Line");
+    // Yesterday is offered for an app's data too, and the live preview asks the app for exactly that day; then the 30 days this journey wants.
+    const y = new Date();
+    y.setDate(y.getDate() - 1);
+    const yesterday = `${y.getFullYear()}-${String(y.getMonth() + 1).padStart(2, "0")}-${String(y.getDate()).padStart(2, "0")}`;
+    const previewed = page.waitForResponse(async (r) => {
+      if (new URL(r.url()).pathname !== "/api/apps/data/preview") return false;
+      const b = await r.json().catch(() => ({}));
+      return b.from === yesterday && b.to === yesterday;
+    });
+    await choose(page, "Range", "Yesterday");
+    await previewed;
     await choose(page, "Range", "30 days");
     const d = new Date();
     d.setDate(d.getDate() - 29);

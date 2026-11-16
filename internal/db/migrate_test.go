@@ -118,8 +118,9 @@ func TestMigrations005And006PointsBackfillAndDashboards(t *testing.T) {
 	var dashboards, widgets int
 	d.QueryRow(`SELECT COUNT(*) FROM dashboard WHERE is_builtin = 1`).Scan(&dashboards)
 	d.QueryRow(`SELECT COUNT(DISTINCT dashboard_id) FROM widget WHERE deleted_at IS NULL`).Scan(&widgets)
-	if dashboards != 3 || widgets != 3 {
-		t.Errorf("dashboards = %d, with widgets = %d; want 3 and 3", dashboards, widgets)
+	// Today, This month, The year, and Home from migration 020.
+	if dashboards != 4 || widgets != 4 {
+		t.Errorf("dashboards = %d, with widgets = %d; want 4 and 4", dashboards, widgets)
 	}
 	// No live widget still uses work_points or a direction filter, and the
 	// new all-types widgets are there (two from 006, two running totals

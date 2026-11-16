@@ -23,7 +23,7 @@ import (
 type MetricQuery struct {
 	Metric     string              `json:"metric"`
 	Group      string              `json:"group"`
-	Range      string              `json:"range"` // today, 7d, 30d, 90d, 1y, month, all
+	Range      string              `json:"range"` // today, yesterday, 7d, 30d, 90d, 1y, month, all
 	From       string              `json:"from"`  // explicit YYYY-MM-DD, overrides range
 	To         string              `json:"to"`
 	Filters    map[string][]string `json:"filters"`
@@ -66,6 +66,7 @@ type MetricResult struct {
 	Group      string         `json:"group"`
 	From       string         `json:"from"`
 	To         string         `json:"to"`
+	Ranged     bool           `json:"ranged"` // false: the range was ignored (a current state); a widget does not say it shows dates then
 	Points     []MetricPoint  `json:"points"`
 	Series     []MetricSeries `json:"series"`
 	Reduce     string         `json:"reduce"`
@@ -127,7 +128,7 @@ type MetricCatalog struct {
 // WidgetVizzes are the visualisations a widget may use.
 var WidgetVizzes = []string{"bar", "line", "cumulative", "number", "list", "bands", "split_bar", "small_multiples", "table", "pie", "share_bar"}
 
-var metricRanges = []string{"today", "7d", "30d", "90d", "1y", "month", "all"}
+var metricRanges = []string{"today", "yesterday", "7d", "30d", "90d", "1y", "month", "all"}
 var metricReduces = []string{"sum", "nonzero", "max", "last", "count"}
 
 func (d *DB) MetricCatalog() *MetricCatalog {

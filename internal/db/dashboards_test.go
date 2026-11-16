@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 )
@@ -13,15 +14,23 @@ func TestDefaultDashboardsAndLayout(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(all) != 3 || all[0].Name != "Today" || all[1].Name != "This month" || all[2].Name != "The year" {
-		t.Fatalf("dashboards = %+v", all)
+	names := []string{}
+	for _, x := range all {
+		names = append(names, x.Name)
 	}
-	// Every seeded widget's query is one the metrics API accepts and runs.
+	if strings.Join(names, "|") != "Home|Today|This month|The year" {
+		t.Fatalf("dashboards = %v", names)
+	}
+	// Every seeded metric widget's query is one the metrics API accepts and
+	// runs (Home's board names a view and is checked in home_test.go).
 	for _, x := range all {
 		if len(x.Widgets) == 0 {
 			t.Errorf("%s has no widgets", x.Name)
 		}
 		for _, w := range x.Widgets {
+			if w.Source != SourceMetric {
+				continue
+			}
 			q, err := ParseWidgetQuery(w.Query)
 			if err != nil {
 				t.Fatalf("%s/%v: %v", x.Name, *w.Title, err)
@@ -34,7 +43,7 @@ func TestDefaultDashboardsAndLayout(t *testing.T) {
 
 	// A bulk layout save moves widgets and sets the phone order to the
 	// grid's reading order.
-	month := all[1]
+	month := all[2]
 	a, b := month.Widgets[0], month.Widgets[1]
 	got, err := d.SaveLayout(ctx, month.ID, []LayoutItem{{ID: a.ID, X: 0, Y: 600, W: 6, H: 3}, {ID: b.ID, X: 0, Y: 0, W: 12, H: 4}})
 	if err != nil {
@@ -82,7 +91,8 @@ func TestWidgetSource(t *testing.T) {
 	}
 	for _, x := range all {
 		for _, w := range x.Widgets {
-			if w.Source != SourceMetric {
+			// Only Home's board is not a metric.
+			if w.Source != SourceMetric && !(x.Name == "Home" && w.Source == SourceView) {
 				t.Errorf("seeded widget %d has source %q", w.ID, w.Source)
 			}
 		}

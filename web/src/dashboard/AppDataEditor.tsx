@@ -28,7 +28,7 @@ const SHAPE_VIZZES: Record<NonNullable<AppWidget["shape"]>, Viz[]> = {
 };
 
 /** Date ranges an app can be asked for: the metrics' ranges, without "All". */
-const RANGES = ["today", "7d", "30d", "90d", "1y", "month"];
+const RANGES = ["today", "yesterday", "7d", "30d", "90d", "1y", "month"];
 
 const GROUP_LABEL: Record<string, string> = { day: "Day", week: "Week", month: "Month" };
 

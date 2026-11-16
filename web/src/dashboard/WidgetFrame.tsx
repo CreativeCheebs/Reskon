@@ -8,6 +8,7 @@ import { MIN_WIDTH, type DateOverride, type MetricResult, type Widget } from "./
 import { VIZZES } from "./viz/registry";
 import { AppPageBody } from "./AppPageBody";
 import { AppDataNote } from "./AppDataNote";
+import { DatesNote } from "./DatesNote";
 import { ViewBoardBody } from "./ViewBoardBody";
 import type { Task } from "../types";
 import { onAppChanged } from "../apps/appChanged";
@@ -269,6 +270,8 @@ export const WidgetFrame = memo(function WidgetFrame({
         <>
           <VizBody widget={widget} res={res} />
           {appData && <AppDataNote res={res} />}
+          {/* An app's answer carries no "ranged" flag; its widget only asks with dates when it has a range. */}
+          {over && dates && (appData || res.ranged !== false) && <DatesNote dates={dates} />}
         </>
       ) : (
         <div role="status" aria-label="Loading widget" style={{ display: "grid", placeItems: "center", flex: 1 }}><Spin size="small" /></div>

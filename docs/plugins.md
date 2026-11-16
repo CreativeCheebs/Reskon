@@ -179,7 +179,7 @@ GET /api/reskon/feeds/done-per-day?from=2026-11-09&to=2026-11-15&group=day&tz=As
 Authorization: Bearer <token>
 ```
 
-- **`from`, `to`**: whole days, `YYYY-MM-DD`, both included. Only sent if `ranged` is true. The person picks today, 7, 30 or 90 days, a year or this month, counted back from their today; or the dashboard's own dates, at most 400 days apart.
+- **`from`, `to`**: whole days, `YYYY-MM-DD`, both included. Only sent if `ranged` is true. The person picks today, yesterday (the one day before their today), 7, 30 or 90 days, a year or this month, counted back from their today; or the dashboard's own dates, at most 400 days apart.
 - **`group`**: one of the widget's `groups`, the first if the person chose none. Only sent if the widget lists `groups`.
 - **`tz`**: the person's time zone, for example `Asia/Kolkata` (`UTC` until their browser has told Reskon). Use it for "today" and day boundaries.
 

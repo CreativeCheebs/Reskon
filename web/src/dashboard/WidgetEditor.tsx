@@ -231,11 +231,12 @@ function MetricWidgetEditor({
       {switcher}
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 20 }}>
         <Form layout="vertical" size="small">
-          <Form.Item label="Title" {...item}>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={metric?.label} />
+          <Form.Item label="Title" htmlFor="metric-title" {...item}>
+            <Input id="metric-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={metric?.label} />
           </Form.Item>
-          <Form.Item label="Measure" {...item} extra={metric?.description}>
+          <Form.Item label="Measure" htmlFor="metric-measure" {...item} extra={metric?.description}>
             <Select
+              id="metric-measure"
               value={query.metric}
               onChange={pickMetric}
               options={catalog?.metrics.map((m) => ({ value: m.name, label: m.label }))}
@@ -243,11 +244,12 @@ function MetricWidgetEditor({
             />
           </Form.Item>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 12px" }}>
-            <Form.Item label="Show as" {...item}>
-              <Select value={viz} onChange={pickViz} options={(catalog?.vizzes ?? []).map((v) => ({ value: v, label: VIZ_LABEL[v] }))} />
+            <Form.Item label="Show as" htmlFor="metric-viz" {...item}>
+              <Select id="metric-viz" value={viz} onChange={pickViz} options={(catalog?.vizzes ?? []).map((v) => ({ value: v, label: VIZ_LABEL[v] }))} />
             </Form.Item>
-            <Form.Item label="Group by" {...item}>
+            <Form.Item label="Group by" htmlFor="metric-group" {...item}>
               <Select
+                id="metric-group"
                 value={query.group}
                 onChange={(group) =>
                   setQuery({ ...query, group, split: TIME_GROUPS.concat("task").includes(group) && group !== query.split ? query.split : null })
@@ -256,8 +258,9 @@ function MetricWidgetEditor({
               />
             </Form.Item>
             {metric?.ranged && (
-              <Form.Item label="Range" {...item}>
+              <Form.Item label="Range" htmlFor="metric-range" {...item}>
                 <Select
+                  id="metric-range"
                   value={query.range ?? "30d"}
                   onChange={(range) => setQuery({ ...query, range })}
                   options={catalog?.ranges.map((r) => ({ value: r, label: RANGE_LABEL[r] ?? r }))}
@@ -265,8 +268,9 @@ function MetricWidgetEditor({
               </Form.Item>
             )}
             {CHART_VIZZES.includes(viz) && (metric?.splits?.length ?? 0) > 0 && TIME_GROUPS.concat("task").includes(query.group ?? "") && (
-              <Form.Item label="Split by" {...item}>
+              <Form.Item label="Split by" htmlFor="metric-split" {...item}>
                 <Select
+                  id="metric-split"
                   allowClear
                   placeholder="No split"
                   value={query.split ?? undefined}
@@ -283,8 +287,9 @@ function MetricWidgetEditor({
               </Form.Item>
             )}
             {viz === "number" && (
-              <Form.Item label="Figure" {...item}>
+              <Form.Item label="Figure" htmlFor="metric-figure" {...item}>
                 <Select
+                  id="metric-figure"
                   value={query.reduce ?? ""}
                   onChange={(reduce) => setQuery({ ...query, reduce: reduce || undefined })}
                   options={[
@@ -299,8 +304,9 @@ function MetricWidgetEditor({
               </Form.Item>
             )}
             {CHART_VIZZES.includes(viz) && !query.split && (
-              <Form.Item label="Colour" {...item}>
+              <Form.Item label="Colour" htmlFor="metric-colour" {...item}>
                 <Select
+                  id="metric-colour"
                   value={options.color ?? "accent"}
                   onChange={(color) => setOptions({ ...options, color })}
                   options={COLORS.map((c) => ({
@@ -317,44 +323,44 @@ function MetricWidgetEditor({
             )}
           </div>
           {metric?.filters?.includes("area") && (
-            <Form.Item label="Areas" {...item}>
-              <Select mode="multiple" allowClear placeholder="All" value={filters.area?.map(Number)} onChange={(v) => setFilter("area", v)}
+            <Form.Item label="Areas" htmlFor="metric-areas" {...item}>
+              <Select id="metric-areas" mode="multiple" allowClear placeholder="All" value={filters.area?.map(Number)} onChange={(v) => setFilter("area", v)}
                 options={boot.areas.map((a) => ({ value: a.id, label: a.name }))} />
             </Form.Item>
           )}
           {metric?.filters?.includes("energy_type") && (
-            <Form.Item label="Energy types" {...item}>
-              <Select mode="multiple" allowClear placeholder="All" value={filters.energy_type?.map(Number)} onChange={(v) => setFilter("energy_type", v)}
+            <Form.Item label="Energy types" htmlFor="metric-energy" {...item}>
+              <Select id="metric-energy" mode="multiple" allowClear placeholder="All" value={filters.energy_type?.map(Number)} onChange={(v) => setFilter("energy_type", v)}
                 options={boot.energy_types.map((e) => ({ value: e.id, label: e.name }))} />
             </Form.Item>
           )}
           {metric?.filters?.includes("subtype") && boot.subtypes.length > 0 && (
-            <Form.Item label="Subtypes" {...item}>
-              <Select mode="multiple" allowClear placeholder="All" value={filters.subtype?.map(Number)} onChange={(v) => setFilter("subtype", v)}
+            <Form.Item label="Subtypes" htmlFor="metric-subtypes" {...item}>
+              <Select id="metric-subtypes" mode="multiple" allowClear placeholder="All" value={filters.subtype?.map(Number)} onChange={(v) => setFilter("subtype", v)}
                 options={boot.subtypes.map((s) => ({ value: s.id, label: s.name }))} />
             </Form.Item>
           )}
           {metric?.filters?.includes("tag") && (
-            <Form.Item label="Tags" {...item}>
-              <Select mode="multiple" allowClear placeholder="All" value={filters.tag?.map(Number)} onChange={(v) => setFilter("tag", v)}
+            <Form.Item label="Tags" htmlFor="metric-tags" {...item}>
+              <Select id="metric-tags" mode="multiple" allowClear placeholder="All" value={filters.tag?.map(Number)} onChange={(v) => setFilter("tag", v)}
                 options={[{ value: 0, label: "No tags" }, ...tags.map((g) => ({ value: g.id, label: g.name }))]} />
             </Form.Item>
           )}
           {metric?.filters?.includes("status") && (
-            <Form.Item label="Statuses" {...item}>
-              <Select mode="multiple" allowClear placeholder="All" value={filters.status?.map(Number)} onChange={(v) => setFilter("status", v)}
+            <Form.Item label="Statuses" htmlFor="metric-statuses" {...item}>
+              <Select id="metric-statuses" mode="multiple" allowClear placeholder="All" value={filters.status?.map(Number)} onChange={(v) => setFilter("status", v)}
                 options={boot.statuses.map((s) => ({ value: s.id, label: s.name }))} />
             </Form.Item>
           )}
           {metric?.filters?.includes("kind") && (
-            <Form.Item label="Kind" {...item}>
-              <Select mode="multiple" allowClear placeholder="All" value={filters.kind as string[] | undefined} onChange={(v) => setFilter("kind", v)}
+            <Form.Item label="Kind" htmlFor="metric-kind" {...item}>
+              <Select id="metric-kind" mode="multiple" allowClear placeholder="All" value={filters.kind as string[] | undefined} onChange={(v) => setFilter("kind", v)}
                 options={kindValues.map((k) => ({ value: k, label: k === "task" ? T.task : k }))} />
             </Form.Item>
           )}
           {metric?.filters?.includes("task_id") && (
-            <Form.Item label={T.Tasks} {...item}>
-              <Select mode="multiple" allowClear showSearch optionFilterProp="label" placeholder="All" value={filters.task_id?.map(Number)}
+            <Form.Item label={T.Tasks} htmlFor="metric-tasks" {...item}>
+              <Select id="metric-tasks" mode="multiple" allowClear showSearch optionFilterProp="label" placeholder="All" value={filters.task_id?.map(Number)}
                 onChange={(v) => setFilter("task_id", v)} options={tasks.map((t) => ({ value: t.id, label: t.title }))} />
             </Form.Item>
           )}

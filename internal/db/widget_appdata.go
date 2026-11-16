@@ -47,7 +47,7 @@ func appDataVizAny(v string) bool {
 // AppDataRanges are the date ranges a feed can be asked for: the metrics'
 // ranges except "all", which means "since your first Reskon record" and so
 // nothing to an app.
-var AppDataRanges = []string{"today", "7d", "30d", "90d", "1y", "month"}
+var AppDataRanges = []string{"today", "yesterday", "7d", "30d", "90d", "1y", "month"}
 
 // AppDataQuery is an app data widget's query, e.g.
 // {"app":"habits","widget":"last_days","range":"7d","group":"day"}.

@@ -78,6 +78,11 @@ func (d *DB) resolveRange(ctx context.Context, q *MetricQuery, today string) (st
 	switch q.Range {
 	case "today":
 		return today, today, nil
+	case "yesterday":
+		// The day before the person's own today (not UTC's), so it is
+		// right even in the hours when their date and UTC's differ.
+		y := addDays(today, -1)
+		return y, y, nil
 	case "7d", "30d", "90d":
 		n, _ := strconv.Atoi(q.Range[:len(q.Range)-1])
 		return addDays(today, -(n - 1)), today, nil
@@ -210,7 +215,7 @@ func (r *metricRun) lookupKey(kind string, id int64, asSplit bool) string {
 func (r *metricRun) finish() *MetricResult {
 	out := &MetricResult{
 		Metric: r.def.Name, Unit: r.def.Unit, Group: r.q.Group,
-		From: r.from, To: r.to, Points: []MetricPoint{}, Series: []MetricSeries{},
+		From: r.from, To: r.to, Ranged: r.def.Ranged, Points: []MetricPoint{}, Series: []MetricSeries{},
 		Spans: r.spans, Meta: r.meta, Reduce: r.q.Reduce, Cumulative: r.q.Cumulative,
 	}
 	if out.Reduce == "" {

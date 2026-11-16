@@ -90,6 +90,12 @@ func TestDataFreshThenStale(t *testing.T) {
 		t.Errorf("dates: %v %v", last(), err)
 	}
 	r.From, r.To = "", ""
+	// "Yesterday" asks for the one day before the person's today.
+	r.Range, r.Today = "yesterday", "2026-12-01"
+	if _, err := s.Data(ctx, c, r); err != nil || last().Get("from") != "2026-11-30" || last().Get("to") != "2026-11-30" {
+		t.Errorf("yesterday: %v %v", last(), err)
+	}
+	r.Range, r.Today = "7d", today
 
 	// A feed with no range and no groups is asked only for tz.
 	list := req("today_list", "checklist")

@@ -19,6 +19,7 @@ export const VIZ_LABEL: Record<Viz, string> = {
 
 export const RANGE_LABEL: Record<string, string> = {
   today: "Today",
+  yesterday: "Yesterday",
   "7d": "7 days",
   "30d": "30 days",
   "90d": "90 days",

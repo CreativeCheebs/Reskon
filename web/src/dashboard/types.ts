@@ -96,6 +96,8 @@ export interface MetricResult {
   group: string;
   from: string;
   to: string;
+  /** False: the metric ignores its range (a current state), so no dates are claimed. */
+  ranged?: boolean;
   points: MetricPoint[];
   series: MetricSeries[];
   reduce: string;
