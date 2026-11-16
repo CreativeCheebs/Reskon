@@ -484,6 +484,11 @@ How next-phase step 9 works, and why:
 - **The journal widget saves only a range** (Today, Yesterday, 7 days, 30 days, This month; no 90 days or year, since every session is listed), and its chart type is always `journal`. Like the board it takes no filter. At most the newest 62 days with sessions are listed, and it says so when older ones were cut off. The Sessions screen's copy is limited only by the 366-day cap, and a day beyond it is fetched alone when clicked. No migration: the source column already exists (019), and the phone's core accepts the new source; the phone shows it as "Shown in the web app".
 - **Seeded dashboards are not changed.** Home has no journal; the owner adds one if wanted.
 
+### Widgets that reach a server before it is upgraded (2026-11-16)
+On the live server, Home arrived from a phone (already on the newer core) while the server was still on 0.3.0. That server had no `source` column, so it kept the Board without its kind and with the phone's sync id for its view; after the upgrade the Board would have been a broken "metric" widget. Migration 021 repairs this kind of row on every device: the kind is read back from what only that kind has (viz `board`, `page` or `journal`, or a query naming an `app` and `widget`), and a Board's view sync id becomes this device's view id when it is known. Lesson for later: upgrade the server before the phones when a release adds widget kinds.
+
+---
+
 ## Open questions
 
 - **"Too low" on the ceiling question.** It only cancels a "too high" hold. Should it suggest more hours for the next days?

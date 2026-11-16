@@ -17,6 +17,13 @@ import (
 // place. seed may add rows; the file is then closed and returned.
 func openBefore020(t *testing.T, seed func(*sql.DB)) string {
 	t.Helper()
+	return openBefore(t, "020_", seed)
+}
+
+// openBefore is openBefore020 for any migration: every migration whose file
+// name sorts before first is applied, none from first on.
+func openBefore(t *testing.T, first string, seed func(*sql.DB)) string {
+	t.Helper()
 	path := filepath.Join(t.TempDir(), "old.db")
 	old := fstest.MapFS{}
 	entries, err := migrationFS.ReadDir("migrations")
@@ -24,7 +31,7 @@ func openBefore020(t *testing.T, seed func(*sql.DB)) string {
 		t.Fatal(err)
 	}
 	for _, e := range entries {
-		if strings.HasPrefix(e.Name(), "020_") {
+		if e.Name() >= first {
 			continue
 		}
 		body, err := migrationFS.ReadFile("migrations/" + e.Name())
