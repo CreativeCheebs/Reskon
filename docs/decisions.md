@@ -492,6 +492,12 @@ The owner wanted the dashboard's top for widgets. The decisions:
 - **Toolbar position** is the account setting `dashboard_toolbar` ("top" default, "left"), checked on the server like the other settings (only those two words). It is web only, so the phone ignores it. A narrow window keeps the top bar. Left is a 262px column (wide enough for the date range picker), with the tabs stacked.
 - **The phone** shows the new widget as "Shown in the web app", like every non-metric widget; its core accepts the source (a sync test checks).
 
+### Quick actions on the board widget's cards (2026-11-17)
+The board widget already drew the board's own card component, but without the card's hover buttons and right-click menu. It now uses the board's real action code (`useCardActions`, the rail and the context menu), not a copy, so Settings › Card actions applies to it and any later change to the actions reaches both.
+- **Every change reloads the widget** instead of patching the card in place: the server decides where the task belongs now (the view's filter, the open columns, snoozing), as it does for every other change to a task.
+- **No dragging.** Not asked for; Move to does the job, and the widget's cards stay free of drag handling so a drag in edit mode only moves the widget.
+- **Off while editing the layout,** as the card's click, Open view and +N more already are.
+
 ### Widgets that reach a server before it is upgraded (2026-11-16)
 On the live server, Home arrived from a phone (already on the newer core) while the server was still on 0.3.0. That server had no `source` column, so it kept the Board without its kind and with the phone's sync id for its view; after the upgrade the Board would have been a broken "metric" widget. Migration 021 repairs this kind of row on every device: the kind is read back from what only that kind has (viz `board`, `page` or `journal`, or a query naming an `app` and `widget`), and a Board's view sync id becomes this device's view id when it is known. Lesson for later: upgrade the server before the phones when a release adds widget kinds.
 
