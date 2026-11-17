@@ -577,6 +577,8 @@ Before snoozing a task you can see how busy the day it would return is. Next to 
 
 - **The card action "Note" is now called "Edit description" (owner decision).** It shows under that name on the card's hover button and tooltip, in the right-click menu and in Settings › Card actions (web and phone). The saved action id stays `note`, so anyone's saved Card actions settings keep working unchanged.
 
+- **Label text darkens on light themes.** Chips and labels (priority, area, column counts) put their colour as text on a faint tint of itself. The text was only ever lightened, so a yellow or grey priority was nearly invisible in the Light theme. It now moves toward black on a light surface and toward white on a dark one, only as far as needed for 4.5:1 contrast.
+
 ## Open questions
 
 - **"Too low" on the ceiling question.** It only cancels a "too high" hold. Should it suggest more hours for the next days?

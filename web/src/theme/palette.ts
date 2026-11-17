@@ -126,13 +126,15 @@ export function isDarkPalette(c: { bg: string } = palette): boolean {
   return contrast(c.bg, "#000000") < contrast(c.bg, "#ffffff");
 }
 
-/** The colour, lightened toward white only as far as needed to reach
- *  `min` contrast on bg (WCAG AA for text is 4.5). Dark user-chosen
- *  colours such as Backlog grey stay recognisable but become readable. */
+/** The colour, moved toward white on a dark bg (toward black on a light one)
+ *  only as far as needed to reach `min` contrast on bg (WCAG AA for text is
+ *  4.5). Colours such as Backlog grey or a yellow priority stay recognisable
+ *  but become readable in every theme. */
 export function readable(color: string, bg: string, min = 4.5): string {
+  const toward = contrast(bg, "#000000") < contrast(bg, "#ffffff") ? "#ffffff" : "#000000";
   for (let step = 0; step <= 20; step++) {
-    const c = blend("#ffffff", color, step / 20);
+    const c = blend(toward, color, step / 20);
     if (contrast(c, bg) >= min) return c;
   }
-  return "#ffffff";
+  return toward;
 }
