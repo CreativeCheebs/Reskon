@@ -14,27 +14,42 @@ import (
 // stored date is left as it was). A move into a done or cancelled status
 // clears it.
 //
-// The `snooze` setting caps how many days a task can be snoozed for.
+// The `snooze` setting caps how many days a task can be snoozed for, and
+// holds the list of ready-made intervals (in days) the snooze menu offers,
+// in the order the user chose.
 
 // DefaultSnoozeMaxDays is the cap when the setting is absent.
-const DefaultSnoozeMaxDays = 30
+const DefaultSnoozeMaxDays = 90
+
+// DefaultSnoozeIntervals is the menu when the setting has no list: tomorrow,
+// 2 and 3 days, 1 and 2 weeks, 1, 2 and 3 months.
+var DefaultSnoozeIntervals = []int{1, 2, 3, 7, 14, 30, 60, 90}
+
+// MaxSnoozeIntervals is how many intervals the menu can hold.
+const MaxSnoozeIntervals = 16
 
 // SnoozeRules is the `snooze` setting.
 type SnoozeRules struct {
-	MaxDays int `json:"max_days"`
+	MaxDays   int   `json:"max_days"`
+	Intervals []int `json:"intervals"`
 }
 
 func loadSnoozeRules(ctx context.Context, q querier) (SnoozeRules, error) {
 	r := SnoozeRules{MaxDays: DefaultSnoozeMaxDays}
 	var v string
 	err := q.QueryRowContext(ctx, `SELECT value FROM setting WHERE key = 'snooze'`).Scan(&v)
-	if err == sql.ErrNoRows {
-		return r, nil
-	}
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		return r, err
 	}
-	return r, json.Unmarshal([]byte(v), &r)
+	if err == nil {
+		if err := json.Unmarshal([]byte(v), &r); err != nil {
+			return r, err
+		}
+	}
+	if r.Intervals == nil {
+		r.Intervals = DefaultSnoozeIntervals
+	}
+	return r, nil
 }
 
 // checkSnoozeRules validates a `snooze` value before it is saved.
@@ -45,6 +60,19 @@ func checkSnoozeRules(value json.RawMessage) error {
 	}
 	if r.MaxDays < 1 || r.MaxDays > 365 {
 		return invalid("snooze: max_days must be from 1 to 365")
+	}
+	if len(r.Intervals) > MaxSnoozeIntervals {
+		return invalid("snooze: at most %d intervals", MaxSnoozeIntervals)
+	}
+	seen := map[int]bool{}
+	for _, n := range r.Intervals {
+		if n < 1 || n > 365 {
+			return invalid("snooze: each interval must be from 1 to 365 days")
+		}
+		if seen[n] {
+			return invalid("snooze: %d days is listed twice", n)
+		}
+		seen[n] = true
 	}
 	return nil
 }

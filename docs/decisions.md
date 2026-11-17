@@ -489,6 +489,12 @@ On the live server, Home arrived from a phone (already on the newer core) while 
 
 ---
 
+### Snooze intervals you can edit (2026-11-17)
+
+The snooze menu's ready-made choices are now a list in the `snooze` setting (`intervals`, whole days, in the user's order), beside the existing `max_days`. No migration: the setting is a JSON value, and a setting saved before this (only `max_days`) simply gets the default list. The default list is larger (1, 2, 3, 7, 14, 30, 60, 90 days) and the default longest snooze went from 30 to 90 so the longer choices show; anyone who had saved their own cap keeps it. Choices over the cap are kept in the list but not shown. A date picker in the menu covers any other day (the client turns the date into a number of days, the server still only accepts days). "Later today" was left out on purpose: a snooze is a date, not a time, so it cannot hide a task for a few hours. Add it only if the owner wants times in snoozes. The phone's own snooze menu is not changed by this step.
+
+---
+
 ## Open questions
 
 - **"Too low" on the ceiling question.** It only cancels a "too high" hold. Should it suggest more hours for the next days?

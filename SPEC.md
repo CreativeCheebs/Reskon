@@ -150,7 +150,7 @@ These are never stored. They are worked out every time a task is read, from the 
 
 ### 4.12 Snooze
 
-- Snoozing hides an open task for some days without changing its status. Only *to do* and *in progress* tasks can be snoozed (Backlog included). The longest snooze is a setting (default 30 days, 1–365).
+- Snoozing hides an open task for some days without changing its status. Only *to do* and *in progress* tasks can be snoozed (Backlog included). The longest snooze is a setting (default 90 days, 1–365). The snooze menu (on the task panel, the card's Snooze button and the right-click menu) offers a list of ready-made intervals and a date picker for any other day up to the longest snooze. Settings › Snooze lets you add, remove and reorder the intervals (up to 16, each 1–365 days; default: Tomorrow, 2 days, 3 days, 1 week, 2 weeks, 1 month, 2 months, 3 months). Snoozing works in whole days, so there is no "later today". Both settings are kept in your account, not in the browser.
 - Snoozed tasks are listed under a **Snoozed** button with the day each comes back, and a **Wake now**.
 - A task can also be snoozed **until its blockers are done**.
 - Waking is worked out from the date, so nothing runs on a timer. Moving a task to *done* or *cancelled* clears its snooze.

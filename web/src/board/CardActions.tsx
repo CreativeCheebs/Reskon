@@ -15,7 +15,8 @@ import { useApp } from "../store";
 import { today } from "../format";
 import { SessionModal } from "../sessions/SessionModal";
 import { deleteTaskAsking } from "../task/deleteTask";
-import { formatWakeDate, snoozeMaxDays, snoozeTask } from "../task/SnoozeButton";
+import { formatWakeDate, snoozeTask } from "../task/SnoozeButton";
+import { intervalLabel, snoozeIntervals } from "../task/snoozeIntervals";
 import type { Task } from "../types";
 import { makeTerms, termWords, useTerms, type Terms } from "../terms";
 
@@ -69,21 +70,12 @@ export interface CardHandlers {
 
 const touch = () => typeof window !== "undefined" && window.matchMedia?.("(hover: none)").matches;
 
-const SNOOZE_DAYS = [1, 3, 7, 14, 30];
-
 /** The local date n days from today, YYYY-MM-DD. */
 function daysFromToday(n: number): string {
   const [y, m, d] = today().split("-").map(Number);
   const t = new Date(y, m - 1, d + n);
   const pad = (x: number) => String(x).padStart(2, "0");
   return `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())}`;
-}
-
-function snoozeLabel(n: number): string {
-  if (n === 1) return "1 day";
-  if (n === 7) return "1 week";
-  if (n === 14) return "2 weeks";
-  return `${n} days`;
 }
 
 type Item = NonNullable<MenuProps["items"]>[number];
@@ -125,7 +117,6 @@ export function useCardActions(task: Task, { onOpen, onChanged, onDeleted }: Car
   // Logging time changes the card's logged hours and time bar.
   const reload = () => run(async () => onChanged(await api.get<Task>(`/tasks/${task.id}`)));
 
-  const max = snoozeMaxDays(app.boot.settings);
   const statuses = [...app.boot.statuses].sort((a, b) => a.position - b.position);
   // The choices under Move to and Snooze, as a submenu or a rail dropdown.
   const choices: Record<"move" | "snooze", Item[]> = {
@@ -136,9 +127,9 @@ export function useCardActions(task: Task, { onOpen, onChanged, onDeleted }: Car
       disabled: s.id === task.status_id,
       extra: s.id === task.status_id ? "Now" : undefined,
     })),
-    snooze: [...new Set([...SNOOZE_DAYS.filter((n) => n < max), max])].map((n) => ({
+    snooze: snoozeIntervals(app.boot.settings).map((n) => ({
       key: `snooze:${n}`,
-      label: snoozeLabel(n),
+      label: intervalLabel(n),
       extra: formatWakeDate(daysFromToday(n)),
     })),
   };
