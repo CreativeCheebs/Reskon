@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, Form, InputNumber, List, Space, Tooltip } from "antd";
 import { ArrowDownOutlined, ArrowUpOutlined, DeleteOutlined } from "@ant-design/icons";
 import { autosave } from "../theme/feedback";
@@ -22,15 +22,35 @@ export function SnoozeSettings() {
   const [max, setMax] = useState(snoozeMaxDays(boot.settings));
   const [list, setList] = useState<number[]>(saved?.intervals ?? DEFAULT_SNOOZE_INTERVALS);
   const [adding, setAdding] = useState<number | null>(null);
+  const [draft, setDraft] = useState<number | null>(max);
+
+  // Follow the stored setting when it changes elsewhere (another tab, a
+  // reconnect), so a later save here never overwrites newer values.
+  const storedKey = JSON.stringify(boot.settings.snooze ?? null);
+  useEffect(() => {
+    const s = boot.settings.snooze as { intervals?: number[] } | undefined;
+    setMax(snoozeMaxDays(boot.settings));
+    setDraft(snoozeMaxDays(boot.settings));
+    setList(s?.intervals ?? DEFAULT_SNOOZE_INTERVALS);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storedKey]);
 
   const save = (nextMax: number, nextList: number[]) => {
     const [bm, bl] = [max, list];
     setMax(nextMax);
+    setDraft(nextMax);
     setList(nextList);
     autosave(saveSetting("snooze", { max_days: nextMax, intervals: nextList })).catch(() => {
       setMax(bm);
+      setDraft(bm);
       setList(bl);
     });
+  };
+  // A typed value is saved when the box loses focus or Enter is pressed, not
+  // on every keystroke; an empty or out-of-range box goes back to the saved one.
+  const commitMax = () => {
+    if (draft && draft >= 1 && draft <= 365 && draft !== max) save(draft, list);
+    else setDraft(max);
   };
   const move = (i: number, by: number) => {
     const next = [...list];
@@ -51,8 +71,10 @@ export function SnoozeSettings() {
             min={1}
             max={365}
             precision={0}
-            value={max}
-            onChange={(v) => v && v !== max && save(v, list)}
+            value={draft}
+            onChange={setDraft}
+            onBlur={commitMax}
+            onPressEnter={commitMax}
             addonAfter="days"
             style={{ width: 160 }}
           />

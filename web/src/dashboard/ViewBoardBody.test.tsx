@@ -116,6 +116,13 @@ describe("ViewBoardBody", () => {
     expect(screen.getByRole("dialog")).toBeTruthy();
   });
 
+  it("keeps the action buttons out of the card's own button", () => {
+    render(<ViewBoardBody view={view()} tasks={tasks} editing={false} refetch={() => undefined} />);
+    const toolbar = screen.getAllByRole("toolbar", { name: "Card actions" })[0];
+    expect(toolbar.closest("[role=button]")).toBeNull();
+    expect(screen.getAllByRole("button")[0].contains(toolbar)).toBe(false);
+  });
+
   it("opens the task panel from Space too", () => {
     render(<ViewBoardBody view={view()} tasks={tasks} editing={false} refetch={() => undefined} />);
     fireEvent.keyDown(screen.getAllByRole("button")[0], { key: " " });

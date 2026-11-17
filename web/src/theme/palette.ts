@@ -108,6 +108,12 @@ export function contrast(a: string, b: string): number {
   return (hi + 0.05) / (lo + 0.05);
 }
 
+/** Black or white, whichever reads better on a solid fill of this colour
+ *  (the text on a stacked bar segment). */
+export function textOn(fill: string): string {
+  return contrast("#000000", fill) >= contrast("#ffffff", fill) ? "#000000" : "#ffffff";
+}
+
 /** fg blended over bg at alpha, as an opaque #rrggbb. */
 export function blend(fg: string, bg: string, alpha: number): string {
   const f = channels(fg);

@@ -128,7 +128,7 @@ export function useCardActions(task: Task, { onOpen, onChanged, onDeleted }: Car
       disabled: s.id === task.status_id,
       extra: s.id === task.status_id ? "Now" : undefined,
     })),
-    snooze: [
+    snooze: intervals.length === 0 ? [] : [
       {
         type: "group",
         key: "snooze-head",

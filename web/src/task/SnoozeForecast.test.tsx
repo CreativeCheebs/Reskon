@@ -16,7 +16,7 @@ vi.mock("../store", () => ({ useApp: () => ({ online: true, boot: { settings: {}
 vi.mock("../theme/feedback", () => ({ message: { success: vi.fn(), error: vi.fn() } }));
 
 import { SnoozeButton } from "./SnoozeButton";
-import { daysFromToday, forecastSentence } from "./SnoozeForecast";
+import { daysFromToday, forecastLabel, forecastSentence } from "./SnoozeForecast";
 import { snoozeIntervals } from "./snoozeIntervals";
 
 const quickDays = (_max: number) => snoozeIntervals({});
@@ -80,5 +80,24 @@ describe("the snooze menu's forecast", () => {
     expect(forecastSentence(ready(0, 0), d)).toMatch(/: nothing coming back$/);
     expect(forecastSentence({ status: "loading", days: {} }, d)).not.toContain(":");
     expect(forecastSentence({ status: "error", days: {} }, d)).not.toContain(":");
+  });
+
+  it("gives each choice a spoken label with its date and what comes back", () => {
+    const d = daysFromToday(1);
+    const ready = (hours: number, points: number) => ({ status: "ready" as const, days: { [d]: { date: d, hours, points } } });
+    expect(forecastLabel(1, ready(2, 5))).toMatch(/^Tomorrow, .+, 2h and 5 points coming back$/);
+    expect(forecastLabel(1, ready(0, 0))).toMatch(/^Tomorrow, .+, nothing coming back$/);
+    expect(forecastLabel(1, { status: "loading", days: {} })).not.toContain("coming back");
+  });
+
+  it("is a plain group of buttons, each with its label", async () => {
+    reply = [];
+    render(<SnoozeButton task={task} onChanged={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: "Snooze" }));
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(screen.queryByRole("menuitem")).toBeNull();
+    const group = screen.getByRole("group", { name: "Snooze until" });
+    await waitFor(() => expect(screen.getByRole("button", { name: /^Tomorrow, .*nothing coming back$/ })).toBeTruthy());
+    expect(group.querySelectorAll("button").length).toBe(quickDays(30).length);
   });
 });

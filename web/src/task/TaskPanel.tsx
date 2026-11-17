@@ -125,15 +125,26 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
   // The epic picker: typing a title no epic has offers to create it.
   const [epicSearch, setEpicSearch] = useState("");
   const epicNew = epicToCreate(epicSearch, epics);
+  // Creating an epic is two calls (create it, then link it here). busy stops a
+  // second click making a second epic; the ref is for a click before the
+  // screen has redrawn.
+  const [creatingEpic, setCreatingEpic] = useState(false);
+  const creatingRef = useRef(false);
   const createEpic = async () => {
-    if (!task || !epicNew) return;
+    if (!task || !epicNew || creatingRef.current) return;
+    creatingRef.current = true;
+    setCreatingEpic(true);
     setEpicSearch("");
+    let created: Task | null = null;
     try {
-      const e = await api.post<Task>("/tasks", { title: epicNew, type: "epic", area_id: task.area_id, today: today() });
+      created = await api.post<Task>("/tasks", { title: epicNew, type: "epic", area_id: task.area_id, today: today() });
       refreshEpics();
-      await patch({ epic_id: e.id });
+      if (!(await patch({ epic_id: created.id }))) message.error(`${T.Epic} created, but it could not be added to this ${T.task}.`);
     } catch (err) {
       message.error((err as Error).message);
+    } finally {
+      creatingRef.current = false;
+      setCreatingEpic(false);
     }
   };
 
@@ -221,6 +232,7 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
                   showSearch
                   placeholder={`No ${T.epic}`}
                   disabled={ro}
+                  loading={creatingEpic}
                   value={task.epic_id ?? undefined}
                   popupMatchSelectWidth={260}
                   searchValue={epicSearch}

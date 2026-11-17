@@ -57,6 +57,22 @@ describe("chart renderers", () => {
     expect(container.querySelector('path[fill="#AA5500"]')).not.toBeNull();
   });
 
+  it("writes stacked bar values in black on a light segment and white on a dark one", () => {
+    const res = result({
+      series: [
+        { key: "1", label: "Light", color: null, total: 4 },
+        { key: "2", label: "Dark", color: null, total: 3 },
+      ],
+      points: [
+        { key: "2026-11-01", label: "2026-11-01", value: 4, split: "1" },
+        { key: "2026-11-01", label: "2026-11-01", value: 3, split: "2" },
+      ],
+    });
+    const { container } = render(<Chart res={res} viz="split_bar" options={{ show_values: true, series_colors: { "1": "#FFE680", "2": "#1A237E" } }} />);
+    const fills = [...container.querySelectorAll(".recharts-label-list text")].map((n) => n.getAttribute("fill"));
+    expect(fills).toEqual(["#000000", "#ffffff"]);
+  });
+
   it("draws the server's average as a dashed line, only when asked", () => {
     const res = result({ average: 3.8 });
     const off = render(<Chart res={res} viz="bar" options={{}} />);

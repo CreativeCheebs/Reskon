@@ -15,7 +15,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { palette } from "../../theme/palette";
+import { palette, textOn } from "../../theme/palette";
 import { formatShare, formatValue, keyLabel, optionColor, resultValue, seriesColors } from "../format";
 import type { MetricResult, Viz, WidgetOptions } from "../types";
 
@@ -57,12 +57,12 @@ export function Chart({ res, viz, options }: { res: MetricResult; viz: Viz; opti
   const showValues = !!options.show_values;
   // A value label for each point (the number the server gave, in its unit);
   // on stacked bars it sits inside each segment, and empty ones show none.
-  const labelFor = (k: string, position: "top" | "center") =>
+  const labelFor = (k: string, position: "top" | "center", barFill?: string) =>
     showValues ? (
       <LabelList
         dataKey={k}
         position={position}
-        fill={position === "center" ? palette.fg : palette.muted}
+        fill={position === "center" ? (barFill ? textOn(barFill) : palette.fg) : palette.muted}
         fontSize={10}
         formatter={(v: number) => (v || position === "top" ? (share ? formatShare(v / 100) : resultValue(v, res)) : "")}
       />
@@ -153,7 +153,7 @@ export function Chart({ res, viz, options }: { res: MetricResult; viz: Viz; opti
           {parts}
           {keys.map((k, i) => (
             <Bar key={k} dataKey={k} fill={colors[i]} stackId={split ? "s" : undefined} maxBarSize={40} radius={split ? 0 : [2, 2, 0, 0]} isAnimationActive={false}>
-              {labelFor(k, split ? "center" : "top")}
+              {labelFor(k, split ? "center" : "top", colors[i])}
             </Bar>
           ))}
           {averages}

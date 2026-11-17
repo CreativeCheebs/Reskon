@@ -301,8 +301,9 @@ export function Settings({ section, onSection }: { section?: string; onSection: 
           {search}
           <Select
             aria-label="Settings section"
-            value={current.key}
-            onChange={onSection}
+            value={searching ? undefined : current.key}
+            placeholder={searching ? "Search results" : undefined}
+            onChange={open}
             style={{ width: 220 }}
             options={shownGroups.map((g) => ({ label: g.label, options: g.sections.map((s) => ({ value: s.key, label: s.label })) }))}
           />
@@ -321,7 +322,7 @@ export function Settings({ section, onSection }: { section?: string; onSection: 
           mode="inline"
           className="jb-settings-nav"
           selectedKeys={searching ? [] : [current.key]}
-          onClick={(e) => onSection(e.key)}
+          onClick={(e) => open(e.key)}
           items={shownGroups.map((g) => ({
             type: "group" as const,
             key: g.label,

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 
 // The dashboard has no big title (its name is the chosen tab), and its
 // toolbar sits at the top unless the `dashboard_toolbar` setting says left.
@@ -50,5 +50,17 @@ describe("the dashboard toolbar", () => {
     render(<DashboardScreen id={1} onOpen={() => undefined} />);
     await screen.findByText("a widget");
     expect(toolbar().dataset.position).toBe("top");
+  });
+
+  it("falls back to the top below 1000px, and the Edit button says whether it is pressed", async () => {
+    settings = { dashboard_toolbar: "left" };
+    Object.defineProperty(window, "innerWidth", { value: 900, configurable: true });
+    render(<DashboardScreen id={1} onOpen={() => undefined} />);
+    await screen.findByText("a widget");
+    expect(toolbar().dataset.position).toBe("top");
+    const edit = screen.getByRole("button", { name: /Edit/ });
+    expect(edit.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(edit);
+    expect(screen.getByRole("button", { name: /Done/ }).getAttribute("aria-pressed")).toBe("true");
   });
 });

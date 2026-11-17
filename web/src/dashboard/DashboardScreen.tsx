@@ -23,20 +23,23 @@ import { WidgetEditor } from "./WidgetEditor";
 
 const Grid = WidthProvider(GridLayout);
 const MOBILE_PX = 768;
+// A toolbar down the left side needs room: below this width it goes on top.
+const LEFT_TOOLBAR_MIN_PX = 1000;
 
-function useNarrowWindow() {
-  const [narrow, setNarrow] = useState(() => window.innerWidth < MOBILE_PX);
+function useWindowBelow(px: number) {
+  const [below, setBelow] = useState(() => window.innerWidth < px);
   useEffect(() => {
-    const on = () => setNarrow(window.innerWidth < MOBILE_PX);
+    const on = () => setBelow(window.innerWidth < px);
     window.addEventListener("resize", on);
     return () => window.removeEventListener("resize", on);
-  }, []);
-  return narrow;
+  }, [px]);
+  return below;
 }
 
 export function DashboardScreen({ id, onOpen }: { id?: number; onOpen: (id: number) => void }) {
   const { reloadKey, boot } = useApp();
-  const narrow = useNarrowWindow();
+  const narrow = useWindowBelow(MOBILE_PX);
+  const tight = useWindowBelow(LEFT_TOOLBAR_MIN_PX);
   const [dashboards, setDashboards] = useState<Dashboard[] | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [editor, setEditor] = useState<{ widget?: Widget } | null>(null);
@@ -44,8 +47,8 @@ export function DashboardScreen({ id, onOpen }: { id?: number; onOpen: (id: numb
   const [datesMode, setDatesMode] = useState<DatesMode>("own");
   const [dates, setDates] = useState<DateOverride | null>(null);
   const editing = editMode && !narrow;
-  // Settings › Screens: the toolbar sits at the top or down the left side. Phones keep it on top.
-  const left = boot.settings.dashboard_toolbar === "left" && !narrow;
+  // Settings › Screens: the toolbar sits at the top or down the left side. Phones and windows under 1000px keep it on top.
+  const left = boot.settings.dashboard_toolbar === "left" && !narrow && !tight;
 
   // Only the newest answer counts: a reload answered after a save made
   // here must not put the old layout back (replace() bumps it too).
@@ -154,7 +157,7 @@ export function DashboardScreen({ id, onOpen }: { id?: number; onOpen: (id: numb
             value={current?.id}
             onChange={(v) => onOpen(Number(v))}
             options={dashboards.map((d) => ({ value: d.id, label: d.name }))}
-            style={left ? undefined : { overflowX: "auto" }}
+            style={left ? { maxHeight: "60vh", overflowY: "auto" } : { overflowX: "auto" }}
           />
         )}
         <DatesPicker
@@ -184,7 +187,7 @@ export function DashboardScreen({ id, onOpen }: { id?: number; onOpen: (id: numb
         )}
         {!narrow && (
           <Tooltip title={editing ? undefined : "Move, resize, add and remove widgets"}>
-            <Button size="small" type={editing ? "primary" : "default"} icon={editing ? <CheckOutlined /> : <EditOutlined />} onClick={() => setEditMode(!editMode)}>
+            <Button size="small" aria-pressed={editing} type={editing ? "primary" : "default"} icon={editing ? <CheckOutlined /> : <EditOutlined />} onClick={() => setEditMode(!editMode)}>
               {editing ? "Done" : "Edit"}
             </Button>
           </Tooltip>

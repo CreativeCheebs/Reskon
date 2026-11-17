@@ -82,6 +82,17 @@ export function forecastSentence(state: ForecastState, date: string): string {
   return f.zero ? `${when}: nothing coming back` : `${when}: ${f.hours}, ${f.points} pts`;
 }
 
+/** What a screen reader says for one choice: "Tomorrow, Thu 19 Nov, 2h and 5
+ *  points coming back", or "nothing coming back"; just the name and date
+ *  while the numbers are not known. */
+export function forecastLabel(days: number, state: ForecastState): string {
+  const date = daysFromToday(days);
+  const head = `${intervalLabel(days)}, ${formatWakeDate(date)}`;
+  const f = forecastFor(state, date);
+  if (!f) return head;
+  return f.zero ? `${head}, nothing coming back` : `${head}, ${f.hours} and ${f.points} points coming back`;
+}
+
 /** The header over the choices. */
 export function SnoozeHead() {
   return (

@@ -55,6 +55,21 @@ describe("a Buffs and debuffs widget in its frame", () => {
     expect(screen.getByText("Feeling")).toBeTruthy();
   });
 
+  it("shows a spinner while loading, then Couldn't load with a Retry that works", async () => {
+    let fail = true;
+    get.mockImplementation(async () => {
+      if (fail) throw new Error("down");
+      return [state(2, "Flu", 4)];
+    });
+    render(<WidgetFrame widget={widget} editing={false} />);
+    expect(screen.queryByText("Nothing in force.")).toBeNull();
+    await screen.findByText("Couldn't load.");
+    expect(screen.queryByText("Nothing in force.")).toBeNull();
+    fail = false;
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await screen.findByText("Flu");
+  });
+
   it("opens the Buffs and debuffs screen from a chip, but not while the layout is edited", async () => {
     get.mockResolvedValue([state(2, "Flu", 4)]);
     const { unmount } = render(<WidgetFrame widget={widget} editing />);

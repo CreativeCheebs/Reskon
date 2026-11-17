@@ -158,30 +158,30 @@ function Column({
  *  is for dragging then. Cards do not drag between columns here. */
 function WidgetCard({ task, onOpen, editing, refetch }: { task: Task; onOpen?: (id: number) => void; editing: boolean; refetch: () => void }) {
   const actions = useCardActions(task, { onOpen: (id) => onOpen?.(id), onChanged: () => refetch(), onDeleted: () => refetch() });
+  const pinned = !editing && actions.pinned;
+  // The card's open area is its own button; the quick-action rail is its
+  // sibling, so no button sits inside another.
   const card = (
-    <div
-      className="jb-sortable"
-      // Enter or Space opens the card, as a button would; the card's own click does the mouse.
-      {...(onOpen
-        ? {
-            role: "button",
-            tabIndex: 0,
-            onKeyDown: (e: React.KeyboardEvent) => {
-              if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget) {
-                e.preventDefault();
-                onOpen(task.id);
-              }
-            },
-          }
-        : {})}
-    >
-      <TaskCard
-        task={task}
-        config={CARD}
-        onOpen={onOpen ? () => onOpen(task.id) : undefined}
-        pinned={!editing && actions.pinned}
-        rail={editing ? undefined : <CardActionRail task={task} actions={actions} onChanged={() => refetch()} />}
-      />
+    <div className={`jb-card-wrap${pinned ? " jb-card-pinned" : ""}`}>
+      <div
+        className="jb-sortable"
+        // Enter or Space opens the card, as a button would; the card's own click does the mouse.
+        {...(onOpen
+          ? {
+              role: "button",
+              tabIndex: 0,
+              onKeyDown: (e: React.KeyboardEvent) => {
+                if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget) {
+                  e.preventDefault();
+                  onOpen(task.id);
+                }
+              },
+            }
+          : {})}
+      >
+        <TaskCard task={task} config={CARD} onOpen={onOpen ? () => onOpen(task.id) : undefined} pinned={pinned} />
+      </div>
+      {!editing && <CardActionRail task={task} actions={actions} onChanged={() => refetch()} />}
     </div>
   );
   return editing ? card : <CardContextMenu actions={actions}>{card}</CardContextMenu>;

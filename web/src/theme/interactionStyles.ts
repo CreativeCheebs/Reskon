@@ -23,6 +23,16 @@ export function interactionCss(): string {
     .jb-sortable { outline: none; border-radius: 8px; }
     .jb-sortable:focus-visible { box-shadow: 0 0 0 2px ${palette.accent}; }
     .jb-sortable:focus-visible .jb-card { border-color: ${palette.accent} !important; }
+    /* A dashboard board card: the open button and the action rail are siblings
+       in this wrapper, which carries the hover and focus the rail reacts to. */
+    .jb-card-wrap { position: relative; border-radius: 8px; }
+    .jb-card-wrap:hover .jb-card.jb-clickable {
+      background: ${blend(palette.hover, palette.panel, 0.75)};
+      border-color: ${blend(palette.borderStrong, palette.border, 0.6)} !important;
+    }
+    .jb-card-wrap:hover .jb-card-rail, .jb-card-wrap.jb-card-pinned .jb-card-rail, .jb-card-wrap:focus-within .jb-card-rail {
+      opacity: 1; visibility: visible; transition: opacity .12s ease;
+    }
 
     /* A board card's quick-action rail: hidden until the card is hovered,
        focused from the keyboard, or one of the rail's menus is open. It

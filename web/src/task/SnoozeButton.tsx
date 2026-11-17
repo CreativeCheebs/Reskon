@@ -8,7 +8,7 @@ import { WriteButton } from "../offline";
 import { today } from "../format";
 import type { Task } from "../types";
 import { daysUntil, snoozeIntervals, snoozeMaxDays } from "./snoozeIntervals";
-import { daysFromToday, forecastSentence, formatWakeDate, SnoozeHead, SnoozeRowBody, useSnoozeForecast } from "./SnoozeForecast";
+import { daysFromToday, forecastLabel, forecastSentence, formatWakeDate, SnoozeHead, SnoozeRowBody, useSnoozeForecast } from "./SnoozeForecast";
 
 // Snooze hides an open task from boards and tables for some days; it keeps
 // its status. The server checks the cap (Settings → Snooze) and works out
@@ -55,10 +55,10 @@ export function SnoozeButton({ task, onChanged }: { task: Task; onChanged: (t: T
 
   const content = (
     <Space direction="vertical" size={8} style={{ width: 320 }}>
-      <div role="menu" aria-label="Snooze until">
-        <SnoozeHead />
+      <div role="group" aria-label="Snooze until">
+        {quick.length > 0 && <SnoozeHead />}
         {quick.map((n) => (
-          <button key={n} type="button" role="menuitem" className="jb-snooze-row" onClick={() => run(n)}>
+          <button key={n} type="button" aria-label={forecastLabel(n, forecast)} className="jb-snooze-row" onClick={() => run(n)}>
             <SnoozeRowBody days={n} state={forecast} />
           </button>
         ))}

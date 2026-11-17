@@ -89,5 +89,9 @@ export const makeAntTheme = (): ThemeConfig => ({
     Tabs: { itemColor: palette.muted },
     Tag: { defaultBg: palette.hover, defaultColor: palette.fg },
     Select: { optionSelectedBg: palette.selected },
+    // An inverted tooltip (main text colour as the background, page colour as the text),
+    // so it reads on a light overlay as well as a dark one. Set here, not globally,
+    // because colorTextLightSolid is also the text on primary buttons.
+    Tooltip: { colorBgSpotlight: palette.fg, colorTextLightSolid: palette.bg },
   },
 });
