@@ -13,6 +13,12 @@ class DashWidgetTest {
         assertTrue(drawnOnPhone(JSONObject().put("source", "")))
     }
 
+    @Test fun theCombinedChartIsShownInTheWebApp() {
+        assertFalse(drawnOnPhone(JSONObject().put("source", "metric").put("viz", "combo")))
+        // Options a newer web app saved change nothing on the phone.
+        assertTrue(drawnOnPhone(JSONObject().put("viz", "bar").put("options", JSONObject().put("show_values", true).put("something_new", 1))))
+    }
+
     @Test fun otherSourcesAreNot() {
         assertFalse(drawnOnPhone(JSONObject().put("source", "app_page")))
         assertFalse(drawnOnPhone(JSONObject().put("source", "view")))

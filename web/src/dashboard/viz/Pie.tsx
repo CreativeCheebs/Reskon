@@ -3,20 +3,20 @@ import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { useApp } from "../../store";
 import { palette } from "../../theme/palette";
 import { formatValue, formatShare, seriesColors } from "../format";
-import type { MetricResult } from "../types";
+import type { MetricResult, WidgetOptions } from "../types";
 
 // pie: each group value's part of the whole (by energy type, by default),
 // with its share and its own value beside it. Shares come from the server;
 // the slices only draw them. Energy types and areas keep their colours.
 
-export function PieViz({ res }: { res: MetricResult }) {
+export function PieViz({ res, options }: { res: MetricResult; options?: WidgetOptions }) {
   const { boot } = useApp();
   const slices = useMemo(() => {
     const own = res.group === "energy_type" ? boot.energy_types : res.group === "area" ? boot.areas : [];
     const withColor = res.points.map((p) => ({ ...p, color: own.find((x) => String(x.id) === p.key)?.color ?? null }));
-    const colors = seriesColors(withColor);
+    const colors = seriesColors(withColor, options?.series_colors);
     return withColor.map((p, i) => ({ ...p, fill: colors[i] })).filter((p) => p.value > 0);
-  }, [res, boot.energy_types, boot.areas]);
+  }, [res, options?.series_colors, boot.energy_types, boot.areas]);
 
   if (slices.length === 0) return <div style={{ color: palette.subtle, fontSize: 12 }}>Nothing in this range</div>;
   return (

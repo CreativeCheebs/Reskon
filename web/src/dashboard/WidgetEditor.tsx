@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Alert, Checkbox, Form, Input, Modal, Segmented, Select } from "antd";
+import { Alert, Checkbox, DatePicker, Form, Input, Modal, Segmented, Select } from "antd";
 import { message } from "../theme/feedback";
 import { api } from "../api";
 import { useApp } from "../store";
@@ -15,7 +15,10 @@ import { AppDataEditor } from "./AppDataEditor";
 import { ViewBoardEditor } from "./ViewBoardEditor";
 import { JournalEditor } from "./JournalEditor";
 import { StatesEditor } from "./StatesEditor";
+import { ChartColors } from "./ChartColors";
 import { RANGE_LABEL, VIZ_LABEL } from "./labels";
+import { CUSTOM_RANGE, rangeChoice, withDates, withRangeChoice } from "./customRange";
+import dayjs from "dayjs";
 
 // Builds a widget from the metrics catalog: only metrics, groupings, splits
 // and filters the server lists are offered, so nothing built here can be
@@ -39,9 +42,15 @@ const GROUP_LABEL: Record<string, string> = {
   now: "Now",
 };
 
-const COLORS = ["accent", "success", "warn", "epic", "muted"];
+// Charts that can write each value on the bars or line points.
+const LABEL_VIZZES: Viz[] = ["bar", "line", "cumulative", "split_bar", "share_bar", "combo"];
 
-const CHART_VIZZES: Viz[] = ["bar", "line", "cumulative", "split_bar", "small_multiples", "share_bar"];
+const CHART_VIZZES: Viz[] = ["bar", "line", "cumulative", "split_bar", "small_multiples", "share_bar", "combo"];
+
+/** The chart types offered for a metric: the ones it asks for, else every ordinary one. */
+function vizChoices(catalog: MetricCatalog | null, m: MetricDef | undefined): Viz[] {
+  return m?.vizzes?.length ? m.vizzes : (catalog?.vizzes ?? []).filter((v) => v !== "combo");
+}
 
 let catalogCache: Promise<MetricCatalog> | null = null;
 function loadCatalog() {
@@ -63,7 +72,10 @@ function asList(v: unknown): (string | number)[] {
 export function metricPath(q: WidgetQuery, viz: Viz): string {
   const p = new URLSearchParams({ metric: q.metric });
   if (q.group) p.set("group", q.group);
-  if (q.range) p.set("range", q.range);
+  if (q.from && q.to) {
+    p.set("from", q.from);
+    p.set("to", q.to);
+  } else if (q.range) p.set("range", q.range);
   if (q.split) p.set("split", q.split);
   if (q.reduce) p.set("reduce", q.reduce);
   if (viz === "cumulative" || (viz === "small_multiples" && q.cumulative)) p.set("cumulative", "1");
@@ -188,10 +200,16 @@ function MetricWidgetEditor({
     if (!m) return;
     const keep: Filters = {};
     for (const [k, v] of Object.entries(filters)) if (m.filters?.includes(k)) keep[k] = v;
+    // A metric of two series is drawn only as the combined chart, and no
+    // other metric can be.
+    const fits = vizChoices(catalog, m);
+    if (!fits.includes(viz)) setViz(fits[0]);
     setQuery({
       metric: name,
       group: m.groups.includes(query.group ?? "") ? query.group : m.groups[0],
       range: query.range,
+      from: query.from,
+      to: query.to,
       split: m.splits?.includes(query.split ?? "") ? query.split : null,
       filters: keep,
       cumulative: query.cumulative,
@@ -254,7 +272,7 @@ function MetricWidgetEditor({
           </Form.Item>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 12px" }}>
             <Form.Item label="Show as" htmlFor="metric-viz" {...item}>
-              <Select id="metric-viz" value={viz} onChange={pickViz} options={(catalog?.vizzes ?? []).map((v) => ({ value: v, label: VIZ_LABEL[v] }))} />
+              <Select id="metric-viz" value={viz} onChange={pickViz} options={vizChoices(catalog, metric).map((v) => ({ value: v, label: VIZ_LABEL[v] }))} />
             </Form.Item>
             <Form.Item label="Group by" htmlFor="metric-group" {...item}>
               <Select
@@ -270,9 +288,22 @@ function MetricWidgetEditor({
               <Form.Item label="Range" htmlFor="metric-range" {...item}>
                 <Select
                   id="metric-range"
-                  value={query.range ?? "30d"}
-                  onChange={(range) => setQuery({ ...query, range })}
-                  options={catalog?.ranges.map((r) => ({ value: r, label: RANGE_LABEL[r] ?? r }))}
+                  value={rangeChoice(query)}
+                  onChange={(choice) => setQuery(withRangeChoice(query, choice, dayjs().format("YYYY-MM-DD")))}
+                  options={[
+                    ...(catalog?.ranges.map((r) => ({ value: r, label: RANGE_LABEL[r] ?? r })) ?? []),
+                    { value: CUSTOM_RANGE, label: "Custom dates…" },
+                  ]}
+                />
+              </Form.Item>
+            )}
+            {metric?.ranged && rangeChoice(query) === CUSTOM_RANGE && (
+              <Form.Item label="Dates" htmlFor="metric-dates" {...item}>
+                <DatePicker.RangePicker
+                  id={{ start: "metric-dates", end: "metric-dates-end" }}
+                  allowClear={false}
+                  value={[dayjs(query.from), dayjs(query.to)]}
+                  onChange={(v) => v?.[0] && v[1] && setQuery(withDates(query, v[0].format("YYYY-MM-DD"), v[1].format("YYYY-MM-DD")))}
                 />
               </Form.Item>
             )}
@@ -312,25 +343,26 @@ function MetricWidgetEditor({
                 />
               </Form.Item>
             )}
-            {CHART_VIZZES.includes(viz) && !query.split && (
-              <Form.Item label="Colour" htmlFor="metric-colour" {...item}>
-                <Select
-                  id="metric-colour"
-                  value={options.color ?? "accent"}
-                  onChange={(color) => setOptions({ ...options, color })}
-                  options={COLORS.map((c) => ({
-                    value: c,
-                    label: (
-                      <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
-                        <span style={{ width: 10, height: 10, borderRadius: 2, background: (palette as Record<string, string>)[c] }} />
-                        {c}
-                      </span>
-                    ),
-                  }))}
-                />
-              </Form.Item>
-            )}
           </div>
+          {CHART_VIZZES.includes(viz) && (
+            <ChartColors series={preview.res?.series ?? []} options={options} onChange={setOptions} />
+          )}
+          {LABEL_VIZZES.includes(viz) && (
+            <Form.Item label="On the chart" {...item}>
+              <Checkbox checked={!!options.show_values} onChange={(e) => setOptions({ ...options, show_values: e.target.checked || undefined })}>
+                Show each value
+              </Checkbox>
+              {!query.cumulative && viz !== "cumulative" && viz !== "share_bar" && (
+                <Checkbox
+                  style={{ marginLeft: 0, display: "flex" }}
+                  checked={!!options.show_average}
+                  onChange={(e) => setOptions({ ...options, show_average: e.target.checked || undefined })}
+                >
+                  Show the average as a dashed line
+                </Checkbox>
+              )}
+            </Form.Item>
+          )}
           {metric?.filters?.includes("area") && (
             <Form.Item label="Areas" htmlFor="metric-areas" {...item}>
               <Select id="metric-areas" mode="multiple" allowClear placeholder="All" value={filters.area?.map(Number)} onChange={(v) => setFilter("area", v)}

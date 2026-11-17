@@ -549,6 +549,17 @@ Result: no real setting was browser-only, so nothing was moved. Rule for later: 
 
 ---
 
+### Chart settings: period, colours, labels, average, combined chart (2026-11-17)
+
+The owner asked for five dashboard chart improvements. Choices common to all:
+
+- **Recharts stays the only chart library.** Every item is a Recharts feature (label lists, reference lines, a second Y axis, composed charts), so no library was added.
+- **No schema change.** A widget already stores a free `query` and `options`; the new settings live there. Unknown options are kept and ignored, so an older phone or server never loses or chokes on them.
+- **A custom period is `from` and `to` in the widget's query.** The metrics code already ran explicit dates ahead of any range, so this is only the editor and a check when saved.
+- **Series colours are saved by the series' key** (`options.series_colors`, key to `#rrggbb`): the energy type's or area's id, or a name for a combined chart. A picked colour beats the series' own colour; clearing it goes back. The server checks the colours are `#rrggbb` and keeps every option it does not know.
+- **The average is the server's, as a mean per key.** `GET /api/metrics` answers `average` (and one per series): the figures per day, week or group value added up and divided by how many there are, empty days as zero. The chart only draws it. Running totals have none. It divides by a count of days, never one energy type by another, so it stays within the "no net, no rate" rule.
+- **Points and hours is its own measure, not a second query.** The metrics list gets one more entry, `points_and_hours`, whose answer has two series (`points`, `hours`) with their own `unit`; a new chart type `combo` draws the first as bars (left axis) and the second as a line (right axis). A measure may name the only chart types that suit it (`vizzes` in the catalog), and the server refuses to save the combined chart on any other measure or that measure as any other chart, so no widget ever shows two units on one axis by accident. Its overall `total` is 0 on purpose: points plus hours is meaningless, and nothing divides one by the other. The phone does not draw it (two scales do not fit its simple bars) and says "Shown in the web app", like a board or app page. An older phone app that does not know `combo` would draw the two series as stacked parts until it is updated.
+
 ## Open questions
 
 - **"Too low" on the ceiling question.** It only cancels a "too high" hold. Should it suggest more hours for the next days?

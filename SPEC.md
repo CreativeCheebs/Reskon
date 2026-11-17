@@ -359,7 +359,7 @@ The plan is carried forward from your last plan, so most mornings are one tap (*
 
 ### 10.2 Chart types
 
-Bar, line, cumulative (only rises), number, list, bands (states across days, drawn as spans), split bar (stacked), share bar (each day stacked to 100%), pie, table, and small multiples (one small chart per energy type, each with its own scale, never added together).
+Bar, line, bars and a line (two measures on two scales, only for points and hours), cumulative (only rises), number, list, bands (states across days, drawn as spans), split bar (stacked), share bar (each day stacked to 100%), pie, table, and small multiples (one small chart per energy type, each with its own scale, never added together).
 
 For a journal widget only: **journal**, the days' sessions with their notes (see 10.1). Like the board it is not a chart of a measure.
 
@@ -369,12 +369,23 @@ For a connected app's data only: **checklist**, each item with a ticked or empty
 
 Which chart types suit an app's data depends on its shape: a number as a number; a series as bars, line, cumulative or a number (stacked bars when it has parts); a table as a table (with the app's own columns); a list as a list; a checklist as a checklist.
 
+### 10.2a Chart settings in the widget editor
+
+A chart widget (bars, line, cumulative, stacked, share bars, small multiples) has these settings, all saved with the widget:
+
+- **Period.** Besides Today, Yesterday, 7 days, 30 days, 90 days, This month, Year and All, **Custom dates…** lets you pick any first and last day (a calendar range picker, starting on the last seven days). The widget then keeps those two dates instead of a range, so it always shows exactly that period. The dashboard's own Day and Dates choice (above) still replaces it while it is on. The first date may not be after the last. The phone shows such a widget over the same dates.
+- **Colours.** A chart with one series has one **Colour**, picked with the same colour picker used everywhere (a free picker and the standard swatch sets). A chart with several series (split by energy type, area or subtype, or a combined chart) has a colour for each series, with a clear button to go back to that series' own colour (an area's or energy type's colour). Colours are saved with the widget (on the server, so every device shows them) and apply to bars, lines, stacked and share bars, small multiples and pies. A colour must be `#rrggbb`; the older palette names saved by earlier versions still work. The phone ignores them and draws with its own colours; it also ignores any chart setting it does not know, so a widget set up on a newer web app still shows there.
+- **Show each value.** A switch writes each bar's value above it, and each line point's value above the point, in the measure's unit (for example `7.5h` or `12`). On stacked bars the value of each part is written inside its part (parts of zero show none). It is only a label for numbers the server already gave; nothing is added up on screen. Off by default.
+- **Show the average.** A switch draws the average as a dashed line across bars, lines and stacked bars, labelled "avg" with its value. The server works it out and sends it with the answer (`average`): the mean of the chart's figures, one per day, week, month or group value (all types of a stacked bar added up), with days that have nothing counting as zero. For example, 30 days with 60 hours logged in all average 2h a day. A line chart split into several series gets one dashed line per series, in that series' colour, each its own mean. It is never one type divided by another, and a running total (cumulative) has no average, so the switch is not offered there. Off by default.
+- **Points and hours in one chart.** The measure **Points and hours** is drawn only as **Bars and a line**: points as bars on the left scale, hours as a line on the right scale, each axis in its own colour and unit, with a legend. It takes the same filters as the session measures (area, energy type, subtype, task or event, task, tag) and can be grouped by day, week, month, area or energy type, but not split. The two series are only shown side by side: they are never added together, subtracted or divided (no points-per-hour), so this measure has no single total, and a chart too narrow to read shows each one's own figure instead of one number. Each series keeps its own colour setting, value labels and average line. The phone shows such a widget as "Shown in the web app".
+
 ### 10.3 Metrics
 
 | Metric | What it measures |
 | --- | --- |
 | Session hours | Hours logged. |
 | Points | Points stored on sessions. |
+| Points and hours | Both at once, as two series for the bars-and-a-line chart (10.2a). |
 | Sessions | How many sessions. |
 | Tasks closed | Tasks moved into done, by the day they were completed. |
 | Open tasks | Tasks open now. |
@@ -568,7 +579,7 @@ The database is SQLite in WAL mode (several readers, one writer). There is one c
 | `inbox_item` | Inbox lines. |
 | `view` | Saved views: filter, layout, card settings, board settings (grouping, sorting, column limits, collapsed columns, timeline), icon, colour, background. |
 | `image` | Uploaded background images. |
-| `dashboard`, `widget` | Dashboards and their widgets: the source (`metric`, `view`, `app_data`, `app_page` or `journal`; migration 019 holds the column), the question (a metric query; for `view` just `{"view_id"}`, the view's id; for `journal` just `{"range"}`; for `app_page` just `{"app", "widget"}`, the app's and its page's ids; for `app_data` also the feed's `range` and `group` where it takes them), the chart type (always `board` for a view, `journal` for a journal, `page` for an app page; `checklist` only for app data), position. A widget keeps its source. |
+| `dashboard`, `widget` | Dashboards and their widgets (a chart's `query` may hold `from` and `to` dates instead of a `range`; its `options` may hold `color`, `series_colors` and the other chart settings of 10.2a, and unknown options are kept): the source (`metric`, `view`, `app_data`, `app_page` or `journal`; migration 019 holds the column), the question (a metric query; for `view` just `{"view_id"}`, the view's id; for `journal` just `{"range"}`; for `app_page` just `{"app", "widget"}`, the app's and its page's ids; for `app_data` also the feed's `range` and `group` where it takes them), the chart type (always `board` for a view, `journal` for a journal, `page` for an app page; `checklist` only for app data), position. A widget keeps its source. |
 | `custom_field` | Custom field definitions. |
 | `setting` | Your settings, each a JSON value: subtype weights, capture model, week start, task dates, snooze, complete details, card actions, epic columns, time zone, theme… |
 | `task_embedding` | A cache for duplicate search (can be emptied, nothing is lost). |
@@ -605,7 +616,7 @@ JSON over HTTP. Every `/api` call except health and sign-in needs the session co
 | `/api/inbox` | Inbox lines, triage, discard. |
 | `GET PATCH /api/day/:date` | The day's plan, readout and totals. |
 | `GET /api/journal?from=&to=`, `GET /api/journal?widget=:id` (optionally `&from=&to=`) | What you did each day, for Copy as Markdown (6.4) and the journal widget (10.1). Answers `{from, to, days, more}`; each day (newest first, days without sessions left out) has `day`, `hours`, `points` (the day's totals, from the server), `markdown` (the day ready to paste) and `sessions` (`id`, `task_id`, `what`, `area`, `kind`, `start` and `end` as local HH:MM or null, `hours`, `note`); never a task key. By dates: the newest 366 days with sessions in them (`more: true` when older ones were left out). By widget: the widget's own range, or the dashboard's dates, and at most the newest 62 days (`more: true` when older ones were left out); a widget that is not a journal is a 400, another person's widget a 404. Only reads, so no live note. |
-| `GET /api/metrics`, `GET /api/metrics/catalog` | Chart data (by query, or `?widget=:id`), and what each metric allows. |
+| `GET /api/metrics`, `GET /api/metrics/catalog` | Chart data (by query, or `?widget=:id`) and what each metric allows. The answer holds `points`, `series`, `total` and `average` (the mean per day, week or group value, also per series; left out for running totals or no points). |
 | `/api/dashboards`, `/api/widgets`, `PATCH /api/dashboards/:id/layout` | Dashboards. A board widget is saved through `/api/widgets` with `source: "view"`, `viz: "board"` (the default) and `query: {"view_id": <view id>}`; the view must exist and not be deleted (400 otherwise), and the query may hold nothing else. Its tasks are read with `GET /api/tasks?view=:id`, the same call the board uses; there is no new endpoint, so the widget never sends a filter. Between devices the view id is swapped for the other device's own id for that view. |
 | `/api/states`, `GET /api/states/shapes` | Buffs and debuffs. |
 | `/api/areas`, `/api/statuses`, `/api/status-categories`, `/api/priorities`, `/api/energy-types`, `/api/subtypes`, `/api/custom-fields`, `/api/views` | Your lists. DELETE takes `?reassign_to=:id` (and `?clear=true` for priorities). |

@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Area, AreaChart, Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { palette } from "../../theme/palette";
 import { formatValue, keyLabel, seriesColors } from "../format";
-import type { MetricResult } from "../types";
+import type { MetricResult, WidgetOptions } from "../types";
 
 // small_multiples: one small chart per split value (per energy type, by
 // default), in a grid inside one widget. Each chart has its own y-scale
@@ -15,8 +15,9 @@ import type { MetricResult } from "../types";
 const CELL_MIN = 220; // px; the grid wraps to one column below two of these
 const CELL_HEIGHT = 120;
 
-export function SmallMultiplesViz({ res, narrow }: { res: MetricResult; narrow: boolean }) {
-  const colors = useMemo(() => seriesColors(res.series), [res.series]);
+export function SmallMultiplesViz({ res, narrow, options }: { res: MetricResult; narrow: boolean; options?: WidgetOptions }) {
+  const chosen = options?.series_colors;
+  const colors = useMemo(() => seriesColors(res.series, chosen), [res.series, chosen]);
   const bySeries = useMemo(() => {
     const out = new Map<string, { key: string; name: string; long: string; value: number }[]>();
     for (const s of res.series) out.set(s.key, []);

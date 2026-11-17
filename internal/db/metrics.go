@@ -56,6 +56,11 @@ type MetricSeries struct {
 	Label string  `json:"label"`
 	Color *string `json:"color"`
 	Total float64 `json:"total"`
+	// Unit is this series' own unit, on a metric that measures two things at
+	// once (points and hours); otherwise the metric's unit applies to all.
+	Unit string `json:"unit,omitempty"`
+	// Average is the series' mean per group key (a dashed reference line).
+	Average *float64 `json:"average,omitempty"`
 }
 
 // MetricResult is the response. Points is never null: an empty range
@@ -72,8 +77,12 @@ type MetricResult struct {
 	Reduce     string         `json:"reduce"`
 	Cumulative bool           `json:"cumulative,omitempty"` // points are running totals
 	Total      float64        `json:"total"`                // the points reduced to one figure
-	Spans      []StateSpan    `json:"spans,omitempty"`
-	Meta       map[string]any `json:"meta,omitempty"`
+	// Average is the mean of the per-key figures (each day, week or group
+	// value, all splits added up), for a dashed reference line. Left out for
+	// running totals and for no points.
+	Average *float64       `json:"average,omitempty"`
+	Spans   []StateSpan    `json:"spans,omitempty"`
+	Meta    map[string]any `json:"meta,omitempty"`
 }
 
 // StateSpan is one state drawn as a single span across the days it was in
@@ -105,8 +114,16 @@ type metricDef struct {
 	// Unfinished is left out of the catalog, so no new widget can use it,
 	// while the code stays for when it is designed (owner, 2026-11-04).
 	Unfinished bool `json:"-"`
-	run        func(*DB, context.Context, *metricRun) error
+	// Vizzes, when set, are the only chart types that suit this metric (a
+	// metric of two series needs the combined chart); empty means every
+	// ordinary chart type.
+	Vizzes []string `json:"vizzes,omitempty"`
+	run    func(*DB, context.Context, *metricRun) error
 }
+
+// VizCombo draws a metric's two series as bars and a line, each on its own
+// Y axis (points and hours, which are never added or divided).
+const VizCombo = "combo"
 
 var timeGroups = map[string]bool{"day": true, "week": true, "month": true}
 
@@ -126,7 +143,7 @@ type MetricCatalog struct {
 }
 
 // WidgetVizzes are the visualisations a widget may use.
-var WidgetVizzes = []string{"bar", "line", "cumulative", "number", "list", "bands", "split_bar", "small_multiples", "table", "pie", "share_bar"}
+var WidgetVizzes = []string{"bar", "line", "cumulative", "number", "list", "bands", "split_bar", "small_multiples", "table", "pie", "share_bar", VizCombo}
 
 var metricRanges = []string{"today", "yesterday", "7d", "30d", "90d", "1y", "month", "all"}
 var metricReduces = []string{"sum", "nonzero", "max", "last", "count"}
@@ -147,7 +164,7 @@ func (d *DB) MetricCatalog() *MetricCatalog {
 // metricOrder keeps the catalog in the spec's order.
 func metricOrder(name string) int {
 	for i, n := range []string{"session_hours", "points", "session_count", "tasks_closed", "tasks_open",
-		"time_in_status", "cycle_time", "state_days", "days_over_plan", "ceiling_vs_actual", "drift"} {
+		"points_and_hours", "time_in_status", "cycle_time", "state_days", "days_over_plan", "ceiling_vs_actual", "drift"} {
 		if n == name {
 			return i
 		}

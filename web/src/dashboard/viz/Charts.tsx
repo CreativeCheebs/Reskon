@@ -6,8 +6,10 @@ import {
   BarChart,
   CartesianGrid,
   Legend,
+  LabelList,
   Line,
   LineChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -45,16 +47,53 @@ export function Chart({ res, viz, options }: { res: MetricResult; viz: Viz; opti
       row[`raw:${k}`] = p.value;
     }
     const keys = split ? res.series.map((s) => `s:${s.key}`) : ["value"];
-    const colors = split ? seriesColors(res.series) : [optionColor(options.color)];
+    const colors = split ? seriesColors(res.series, options.series_colors) : [optionColor(options.color)];
     const names = split ? res.series.map((s) => s.label) : [res.metric];
     return { rows: [...byKey.values()], keys, colors, names };
-  }, [res, split, share, options.color]);
+  }, [res, split, share, options.color, options.series_colors]);
 
   const axis = options.show_axis !== false;
   const tick = { fill: palette.subtle, fontSize: 11 };
+  const showValues = !!options.show_values;
+  // A value label for each point (the number the server gave, in its unit);
+  // on stacked bars it sits inside each segment, and empty ones show none.
+  const labelFor = (k: string, position: "top" | "center") =>
+    showValues ? (
+      <LabelList
+        dataKey={k}
+        position={position}
+        fill={position === "center" ? palette.fg : palette.muted}
+        fontSize={10}
+        formatter={(v: number) => (v || position === "top" ? (share ? formatShare(v / 100) : resultValue(v, res)) : "")}
+      />
+    ) : null;
+  // The average comes from the server. A line chart with several series gets
+  // one dashed line per series, in its colour; anything else, one line for
+  // the figure of each key added up (the stack's height). A share bar has none.
+  const averageLines: { key: string; value: number; color: string }[] = [];
+  if (options.show_average && !share) {
+    if (viz === "line" && split) {
+      res.series.forEach((s, i) => {
+        if (s.average !== undefined) averageLines.push({ key: s.key, value: s.average, color: colors[i] });
+      });
+    } else if (res.average !== undefined) {
+      averageLines.push({ key: "all", value: res.average, color: palette.muted });
+    }
+  }
+  const averages = averageLines.map((a) => (
+    <ReferenceLine
+      key={`avg:${a.key}`}
+      y={a.value}
+      stroke={a.color}
+      strokeDasharray="5 4"
+      strokeWidth={1.5}
+      ifOverflow="extendDomain"
+      label={{ value: `avg ${resultValue(a.value, res)}`, position: "insideTopRight", fill: palette.muted, fontSize: 10 }}
+    />
+  ));
   const common = {
     data: rows,
-    margin: { top: 12, right: 12, bottom: 8, left: 0 },
+    margin: { top: showValues ? 22 : 12, right: 12, bottom: 8, left: 0 },
   };
   const parts = (
     <>
@@ -93,22 +132,31 @@ export function Chart({ res, viz, options }: { res: MetricResult; viz: Viz; opti
         <LineChart {...common}>
           {parts}
           {keys.map((k, i) => (
-            <Line key={k} dataKey={k} stroke={colors[i]} strokeWidth={2} dot={rows.length <= 16} isAnimationActive={false} />
+            <Line key={k} dataKey={k} stroke={colors[i]} strokeWidth={2} dot={rows.length <= 16} isAnimationActive={false}>
+              {labelFor(k, "top")}
+            </Line>
           ))}
+          {averages}
         </LineChart>
       ) : viz === "cumulative" ? (
         <AreaChart {...common}>
           {parts}
           {keys.map((k, i) => (
-            <Area key={k} dataKey={k} stroke={colors[i]} fill={colors[i]} fillOpacity={0.18} strokeWidth={2} stackId={split ? "s" : undefined} isAnimationActive={false} />
+            <Area key={k} dataKey={k} stroke={colors[i]} fill={colors[i]} fillOpacity={0.18} strokeWidth={2} stackId={split ? "s" : undefined} isAnimationActive={false}>
+              {labelFor(k, split ? "center" : "top")}
+            </Area>
           ))}
+          {averages}
         </AreaChart>
       ) : (
         <BarChart {...common}>
           {parts}
           {keys.map((k, i) => (
-            <Bar key={k} dataKey={k} fill={colors[i]} stackId={split ? "s" : undefined} maxBarSize={40} radius={split ? 0 : [2, 2, 0, 0]} isAnimationActive={false} />
+            <Bar key={k} dataKey={k} fill={colors[i]} stackId={split ? "s" : undefined} maxBarSize={40} radius={split ? 0 : [2, 2, 0, 0]} isAnimationActive={false}>
+              {labelFor(k, split ? "center" : "top")}
+            </Bar>
           ))}
+          {averages}
         </BarChart>
       )}
     </ResponsiveContainer>

@@ -297,8 +297,13 @@ private fun DashWidget(w: JSONObject, days: Long, from: LocalDate, to: LocalDate
     }
 }
 
-/** Whether the phone draws a widget itself: only metric widgets (no source means metric). */
-internal fun drawnOnPhone(w: JSONObject): Boolean = w.optString("source", "metric").ifBlank { "metric" } == "metric"
+/**
+ * Whether the phone draws a widget itself: only metric widgets (no source means
+ * metric), and not the combined points-and-hours chart, whose two scales it cannot
+ * show. Chart options it does not know (colours, labels, an average line) are ignored.
+ */
+internal fun drawnOnPhone(w: JSONObject): Boolean =
+    w.optString("source", "metric").ifBlank { "metric" } == "metric" && w.optString("viz") != "combo"
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable

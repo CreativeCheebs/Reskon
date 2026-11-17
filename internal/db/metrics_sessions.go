@@ -38,6 +38,15 @@ func init() {
 		},
 	})
 	register(&metricDef{
+		Name: "points_and_hours", Label: "Points and hours", Unit: "mixed",
+		Description: "Points and hours logged, side by side as two series: bars for points and a line for hours, each on its own scale. They are shown together, never added or divided.",
+		Groups:      []string{"day", "week", "month", "area", "energy_type"},
+		Filters:     sessionFilters, Reduce: "sum", Ranged: true, Vizzes: []string{VizCombo},
+		run: func(d *DB, ctx context.Context, r *metricRun) error {
+			return d.pointsAndHours(ctx, r)
+		},
+	})
+	register(&metricDef{
 		Name: "session_count", Label: "Sessions", Unit: "count",
 		Description: "Number of sessions logged. By subtype, a session counts once for each subtype it has. A session with several energy types counts its share under each.",
 		Groups:      []string{"day", "week", "area", "subtype"},
@@ -264,6 +273,31 @@ func (d *DB) sessionMetric(ctx context.Context, r *metricRun, value func(*sessio
 				}
 				r.add(g.key, sp.key, v*w)
 			}
+		}
+	}
+	return nil
+}
+
+// pointsAndHours answers the two-series metric: for each group key, the
+// points and the hours of the matching sessions, as two series that are
+// drawn together and never added to or divided by one another.
+func (d *DB) pointsAndHours(ctx context.Context, r *metricRun) error {
+	energy, err := r.energyCandidates()
+	if err != nil {
+		return err
+	}
+	sessions, err := d.loadSessions(ctx, r, energy, false)
+	if err != nil {
+		return err
+	}
+	r.multi = true
+	r.addSeries("points", "Points", nil, 0)
+	r.addSeries("hours", "Hours", nil, 1)
+	r.series["points"].Unit, r.series["hours"].Unit = "points", "hours"
+	for _, s := range sessions {
+		for _, g := range r.sessionKeys(s, r.q.Group, false) {
+			r.add(g.key, "points", s.points)
+			r.add(g.key, "hours", s.hours)
 		}
 	}
 	return nil
