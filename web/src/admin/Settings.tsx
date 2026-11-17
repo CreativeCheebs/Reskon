@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Menu, Select } from "antd";
+import { Input, Menu, Select } from "antd";
 import { AreaSettings, EnergyTypeSettings, PrioritySettings, StatusSettings, SubtypeSettings } from "./LookupSettings";
 import { ReflectionSettings } from "./ReflectionSettings";
 import { CaptureSettings } from "./CaptureSettings";
@@ -20,6 +20,7 @@ import { NamesSettings } from "./NamesSettings";
 import { TagsSettings } from "./TagsSettings";
 import { AboutSettings } from "./AboutSettings";
 import { AppsSettings } from "./AppsSettings";
+import { searchSettings } from "./settingsIndex";
 
 // Settings: sections grouped in a menu on the left, or in a picker above
 // the section when the screen is too narrow for both. The open section is
@@ -36,7 +37,7 @@ interface Section {
   bare?: boolean;
 }
 
-const groupsFor = (T: Terms): { label: string; sections: Section[] }[] => [
+export const groupsFor = (T: Terms): { label: string; sections: Section[] }[] => [
   {
     label: "Workflow",
     sections: [
@@ -228,7 +229,61 @@ export function Settings({ section, onSection }: { section?: string; onSection: 
     nav.current?.querySelector(".ant-menu-item-selected")?.scrollIntoView({ block: "nearest" });
   }, [current.key, stacked]);
 
-  const body = (
+  // The search box: while it has words, the menu keeps only the sections
+  // with a match and the body lists the matching settings (name and
+  // description; see settingsIndex.ts). Choosing one opens its section.
+  const [query, setQuery] = useState("");
+  const searching = query.trim() !== "";
+  const hits = searchSettings(query, all);
+  const hitSections = new Set(hits.map((h) => h.section));
+  const shownGroups = searching ? groups.map((g) => ({ ...g, sections: g.sections.filter((s) => hitSections.has(s.key)) })).filter((g) => g.sections.length > 0) : groups;
+  const open = (key: string) => {
+    setQuery("");
+    onSection(key);
+  };
+  const search = (
+    <Input.Search
+      allowClear
+      size="small"
+      placeholder="Search settings"
+      aria-label="Search settings"
+      value={query}
+      onChange={(e) => setQuery(e.target.value)}
+      onKeyDown={(e) => e.key === "Escape" && setQuery("")}
+      style={{ marginBottom: 8, width: stacked ? 220 : undefined }}
+    />
+  );
+
+  const results = (
+    <section className="jb-settings-body" aria-labelledby="jb-settings-title">
+      <h2 id="jb-settings-title" className="jb-settings-title">
+        Search results
+      </h2>
+      {hits.length === 0 ? (
+        <p className="jb-settings-intro">Nothing in Settings matches "{query.trim()}".</p>
+      ) : (
+        <ul className="jb-settings-results" style={{ listStyle: "none", margin: 0, padding: 0 }}>
+          {hits.map((h) => (
+            <li key={`${h.section}:${h.entry.title}`} style={{ marginBottom: 10 }}>
+              <a
+                href={`#/settings/${h.section}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  open(h.section);
+                }}
+              >
+                <strong>{h.entry.title}</strong>
+              </a>
+              <span style={{ opacity: 0.65 }}> in {h.sectionLabel}</span>
+              <div style={{ opacity: 0.85 }}>{h.entry.description}</div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+
+  const body = searching ? results : (
     <section className="jb-settings-body" aria-labelledby="jb-settings-title">
       <h2 id="jb-settings-title" className="jb-settings-title">
         {current.label}
@@ -243,12 +298,13 @@ export function Settings({ section, onSection }: { section?: string; onSection: 
       <div ref={root} className="jb-settings jb-settings-stacked">
         <div className="jb-settings-head">
           <h1 className="jb-settings-page">Settings</h1>
+          {search}
           <Select
             aria-label="Settings section"
             value={current.key}
             onChange={onSection}
             style={{ width: 220 }}
-            options={groups.map((g) => ({ label: g.label, options: g.sections.map((s) => ({ value: s.key, label: s.label })) }))}
+            options={shownGroups.map((g) => ({ label: g.label, options: g.sections.map((s) => ({ value: s.key, label: s.label })) }))}
           />
         </div>
         {body}
@@ -259,13 +315,14 @@ export function Settings({ section, onSection }: { section?: string; onSection: 
     <div ref={root} className="jb-settings">
       <nav ref={nav} className="jb-settings-nav-col" aria-label="Settings sections">
         <h1 className="jb-settings-page">Settings</h1>
+        {search}
         <Menu
           theme="dark"
           mode="inline"
           className="jb-settings-nav"
-          selectedKeys={[current.key]}
+          selectedKeys={searching ? [] : [current.key]}
           onClick={(e) => onSection(e.key)}
-          items={groups.map((g) => ({
+          items={shownGroups.map((g) => ({
             type: "group" as const,
             key: g.label,
             label: <span className="jb-nav-heading">{g.label}</span>,

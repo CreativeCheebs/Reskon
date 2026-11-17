@@ -152,7 +152,7 @@ These are never stored. They are worked out every time a task is read, from the 
 
 ### 4.12 Snooze
 
-- Snoozing hides an open task for some days without changing its status. Only *to do* and *in progress* tasks can be snoozed (Backlog included). The longest snooze is a setting (default 30 days, 1–365).
+- Snoozing hides an open task for some days without changing its status. Only *to do* and *in progress* tasks can be snoozed (Backlog included). The longest snooze is a setting (default 90 days, 1–365). The snooze menu (on the task panel, the card's Snooze button and the right-click menu) offers a list of ready-made intervals and a date picker for any other day up to the longest snooze. Settings › Snooze lets you add, remove and reorder the intervals (up to 16, each 1–365 days; default: Tomorrow, 2 days, 3 days, 1 week, 2 weeks, 1 month, 2 months, 3 months). Snoozing works in whole days, so there is no "later today". Both settings are kept in your account, not in the browser.
 - Snoozed tasks are listed under a **Snoozed** button with the day each comes back, and a **Wake now**.
 - A task can also be snoozed **until its blockers are done**.
 - Waking is worked out from the date, so nothing runs on a timer. Moving a task to *done* or *cancelled* clears its snooze.
@@ -417,6 +417,10 @@ See decisions. In short: it would be a second program to run, embedding it secur
 ---
 
 ## 12. Settings
+
+A **search box** at the top of Settings finds a setting by its name or by any word in its one-line description (every word you type must match; capitals do not matter). While you type, the menu keeps only the sections with a match and the page lists the matching settings, each with its description and the section it is in; choosing one opens that section. Clearing the box (or Escape) brings the normal view back. Every setting has a name and a description in one list (`web/src/admin/settingsIndex.ts`); a test fails if a section has none.
+
+Every setting is kept in your account on the server, so it follows you to other devices. The only things kept in the browser are small conveniences that suit one screen: the last colour-picker tab, how wide you dragged a table column, whether the sidebar is folded, and the last area you picked when adding a task.
 
 | Group | What you set |
 | --- | --- |

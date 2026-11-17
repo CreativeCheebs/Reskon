@@ -1,22 +1,17 @@
 import { useState } from "react";
-import { Button, InputNumber, Popover, Space, Typography } from "antd";
+import { Button, DatePicker, InputNumber, Popover, Space, Typography } from "antd";
+import dayjs, { type Dayjs } from "dayjs";
 import { message } from "../theme/feedback";
 import { api } from "../api";
 import { useApp } from "../store";
 import { WriteButton } from "../offline";
 import { today } from "../format";
 import type { Task } from "../types";
+import { daysUntil, intervalLabel, snoozeIntervals, snoozeMaxDays } from "./snoozeIntervals";
 
 // Snooze hides an open task from boards and tables for some days; it keeps
 // its status. The server checks the cap (Settings → Snooze) and works out
 // the date it shows again. Done and cancelled tasks have no snooze.
-
-const QUICK = [1, 3, 7, 14, 30];
-
-/** The cap from Settings → Snooze. */
-export function snoozeMaxDays(settings: Record<string, unknown>): number {
-  return (settings.snooze as { max_days?: number } | undefined)?.max_days ?? 30;
-}
 
 /** "Wed 5 Nov" for a local YYYY-MM-DD date. */
 export function formatWakeDate(day: string): string {
@@ -51,7 +46,7 @@ export function SnoozeButton({ task, onChanged }: { task: Task; onChanged: (t: T
       message.error((e as Error).message);
     }
   };
-  const quick = [...new Set([...QUICK.filter((n) => n < max), max])];
+  const quick = snoozeIntervals(boot.settings);
 
   const content = (
     <Space direction="vertical" size={10} style={{ width: 240 }}>
@@ -61,10 +56,24 @@ export function SnoozeButton({ task, onChanged }: { task: Task; onChanged: (t: T
       <Space wrap size={6}>
         {quick.map((n) => (
           <Button key={n} size="small" onClick={() => run(n)}>
-            {n === 1 ? "1 day" : n % 7 === 0 && n < 30 ? `${n / 7} wk` : `${n} days`}
+            {intervalLabel(n)}
           </Button>
         ))}
       </Space>
+      <DatePicker
+        size="small"
+        placeholder="Pick a date"
+        format="ddd D MMM YYYY"
+        style={{ width: "100%" }}
+        aria-label="Snooze until a date"
+        disabledDate={(d: Dayjs) => {
+          const n = daysUntil(today(), d.format("YYYY-MM-DD"));
+          return n < 1 || n > max;
+        }}
+        onChange={(d: Dayjs | null) => d && run(daysUntil(today(), d.format("YYYY-MM-DD")))}
+        value={null}
+        defaultPickerValue={dayjs(today()).add(1, "day")}
+      />
       <Space.Compact size="small" style={{ width: "100%" }}>
         <InputNumber
           min={1}

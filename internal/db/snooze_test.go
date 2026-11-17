@@ -35,9 +35,9 @@ func TestSnooze(t *testing.T) {
 		t.Errorf("snooze wrote transitions: %d", len(tr))
 	}
 
-	// Past the cap (default 30) and negative are refused.
-	if _, err := d.Snooze(ctx, tk.ID, 31, false, today); err == nil {
-		t.Error("31 days accepted with the default cap")
+	// Past the cap (default 90) and negative are refused.
+	if _, err := d.Snooze(ctx, tk.ID, 91, false, today); err == nil {
+		t.Error("91 days accepted with the default cap")
 	}
 	if _, err := d.Snooze(ctx, tk.ID, -1, false, today); err == nil {
 		t.Error("negative days accepted")
@@ -47,6 +47,9 @@ func TestSnooze(t *testing.T) {
 	}
 	if _, err := d.Snooze(ctx, tk.ID, 45, false, today); err != nil {
 		t.Errorf("45 days with a 60 day cap: %v", err)
+	}
+	if _, err := d.Snooze(ctx, tk.ID, 61, false, today); err == nil {
+		t.Error("61 days accepted with a 60 day cap")
 	}
 	if err := d.PutSetting(ctx, "snooze", json.RawMessage(`{"max_days":0}`)); err == nil {
 		t.Error("max_days 0 accepted")
@@ -110,5 +113,39 @@ func TestDeleteStatusIntoDoneWakesSnoozedTasks(t *testing.T) {
 	}
 	if got.Snoozed || got.SnoozedUntil != nil {
 		t.Errorf("a task moved to Done by a status delete is still snoozed until %v", got.SnoozedUntil)
+	}
+}
+
+func TestSnoozeIntervalsSetting(t *testing.T) {
+	ctx := context.Background()
+	d := openTest(t)
+	// No setting, or one saved before intervals existed: the default list.
+	r, err := loadSnoozeRules(ctx, d.DB)
+	if err != nil || len(r.Intervals) != len(DefaultSnoozeIntervals) {
+		t.Fatalf("default = %v, %v", r.Intervals, err)
+	}
+	if err := d.PutSetting(ctx, "snooze", json.RawMessage(`{"max_days":30}`)); err != nil {
+		t.Fatal(err)
+	}
+	if r, _ = loadSnoozeRules(ctx, d.DB); len(r.Intervals) != len(DefaultSnoozeIntervals) || r.MaxDays != 30 {
+		t.Errorf("old setting = %+v", r)
+	}
+	// A chosen list keeps its order; an empty list is allowed (custom only).
+	if err := d.PutSetting(ctx, "snooze", json.RawMessage(`{"max_days":30,"intervals":[14,1,3]}`)); err != nil {
+		t.Fatal(err)
+	}
+	if r, _ = loadSnoozeRules(ctx, d.DB); len(r.Intervals) != 3 || r.Intervals[0] != 14 {
+		t.Errorf("chosen = %v", r.Intervals)
+	}
+	if err := d.PutSetting(ctx, "snooze", json.RawMessage(`{"max_days":30,"intervals":[]}`)); err != nil {
+		t.Fatal(err)
+	}
+	if r, _ = loadSnoozeRules(ctx, d.DB); len(r.Intervals) != 0 {
+		t.Errorf("empty list = %v", r.Intervals)
+	}
+	for _, bad := range []string{`[0]`, `[366]`, `[3,3]`, `[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17]`, `"x"`} {
+		if err := d.PutSetting(ctx, "snooze", json.RawMessage(`{"max_days":30,"intervals":`+bad+`}`)); err == nil {
+			t.Errorf("intervals %s accepted", bad)
+		}
 	}
 }
