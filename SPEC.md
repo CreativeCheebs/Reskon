@@ -416,6 +416,10 @@ See decisions. In short: it would be a second program to run, embedding it secur
 
 ## 12. Settings
 
+A **search box** at the top of Settings finds a setting by its name or by any word in its one-line description (every word you type must match; capitals do not matter). While you type, the menu keeps only the sections with a match and the page lists the matching settings, each with its description and the section it is in; choosing one opens that section. Clearing the box (or Escape) brings the normal view back. Every setting has a name and a description in one list (`web/src/admin/settingsIndex.ts`); a test fails if a section has none.
+
+Every setting is kept in your account on the server, so it follows you to other devices. The only things kept in the browser are small conveniences that suit one screen: the last colour-picker tab, how wide you dragged a table column, whether the sidebar is folded, and the last area you picked when adding a task.
+
 | Group | What you set |
 | --- | --- |
 | Workflow | Areas (name, key prefix, colour, default energy type), statuses, priorities, task dates, snooze, complete details, card actions, custom fields |

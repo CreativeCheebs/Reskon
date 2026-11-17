@@ -495,6 +495,24 @@ The snooze menu's ready-made choices are now a list in the `snooze` setting (`in
 
 ---
 
+### Settings search, and one list of settings (2026-11-17)
+
+Settings has a search box that matches a setting's name and its one-line description. The names and descriptions live in one list, `web/src/admin/settingsIndex.ts`, one line per setting. Adding a setting means adding one line there; a test fails if a section has no line or a line names a section that does not exist. Results replace the section page while there is something typed, because a match can be one control inside a section, and a list of "name, description, where" is clearer than highlighting inside forms. The descriptions are plain text and do not follow the owner's renamed words (a person who calls tasks "todos" still finds things by typing "task").
+
+### Audit: what is stored in the browser (2026-11-17)
+
+Question: does every real setting live on the server (so it follows the person to another browser and to the phone)? Everything in the browser's own storage was listed:
+
+- **Colour-picker last tab** (`theme/ColorField.tsx`): which tab (swatches or custom) the picker opened on last. Stays in the browser: it is a habit of one person at one screen, losing it costs one click.
+- **Table column widths** (`views/useColumnWidths.tsx`): stays in the browser on purpose. A width that fits a wide monitor does not fit a laptop, so sharing it between machines would be worse than keeping it per machine.
+- **Sidebar folded** (`Sidebar.tsx`) and **last area used** when adding a task (`board/Composer.tsx`, `capture/CaptureModal.tsx`): the same kind of per-screen habit. Stay.
+- **Theme** (`theme/ThemeProvider.tsx`): the browser copy is only a cache so the page is not drawn in the wrong colours before the server answers; the real choice is saved to the account (`ThemeSync`). Nothing to move.
+- **`offline.tsx`**: only the small wrapper around browser storage that the items above use (it also copes with private windows where storage fails). It holds no setting of its own.
+
+Result: no real setting was browser-only, so nothing was moved. Rule for later: a choice that changes what the app does or shows for the person belongs in the `setting` table; a choice about one screen's layout may stay in the browser.
+
+---
+
 ## Open questions
 
 - **"Too low" on the ceiling question.** It only cancels a "too high" hold. Should it suggest more hours for the next days?
