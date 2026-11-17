@@ -15,8 +15,9 @@ import { useApp } from "../store";
 import { today } from "../format";
 import { SessionModal } from "../sessions/SessionModal";
 import { deleteTaskAsking } from "../task/deleteTask";
-import { formatWakeDate, snoozeTask } from "../task/SnoozeButton";
-import { intervalLabel, snoozeIntervals } from "../task/snoozeIntervals";
+import { snoozeTask } from "../task/SnoozeButton";
+import { snoozeIntervals } from "../task/snoozeIntervals";
+import { daysFromToday, SnoozeHead, SnoozeRowBody, useSnoozeForecast } from "../task/SnoozeForecast";
 import type { Task } from "../types";
 import { makeTerms, termWords, useTerms, type Terms } from "../terms";
 
@@ -70,14 +71,6 @@ export interface CardHandlers {
 
 const touch = () => typeof window !== "undefined" && window.matchMedia?.("(hover: none)").matches;
 
-/** The local date n days from today, YYYY-MM-DD. */
-function daysFromToday(n: number): string {
-  const [y, m, d] = today().split("-").map(Number);
-  const t = new Date(y, m - 1, d + n);
-  const pad = (x: number) => String(x).padStart(2, "0");
-  return `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())}`;
-}
-
 type Item = NonNullable<MenuProps["items"]>[number];
 
 /** The card's action state (note editor, log form, menus) and its menus. */
@@ -117,6 +110,14 @@ export function useCardActions(task: Task, { onOpen, onChanged, onDeleted }: Car
   // Logging time changes the card's logged hours and time bar.
   const reload = () => run(async () => onChanged(await api.get<Task>(`/tasks/${task.id}`)));
 
+  const intervals = snoozeIntervals(app.boot.settings);
+  // The snooze choices show what is already coming back each day; asked of
+  // the server when a menu that holds them opens.
+  const forecast = useSnoozeForecast(
+    intervals.map(daysFromToday),
+    task.id,
+    open && (railMenu === "snooze" || railMenu === "more" || contextOpen),
+  );
   const statuses = [...app.boot.statuses].sort((a, b) => a.position - b.position);
   // The choices under Move to and Snooze, as a submenu or a rail dropdown.
   const choices: Record<"move" | "snooze", Item[]> = {
@@ -127,11 +128,14 @@ export function useCardActions(task: Task, { onOpen, onChanged, onDeleted }: Car
       disabled: s.id === task.status_id,
       extra: s.id === task.status_id ? "Now" : undefined,
     })),
-    snooze: snoozeIntervals(app.boot.settings).map((n) => ({
-      key: `snooze:${n}`,
-      label: intervalLabel(n),
-      extra: formatWakeDate(daysFromToday(n)),
-    })),
+    snooze: [
+      {
+        type: "group",
+        key: "snooze-head",
+        label: <SnoozeHead />,
+        children: intervals.map((n) => ({ key: `snooze:${n}`, label: <SnoozeRowBody days={n} state={forecast} /> })),
+      },
+    ],
   };
   const item = (k: CardActionKey): Item => {
     const a = cardActionsFor(T).find((x) => x.key === k)!;

@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strings"
 
 	"jitterbug/internal/db"
 )
@@ -17,6 +18,7 @@ func (s *Server) taskRoutes() {
 	m.HandleFunc("POST /api/tasks/move", s.moveTasks)
 	m.HandleFunc("POST /api/tasks/delete", s.deleteTasks)
 	m.HandleFunc("POST /api/tasks/{id}/snooze", s.snoozeTask)
+	m.HandleFunc("GET /api/snooze/forecast", s.snoozeForecast)
 	m.HandleFunc("GET /api/tasks/{id}/transitions", s.taskTransitions)
 	m.HandleFunc("GET /api/cycle-time", s.cycleTime)
 	m.HandleFunc("POST /api/task-links", s.addLink)
@@ -122,6 +124,23 @@ func (s *Server) snoozeTask(w http.ResponseWriter, r *http.Request) {
 	}
 	t, err := dbOf(r.Context()).Snooze(r.Context(), id, body.Days, body.UntilUnblocked, body.Today)
 	respond(w, t, err)
+}
+
+// snoozeForecast: ?dates=2026-11-18,2026-11-19&exclude=:id. For each date,
+// the hours and points of snoozed tasks already coming back that day. It
+// only reads.
+func (s *Server) snoozeForecast(w http.ResponseWriter, r *http.Request) {
+	var dates []string
+	if v := r.URL.Query().Get("dates"); v != "" {
+		dates = strings.Split(v, ",")
+	}
+	exclude, _, err := queryID(r, "exclude")
+	if err != nil {
+		respond(w, nil, err)
+		return
+	}
+	days, err := dbOf(r.Context()).SnoozeForecast(r.Context(), dates, exclude)
+	respond(w, days, err)
 }
 
 func (s *Server) taskTransitions(w http.ResponseWriter, r *http.Request) {

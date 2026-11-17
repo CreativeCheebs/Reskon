@@ -101,6 +101,23 @@ export function interactionCss(): string {
     .jb-menu .ant-dropdown-menu-item-extra { margin-inline-start: 16px; font-size: 12px !important; color: ${palette.subtle} !important; }
     .jb-menu .ant-dropdown-menu-item-divider { margin: 4px 6px !important; background-color: ${palette.border} !important; }
     .jb-menu .ant-dropdown-menu-submenu-expand-icon { color: ${palette.subtle}; }
+    /* The snooze choices: a name with its date under it, then the hours and
+       points already coming back that day. Used in the task panel's popover
+       and in the card menus. */
+    .jb-snooze-grid { display: grid; grid-template-columns: 1fr 64px 64px; align-items: center; width: 100%; min-width: 296px; }
+    .jb-snooze-head { padding: 8px 12px 6px; font-size: 12px; font-weight: 400; color: ${palette.subtle}; }
+    .jb-menu .ant-dropdown-menu-item-group-title { padding: 0 !important; }
+    .jb-menu .ant-dropdown-menu-item-group-list { margin: 0 !important; }
+    .jb-snooze-head span:not(:first-child), .jb-snooze-num { text-align: right; }
+    .jb-snooze-row {
+      display: block; width: 100%; min-height: 40px; padding: 5px 12px; border: 0; border-radius: 4px;
+      background: transparent; color: ${palette.fg}; font: inherit; text-align: left; cursor: pointer;
+    }
+    .jb-snooze-row:hover, .jb-snooze-row:focus-visible { background: ${palette.hover}; }
+    .jb-snooze-when { display: flex; flex-direction: column; line-height: 1.3; }
+    .jb-snooze-date { color: ${palette.muted}; font-size: 12px; }
+    .jb-snooze-num { font-variant-numeric: tabular-nums; }
+    .jb-snooze-zero { color: ${palette.subtle}; }
     .jb-menu-dot {
       width: 8px; height: 8px; border-radius: 4px; display: inline-block; flex: none;
       background: ${palette.muted}; margin-inline: 3px 13px;
