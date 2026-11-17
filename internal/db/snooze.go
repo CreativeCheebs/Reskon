@@ -19,11 +19,11 @@ import (
 // in the order the user chose.
 
 // DefaultSnoozeMaxDays is the cap when the setting is absent.
-const DefaultSnoozeMaxDays = 90
+const DefaultSnoozeMaxDays = 60
 
 // DefaultSnoozeIntervals is the menu when the setting has no list: tomorrow,
-// 2 and 3 days, 1 and 2 weeks, 1, 2 and 3 months.
-var DefaultSnoozeIntervals = []int{1, 2, 3, 7, 14, 30, 60, 90}
+// 2 and 3 days, 1 and 2 weeks, 1 month.
+var DefaultSnoozeIntervals = []int{1, 2, 3, 7, 14, 30}
 
 // MaxSnoozeIntervals is how many intervals the menu can hold.
 const MaxSnoozeIntervals = 16

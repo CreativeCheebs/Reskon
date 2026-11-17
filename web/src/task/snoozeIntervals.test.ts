@@ -3,8 +3,8 @@ import { daysUntil, intervalLabel, snoozeIntervals, snoozeMaxDays } from "./snoo
 
 describe("snooze intervals", () => {
   it("uses the larger default list and cap when nothing is saved", () => {
-    expect(snoozeMaxDays({})).toBe(90);
-    expect(snoozeIntervals({})).toEqual([1, 2, 3, 7, 14, 30, 60, 90]);
+    expect(snoozeMaxDays({})).toBe(60);
+    expect(snoozeIntervals({})).toEqual([1, 2, 3, 7, 14, 30]);
   });
   it("keeps the saved order and cuts the list to the cap", () => {
     expect(snoozeIntervals({ snooze: { max_days: 20, intervals: [14, 1, 30, 3] } })).toEqual([14, 1, 3]);

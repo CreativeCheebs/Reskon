@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 )
@@ -35,9 +36,12 @@ func TestSnooze(t *testing.T) {
 		t.Errorf("snooze wrote transitions: %d", len(tr))
 	}
 
-	// Past the cap (default 90) and negative are refused.
-	if _, err := d.Snooze(ctx, tk.ID, 91, false, today); err == nil {
-		t.Error("91 days accepted with the default cap")
+	// Past the cap (default 60) and negative are refused.
+	if _, err := d.Snooze(ctx, tk.ID, 60, false, today); err != nil {
+		t.Errorf("60 days with the default cap: %v", err)
+	}
+	if _, err := d.Snooze(ctx, tk.ID, 61, false, today); err == nil {
+		t.Error("61 days accepted with the default cap")
 	}
 	if _, err := d.Snooze(ctx, tk.ID, -1, false, today); err == nil {
 		t.Error("negative days accepted")
@@ -123,6 +127,16 @@ func TestSnoozeIntervalsSetting(t *testing.T) {
 	r, err := loadSnoozeRules(ctx, d.DB)
 	if err != nil || len(r.Intervals) != len(DefaultSnoozeIntervals) {
 		t.Fatalf("default = %v, %v", r.Intervals, err)
+	}
+	if r.MaxDays != 60 || fmt.Sprint(r.Intervals) != "[1 2 3 7 14 30]" {
+		t.Errorf("defaults = %d days, %v; want 60 days, Tomorrow, 2 days, 3 days, 1 week, 2 weeks, 1 month", r.MaxDays, r.Intervals)
+	}
+	// Someone who saved their own values keeps them, including a 90 day cap and a 90 day choice.
+	if err := d.PutSetting(ctx, "snooze", json.RawMessage(`{"max_days":90,"intervals":[1,60,90]}`)); err != nil {
+		t.Fatal(err)
+	}
+	if r, _ = loadSnoozeRules(ctx, d.DB); r.MaxDays != 90 || fmt.Sprint(r.Intervals) != "[1 60 90]" {
+		t.Errorf("saved values changed: %+v", r)
 	}
 	if err := d.PutSetting(ctx, "snooze", json.RawMessage(`{"max_days":30}`)); err != nil {
 		t.Fatal(err)

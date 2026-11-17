@@ -34,4 +34,16 @@ describe("Longest snooze", () => {
     expect((screen.getAllByRole("spinbutton")[0] as HTMLInputElement).value).toBe("60");
     expect(screen.getByText(/2 weeks/)).toBeTruthy();
   });
+
+  it("with nothing saved shows 60 days and the standard list, the first one as Tomorrow", () => {
+    settings = {};
+    render(<SnoozeSettings />);
+    expect((screen.getAllByRole("spinbutton")[0] as HTMLInputElement).value).toBe("60");
+    for (const label of ["Tomorrow", "2 days", "3 days", "1 week", "2 weeks", "1 month"]) {
+      expect(screen.getByText(new RegExp(`^${label}`))).toBeTruthy();
+    }
+    expect(screen.queryByText(/2 months/)).toBeNull();
+    expect(screen.queryByText(/^1 day/)).toBeNull();
+    expect(screen.queryByText(/later today/i)).toBeNull();
+  });
 });

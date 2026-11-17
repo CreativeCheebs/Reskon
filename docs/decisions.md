@@ -529,6 +529,8 @@ The owner asked for a theme that follows the computer's light or dark setting, a
 
 The snooze menu's ready-made choices are now a list in the `snooze` setting (`intervals`, whole days, in the user's order), beside the existing `max_days`. No migration: the setting is a JSON value, and a setting saved before this (only `max_days`) simply gets the default list. The default list is larger (1, 2, 3, 7, 14, 30, 60, 90 days) and the default longest snooze went from 30 to 90 so the longer choices show; anyone who had saved their own cap keeps it. Choices over the cap are kept in the list but not shown. A date picker in the menu covers any other day (the client turns the date into a number of days, the server still only accepts days). "Later today" was left out on purpose: a snooze is a date, not a time, so it cannot hide a task for a few hours. Add it only if the owner wants times in snoozes. The phone's own snooze menu is not changed by this step.
 
+**Snooze defaults, trimmed (owner decision, 2026-11-18).** The default longest snooze is 60 days (was 90) and the default list is Tomorrow, 2 days, 3 days, 1 week, 2 weeks, 1 month (the 2 and 3 month choices are gone). The first choice is always called "Tomorrow", never "1 day". Still no "later today"; Pick a date stays. Anyone who saved their own cap or list keeps it as it is; only an account with nothing saved sees the new defaults.
+
 ---
 
 ### Settings search, and one list of settings (2026-11-17)

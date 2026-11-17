@@ -51,7 +51,7 @@ describe("the snooze menu's forecast", () => {
     expect(screen.getAllByText("–")).toHaveLength((quickDays(30).length - 2) * 2);
     // Each choice has its name and its date under it.
     expect(screen.getByText("Tomorrow")).toBeTruthy();
-    expect(screen.getByText("3 months")).toBeTruthy();
+    expect(screen.getByText("1 month")).toBeTruthy();
   });
 
   it("shows the choices without numbers while loading, and they still snooze", () => {

@@ -2,8 +2,8 @@
 // days) the snooze menu offers, in the order the user chose. The server holds
 // the same defaults (internal/db/snooze.go) and checks what is saved.
 
-export const DEFAULT_SNOOZE_MAX = 90;
-export const DEFAULT_SNOOZE_INTERVALS = [1, 2, 3, 7, 14, 30, 60, 90];
+export const DEFAULT_SNOOZE_MAX = 60;
+export const DEFAULT_SNOOZE_INTERVALS = [1, 2, 3, 7, 14, 30];
 export const MAX_SNOOZE_INTERVALS = 16;
 
 interface SnoozeSetting {
