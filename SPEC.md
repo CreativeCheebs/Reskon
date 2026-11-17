@@ -127,12 +127,14 @@ These are never stored. They are worked out every time a task is read, from the 
 ### 4.8 Priorities and level
 
 - Priorities are rows (seeded **Low 0.75**, **Normal 1.0**, **High 1.5**). Each has a colour and a weight. With no colour, a priority gets one by its rank: blue for the lowest through green, yellow, orange to red for the highest. You can add more; built-in ones can't be deleted.
+- **Default priority** (Settings › Workflow › Default priority): the priority a new task gets when it is created without one, or **None**. It applies everywhere a task is created (board, task panel, quick capture, subtasks, the phone, the API), because the server applies it. It starts as Normal. A task created with a priority of its own keeps it, and quick capture's priority box starts on the default and can be cleared to None. If the chosen priority is later deleted, new tasks get none. Existing tasks are never changed.
 - **Level** is 1 to 5, shown as 1 to 5 slanted lines (one line for level 1, five for level 5) in a colour that goes from pale to deep blue. There is no red: a restful level 5 is not a warning. The number is written beside it, so nothing depends on the colour.
 - A task's own points (shown on the task) are **level × priority weight**. No level means no points. No priority counts as 1.
 
 ### 4.9 Epics
 
 - An epic is a task of type *epic*. Ordinary tasks can belong to one epic. An epic can't belong to an epic.
+- **Create an epic from the task panel.** In the task panel's epic picker, typing a title that no epic already has (ignoring capitals) adds a **Create epic “<text>”** choice to the list. Choosing it (Enter works) makes a new epic with that title, in the same area as the task, and puts the task in it. The choice does not appear for empty text or when an epic with exactly that title exists.
 - An epic shows how many of its tasks are done, the sum of their estimates, and the hours logged on them, including their subtasks' hours. Cancelled tasks count for hours (the time was spent) but not for done or estimate.
 - Deleting an epic keeps its tasks; they just lose the epic.
 
@@ -418,7 +420,7 @@ See decisions. In short: it would be a second program to run, embedding it secur
 
 | Group | What you set |
 | --- | --- |
-| Workflow | Areas (name, key prefix, colour, default energy type), statuses, priorities, task dates, snooze, complete details, card actions, custom fields |
+| Workflow | Areas (name, key prefix, colour, default energy type), statuses, priorities, default priority, task dates, snooze, complete details, card actions, custom fields |
 | Time and points | Energy types (name, colour, points per hour), subtypes, subtype rank weights, reflection (week start) |
 | Connections | Apps (connected apps, see 12.4), quick capture model, duplicate search model, sync server (phone) |
 | Data | Download database (phone) |

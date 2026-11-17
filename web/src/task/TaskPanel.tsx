@@ -16,6 +16,7 @@ import { Dependencies } from "./Dependencies";
 import { TaskExtras } from "./TaskExtras";
 import { TypeIcon, TypeLabel } from "./TypeIcon";
 import { useEpics } from "./useEpics";
+import { CREATE_EPIC, epicToCreate } from "./epicCreate";
 import { priorityOptions } from "./LevelIcons";
 import { TagSelect } from "../tags/TagSelect";
 import { useTags } from "../tags/tags";
@@ -121,6 +122,21 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
     }
   };
 
+  // The epic picker: typing a title no epic has offers to create it.
+  const [epicSearch, setEpicSearch] = useState("");
+  const epicNew = epicToCreate(epicSearch, epics);
+  const createEpic = async () => {
+    if (!task || !epicNew) return;
+    setEpicSearch("");
+    try {
+      const e = await api.post<Task>("/tasks", { title: epicNew, type: "epic", area_id: task.area_id, today: today() });
+      refreshEpics();
+      await patch({ epic_id: e.id });
+    } catch (err) {
+      message.error((err as Error).message);
+    }
+  };
+
   const move = async (status_id: number) => {
     if (!task) return;
     try {
@@ -203,20 +219,28 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
                   style={{ width: 150 }}
                   allowClear
                   showSearch
-                  optionFilterProp="search"
                   placeholder={`No ${T.epic}`}
                   disabled={ro}
                   value={task.epic_id ?? undefined}
-                  onChange={(v) => patch({ epic_id: v ?? null })}
-                  options={epics.map((e) => ({
-                    value: e.id,
-                    search: e.title.toLowerCase(),
-                    label: (
-                      <span>
-                        <TypeIcon type="epic" /> {e.title}
-                      </span>
-                    ),
-                  }))}
+                  popupMatchSelectWidth={260}
+                  searchValue={epicSearch}
+                  onSearch={setEpicSearch}
+                  onOpenChange={(open) => !open && setEpicSearch("")}
+                  // The Create option always stays in the list; epics match the typed text.
+                  filterOption={(input, o) => o?.value === CREATE_EPIC || String(o?.search ?? "").includes(input.trim().toLowerCase())}
+                  onChange={(v) => (v === CREATE_EPIC ? createEpic() : patch({ epic_id: v ?? null }))}
+                  options={[
+                    ...epics.map((e) => ({
+                      value: e.id,
+                      search: e.title.toLowerCase(),
+                      label: (
+                        <span>
+                          <TypeIcon type="epic" /> {e.title}
+                        </span>
+                      ),
+                    })),
+                    ...(epicNew ? [{ value: CREATE_EPIC, search: "", label: <span>Create {T.epic} “{epicNew}”</span> }] : []),
+                  ]}
                 />
               )}
             </Descriptions.Item>

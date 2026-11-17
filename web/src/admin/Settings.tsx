@@ -5,6 +5,7 @@ import { ReflectionSettings } from "./ReflectionSettings";
 import { CaptureSettings } from "./CaptureSettings";
 import { CustomFieldSettings } from "./CustomFieldSettings";
 import { TaskDateSettings } from "./TaskDateSettings";
+import { DefaultPrioritySettings } from "./DefaultPrioritySettings";
 import { SnoozeSettings } from "./SnoozeSettings";
 import { CardActionSettings } from "./CardActionSettings";
 import { CompletenessSettings } from "./CompletenessSettings";
@@ -62,6 +63,12 @@ const groupsFor = (T: Terms): { label: string; sections: Section[] }[] => [
         label: "Priorities",
         intro: `How much each ${T.task} matters. A priority's weight multiplies the points its ${T.task} earns.`,
         render: () => <PrioritySettings />,
+      },
+      {
+        key: "default-priority",
+        label: "Default priority",
+        intro: `The priority a new ${T.task} gets when you don't choose one, or None to leave it empty.`,
+        render: () => <DefaultPrioritySettings />,
       },
       {
         key: "dates",

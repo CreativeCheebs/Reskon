@@ -187,6 +187,16 @@ func (d *DB) CreateTask(ctx context.Context, f Fields) (*Task, error) {
 	if _, set := f["energy_type_id"]; !set && defaultEnergy.Valid {
 		f["energy_type_id"], _ = json.Marshal(defaultEnergy.Int64)
 	}
+	if _, set := f["priority_id"]; !set {
+		// Created without a priority: the Default priority setting applies.
+		pid, err := defaultPriorityID(ctx, tx)
+		if err != nil {
+			return nil, err
+		}
+		if pid != nil {
+			f["priority_id"], _ = json.Marshal(*pid)
+		}
+	}
 	if !hasStatus {
 		if statusID, err = defaultStatus(ctx, tx); err != nil {
 			return nil, err
