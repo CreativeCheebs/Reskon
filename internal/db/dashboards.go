@@ -251,6 +251,11 @@ func checkWidget(f Fields, cur *Widget) error {
 			}
 		}
 	}
+	if raw, ok := f["options"]; ok && source == SourceMetric && !isNull(raw) {
+		if err := checkChartOptions(raw); err != nil {
+			return err
+		}
+	}
 	for _, k := range []string{"w", "h"} {
 		if n, ok, err := f.int64Field(k); err != nil {
 			return err

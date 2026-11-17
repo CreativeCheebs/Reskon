@@ -25,7 +25,10 @@ export interface WidgetQuery {
 }
 
 export interface WidgetOptions {
+  /** One colour for a chart with no split: a palette name or #rrggbb. */
   color?: string;
+  /** Colours picked per series, by the series' key (#rrggbb). */
+  series_colors?: Record<string, string>;
   show_axis?: boolean;
   /** Narrower than this, the widget shows its number instead of a squashed chart. */
   min_width_px?: number;

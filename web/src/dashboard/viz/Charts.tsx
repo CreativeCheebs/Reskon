@@ -45,10 +45,10 @@ export function Chart({ res, viz, options }: { res: MetricResult; viz: Viz; opti
       row[`raw:${k}`] = p.value;
     }
     const keys = split ? res.series.map((s) => `s:${s.key}`) : ["value"];
-    const colors = split ? seriesColors(res.series) : [optionColor(options.color)];
+    const colors = split ? seriesColors(res.series, options.series_colors) : [optionColor(options.color)];
     const names = split ? res.series.map((s) => s.label) : [res.metric];
     return { rows: [...byKey.values()], keys, colors, names };
-  }, [res, split, share, options.color]);
+  }, [res, split, share, options.color, options.series_colors]);
 
   const axis = options.show_axis !== false;
   const tick = { fill: palette.subtle, fontSize: 11 };

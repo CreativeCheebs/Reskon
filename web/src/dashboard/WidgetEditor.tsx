@@ -14,6 +14,7 @@ import { AppPageEditor } from "./AppPageEditor";
 import { AppDataEditor } from "./AppDataEditor";
 import { ViewBoardEditor } from "./ViewBoardEditor";
 import { JournalEditor } from "./JournalEditor";
+import { ChartColors } from "./ChartColors";
 import { RANGE_LABEL, VIZ_LABEL } from "./labels";
 import { CUSTOM_RANGE, rangeChoice, withDates, withRangeChoice } from "./customRange";
 import dayjs from "dayjs";
@@ -39,8 +40,6 @@ const GROUP_LABEL: Record<string, string> = {
   name: "Name",
   now: "Now",
 };
-
-const COLORS = ["accent", "success", "warn", "epic", "muted"];
 
 const CHART_VIZZES: Viz[] = ["bar", "line", "cumulative", "split_bar", "small_multiples", "share_bar"];
 
@@ -328,25 +327,10 @@ function MetricWidgetEditor({
                 />
               </Form.Item>
             )}
-            {CHART_VIZZES.includes(viz) && !query.split && (
-              <Form.Item label="Colour" htmlFor="metric-colour" {...item}>
-                <Select
-                  id="metric-colour"
-                  value={options.color ?? "accent"}
-                  onChange={(color) => setOptions({ ...options, color })}
-                  options={COLORS.map((c) => ({
-                    value: c,
-                    label: (
-                      <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
-                        <span style={{ width: 10, height: 10, borderRadius: 2, background: (palette as Record<string, string>)[c] }} />
-                        {c}
-                      </span>
-                    ),
-                  }))}
-                />
-              </Form.Item>
-            )}
           </div>
+          {CHART_VIZZES.includes(viz) && (
+            <ChartColors series={preview.res?.series ?? []} options={options} onChange={setOptions} />
+          )}
           {metric?.filters?.includes("area") && (
             <Form.Item label="Areas" htmlFor="metric-areas" {...item}>
               <Select id="metric-areas" mode="multiple" allowClear placeholder="All" value={filters.area?.map(Number)} onChange={(v) => setFilter("area", v)}

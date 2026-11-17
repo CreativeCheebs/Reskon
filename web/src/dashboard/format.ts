@@ -66,13 +66,21 @@ export function optionColor(c: string | undefined, fallback = palette.accent): s
   return (palette as Record<string, string>)[c] ?? fallback;
 }
 
-/** One colour per split series: its own (an area's or energy type's) when
- *  it has one no earlier series took, else the next from a fixed cycle. */
-export function seriesColors(series: { color: string | null }[]): string[] {
+const HEX = /^#[0-9a-fA-F]{6}$/;
+
+/** One colour per split series: the one the widget saved for it (options.series_colors,
+ *  by the series' key), else its own (an area's or energy type's) when it has
+ *  one no earlier series took, else the next from a fixed cycle. */
+export function seriesColors(series: { key?: string; color: string | null }[], chosen?: Record<string, string>): string[] {
   const cycle = [palette.accent, palette.success, palette.warn, palette.epic, palette.danger, palette.muted];
-  const used = new Set<string>();
+  const picked = (s: { key?: string }) => {
+    const own = s.key !== undefined ? chosen?.[s.key] : undefined;
+    return own && HEX.test(own) ? own : "";
+  };
+  const used = new Set<string>(series.map(picked).filter(Boolean).map((c) => c.toLowerCase()));
   let next = 0;
   return series.map((s) => {
+    if (picked(s)) return picked(s);
     let c = s.color && /^#[0-9a-fA-F]{6}$/.test(s.color) && !used.has(s.color.toLowerCase()) ? s.color : "";
     while (!c) {
       const candidate = cycle[next++ % cycle.length];

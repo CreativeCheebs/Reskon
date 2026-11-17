@@ -496,6 +496,7 @@ The owner asked for five dashboard chart improvements. Choices common to all:
 - **Recharts stays the only chart library.** Every item is a Recharts feature (label lists, reference lines, a second Y axis, composed charts), so no library was added.
 - **No schema change.** A widget already stores a free `query` and `options`; the new settings live there. Unknown options are kept and ignored, so an older phone or server never loses or chokes on them.
 - **A custom period is `from` and `to` in the widget's query.** The metrics code already ran explicit dates ahead of any range, so this is only the editor and a check when saved.
+- **Series colours are saved by the series' key** (`options.series_colors`, key to `#rrggbb`): the energy type's or area's id, or a name for a combined chart. A picked colour beats the series' own colour; clearing it goes back. The server checks the colours are `#rrggbb` and keeps every option it does not know.
 
 ## Open questions
 
