@@ -7,16 +7,14 @@ import { useApp } from "../store";
 import { WriteButton } from "../offline";
 import { today } from "../format";
 import type { Task } from "../types";
-import { daysUntil, intervalLabel, snoozeIntervals, snoozeMaxDays } from "./snoozeIntervals";
+import { daysUntil, snoozeIntervals, snoozeMaxDays } from "./snoozeIntervals";
+import { daysFromToday, forecastSentence, formatWakeDate, SnoozeHead, SnoozeRowBody, useSnoozeForecast } from "./SnoozeForecast";
 
 // Snooze hides an open task from boards and tables for some days; it keeps
 // its status. The server checks the cap (Settings → Snooze) and works out
 // the date it shows again. Done and cancelled tasks have no snooze.
 
-/** "Wed 5 Nov" for a local YYYY-MM-DD date. */
-export function formatWakeDate(day: string): string {
-  return new Date(`${day}T00:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
-}
+export { formatWakeDate };
 
 /** Snoozes for days, or wakes with 0; or, with untilUnblocked, while an
  *  open task blocks it. Returns the updated task. */
@@ -35,7 +33,6 @@ export function SnoozeButton({ task, onChanged }: { task: Task; onChanged: (t: T
   const [open, setOpen] = useState(false);
   const max = snoozeMaxDays(boot.settings);
   const [days, setDays] = useState<number | null>(Math.min(7, max));
-  if (task.behaviour !== "todo" && task.behaviour !== "in_progress") return null;
 
   const run = async (n: number, untilUnblocked = false) => {
     try {
@@ -47,25 +44,41 @@ export function SnoozeButton({ task, onChanged }: { task: Task; onChanged: (t: T
     }
   };
   const quick = snoozeIntervals(boot.settings);
+  // The numbers come when the menu opens; until they do, or if they fail,
+  // the choices work without them.
+  const forecast = useSnoozeForecast(quick.map(daysFromToday), task.id, open);
+  const [calendarDay, setCalendarDay] = useState<string | null>(null); // a date picked but not yet confirmed
+  const calendar = useSnoozeForecast(calendarDay ? [calendarDay] : [], task.id, open && !!calendarDay);
+  const typedDay = days ? daysFromToday(days) : null;
+  const typed = useSnoozeForecast(typedDay && !quick.includes(days!) ? [typedDay] : [], task.id, open && !!typedDay && !quick.includes(days!), 250);
+  if (task.behaviour !== "todo" && task.behaviour !== "in_progress") return null;
 
   const content = (
-    <Space direction="vertical" size={10} style={{ width: 240 }}>
-      <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-        Hidden from boards and tables until then. It keeps its status.
-      </Typography.Text>
-      <Space wrap size={6}>
+    <Space direction="vertical" size={8} style={{ width: 320 }}>
+      <div role="menu" aria-label="Snooze until">
+        <SnoozeHead />
         {quick.map((n) => (
-          <Button key={n} size="small" onClick={() => run(n)}>
-            {intervalLabel(n)}
-          </Button>
+          <button key={n} type="button" role="menuitem" className="jb-snooze-row" onClick={() => run(n)}>
+            <SnoozeRowBody days={n} state={forecast} />
+          </button>
         ))}
-      </Space>
+      </div>
       <DatePicker
         size="small"
         placeholder="Pick a date"
         format="ddd D MMM YYYY"
-        style={{ width: "100%" }}
+        style={{ width: "calc(100% - 24px)", margin: "0 12px" }}
+        needConfirm
         aria-label="Snooze until a date"
+        onCalendarChange={(d: Dayjs | Dayjs[]) => setCalendarDay(d && !Array.isArray(d) ? d.format("YYYY-MM-DD") : null)}
+        onOpenChange={(o: boolean) => !o && setCalendarDay(null)}
+        renderExtraFooter={() =>
+          calendarDay ? (
+            <Typography.Text type="secondary" style={{ fontSize: 12 }} aria-live="polite">
+              {forecastSentence(calendar, calendarDay)}
+            </Typography.Text>
+          ) : null
+        }
         disabledDate={(d: Dayjs) => {
           const n = daysUntil(today(), d.format("YYYY-MM-DD"));
           return n < 1 || n > max;
@@ -74,7 +87,7 @@ export function SnoozeButton({ task, onChanged }: { task: Task; onChanged: (t: T
         value={null}
         defaultPickerValue={dayjs(today()).add(1, "day")}
       />
-      <Space.Compact size="small" style={{ width: "100%" }}>
+      <Space.Compact size="small" style={{ width: "calc(100% - 24px)", margin: "0 12px" }}>
         <InputNumber
           min={1}
           max={max}
@@ -90,6 +103,11 @@ export function SnoozeButton({ task, onChanged }: { task: Task; onChanged: (t: T
           Snooze
         </Button>
       </Space.Compact>
+      {typedDay && !quick.includes(days!) && (
+        <Typography.Text type="secondary" style={{ fontSize: 12, padding: "0 12px" }} aria-live="polite">
+          {forecastSentence(typed, typedDay)}
+        </Typography.Text>
+      )}
       {task.blocked && !task.snooze_until_unblocked && (
         <Button size="small" block onClick={() => run(0, true)}>
           Until blockers are done
@@ -104,7 +122,7 @@ export function SnoozeButton({ task, onChanged }: { task: Task; onChanged: (t: T
   );
 
   return (
-    <Popover trigger="click" open={open} onOpenChange={setOpen} content={content} title={`Snooze, up to ${max} days`} placement="bottomRight">
+    <Popover trigger="click" open={open} onOpenChange={setOpen} content={content} placement="bottomRight">
       <WriteButton size="small" type={task.snoozed ? "primary" : "default"} ghost={task.snoozed}>
         {!task.snoozed ? "Snooze" : wakeLabel(task) === "When unblocked" ? "Snoozed until unblocked" : `Snoozed until ${wakeLabel(task)}`}
       </WriteButton>
