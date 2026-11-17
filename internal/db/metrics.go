@@ -56,6 +56,8 @@ type MetricSeries struct {
 	Label string  `json:"label"`
 	Color *string `json:"color"`
 	Total float64 `json:"total"`
+	// Average is the series' mean per group key (a dashed reference line).
+	Average *float64 `json:"average,omitempty"`
 }
 
 // MetricResult is the response. Points is never null: an empty range
@@ -72,8 +74,12 @@ type MetricResult struct {
 	Reduce     string         `json:"reduce"`
 	Cumulative bool           `json:"cumulative,omitempty"` // points are running totals
 	Total      float64        `json:"total"`                // the points reduced to one figure
-	Spans      []StateSpan    `json:"spans,omitempty"`
-	Meta       map[string]any `json:"meta,omitempty"`
+	// Average is the mean of the per-key figures (each day, week or group
+	// value, all splits added up), for a dashed reference line. Left out for
+	// running totals and for no points.
+	Average *float64       `json:"average,omitempty"`
+	Spans   []StateSpan    `json:"spans,omitempty"`
+	Meta    map[string]any `json:"meta,omitempty"`
 }
 
 // StateSpan is one state drawn as a single span across the days it was in

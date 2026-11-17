@@ -30,6 +30,7 @@ func TestWidgetChartOptions(t *testing.T) {
 		`{"series_colors":["#112233"]}`,
 		`{"color":5}`,
 		`{"show_values":"yes"}`,
+		`{"show_average":1}`,
 	} {
 		_, err := d.CreateWidget(ctx, fields(t, `{"dashboard_id":1,"viz":"bar","query":{"metric":"points"},"options":`+bad+`}`))
 		if err == nil || !strings.Contains(err.Error(), "options.") {

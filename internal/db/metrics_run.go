@@ -280,7 +280,9 @@ func (r *metricRun) finish() *MetricResult {
 			own[k] = r.values[[2]string{k, out.Series[i].Key}]
 		}
 		out.Series[i].Total = reduce(out.Reduce, keys, own)
+		out.Series[i].Average = average(keys, own, r.q.Cumulative)
 	}
+	out.Average = average(keys, totals, r.q.Cumulative)
 
 	var whole float64 // every key together, for shares without a split
 	for _, k := range keys {
@@ -314,6 +316,22 @@ func (r *metricRun) finish() *MetricResult {
 		}
 	}
 	return out
+}
+
+// average is the mean of the per-key figures (a chart's dashed reference
+// line): the sum over the keys (empty days count as zero) divided by how
+// many keys there are. It is never one energy type divided by another. A
+// running total has no useful average, and no keys have none.
+func average(keys []string, totals map[string]float64, cumulative bool) *float64 {
+	if cumulative || len(keys) == 0 {
+		return nil
+	}
+	var sum float64
+	for _, k := range keys {
+		sum += totals[k]
+	}
+	avg := sum / float64(len(keys))
+	return &avg
 }
 
 // reduce turns per-key totals into one figure for number widgets and the

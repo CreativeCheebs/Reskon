@@ -339,6 +339,15 @@ function MetricWidgetEditor({
               <Checkbox checked={!!options.show_values} onChange={(e) => setOptions({ ...options, show_values: e.target.checked || undefined })}>
                 Show each value
               </Checkbox>
+              {!query.cumulative && viz !== "cumulative" && viz !== "share_bar" && (
+                <Checkbox
+                  style={{ marginLeft: 0, display: "flex" }}
+                  checked={!!options.show_average}
+                  onChange={(e) => setOptions({ ...options, show_average: e.target.checked || undefined })}
+                >
+                  Show the average as a dashed line
+                </Checkbox>
+              )}
             </Form.Item>
           )}
           {metric?.filters?.includes("area") && (

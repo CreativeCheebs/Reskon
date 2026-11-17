@@ -31,6 +31,8 @@ export interface WidgetOptions {
   series_colors?: Record<string, string>;
   /** Write each bar's and line point's value on the chart. */
   show_values?: boolean;
+  /** Draw the average (from the server) as a dashed reference line. */
+  show_average?: boolean;
   show_axis?: boolean;
   /** Narrower than this, the widget shows its number instead of a squashed chart. */
   min_width_px?: number;
@@ -82,6 +84,8 @@ export interface MetricSeries {
   color: string | null;
   /** This series alone, reduced by the server. */
   total: number;
+  /** This series' mean per key, from the server (none for running totals). */
+  average?: number;
 }
 
 export interface StateSpan {
@@ -108,6 +112,8 @@ export interface MetricResult {
   series: MetricSeries[];
   reduce: string;
   total: number;
+  /** The mean of the per-key figures, from the server: the dashed reference line. None for running totals or no points. */
+  average?: number;
   /** Points are running totals. */
   cumulative?: boolean;
   spans?: StateSpan[];

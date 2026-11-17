@@ -9,6 +9,7 @@ import {
   LabelList,
   Line,
   LineChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -66,6 +67,30 @@ export function Chart({ res, viz, options }: { res: MetricResult; viz: Viz; opti
         formatter={(v: number) => (v || position === "top" ? (share ? formatShare(v / 100) : resultValue(v, res)) : "")}
       />
     ) : null;
+  // The average comes from the server. A line chart with several series gets
+  // one dashed line per series, in its colour; anything else, one line for
+  // the figure of each key added up (the stack's height). A share bar has none.
+  const averageLines: { key: string; value: number; color: string }[] = [];
+  if (options.show_average && !share) {
+    if (viz === "line" && split) {
+      res.series.forEach((s, i) => {
+        if (s.average !== undefined) averageLines.push({ key: s.key, value: s.average, color: colors[i] });
+      });
+    } else if (res.average !== undefined) {
+      averageLines.push({ key: "all", value: res.average, color: palette.muted });
+    }
+  }
+  const averages = averageLines.map((a) => (
+    <ReferenceLine
+      key={`avg:${a.key}`}
+      y={a.value}
+      stroke={a.color}
+      strokeDasharray="5 4"
+      strokeWidth={1.5}
+      ifOverflow="extendDomain"
+      label={{ value: `avg ${resultValue(a.value, res)}`, position: "insideTopRight", fill: palette.muted, fontSize: 10 }}
+    />
+  ));
   const common = {
     data: rows,
     margin: { top: showValues ? 22 : 12, right: 12, bottom: 8, left: 0 },
@@ -111,6 +136,7 @@ export function Chart({ res, viz, options }: { res: MetricResult; viz: Viz; opti
               {labelFor(k, "top")}
             </Line>
           ))}
+          {averages}
         </LineChart>
       ) : viz === "cumulative" ? (
         <AreaChart {...common}>
@@ -120,6 +146,7 @@ export function Chart({ res, viz, options }: { res: MetricResult; viz: Viz; opti
               {labelFor(k, split ? "center" : "top")}
             </Area>
           ))}
+          {averages}
         </AreaChart>
       ) : (
         <BarChart {...common}>
@@ -129,6 +156,7 @@ export function Chart({ res, viz, options }: { res: MetricResult; viz: Viz; opti
               {labelFor(k, split ? "center" : "top")}
             </Bar>
           ))}
+          {averages}
         </BarChart>
       )}
     </ResponsiveContainer>

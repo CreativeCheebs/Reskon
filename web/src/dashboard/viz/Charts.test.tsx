@@ -56,4 +56,36 @@ describe("chart renderers", () => {
     const { container } = render(<Chart res={res} viz="split_bar" options={{ series_colors: { "1": "#AA5500" } }} />);
     expect(container.querySelector('path[fill="#AA5500"]')).not.toBeNull();
   });
+
+  it("draws the server's average as a dashed line, only when asked", () => {
+    const res = result({ average: 3.8 });
+    const off = render(<Chart res={res} viz="bar" options={{}} />);
+    expect(off.container.querySelector(".recharts-reference-line")).toBeNull();
+    off.unmount();
+    const { container } = render(<Chart res={res} viz="bar" options={{ show_average: true }} />);
+    const line = container.querySelector(".recharts-reference-line line");
+    expect(line?.getAttribute("stroke-dasharray")).toBe("5 4");
+    expect(container.querySelector(".recharts-reference-line")?.textContent).toContain("avg 3.8");
+  });
+
+  it("draws no average line when the server sent none (running totals)", () => {
+    const { container } = render(<Chart res={result()} viz="line" options={{ show_average: true }} />);
+    expect(container.querySelector(".recharts-reference-line")).toBeNull();
+  });
+
+  it("draws one average line per series on a split line chart", () => {
+    const res = result({
+      average: 5,
+      series: [
+        { key: "1", label: "Focus", color: null, total: 10, average: 2 },
+        { key: "2", label: "Rest", color: null, total: 20, average: 3 },
+      ],
+      points: [
+        { key: "2026-11-01", label: "2026-11-01", value: 4, split: "1" },
+        { key: "2026-11-01", label: "2026-11-01", value: 1, split: "2" },
+      ],
+    });
+    const { container } = render(<Chart res={res} viz="line" options={{ show_average: true }} />);
+    expect(container.querySelectorAll(".recharts-reference-line").length).toBe(2);
+  });
 });
