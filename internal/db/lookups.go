@@ -318,6 +318,11 @@ func (d *DB) PutSetting(ctx context.Context, key string, value json.RawMessage) 
 			return err
 		}
 	}
+	if key == "default_priority" {
+		if err := d.checkDefaultPriority(ctx, value); err != nil {
+			return err
+		}
+	}
 	if key == "snooze" {
 		if err := checkSnoozeRules(value); err != nil {
 			return err

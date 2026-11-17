@@ -11,6 +11,7 @@ import { emptySession, sessionBody, sessionReady, SessionFields, type SessionDra
 import { TagSelect } from "../tags/TagSelect";
 import { useTags } from "../tags/tags";
 import { priorityOptions } from "../task/LevelIcons";
+import { defaultPriorityId } from "../task/defaultPriority";
 import { palette } from "../theme/palette";
 import { today } from "../format";
 import { SimilarTasksList, useSimilarTasks } from "../task/SimilarTasks";
@@ -114,7 +115,7 @@ export function CaptureModal({ onClose, takeEarlyKeys, initialText, onSaved }: P
       id: nextEntryId++,
       parse: p,
       intent: p.intent === "session" ? "session" : p.intent === "task" ? "task" : null,
-      task: { title: p.title ?? raw, area_id: areaId, energy_type_id: energyId, difficulty: p.difficulty, priority_id: null, tags: p.tags ?? [] },
+      task: { title: p.title ?? raw, area_id: areaId, energy_type_id: energyId, difficulty: p.difficulty, priority_id: defaultPriorityId(boot.settings, boot.priorities), tags: p.tags ?? [] },
       session: emptySession({
         task_id: p.matched_task_id ?? null,
         label: p.matched_task_id ? "" : p.title ?? raw,
@@ -166,7 +167,7 @@ export function CaptureModal({ onClose, takeEarlyKeys, initialText, onSaved }: P
       const body: Record<string, unknown> = { title: t.title.trim(), area_id: t.area_id, custom: audit(e), today: today() };
       if (t.energy_type_id) body.energy_type_id = t.energy_type_id;
       if (t.difficulty) body.difficulty = t.difficulty;
-      if (t.priority_id) body.priority_id = t.priority_id;
+      body.priority_id = t.priority_id; // null is an explicit None
       if (t.tags.length) body.tags = t.tags;
       await api.post<Task>("/tasks", body);
       local.set(LAST_AREA, String(t.area_id));

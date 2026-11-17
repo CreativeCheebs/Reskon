@@ -127,6 +127,7 @@ These are never stored. They are worked out every time a task is read, from the 
 ### 4.8 Priorities and level
 
 - Priorities are rows (seeded **Low 0.75**, **Normal 1.0**, **High 1.5**). Each has a colour and a weight. With no colour, a priority gets one by its rank: blue for the lowest through green, yellow, orange to red for the highest. You can add more; built-in ones can't be deleted.
+- **Default priority** (Settings › Workflow › Default priority): the priority a new task gets when it is created without one, or **None**. It applies everywhere a task is created (board, task panel, quick capture, subtasks, the phone, the API), because the server applies it. It starts as Normal. A task created with a priority of its own keeps it, and quick capture's priority box starts on the default and can be cleared to None. If the chosen priority is later deleted, new tasks get none. Existing tasks are never changed.
 - **Level** is 1 to 5, shown as 1 to 5 slanted lines (one line for level 1, five for level 5) in a colour that goes from pale to deep blue. There is no red: a restful level 5 is not a warning. The number is written beside it, so nothing depends on the colour.
 - A task's own points (shown on the task) are **level × priority weight**. No level means no points. No priority counts as 1.
 
@@ -419,7 +420,7 @@ See decisions. In short: it would be a second program to run, embedding it secur
 
 | Group | What you set |
 | --- | --- |
-| Workflow | Areas (name, key prefix, colour, default energy type), statuses, priorities, task dates, snooze, complete details, card actions, custom fields |
+| Workflow | Areas (name, key prefix, colour, default energy type), statuses, priorities, default priority, task dates, snooze, complete details, card actions, custom fields |
 | Time and points | Energy types (name, colour, points per hour), subtypes, subtype rank weights, reflection (week start) |
 | Connections | Apps (connected apps, see 12.4), quick capture model, duplicate search model, sync server (phone) |
 | Data | Download database (phone) |
