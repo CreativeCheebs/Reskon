@@ -121,4 +121,80 @@ describe("startLive", () => {
     window.removeEventListener("jitterbug:signed-out", signedOut);
     stop();
   });
+
+  it("replaces a connection that only looks open when the network comes back", () => {
+    const got: string[] = [];
+    const stop = startLive((n) => got.push(n.topic));
+    FakeSocket.all[0].onopen?.();
+    window.dispatchEvent(new Event("online"));
+    expect(FakeSocket.all.length).toBe(2);
+    FakeSocket.all[1].onopen?.();
+    expect(got).toEqual(["reconnect"]);
+    stop();
+  });
+
+  it("replaces the connection when the tab becomes visible after a long time away", () => {
+    const got: string[] = [];
+    const stop = startLive((n) => got.push(n.topic));
+    FakeSocket.all[0].onopen?.();
+    const vis = vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
+    document.dispatchEvent(new Event("visibilitychange"));
+    vi.setSystemTime(Date.now() + 8 * 3600_000);
+    vis.mockReturnValue("visible");
+    document.dispatchEvent(new Event("visibilitychange"));
+    expect(FakeSocket.all.length).toBe(2);
+    FakeSocket.all[1].onopen?.();
+    expect(got).toEqual(["reconnect"]);
+    vis.mockRestore();
+    stop();
+  });
+
+  it("keeps a healthy connection when the tab was away only briefly", () => {
+    const stop = startLive(() => undefined);
+    FakeSocket.all[0].onopen?.();
+    const vis = vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
+    document.dispatchEvent(new Event("visibilitychange"));
+    vi.setSystemTime(Date.now() + 5_000);
+    vis.mockReturnValue("visible");
+    document.dispatchEvent(new Event("visibilitychange"));
+    expect(FakeSocket.all.length).toBe(1);
+    vis.mockRestore();
+    stop();
+  });
+
+  it("opens at once on becoming visible when it is waiting to retry", () => {
+    const stop = startLive(() => undefined);
+    FakeSocket.all[0].onclose?.({ code: 1006 });
+    for (let i = 0; i < 4; i++) {
+      vi.advanceTimersByTime(30_000);
+      FakeSocket.all[FakeSocket.all.length - 1].onclose?.({ code: 1006 });
+    }
+    const before = FakeSocket.all.length;
+    document.dispatchEvent(new Event("visibilitychange"));
+    expect(FakeSocket.all.length).toBe(before + 1);
+    stop();
+  });
+
+  it("replaces the connection after the machine slept while the tab was showing", () => {
+    const stop = startLive(() => undefined);
+    FakeSocket.all[0].onopen?.();
+    vi.setSystemTime(Date.now() + 3600_000); // the clock jumped; no ticks ran meanwhile
+    vi.advanceTimersByTime(5_000);
+    expect(FakeSocket.all.length).toBe(2);
+    stop();
+  });
+
+  it("backs off up to 30 seconds between tries", () => {
+    const stop = startLive(() => undefined);
+    const gaps = [1000, 2000, 4000, 8000, 16000, 30000, 30000];
+    for (const g of gaps) {
+      const n = FakeSocket.all.length;
+      FakeSocket.all[n - 1].onclose?.({ code: 1006 });
+      vi.advanceTimersByTime(g - 1);
+      expect(FakeSocket.all.length).toBe(n);
+      vi.advanceTimersByTime(1);
+      expect(FakeSocket.all.length).toBe(n + 1);
+    }
+    stop();
+  });
 });

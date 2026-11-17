@@ -489,6 +489,12 @@ On the live server, Home arrived from a phone (already on the newer core) while 
 
 ---
 
+### A tab left open stays connected (2026-11-17)
+
+The owner wants a tab to stay up to date however long it is left open. Reconnecting after a drop and reloading afterwards already existed. What broke was a connection that dies without telling the browser: after a laptop sleeps or wifi changes, the socket still looks open, never reports a close, and the old code only retried when it knew the socket was gone. The tab then showed stale data until a manual refresh. Fix: the connection is replaced on purpose when the network comes back, when the tab becomes visible after more than 30 s away, and when the tab's timers show it was frozen. The replacement reports a reconnect, so what is on screen reloads once. No server change was needed (a server heartbeat message would have made old open tabs reload every 30 s).
+
+An open tab still does **not** keep the sign-in alive: the sign-in is renewed only by using the app (a security choice of the owner, unchanged). If the sign-in has ended, the reconnect is refused, one signed-in call gets a 401, and the sign-in page shows.
+
 ## Open questions
 
 - **"Too low" on the ceiling question.** It only cancels a "too high" hold. Should it suggest more hours for the next days?
