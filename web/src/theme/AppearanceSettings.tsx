@@ -10,13 +10,14 @@ import { useTheme } from "./ThemeProvider";
 import { BUILTIN_THEMES, checkContrast, parseTheme, themeTemplate, type Theme } from "./themes";
 import { useTerms } from "../terms";
 
-// Pick a theme, download any theme as an editable template, upload your
+// System (the default) follows the computer's light or dark setting live;
+// Light and Dark fix it. Pick a theme, download any theme as an editable template, upload your
 // own. The choice is saved on the account (setting "theme"); uploaded
 // themes are kept in setting "custom_themes".
 
 export function AppearanceSettings() {
   const { boot, online } = useApp();
-  const { theme: active, setTheme } = useTheme();
+  const { theme: shown, choice: active, setTheme } = useTheme();
   const [custom, setCustom] = useState<Theme[]>(() =>
     Array.isArray(boot.settings.custom_themes)
       ? (boot.settings.custom_themes as unknown[]).flatMap((t) => parseTheme(JSON.stringify(t)).theme ?? [])
@@ -93,7 +94,7 @@ export function AppearanceSettings() {
         <Upload accept=".json,application/json" showUploadList={false} beforeUpload={(f) => (upload(f), false)} disabled={!online}>
           <WriteButton icon={<UploadOutlined />}>Upload theme</WriteButton>
         </Upload>
-        <Button icon={<DownloadOutlined />} onClick={() => download(active)}>
+        <Button icon={<DownloadOutlined />} onClick={() => download(shown)}>
           Download template (current theme)
         </Button>
       </Space>
@@ -102,7 +103,7 @@ export function AppearanceSettings() {
           <ThemeCard
             key={t.id}
             theme={t}
-            active={JSON.stringify(t.colors) === JSON.stringify(active.colors)}
+            active={t.id === active.id && (!!t.builtin || JSON.stringify(t.colors) === JSON.stringify(active.colors))}
             onChoose={() => choose(t)}
             onDownload={() => download(t)}
             onRemove={t.builtin ? undefined : () => remove(t)}

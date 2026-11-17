@@ -1,9 +1,9 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ConfigProvider } from "antd";
 import { local } from "../offline";
 import { makeAntTheme } from "./antTheme";
-import { applyPalette, palette } from "./palette";
-import { BUILTIN_THEMES, parseTheme, type Theme } from "./themes";
+import { applyPalette, isDarkPalette, palette } from "./palette";
+import { BUILTIN_THEMES, parseTheme, resolveTheme, SYSTEM_THEME, type Theme } from "./themes";
 import { interactionCss } from "./interactionStyles";
 
 // Holds the active theme. Switching replaces the palette, rebuilds the Ant
@@ -14,8 +14,18 @@ import { interactionCss } from "./interactionStyles";
 const LOCAL_KEY = "jitterbug.theme";
 
 interface ThemeState {
+  /** What is on screen now. When the choice is System, this is Dark or Light. */
   theme: Theme;
+  /** What the person picked (may be System). */
+  choice: Theme;
   setTheme: (t: Theme) => void;
+}
+
+const DARK_QUERY = "(prefers-color-scheme: dark)";
+
+/** Does the computer prefer dark? Dark when it cannot be asked (the app's own look before System existed). */
+function systemPrefersDark(): boolean {
+  return typeof window.matchMedia !== "function" ? true : window.matchMedia(DARK_QUERY).matches;
 }
 
 const Ctx = createContext<ThemeState | null>(null);
@@ -35,7 +45,7 @@ function initialTheme(): Theme {
       return BUILTIN_THEMES.find((b) => b.id === id) ?? parsed.theme;
     }
   }
-  return BUILTIN_THEMES[0];
+  return SYSTEM_THEME; // nothing chosen yet: follow the computer
 }
 
 const style = document.createElement("style");
@@ -48,7 +58,7 @@ function applyGlobalStyles() {
   document.body.style.color = palette.fg;
   style.textContent = `
     @font-face { font-family: "DM Sans"; src: url("/fonts/DM-Sans.ttf") format("truetype"); font-weight: 100 1000; font-style: normal; font-display: swap; }
-    :root { color-scheme: dark; }
+    :root { color-scheme: ${isDarkPalette() ? "dark" : "light"}; }
     * { scrollbar-width: thin; scrollbar-color: ${palette.borderStrong} transparent; }
     ::-webkit-scrollbar { width: 10px; height: 10px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -63,24 +73,37 @@ function applyGlobalStyles() {
  *  (elements passed in from outside would keep their identity and skip
  *  re-rendering). */
 export function ThemeProvider({ children }: { children: () => ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(() => {
-    const t = initialTheme();
-    applyPalette(t.colors);
+  const [choice, setChoice] = useState<Theme>(initialTheme);
+  const [dark, setDark] = useState(systemPrefersDark);
+  const theme = resolveTheme(choice, dark);
+  // The palette is set while rendering, before any child reads it. (Doing it
+  // again for the same theme is harmless.)
+  const applied = useRef<Theme | null>(null);
+  if (applied.current !== theme) {
+    applied.current = theme;
+    applyPalette(theme.colors);
     applyGlobalStyles();
-    return t;
-  });
+  }
 
   const setTheme = useCallback((t: Theme) => {
-    applyPalette(t.colors);
-    applyGlobalStyles();
     local.set(LOCAL_KEY, JSON.stringify(t));
-    setThemeState(t);
+    setChoice(t);
+  }, []);
+
+  // The computer's light/dark setting changed (sunset, or a shortcut): follow it live.
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const mq = window.matchMedia(DARK_QUERY);
+    const onChange = (e: MediaQueryListEvent) => setDark(e.matches);
+    mq.addEventListener("change", onChange);
+    setDark(mq.matches);
+    return () => mq.removeEventListener("change", onChange);
   }, []);
 
   const antTheme = useMemo(makeAntTheme, [theme]);
 
   return (
-    <Ctx.Provider value={{ theme, setTheme }}>
+    <Ctx.Provider value={{ theme, choice, setTheme }}>
       <ConfigProvider theme={antTheme}>{children()}</ConfigProvider>
     </Ctx.Provider>
   );

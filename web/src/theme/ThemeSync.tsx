@@ -18,10 +18,12 @@ export function savedTheme(value: unknown): Theme | undefined {
 
 export function ThemeSync() {
   const { boot } = useApp();
-  const { theme, setTheme } = useTheme();
+  const { choice, setTheme } = useTheme();
   const saved = savedTheme(boot.settings.theme);
   useEffect(() => {
-    if (saved && JSON.stringify(saved.colors) !== JSON.stringify(theme.colors)) setTheme(saved);
+    // Compare the choice, not what is on screen: System shows as Dark or
+    // Light, and a built-in is the same theme whatever its colours say.
+    if (saved && (saved.id !== choice.id || (!saved.builtin && JSON.stringify(saved.colors) !== JSON.stringify(choice.colors)))) setTheme(saved);
     // Only when the account's setting changes, not on every local switch.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(boot.settings.theme)]);

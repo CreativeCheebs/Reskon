@@ -14,10 +14,57 @@ export interface Theme {
   builtin?: boolean;
 }
 
+/** The "System" choice: not a palette of its own, it is the Dark theme or
+ *  the Light theme, whichever the computer is set to right now. `colors` is
+ *  only what the picker previews. */
+export const SYSTEM_THEME: Theme = {
+  id: "system",
+  name: "System",
+  builtin: true,
+  source: "Light or dark, following your computer's setting",
+  colors: DEFAULT_COLORS,
+};
+
+/** Reskon's light theme: the same warm tones and periwinkle, on light surfaces. */
+export const LIGHT_COLORS: Palette = {
+  bg: "#F3F1EE",
+  panel: "#FFFFFF",
+  panelDim: "#EAE7E3",
+  overlay: "#FFFFFF",
+  hover: "#EFEDF5",
+  selected: "#E1E4FB",
+  border: "#D9D5D0",
+  borderStrong: "#8A858C",
+  fg: "#1F1D22",
+  muted: "#5A555C",
+  subtle: "#645F66",
+  accent: "#4A53C9",
+  success: "#2E7D32",
+  warn: "#9A6700",
+  danger: "#C62828",
+  epic: "#7048C9",
+  shadow: "#1F1D22",
+  difficulty1: "#B4BBEF",
+  difficulty2: "#939CE6",
+  difficulty3: "#7580DD",
+  difficulty4: "#5C67D3",
+  difficulty5: "#4650C4",
+};
+
+export const LIGHT_THEME: Theme = {
+  id: "light",
+  name: "Light",
+  builtin: true,
+  source: "Reskon warm paper and periwinkle",
+  colors: LIGHT_COLORS,
+};
+
 export const BUILTIN_THEMES: Theme[] = [
+  SYSTEM_THEME,
+  LIGHT_THEME,
   {
     id: "default",
-    name: "Default",
+    name: "Dark",
     builtin: true,
     source: "Reskon warm charcoal and periwinkle",
     colors: DEFAULT_COLORS,
@@ -72,6 +119,16 @@ export const BUILTIN_THEMES: Theme[] = [
     },
   },
 ];
+
+/** The dark Reskon theme (id "default"). */
+export const DARK_THEME: Theme = BUILTIN_THEMES.find((b) => b.id === "default") as Theme;
+
+/** What the chosen theme looks like right now: System becomes Dark or Light
+ *  by what the computer prefers; anything else is itself. */
+export function resolveTheme(choice: Theme, prefersDark: boolean): Theme {
+  if (choice.id !== SYSTEM_THEME.id) return choice;
+  return prefersDark ? DARK_THEME : LIGHT_THEME;
+}
 
 /** What each colour is for, written into the downloadable template. */
 export const TOKEN_HELP: Record<PaletteKey, string> = {
