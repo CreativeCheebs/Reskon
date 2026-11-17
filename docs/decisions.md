@@ -564,6 +564,15 @@ The owner asked for five dashboard chart improvements. Choices common to all:
 
 Before snoozing a task you can see how busy the day it would return is. Next to each choice the menu shows the hours (the estimates) and the points of tasks already snoozed to that exact day. The owner approved the look (a mock with a header row, the date under each choice, numbers on the right, a dash for nothing) and chose no "busy" or "light" labels and no bars: just the numbers. Points use the existing formulas, not a new one: a session's points (hours × the energy type's points per hour × level) times the task's priority weight, with 1 for anything missing. The server works it out (`GET /api/snooze/forecast`), because derived values never live in the browser. The menu fetches when it opens and works without numbers while loading or if the call fails, so snoozing is never blocked. The rows are the snooze intervals chosen in Settings › Snooze, in that order. The phone's menu is not changed in this step.
 
+### Review fixes (2026-11-17)
+
+- **Points and hours has no overall average**, as it has no overall total: adding the two units together means nothing. Each series keeps its own average.
+- **Snooze intervals over the longest snooze are hidden from the menu, not deleted.** The server filters them when it reads the setting, the web app already did; Settings › Snooze keeps them in the list, greyed, so raising the limit again brings them back.
+- **Custom dates are limited** to 3,660 days and the years 1970 to 2100, so a typo cannot ask the server to count days for centuries. (The Journal screen keeps its own wider rule.)
+- **A chart widget's single colour** must be `#rrggbb` or a palette name the web app knows; anything else is refused when the widget is saved. Colours saved earlier keep working: they are only checked when options are saved.
+- **An epic made from the task panel gets the default priority**, like every task the server creates without one.
+- **Tooltips are inverted** (main text colour as the background, the page colour as the text) so they read in the light themes as well as the dark ones.
+
 ## Open questions
 
 - **"Too low" on the ceiling question.** It only cancels a "too high" hold. Should it suggest more hours for the next days?
