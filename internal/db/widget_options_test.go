@@ -38,3 +38,36 @@ func TestWidgetChartOptions(t *testing.T) {
 		}
 	}
 }
+
+func TestWidgetColorOption(t *testing.T) {
+	d := openTest(t)
+	ctx := context.Background()
+	for _, ok := range []string{`"warn"`, `"#aabbcc"`, `"difficulty3"`, `null`} {
+		if _, err := d.CreateWidget(ctx, fields(t, `{"dashboard_id":1,"viz":"bar","query":{"metric":"points"},"options":{"color":`+ok+`}}`)); err != nil {
+			t.Errorf("color %s refused: %v", ok, err)
+		}
+	}
+	for _, bad := range []string{`"red"`, `"#abc"`, `"url(x)"`, `""`} {
+		if _, err := d.CreateWidget(ctx, fields(t, `{"dashboard_id":1,"viz":"bar","query":{"metric":"points"},"options":{"color":`+bad+`}}`)); err == nil {
+			t.Errorf("color %s accepted", bad)
+		}
+	}
+}
+
+func TestWidgetCustomDatesSpan(t *testing.T) {
+	d := openTest(t)
+	ctx := context.Background()
+	mk := func(from, to string) error {
+		_, err := d.CreateWidget(ctx, fields(t, `{"dashboard_id":1,"viz":"bar","query":{"metric":"points","from":"`+from+`","to":"`+to+`"}}`))
+		return err
+	}
+	if err := mk("2026-01-01", "2026-06-30"); err != nil {
+		t.Errorf("ordinary range refused: %v", err)
+	}
+	if err := mk("2000-01-01", "2026-01-01"); err == nil {
+		t.Error("26-year span accepted")
+	}
+	if err := mk("1900-01-01", "1900-01-05"); err == nil {
+		t.Error("year 1900 accepted")
+	}
+}

@@ -49,6 +49,15 @@ func loadSnoozeRules(ctx context.Context, q querier) (SnoozeRules, error) {
 	if r.Intervals == nil {
 		r.Intervals = DefaultSnoozeIntervals
 	}
+	// An interval longer than the cap would be refused by Snooze, so the
+	// menu never offers it (lowering the cap keeps the saved list as it was).
+	kept := make([]int, 0, len(r.Intervals))
+	for _, n := range r.Intervals {
+		if n <= r.MaxDays {
+			kept = append(kept, n)
+		}
+	}
+	r.Intervals = kept
 	return r, nil
 }
 

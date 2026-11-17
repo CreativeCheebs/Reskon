@@ -127,7 +127,7 @@ func TestSnoozeIntervalsSetting(t *testing.T) {
 	if err := d.PutSetting(ctx, "snooze", json.RawMessage(`{"max_days":30}`)); err != nil {
 		t.Fatal(err)
 	}
-	if r, _ = loadSnoozeRules(ctx, d.DB); len(r.Intervals) != len(DefaultSnoozeIntervals) || r.MaxDays != 30 {
+	if r, _ = loadSnoozeRules(ctx, d.DB); len(r.Intervals) != 6 || r.MaxDays != 30 { // the default list, cut to the cap
 		t.Errorf("old setting = %+v", r)
 	}
 	// A chosen list keeps its order; an empty list is allowed (custom only).
@@ -146,6 +146,31 @@ func TestSnoozeIntervalsSetting(t *testing.T) {
 	for _, bad := range []string{`[0]`, `[366]`, `[3,3]`, `[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17]`, `"x"`} {
 		if err := d.PutSetting(ctx, "snooze", json.RawMessage(`{"max_days":30,"intervals":`+bad+`}`)); err == nil {
 			t.Errorf("intervals %s accepted", bad)
+		}
+	}
+}
+
+// Lowering the cap hides intervals above it, so the menu never offers a
+// choice Snooze would refuse.
+func TestSnoozeRulesDropIntervalsOverCap(t *testing.T) {
+	ctx := context.Background()
+	d := openTest(t)
+	if err := d.PutSetting(ctx, "snooze", json.RawMessage(`{"max_days":20,"intervals":[1,7,14,30,90]}`)); err != nil {
+		t.Fatal(err)
+	}
+	r, err := loadSnoozeRules(ctx, d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(r.Intervals) != 3 || r.Intervals[2] != 14 {
+		t.Errorf("intervals = %v, want [1 7 14]", r.Intervals)
+	}
+	// Default list under a low cap.
+	d.PutSetting(ctx, "snooze", json.RawMessage(`{"max_days":10}`))
+	r, _ = loadSnoozeRules(ctx, d)
+	for _, n := range r.Intervals {
+		if n > 10 {
+			t.Errorf("interval %d over the cap", n)
 		}
 	}
 }

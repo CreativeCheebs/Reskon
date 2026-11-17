@@ -83,3 +83,35 @@ func TestComboChartOnlyForTheCombinedMetric(t *testing.T) {
 		}
 	}
 }
+
+func TestCombinedMetricHasNoTopLevelAverage(t *testing.T) {
+	f := newMetricFixture(t)
+	both := f.metric(t, MetricQuery{Metric: "points_and_hours", Group: "day", Range: "30d"})
+	if both.Average != nil {
+		t.Errorf("top-level average = %v: points and hours must not be averaged together", *both.Average)
+	}
+	for _, s := range both.Series {
+		if s.Average == nil {
+			t.Errorf("series %s lost its own average", s.Key)
+		}
+	}
+}
+
+func TestMetricCustomDateSpanLimit(t *testing.T) {
+	for _, c := range []struct {
+		from, to string
+		ok       bool
+	}{
+		{"2026-01-01", "2026-12-31", true},
+		{"2016-01-01", "2026-01-01", true},  // 3653 days
+		{"2015-01-01", "2026-01-01", false}, // over 3660
+		{"1969-12-30", "1970-01-02", false}, // before 1970
+		{"2099-12-01", "2101-01-01", false}, // after 2100
+	} {
+		q := MetricQuery{Metric: "points", From: c.from, To: c.to}
+		_, err := CheckMetricQuery(&q)
+		if (err == nil) != c.ok {
+			t.Errorf("%s..%s: err = %v, want ok=%v", c.from, c.to, err, c.ok)
+		}
+	}
+}

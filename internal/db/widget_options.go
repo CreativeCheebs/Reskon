@@ -14,6 +14,15 @@ import (
 //	show_values    true: write each value on its bar or line point
 //	show_average   true: draw the average (from the metric answer) as a dashed line
 
+// paletteColorNames are the palette keys the web app's optionColor accepts
+// (web/src/theme/palette.ts PALETTE_KEYS).
+var paletteColorNames = map[string]bool{
+	"bg": true, "panel": true, "panelDim": true, "overlay": true, "hover": true, "selected": true,
+	"border": true, "borderStrong": true, "fg": true, "muted": true, "subtle": true,
+	"accent": true, "success": true, "warn": true, "danger": true, "epic": true, "shadow": true,
+	"difficulty1": true, "difficulty2": true, "difficulty3": true, "difficulty4": true, "difficulty5": true,
+}
+
 func checkChartOptions(raw json.RawMessage) error {
 	var o map[string]json.RawMessage
 	if err := json.Unmarshal(raw, &o); err != nil {
@@ -21,7 +30,7 @@ func checkChartOptions(raw json.RawMessage) error {
 	}
 	if v, ok := o["color"]; ok && !isNull(v) {
 		var s string
-		if json.Unmarshal(v, &s) != nil || len(s) > 40 {
+		if json.Unmarshal(v, &s) != nil || len(s) > 40 || !(hexColor.MatchString(s) || paletteColorNames[s]) {
 			return invalid("options.color must be a colour name or #rrggbb")
 		}
 	}

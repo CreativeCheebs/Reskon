@@ -218,6 +218,9 @@ func CheckMetricQuery(q *MetricQuery) (*metricDef, error) {
 		if !validDate(q.From) || !validDate(q.To) || q.From > q.To {
 			return nil, invalid("from and to must both be YYYY-MM-DD, from not after to")
 		}
+		if err := checkDateSpan(q.From, q.To); err != nil {
+			return nil, err
+		}
 	} else if q.Range != "" && !contains(metricRanges, q.Range) {
 		return nil, invalid("range must be one of %s, or from/to", strings.Join(metricRanges, ", "))
 	}
@@ -301,4 +304,21 @@ func int64Values(name string, values []string) ([]int64, error) {
 		out = append(out, n)
 	}
 	return out, nil
+}
+
+// MaxMetricSpanDays is the longest custom date range a metric accepts.
+const MaxMetricSpanDays = 3660
+
+// checkDateSpan keeps a custom range sane: years 1970 to 2100, at most
+// MaxMetricSpanDays days. Both dates are already valid and from <= to.
+func checkDateSpan(from, to string) error {
+	f, _ := time.Parse("2006-01-02", from)
+	t, _ := time.Parse("2006-01-02", to)
+	if f.Year() < 1970 || t.Year() > 2100 {
+		return invalid("from and to must be between 1970 and 2100")
+	}
+	if t.Sub(f) > MaxMetricSpanDays*24*time.Hour {
+		return invalid("a date range can be at most %d days", MaxMetricSpanDays)
+	}
+	return nil
 }

@@ -287,6 +287,9 @@ func (r *metricRun) finish() *MetricResult {
 		out.Series[i].Average = average(keys, own, r.q.Cumulative)
 	}
 	out.Average = average(keys, totals, r.q.Cumulative)
+	if r.multi {
+		out.Average = nil // as with Total: points and hours must not be added into one average
+	}
 
 	var whole float64 // every key together, for shares without a split
 	for _, k := range keys {
