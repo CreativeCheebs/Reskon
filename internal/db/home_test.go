@@ -96,11 +96,11 @@ func TestHomeOnANewDatabase(t *testing.T) {
 	if !home.IsBuiltin || home.Position != -1 {
 		t.Errorf("home = %+v", home)
 	}
-	if got := widgetTitles(home); got != "Open tasks|Hours yesterday|Points yesterday|Points, last 7 days|Hours, last 7 days" {
+	if got := widgetTitles(home); got != "Buffs and debuffs|Open tasks|Hours yesterday|Points yesterday|Points, last 7 days|Hours, last 7 days" {
 		t.Fatalf("widgets = %s", got)
 	}
 	views, _ := d.ListViews(ctx)
-	board := home.Widgets[0]
+	board := home.Widgets[1]
 	if board.Source != SourceView || board.Viz != VizBoard || len(views) == 0 || string(board.Query) != fmt.Sprintf(`{"view_id":%d}`, views[0].ID) {
 		t.Errorf("board = %+v, views = %+v", board, views)
 	}
@@ -144,8 +144,8 @@ func TestHomeOnANewDatabase(t *testing.T) {
 	var n int
 	d.QueryRowContext(ctx, `SELECT COUNT(*) FROM sync_idmap WHERE (tbl = 'dashboard' AND uid = 'b-dashboard-home')
 		OR (tbl = 'widget' AND uid LIKE 'b-widget-home-%')`).Scan(&n)
-	if n != 6 {
-		t.Errorf("fixed uids = %d, want 6", n)
+	if n != 7 {
+		t.Errorf("fixed uids = %d, want 7", n)
 	}
 }
 
@@ -173,8 +173,8 @@ func TestHomeOnAnExistingDatabase(t *testing.T) {
 		t.Fatalf("dashboards = %s", dashboardNames(all))
 	}
 	home := all[0]
-	if home.Position != -1 || len(home.Widgets) != 5 || string(home.Widgets[0].Query) != `{"view_id":21}` {
-		t.Errorf("home = %+v, board = %s", home, home.Widgets[0].Query)
+	if home.Position != -1 || len(home.Widgets) != 6 || string(home.Widgets[1].Query) != `{"view_id":21}` {
+		t.Errorf("home = %+v, board = %s", home, home.Widgets[1].Query)
 	}
 	// What was there is exactly as it was.
 	positions := map[string]int64{}
@@ -197,13 +197,13 @@ func TestHomeOnAnExistingDatabase(t *testing.T) {
 	var marks int
 	d.QueryRowContext(ctx, `SELECT COUNT(*) FROM sync_field WHERE (tbl = 'dashboard' AND key = ? AND field = '_row') OR (tbl = 'widget' AND field = '_row' AND key IN (
 		SELECT CAST(id AS TEXT) FROM widget WHERE dashboard_id = ?))`, fmt.Sprint(home.ID), home.ID).Scan(&marks)
-	if marks != 6 {
-		t.Errorf("%d new-row marks on Home and its widgets, want 6", marks)
+	if marks != 7 {
+		t.Errorf("%d new-row marks on Home and its widgets, want 7", marks)
 	}
 	if uid, ok := uidOf(ctx, d, "dashboard", home.ID); !ok || uid != "b-dashboard-home" {
 		t.Errorf("home's uid = %q", uid)
 	}
-	if uid, ok := uidOf(ctx, d, "widget", home.Widgets[0].ID); !ok || uid != "b-widget-home-board" {
+	if uid, ok := uidOf(ctx, d, "widget", home.Widgets[1].ID); !ok || uid != "b-widget-home-board" {
 		t.Errorf("board's uid = %q", uid)
 	}
 	// Opening again changes nothing.
@@ -241,8 +241,8 @@ func TestHomeBoardViewChoice(t *testing.T) {
 	}
 	d.QueryRowContext(ctx, `SELECT id FROM view WHERE deleted_at IS NULL ORDER BY position, id LIMIT 1`).Scan(&first)
 	d.Close()
-	if string(all[0].Widgets[0].Query) != fmt.Sprintf(`{"view_id":%d}`, first) || first == 30 || first == 31 {
-		t.Errorf("board = %s, want view %d", all[0].Widgets[0].Query, first)
+	if string(all[0].Widgets[1].Query) != fmt.Sprintf(`{"view_id":%d}`, first) || first == 30 || first == 31 {
+		t.Errorf("board = %s, want view %d", all[0].Widgets[1].Query, first)
 	}
 
 	path = openBefore020(t, func(s *sql.DB) {
@@ -254,7 +254,7 @@ func TestHomeBoardViewChoice(t *testing.T) {
 	}
 	defer d.Close()
 	all, _ = d.ListDashboards(ctx)
-	if all[0].Name != "Home" || widgetTitles(all[0]) != "Hours yesterday|Points yesterday|Points, last 7 days|Hours, last 7 days" {
+	if all[0].Name != "Home" || widgetTitles(all[0]) != "Buffs and debuffs|Hours yesterday|Points yesterday|Points, last 7 days|Hours, last 7 days" {
 		t.Errorf("with no views: %s: %s", all[0].Name, widgetTitles(all[0]))
 	}
 }
@@ -273,7 +273,7 @@ func TestHomeSyncsAsOneDashboard(t *testing.T) {
 			t.Errorf("%s: %s", name, dashboardNames(all))
 		}
 		for _, x := range all {
-			if x.Name == "Home" && len(x.Widgets) != 5 {
+			if x.Name == "Home" && len(x.Widgets) != 6 {
 				t.Errorf("%s: Home has %d widgets", name, len(x.Widgets))
 			}
 		}
@@ -302,7 +302,7 @@ func TestHomeSyncsAsOneDashboard(t *testing.T) {
 	if dashboardNames(all) != "Home|Today|This month|The year" {
 		t.Errorf("after upgrading: %s", dashboardNames(all))
 	}
-	if len(all[0].Widgets) != 5 {
+	if len(all[0].Widgets) != 6 {
 		t.Errorf("Home has %d widgets after upgrading", len(all[0].Widgets))
 	}
 	var uids int

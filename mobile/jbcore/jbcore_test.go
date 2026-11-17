@@ -86,8 +86,8 @@ func TestHomeDashboardAndYesterdayThroughTheCore(t *testing.T) {
 	}
 	asked := 0
 	for _, w := range all[0].Widgets {
-		if w.Source == "view" {
-			continue // drawn by the web app only
+		if w.Source == "view" || w.Source == "states" {
+			continue // not metrics (the board and the buffs row are drawn by the app, not asked here)
 		}
 		res, err := Call("GET", "/api/metrics?widget="+itoa(w.ID), "")
 		if err != nil {

@@ -91,8 +91,8 @@ func TestWidgetSource(t *testing.T) {
 	}
 	for _, x := range all {
 		for _, w := range x.Widgets {
-			// Only Home's board is not a metric.
-			if w.Source != SourceMetric && !(x.Name == "Home" && w.Source == SourceView) {
+			// Only Home's board and buffs widget are not metrics.
+			if w.Source != SourceMetric && !(x.Name == "Home" && (w.Source == SourceView || w.Source == SourceStates)) {
 				t.Errorf("seeded widget %d has source %q", w.ID, w.Source)
 			}
 		}

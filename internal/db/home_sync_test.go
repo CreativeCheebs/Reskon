@@ -165,7 +165,7 @@ func TestAnOldPairedPhoneReceivesChangesToHomeThenUpgrades(t *testing.T) {
 	}
 	for name, d := range map[string]*DB{"server": srv, "phone": up} {
 		all, _ := d.ListDashboards(ctx)
-		if dashboardNames(all) != "Home|Today|This month|The year" || len(homeOf(t, d).Widgets) != 6 {
+		if dashboardNames(all) != "Home|Today|This month|The year" || len(homeOf(t, d).Widgets) != 7 {
 			t.Errorf("%s: %s, %d Home widgets", name, dashboardNames(all), len(homeOf(t, d).Widgets))
 		}
 	}
