@@ -573,7 +573,7 @@ Before snoozing a task you can see how busy the day it would return is. Next to 
 - **Custom dates are limited** to 3,660 days and the years 1970 to 2100, so a typo cannot ask the server to count days for centuries. (The Journal screen keeps its own wider rule.)
 - **A chart widget's single colour** must be `#rrggbb` or a palette name the web app knows; anything else is refused when the widget is saved. Colours saved earlier keep working: they are only checked when options are saved.
 - **An epic made from the task panel gets the default priority**, like every task the server creates without one.
-- **Tooltips are inverted** (main text colour as the background, the page colour as the text) so they read in the light themes as well as the dark ones.
+- **Tooltips are dark with light text in every theme (owner decision).** In a light theme the box is the main text colour with the page colour as the text; in a dark theme it is the overlay colour with the main text colour. (An earlier step inverted them everywhere, which made dark-theme tooltips light.)
 
 - **The card action "Note" is now called "Edit description" (owner decision).** It shows under that name on the card's hover button and tooltip, in the right-click menu and in Settings › Card actions (web and phone). The saved action id stays `note`, so anyone's saved Card actions settings keep working unchanged.
 
