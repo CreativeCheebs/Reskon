@@ -115,6 +115,11 @@ export function blend(fg: string, bg: string, alpha: number): string {
   return "#" + f.map((v, i) => Math.round(v * alpha + b[i] * (1 - alpha)).toString(16).padStart(2, "0")).join("");
 }
 
+/** True when the page background is dark (so light text and Ant's dark controls fit). */
+export function isDarkPalette(c: { bg: string } = palette): boolean {
+  return contrast(c.bg, "#000000") < contrast(c.bg, "#ffffff");
+}
+
 /** The colour, lightened toward white only as far as needed to reach
  *  `min` contrast on bg (WCAG AA for text is 4.5). Dark user-chosen
  *  colours such as Backlog grey stay recognisable but become readable. */

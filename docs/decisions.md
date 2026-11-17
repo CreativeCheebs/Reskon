@@ -495,6 +495,16 @@ The owner wants a tab to stay up to date however long it is left open. Reconnect
 
 An open tab still does **not** keep the sign-in alive: the sign-in is renewed only by using the app (a security choice of the owner, unchanged). If the sign-in has ended, the reconnect is refused, one signed-in call gets a 401, and the sign-in page shows.
 
+### Automatic theme: System is the default (2026-11-17)
+
+The owner asked for a theme that follows the computer's light or dark setting, as a choice next to Light and Dark, and for it to be the default. There was no light theme yet (all five were dark), so one was added: warm paper surfaces with the same periwinkle accent, checked for readable contrast. The old "Default" theme is now shown as "Dark" (its saved id stays `default`, so nobody who picked it loses it).
+
+- "System" is not a palette. It is stored as `{"id": "system"}` in the existing `theme` setting (no migration) and in the browser, and is turned into Dark or Light on screen by the computer's setting, live (a media-query listener), with no reload.
+- Nothing chosen yet means System. People who already chose a theme keep it: the stored value cannot tell "chose Default" from "never chose", so it is not overridden.
+- Ant Design's own light or dark base is picked from the palette's background; the token block itself is unchanged.
+- A connected app's page is sent its colours again after a switch (it already was after a manual theme change); `mode` is "light" or "dark".
+- Not done: separate choices for which dark and which light theme System uses; it is always Dark and Light.
+
 ## Open questions
 
 - **"Too low" on the ceiling question.** It only cancels a "too high" hold. Should it suggest more hours for the next days?

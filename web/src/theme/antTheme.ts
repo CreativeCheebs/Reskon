@@ -1,12 +1,12 @@
 import { theme, type ThemeConfig } from "antd";
-import { blend, palette } from "./palette";
+import { blend, isDarkPalette, palette } from "./palette";
 
 // One token block for the whole app: dark surface levels from the active
 // theme, compact controls, rounded corners and no button shadows. Built from
 // the palette each time the theme changes. Motion is about a third of
 // Ant's default (0.1/0.2/0.3s), so panels and menus open without a wait.
 export const makeAntTheme = (): ThemeConfig => ({
-  algorithm: [theme.darkAlgorithm, theme.compactAlgorithm],
+  algorithm: [isDarkPalette() ? theme.darkAlgorithm : theme.defaultAlgorithm, theme.compactAlgorithm],
   token: {
     colorBgBase: palette.bg,
     colorBgLayout: palette.bg,

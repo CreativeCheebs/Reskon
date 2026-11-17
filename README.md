@@ -68,7 +68,7 @@ To release a new version: change the number in three places that must agree, `VE
 
 ## Themes
 
-**Settings → Appearance**: Default, Jira, Jira increased contrast, GitHub Dark, GitHub Dark Dimmed. Download any of them as a template (JSON, each colour explained), edit it, and upload it back. The choice is saved to your account.
+**Settings → Appearance**: System (the default; follows your computer's light or dark setting), Light, Dark, Jira, Jira increased contrast, GitHub Dark, GitHub Dark Dimmed. Download any of them as a template (JSON, each colour explained), edit it, and upload it back. The choice is saved to your account.
 
 ## Import from Jira
 
