@@ -484,6 +484,20 @@ How next-phase step 9 works, and why:
 - **The journal widget saves only a range** (Today, Yesterday, 7 days, 30 days, This month; no 90 days or year, since every session is listed), and its chart type is always `journal`. Like the board it takes no filter. At most the newest 62 days with sessions are listed, and it says so when older ones were cut off. The Sessions screen's copy is limited only by the 366-day cap, and a day beyond it is fetched alone when clicked. No migration: the source column already exists (019), and the phone's core accepts the new source; the phone shows it as "Shown in the web app".
 - **Seeded dashboards are not changed.** Home has no journal; the owner adds one if wanted.
 
+### More room on the dashboard (2026-11-17)
+The owner wanted the dashboard's top for widgets. The decisions:
+- **No title, no buffs bar.** The big page title goes; the dashboard's name is already the chosen tab in the toolbar (lighter than a title widget). The buffs and debuffs bar is skipped on dashboards only (every other screen keeps it) and the same chips come back as a **Buffs and debuffs widget** (source `states`, chart type `states`, query `{}`, a title only). The server's saving rules are one more case beside the journal's: only `{}`, only that chart type, nothing else passes for one. No migration (the source column exists, 019).
+- **Seeded dashboards are not changed.** Existing Home dashboards lose the buffs display until the owner adds the widget (the same choice as for the journal). Open: should Home get one? That needs a seed change.
+- **The widget shares the bar's loading** (one hook, `useInForce`), so both follow the same events.
+- **Toolbar position** is the account setting `dashboard_toolbar` ("top" default, "left"), checked on the server like the other settings (only those two words). It is web only, so the phone ignores it. A narrow window keeps the top bar. Left is a 262px column (wide enough for the date range picker), with the tabs stacked.
+- **The phone** shows the new widget as "Shown in the web app", like every non-metric widget; its core accepts the source (a sync test checks).
+
+### Quick actions on the board widget's cards (2026-11-17)
+The board widget already drew the board's own card component, but without the card's hover buttons and right-click menu. It now uses the board's real action code (`useCardActions`, the rail and the context menu), not a copy, so Settings › Card actions applies to it and any later change to the actions reaches both.
+- **Every change reloads the widget** instead of patching the card in place: the server decides where the task belongs now (the view's filter, the open columns, snoozing), as it does for every other change to a task.
+- **No dragging.** Not asked for; Move to does the job, and the widget's cards stay free of drag handling so a drag in edit mode only moves the widget.
+- **Off while editing the layout,** as the card's click, Open view and +N more already are.
+
 ### Widgets that reach a server before it is upgraded (2026-11-16)
 On the live server, Home arrived from a phone (already on the newer core) while the server was still on 0.3.0. That server had no `source` column, so it kept the Board without its kind and with the phone's sync id for its view; after the upgrade the Board would have been a broken "metric" widget. Migration 021 repairs this kind of row on every device: the kind is read back from what only that kind has (viz `board`, `page` or `journal`, or a query naming an `app` and `widget`), and a Board's view sync id becomes this device's view id when it is known. Lesson for later: upgrade the server before the phones when a release adds widget kinds.
 

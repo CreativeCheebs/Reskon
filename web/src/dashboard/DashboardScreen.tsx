@@ -9,7 +9,6 @@ import { api } from "../api";
 import { useApp } from "../store";
 import { WriteButton } from "../offline";
 import { palette } from "../theme/palette";
-import { PageHeader } from "../theme/Toolbar";
 import type { Dashboard, DateOverride, Widget } from "./types";
 import { DatesPicker, type DatesMode } from "./DatesPicker";
 import { WidgetFrame } from "./WidgetFrame";
@@ -36,7 +35,7 @@ function useNarrowWindow() {
 }
 
 export function DashboardScreen({ id, onOpen }: { id?: number; onOpen: (id: number) => void }) {
-  const { reloadKey } = useApp();
+  const { reloadKey, boot } = useApp();
   const narrow = useNarrowWindow();
   const [dashboards, setDashboards] = useState<Dashboard[] | null>(null);
   const [editMode, setEditMode] = useState(false);
@@ -45,6 +44,8 @@ export function DashboardScreen({ id, onOpen }: { id?: number; onOpen: (id: numb
   const [datesMode, setDatesMode] = useState<DatesMode>("own");
   const [dates, setDates] = useState<DateOverride | null>(null);
   const editing = editMode && !narrow;
+  // Settings › Screens: the toolbar sits at the top or down the left side. Phones keep it on top.
+  const left = boot.settings.dashboard_toolbar === "left" && !narrow;
 
   // Only the newest answer counts: a reload answered after a save made
   // here must not put the old layout back (replace() bumps it too).
@@ -125,9 +126,17 @@ export function DashboardScreen({ id, onOpen }: { id?: number; onOpen: (id: numb
 
   if (!dashboards) return <Spin style={{ margin: 40 }} />;
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10, minHeight: 0 }}>
-      <PageHeader title={current?.name || "Dashboards"} />
-      <div className="jb-dashboard-toolbar" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+    <div style={{ display: "flex", flexDirection: left ? "row" : "column", alignItems: left ? "flex-start" : undefined, gap: 10, minHeight: 0 }}>
+      {/* The dashboard's name is the chosen tab below, so there is no big title: its room goes to the widgets. */}
+      <div
+        className="jb-dashboard-toolbar"
+        data-position={left ? "left" : "top"}
+        style={
+          left
+            ? { display: "flex", flexDirection: "column", alignItems: "stretch", gap: 8, flex: "none", width: 262, boxSizing: "border-box" }
+            : { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }
+        }
+      >
         {editing && renaming !== null ? (
           <Input
             autoFocus
@@ -141,10 +150,11 @@ export function DashboardScreen({ id, onOpen }: { id?: number; onOpen: (id: numb
         ) : (
           <Segmented
             size="small"
+            vertical={left}
             value={current?.id}
             onChange={(v) => onOpen(Number(v))}
             options={dashboards.map((d) => ({ value: d.id, label: d.name }))}
-            style={{ overflowX: "auto" }}
+            style={left ? undefined : { overflowX: "auto" }}
           />
         )}
         <DatesPicker
@@ -155,7 +165,7 @@ export function DashboardScreen({ id, onOpen }: { id?: number; onOpen: (id: numb
             setDates(d);
           }}
         />
-        <span style={{ flex: 1 }} />
+        {!left && <span style={{ flex: 1 }} />}
         {editing && current && (
           <>
             <WriteButton size="small" icon={<PlusOutlined />} onClick={() => setEditor({})}>
@@ -180,6 +190,7 @@ export function DashboardScreen({ id, onOpen }: { id?: number; onOpen: (id: numb
           </Tooltip>
         )}
       </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
       {!current ? (
         <Empty description="No dashboards.">
           <WriteButton onClick={newDashboard}>New dashboard</WriteButton>
@@ -210,6 +221,7 @@ export function DashboardScreen({ id, onOpen }: { id?: number; onOpen: (id: numb
           onDelete={deleteWidget}
         />
       )}
+      </div>
       {editor && current && (
         <WidgetEditor dashboardId={current.id} editing={editor.widget} onClose={() => setEditor(null)} onSaved={replaceWidget} />
       )}

@@ -14,6 +14,7 @@ import { AppPageEditor } from "./AppPageEditor";
 import { AppDataEditor } from "./AppDataEditor";
 import { ViewBoardEditor } from "./ViewBoardEditor";
 import { JournalEditor } from "./JournalEditor";
+import { StatesEditor } from "./StatesEditor";
 import { RANGE_LABEL, VIZ_LABEL } from "./labels";
 
 // Builds a widget from the metrics catalog: only metrics, groupings, splits
@@ -81,13 +82,13 @@ interface EditorProps {
   onSaved: (w: Widget) => void;
 }
 
-type Kind = "metric" | "view" | "app_data" | "app_page" | "journal";
+type Kind = "metric" | "view" | "app_data" | "app_page" | "journal" | "states";
 
 /** Adds or edits a widget. A new one can be a chart, a board, an app's data
  *  or an app's page; an existing one opens the editor for its own source. */
 export function WidgetEditor(props: EditorProps) {
   const own = props.editing?.source;
-  const [kind, setKind] = useState<Kind>(own === "app_page" || own === "app_data" || own === "view" || own === "journal" ? own : "metric");
+  const [kind, setKind] = useState<Kind>(own === "app_page" || own === "app_data" || own === "view" || own === "journal" || own === "states" ? own : "metric");
   const [switched, setSwitched] = useState(false);
   const switcher = props.editing ? undefined : (
     <div role="group" aria-label="Kind of widget">
@@ -101,6 +102,7 @@ export function WidgetEditor(props: EditorProps) {
         { value: "metric", label: "Chart" },
         { value: "view", label: "Board" },
         { value: "journal", label: "Journal" },
+        { value: "states", label: "Buffs and debuffs" },
         { value: "app_data", label: "App data" },
         { value: "app_page", label: "App page" },
       ]}
@@ -110,6 +112,8 @@ export function WidgetEditor(props: EditorProps) {
   );
   return kind === "view" ? (
     <ViewBoardEditor {...props} switcher={switcher} animate={!switched} />
+  ) : kind === "states" ? (
+    <StatesEditor {...props} switcher={switcher} animate={!switched} />
   ) : kind === "journal" ? (
     <JournalEditor {...props} switcher={switcher} animate={!switched} />
   ) : kind === "app_page" ? (

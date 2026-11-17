@@ -4,15 +4,19 @@ import { useApp } from "../store";
 import { blend, palette, readable } from "../theme/palette";
 import { columnBg, columnBorder } from "../board/columnStyle";
 import { TaskCard } from "../board/TaskCard";
+import { CardActionRail, CardContextMenu, useCardActions } from "../board/CardActions";
 import { TaskPanel } from "../task/TaskPanel";
 import { DEFAULT_SHOW } from "../views/cardConfig";
 import { useTerms } from "../terms";
 import type { CardConfig, Task, View } from "../types";
 import { openColumns, type OpenColumn } from "./boardColumns";
 
-// A board widget's body: the view's open tasks as small, read-only columns.
-// Cards open the task panel; nothing here drags or changes a status (that
-// stays on the board). The task key is never shown, as on the board.
+// A board widget's body: the view's open tasks as small columns of the
+// board's own cards. Cards open the task panel, and have the board's hover
+// buttons and right-click menu (Settings > Card actions), which can log time,
+// snooze, edit the note, move to another status or delete. Nothing drags
+// (a status changes through Move to). All of it is off while the dashboard
+// layout is edited. The task key is never shown, as on the board.
 
 // Only what helps you choose what to do next; the view's own card settings
 // would make cards too tall for a widget.
@@ -57,7 +61,7 @@ export function ViewBoardBody({ view, tasks, editing, refetch }: { view: View; t
         // no-drag: in edit mode the columns' own scrollbars must work, not start a drag of the widget.
         <div className="no-drag" style={{ flex: 1, minHeight: 0, display: "flex", gap: 8, overflowX: "auto" }}>
           {columns.map((c) => (
-            <Column key={c.status.id} column={c} viewId={view.id} onOpen={onOpen} editing={editing} />
+            <Column key={c.status.id} column={c} viewId={view.id} onOpen={onOpen} editing={editing} refetch={refetch} />
           ))}
         </div>
       )}
@@ -81,7 +85,19 @@ export function ViewBoardBody({ view, tasks, editing, refetch }: { view: View; t
   );
 }
 
-function Column({ column, viewId, onOpen, editing }: { column: OpenColumn; viewId: number; onOpen?: (id: number) => void; editing: boolean }) {
+function Column({
+  column,
+  viewId,
+  onOpen,
+  editing,
+  refetch,
+}: {
+  column: OpenColumn;
+  viewId: number;
+  onOpen?: (id: number) => void;
+  editing: boolean;
+  refetch: () => void;
+}) {
   const T = useTerms();
   const { status, count, shown } = column;
   const color = status.color && /^#[0-9a-fA-F]{6}$/.test(status.color) ? status.color : palette.muted;
@@ -116,25 +132,7 @@ function Column({ column, viewId, onOpen, editing }: { column: OpenColumn; viewI
       </div>
       <div className="no-drag" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "2px 8px 8px", display: "flex", flexDirection: "column", gap: 8 }}>
         {shown.map((t) => (
-          <div
-            key={t.id}
-            className="jb-sortable"
-            // Enter or Space opens the card, as a button would; the card's own click does the mouse.
-            {...(onOpen
-              ? {
-                  role: "button",
-                  tabIndex: 0,
-                  onKeyDown: (e: React.KeyboardEvent) => {
-                    if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget) {
-                      e.preventDefault();
-                      onOpen(t.id);
-                    }
-                  },
-                }
-              : {})}
-          >
-            <TaskCard task={t} config={CARD} onOpen={onOpen ? () => onOpen(t.id) : undefined} />
-          </div>
+          <WidgetCard key={t.id} task={t} onOpen={onOpen} editing={editing} refetch={refetch} />
         ))}
         {more > 0 &&
           (editing ? (
@@ -150,4 +148,41 @@ function Column({ column, viewId, onOpen, editing }: { column: OpenColumn; viewI
       </div>
     </div>
   );
+}
+
+/** One card: the board's own card with its own quick actions (the hover
+ *  buttons and the right-click menu chosen in Settings > Card actions), so a
+ *  task is handled here as it is on the board. A change reloads the widget
+ *  (the server decides where the task belongs now). While the dashboard
+ *  layout is edited there are no actions and nothing opens, since the widget
+ *  is for dragging then. Cards do not drag between columns here. */
+function WidgetCard({ task, onOpen, editing, refetch }: { task: Task; onOpen?: (id: number) => void; editing: boolean; refetch: () => void }) {
+  const actions = useCardActions(task, { onOpen: (id) => onOpen?.(id), onChanged: () => refetch(), onDeleted: () => refetch() });
+  const card = (
+    <div
+      className="jb-sortable"
+      // Enter or Space opens the card, as a button would; the card's own click does the mouse.
+      {...(onOpen
+        ? {
+            role: "button",
+            tabIndex: 0,
+            onKeyDown: (e: React.KeyboardEvent) => {
+              if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget) {
+                e.preventDefault();
+                onOpen(task.id);
+              }
+            },
+          }
+        : {})}
+    >
+      <TaskCard
+        task={task}
+        config={CARD}
+        onOpen={onOpen ? () => onOpen(task.id) : undefined}
+        pinned={!editing && actions.pinned}
+        rail={editing ? undefined : <CardActionRail task={task} actions={actions} onChanged={() => refetch()} />}
+      />
+    </div>
+  );
+  return editing ? card : <CardContextMenu actions={actions}>{card}</CardContextMenu>;
 }

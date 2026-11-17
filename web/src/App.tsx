@@ -126,7 +126,7 @@ export function App() {
           />
         )}
         <Layout.Content className="jb-content" style={{ padding: 14, overflow: "auto", display: "flex", flexDirection: "column" }}>
-          <InForceBar onOpen={() => go({ kind: "states" })} />
+          {current.kind !== "dashboard" && <InForceBar onOpen={() => go({ kind: "states" })} />}
           {view && <ViewScreen key={view.id} view={view} />}
           {current.kind === "view" && !view && <Alert type="info" message="That view no longer exists." />}
           <Suspense fallback={<Spin style={{ margin: 40 }} />}>

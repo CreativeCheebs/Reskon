@@ -41,6 +41,7 @@ export const SETTINGS_INDEX: SettingEntry[] = [
   { section: "search", title: "Duplicate search", description: "Warns about similar tasks while you type a title; download a small local model to match by meaning." },
   // You
   { section: "screens", title: "Screens", description: "Turn the Day screen (morning plan and evening readout) on or off in the sidebar and on the phone." },
+  { section: "screens", title: "Dashboard toolbar position", description: "Show the dashboard's toolbar (tabs, dates, edit) across the top, or down the left side for more room." },
   { section: "names", title: "Names", description: "Call tasks and epics what you like, such as todos or stories." },
   { section: "appearance", title: "Appearance", description: "Pick a colour theme, or upload your own; saved to your account and shared with your devices." },
   { section: "appearance", title: "Theme: System, Light or Dark", description: "System follows your computer's light or dark mode and switches with it; Light and Dark stay as chosen." },

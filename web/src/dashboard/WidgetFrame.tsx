@@ -11,6 +11,7 @@ import { AppDataNote } from "./AppDataNote";
 import { DatesNote } from "./DatesNote";
 import { ViewBoardBody } from "./ViewBoardBody";
 import { JournalBody } from "./JournalBody";
+import { StatesBody } from "./StatesBody";
 import type { Journal } from "../journal/types";
 import type { Task } from "../types";
 import { onAppChanged } from "../apps/appChanged";
@@ -161,6 +162,7 @@ export const WidgetFrame = memo(function WidgetFrame({
   const page = widget.source === "app_page";
   const board = widget.source === "view";
   const journal = widget.source === "journal";
+  const states = widget.source === "states";
   const appData = widget.source === "app_data";
   const known = widget.source === undefined || widget.source === "metric" || appData;
   // App data with no range of its own ignores the dashboard's dates, so
@@ -201,7 +203,7 @@ export const WidgetFrame = memo(function WidgetFrame({
     ? view
       ? tasks.error
       : "This view is not available any more. Edit the widget to pick another."
-    : !known && !page
+    : !known && !page && !states
       ? "This widget needs a newer version of Reskon."
       : appData && metric.forDep !== dep
         ? null
@@ -231,7 +233,7 @@ export const WidgetFrame = memo(function WidgetFrame({
       <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: widget.h <= 2 ? 2 : 14, paddingBottom: widget.h <= 2 ? 0 : 10, borderBottom: `1px solid ${palette.border}`, minHeight: 32 }}>
         {editing && <HolderOutlined style={{ color: palette.subtle }} />}
         <span style={{ flex: 1, fontWeight: 600, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {widget.title || view?.name || (journal ? "Journal" : undefined) || widget.query.metric || widget.query.widget}
+          {widget.title || view?.name || (journal ? "Journal" : undefined) || (states ? "Buffs and debuffs" : undefined) || widget.query.metric || widget.query.widget}
         </span>
         <span className="no-drag" style={{ display: "inline-flex" }}>
           {board && view && (
@@ -251,7 +253,7 @@ export const WidgetFrame = memo(function WidgetFrame({
           {(known || page || journal || (board && view)) && <Tooltip title="Refresh">
             <Button size="small" type="text" aria-label="Refresh widget" icon={<ReloadOutlined spin={loading} />} onClick={reload} />
           </Tooltip>}
-          {editing && onEdit && (known || page || board || journal) && (
+          {editing && onEdit && (known || page || board || journal || states) && (
             <Tooltip title="Edit widget">
               <Button size="small" type="text" aria-label="Edit widget" icon={<EditOutlined />} onClick={() => onEdit(widget)} disabled={!online} />
             </Tooltip>
@@ -263,7 +265,9 @@ export const WidgetFrame = memo(function WidgetFrame({
           )}
         </span>
       </div>
-      {page ? (
+      {states ? (
+        <StatesBody editing={editing} />
+      ) : page ? (
         <AppPageBody widget={widget} loads={pageLoads} editing={editing} onLoading={setPageLoading} />
       ) : error && !(board && boardTasks) && !journalDays ? (
         <div role="alert" style={{ color: palette.muted, fontSize: 12, padding: 8, flex: 1, minHeight: 0, overflow: "auto" }}>{error}{!(board && !view) && <><br /><Button size="small" onClick={reload} style={{ marginTop: 8 }}>Retry</Button></>}</div>

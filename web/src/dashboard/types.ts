@@ -35,8 +35,8 @@ export interface WidgetOptions {
  *  ("app_data", drawn by Reskon's charts), its own page ("app_page", whose
  *  viz is always "page"), or a saved view's open tasks ("view", a small
  *  board; its viz is always "board"), or the days' session notes ("journal",
- *  its viz is always "journal"; its query is only a range). */
-export type WidgetSource = "metric" | "view" | "app_data" | "app_page" | "journal";
+ *  its viz is always "journal"; its query is only a range), or the buffs and debuffs in force ("states", viz always "states", query {}). */
+export type WidgetSource = "metric" | "view" | "app_data" | "app_page" | "journal" | "states";
 
 export interface Widget {
   id: number;

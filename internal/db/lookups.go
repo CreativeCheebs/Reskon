@@ -333,6 +333,11 @@ func (d *DB) PutSetting(ctx context.Context, key string, value json.RawMessage) 
 			return err
 		}
 	}
+	if _, ok := enumSettings[key]; ok {
+		if err := checkEnumSetting(key, value); err != nil {
+			return err
+		}
+	}
 	if key == "terms" {
 		v, err := normaliseTerms(value)
 		if err != nil {

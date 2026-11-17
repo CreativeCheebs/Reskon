@@ -16,6 +16,7 @@ class DashWidgetTest {
     @Test fun otherSourcesAreNot() {
         assertFalse(drawnOnPhone(JSONObject().put("source", "app_page")))
         assertFalse(drawnOnPhone(JSONObject().put("source", "view")))
+        assertFalse(drawnOnPhone(JSONObject().put("source", "states")))
         assertFalse(drawnOnPhone(JSONObject().put("source", "something_newer")))
     }
 }
