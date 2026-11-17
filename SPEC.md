@@ -365,6 +365,12 @@ For a connected app's data only: **checklist**, each item with a ticked or empty
 
 Which chart types suit an app's data depends on its shape: a number as a number; a series as bars, line, cumulative or a number (stacked bars when it has parts); a table as a table (with the app's own columns); a list as a list; a checklist as a checklist.
 
+### 10.2a Chart settings in the widget editor
+
+A chart widget (bars, line, cumulative, stacked, share bars, small multiples) has these settings, all saved with the widget:
+
+- **Period.** Besides Today, Yesterday, 7 days, 30 days, 90 days, This month, Year and All, **Custom dates…** lets you pick any first and last day (a calendar range picker, starting on the last seven days). The widget then keeps those two dates instead of a range, so it always shows exactly that period. The dashboard's own Day and Dates choice (above) still replaces it while it is on. The first date may not be after the last. The phone shows such a widget over the same dates.
+
 ### 10.3 Metrics
 
 | Metric | What it measures |
@@ -560,7 +566,7 @@ The database is SQLite in WAL mode (several readers, one writer). There is one c
 | `inbox_item` | Inbox lines. |
 | `view` | Saved views: filter, layout, card settings, board settings (grouping, sorting, column limits, collapsed columns, timeline), icon, colour, background. |
 | `image` | Uploaded background images. |
-| `dashboard`, `widget` | Dashboards and their widgets: the source (`metric`, `view`, `app_data`, `app_page` or `journal`; migration 019 holds the column), the question (a metric query; for `view` just `{"view_id"}`, the view's id; for `journal` just `{"range"}`; for `app_page` just `{"app", "widget"}`, the app's and its page's ids; for `app_data` also the feed's `range` and `group` where it takes them), the chart type (always `board` for a view, `journal` for a journal, `page` for an app page; `checklist` only for app data), position. A widget keeps its source. |
+| `dashboard`, `widget` | Dashboards and their widgets (a chart's `query` may hold `from` and `to` dates instead of a `range`): the source (`metric`, `view`, `app_data`, `app_page` or `journal`; migration 019 holds the column), the question (a metric query; for `view` just `{"view_id"}`, the view's id; for `journal` just `{"range"}`; for `app_page` just `{"app", "widget"}`, the app's and its page's ids; for `app_data` also the feed's `range` and `group` where it takes them), the chart type (always `board` for a view, `journal` for a journal, `page` for an app page; `checklist` only for app data), position. A widget keeps its source. |
 | `custom_field` | Custom field definitions. |
 | `setting` | Your settings, each a JSON value: subtype weights, capture model, week start, task dates, snooze, complete details, card actions, epic columns, time zone, theme… |
 | `task_embedding` | A cache for duplicate search (can be emptied, nothing is lost). |

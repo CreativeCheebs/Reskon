@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Alert, Checkbox, Form, Input, Modal, Segmented, Select } from "antd";
+import { Alert, Checkbox, DatePicker, Form, Input, Modal, Segmented, Select } from "antd";
 import { message } from "../theme/feedback";
 import { api } from "../api";
 import { useApp } from "../store";
@@ -15,6 +15,8 @@ import { AppDataEditor } from "./AppDataEditor";
 import { ViewBoardEditor } from "./ViewBoardEditor";
 import { JournalEditor } from "./JournalEditor";
 import { RANGE_LABEL, VIZ_LABEL } from "./labels";
+import { CUSTOM_RANGE, rangeChoice, withDates, withRangeChoice } from "./customRange";
+import dayjs from "dayjs";
 
 // Builds a widget from the metrics catalog: only metrics, groupings, splits
 // and filters the server lists are offered, so nothing built here can be
@@ -62,7 +64,10 @@ function asList(v: unknown): (string | number)[] {
 export function metricPath(q: WidgetQuery, viz: Viz): string {
   const p = new URLSearchParams({ metric: q.metric });
   if (q.group) p.set("group", q.group);
-  if (q.range) p.set("range", q.range);
+  if (q.from && q.to) {
+    p.set("from", q.from);
+    p.set("to", q.to);
+  } else if (q.range) p.set("range", q.range);
   if (q.split) p.set("split", q.split);
   if (q.reduce) p.set("reduce", q.reduce);
   if (viz === "cumulative" || (viz === "small_multiples" && q.cumulative)) p.set("cumulative", "1");
@@ -188,6 +193,8 @@ function MetricWidgetEditor({
       metric: name,
       group: m.groups.includes(query.group ?? "") ? query.group : m.groups[0],
       range: query.range,
+      from: query.from,
+      to: query.to,
       split: m.splits?.includes(query.split ?? "") ? query.split : null,
       filters: keep,
       cumulative: query.cumulative,
@@ -266,9 +273,22 @@ function MetricWidgetEditor({
               <Form.Item label="Range" htmlFor="metric-range" {...item}>
                 <Select
                   id="metric-range"
-                  value={query.range ?? "30d"}
-                  onChange={(range) => setQuery({ ...query, range })}
-                  options={catalog?.ranges.map((r) => ({ value: r, label: RANGE_LABEL[r] ?? r }))}
+                  value={rangeChoice(query)}
+                  onChange={(choice) => setQuery(withRangeChoice(query, choice, dayjs().format("YYYY-MM-DD")))}
+                  options={[
+                    ...(catalog?.ranges.map((r) => ({ value: r, label: RANGE_LABEL[r] ?? r })) ?? []),
+                    { value: CUSTOM_RANGE, label: "Custom dates…" },
+                  ]}
+                />
+              </Form.Item>
+            )}
+            {metric?.ranged && rangeChoice(query) === CUSTOM_RANGE && (
+              <Form.Item label="Dates" htmlFor="metric-dates" {...item}>
+                <DatePicker.RangePicker
+                  id={{ start: "metric-dates", end: "metric-dates-end" }}
+                  allowClear={false}
+                  value={[dayjs(query.from), dayjs(query.to)]}
+                  onChange={(v) => v?.[0] && v[1] && setQuery(withDates(query, v[0].format("YYYY-MM-DD"), v[1].format("YYYY-MM-DD")))}
                 />
               </Form.Item>
             )}
