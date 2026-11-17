@@ -487,6 +487,9 @@ How next-phase step 9 works, and why:
 ### Widgets that reach a server before it is upgraded (2026-11-16)
 On the live server, Home arrived from a phone (already on the newer core) while the server was still on 0.3.0. That server had no `source` column, so it kept the Board without its kind and with the phone's sync id for its view; after the upgrade the Board would have been a broken "metric" widget. Migration 021 repairs this kind of row on every device: the kind is read back from what only that kind has (viz `board`, `page` or `journal`, or a query naming an `app` and `widget`), and a Board's view sync id becomes this device's view id when it is known. Lesson for later: upgrade the server before the phones when a release adds widget kinds.
 
+### Create an epic from the picker (2026-11-17)
+The picker offers "Create epic" whenever the typed title is not an exact (case-blind) match of an existing epic, not only when nothing matches at all: otherwise "Auth" could never be made once "Authentication" existed. The new epic takes the task's area (an epic needs one) and is made through the ordinary create call with type epic.
+
 ---
 
 ## Open questions

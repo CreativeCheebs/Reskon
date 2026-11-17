@@ -133,6 +133,7 @@ These are never stored. They are worked out every time a task is read, from the 
 ### 4.9 Epics
 
 - An epic is a task of type *epic*. Ordinary tasks can belong to one epic. An epic can't belong to an epic.
+- **Create an epic from the task panel.** In the task panel's epic picker, typing a title that no epic already has (ignoring capitals) adds a **Create epic “<text>”** choice to the list. Choosing it (Enter works) makes a new epic with that title, in the same area as the task, and puts the task in it. The choice does not appear for empty text or when an epic with exactly that title exists.
 - An epic shows how many of its tasks are done, the sum of their estimates, and the hours logged on them, including their subtasks' hours. Cancelled tasks count for hours (the time was spent) but not for done or estimate.
 - Deleting an epic keeps its tasks; they just lose the epic.
 
