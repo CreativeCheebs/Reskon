@@ -41,6 +41,9 @@ const GROUP_LABEL: Record<string, string> = {
   now: "Now",
 };
 
+// Charts that can write each value on the bars or line points.
+const LABEL_VIZZES: Viz[] = ["bar", "line", "cumulative", "split_bar", "share_bar"];
+
 const CHART_VIZZES: Viz[] = ["bar", "line", "cumulative", "split_bar", "small_multiples", "share_bar"];
 
 let catalogCache: Promise<MetricCatalog> | null = null;
@@ -330,6 +333,13 @@ function MetricWidgetEditor({
           </div>
           {CHART_VIZZES.includes(viz) && (
             <ChartColors series={preview.res?.series ?? []} options={options} onChange={setOptions} />
+          )}
+          {LABEL_VIZZES.includes(viz) && (
+            <Form.Item label="On the chart" {...item}>
+              <Checkbox checked={!!options.show_values} onChange={(e) => setOptions({ ...options, show_values: e.target.checked || undefined })}>
+                Show each value
+              </Checkbox>
+            </Form.Item>
           )}
           {metric?.filters?.includes("area") && (
             <Form.Item label="Areas" htmlFor="metric-areas" {...item}>

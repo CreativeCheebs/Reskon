@@ -11,6 +11,7 @@ import (
 //
 //	color          one colour for a chart with no split: a palette name or #rrggbb
 //	series_colors  {series key: #rrggbb}, a colour picked per series
+//	show_values    true: write each value on its bar or line point
 
 func checkChartOptions(raw json.RawMessage) error {
 	var o map[string]json.RawMessage
@@ -31,6 +32,14 @@ func checkChartOptions(raw json.RawMessage) error {
 		for k, c := range m {
 			if len(k) > 100 || !hexColor.MatchString(c) {
 				return invalid("options.series_colors must map each series to a #rrggbb colour")
+			}
+		}
+	}
+	for _, k := range []string{"show_values"} {
+		if v, ok := o[k]; ok && !isNull(v) {
+			var b bool
+			if json.Unmarshal(v, &b) != nil {
+				return invalid("options.%s must be true or false", k)
 			}
 		}
 	}

@@ -29,6 +29,8 @@ export interface WidgetOptions {
   color?: string;
   /** Colours picked per series, by the series' key (#rrggbb). */
   series_colors?: Record<string, string>;
+  /** Write each bar's and line point's value on the chart. */
+  show_values?: boolean;
   show_axis?: boolean;
   /** Narrower than this, the widget shows its number instead of a squashed chart. */
   min_width_px?: number;

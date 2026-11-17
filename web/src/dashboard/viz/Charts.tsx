@@ -6,6 +6,7 @@ import {
   BarChart,
   CartesianGrid,
   Legend,
+  LabelList,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -52,9 +53,22 @@ export function Chart({ res, viz, options }: { res: MetricResult; viz: Viz; opti
 
   const axis = options.show_axis !== false;
   const tick = { fill: palette.subtle, fontSize: 11 };
+  const showValues = !!options.show_values;
+  // A value label for each point (the number the server gave, in its unit);
+  // on stacked bars it sits inside each segment, and empty ones show none.
+  const labelFor = (k: string, position: "top" | "center") =>
+    showValues ? (
+      <LabelList
+        dataKey={k}
+        position={position}
+        fill={position === "center" ? palette.fg : palette.muted}
+        fontSize={10}
+        formatter={(v: number) => (v || position === "top" ? (share ? formatShare(v / 100) : resultValue(v, res)) : "")}
+      />
+    ) : null;
   const common = {
     data: rows,
-    margin: { top: 12, right: 12, bottom: 8, left: 0 },
+    margin: { top: showValues ? 22 : 12, right: 12, bottom: 8, left: 0 },
   };
   const parts = (
     <>
@@ -93,21 +107,27 @@ export function Chart({ res, viz, options }: { res: MetricResult; viz: Viz; opti
         <LineChart {...common}>
           {parts}
           {keys.map((k, i) => (
-            <Line key={k} dataKey={k} stroke={colors[i]} strokeWidth={2} dot={rows.length <= 16} isAnimationActive={false} />
+            <Line key={k} dataKey={k} stroke={colors[i]} strokeWidth={2} dot={rows.length <= 16} isAnimationActive={false}>
+              {labelFor(k, "top")}
+            </Line>
           ))}
         </LineChart>
       ) : viz === "cumulative" ? (
         <AreaChart {...common}>
           {parts}
           {keys.map((k, i) => (
-            <Area key={k} dataKey={k} stroke={colors[i]} fill={colors[i]} fillOpacity={0.18} strokeWidth={2} stackId={split ? "s" : undefined} isAnimationActive={false} />
+            <Area key={k} dataKey={k} stroke={colors[i]} fill={colors[i]} fillOpacity={0.18} strokeWidth={2} stackId={split ? "s" : undefined} isAnimationActive={false}>
+              {labelFor(k, split ? "center" : "top")}
+            </Area>
           ))}
         </AreaChart>
       ) : (
         <BarChart {...common}>
           {parts}
           {keys.map((k, i) => (
-            <Bar key={k} dataKey={k} fill={colors[i]} stackId={split ? "s" : undefined} maxBarSize={40} radius={split ? 0 : [2, 2, 0, 0]} isAnimationActive={false} />
+            <Bar key={k} dataKey={k} fill={colors[i]} stackId={split ? "s" : undefined} maxBarSize={40} radius={split ? 0 : [2, 2, 0, 0]} isAnimationActive={false}>
+              {labelFor(k, split ? "center" : "top")}
+            </Bar>
           ))}
         </BarChart>
       )}
