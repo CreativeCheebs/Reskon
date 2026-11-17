@@ -1,7 +1,7 @@
 // Shapes of the dashboards and metrics API. Every number in a widget comes
 // from GET /api/metrics; widgets only draw it.
 
-export type Viz = "bar" | "line" | "cumulative" | "number" | "list" | "bands" | "split_bar" | "small_multiples" | "table" | "pie" | "share_bar" | "checklist";
+export type Viz = "bar" | "line" | "cumulative" | "number" | "list" | "bands" | "split_bar" | "small_multiples" | "table" | "pie" | "share_bar" | "combo" | "checklist";
 
 export interface WidgetQuery {
   metric: string;
@@ -84,6 +84,8 @@ export interface MetricSeries {
   color: string | null;
   /** This series alone, reduced by the server. */
   total: number;
+  /** Its own unit, when the metric measures two things at once (points and hours). */
+  unit?: string;
   /** This series' mean per key, from the server (none for running totals). */
   average?: number;
 }
@@ -147,6 +149,8 @@ export interface MetricDef {
   filters: string[] | null;
   reduce: string;
   ranged: boolean;
+  /** The only chart types that suit this metric (the two-series metric needs "combo"). */
+  vizzes?: Viz[];
 }
 
 export interface MetricCatalog {
@@ -172,6 +176,7 @@ export const MIN_WIDTH: Record<Viz, number> = {
   number: 0,
   pie: 0,
   share_bar: 320,
+  combo: 320,
   checklist: 0,
 };
 

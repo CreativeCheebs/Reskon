@@ -355,7 +355,7 @@ The plan is carried forward from your last plan, so most mornings are one tap (*
 
 ### 10.2 Chart types
 
-Bar, line, cumulative (only rises), number, list, bands (states across days, drawn as spans), split bar (stacked), share bar (each day stacked to 100%), pie, table, and small multiples (one small chart per energy type, each with its own scale, never added together).
+Bar, line, bars and a line (two measures on two scales, only for points and hours), cumulative (only rises), number, list, bands (states across days, drawn as spans), split bar (stacked), share bar (each day stacked to 100%), pie, table, and small multiples (one small chart per energy type, each with its own scale, never added together).
 
 For a journal widget only: **journal**, the days' sessions with their notes (see 10.1). Like the board it is not a chart of a measure.
 
@@ -370,9 +370,10 @@ Which chart types suit an app's data depends on its shape: a number as a number;
 A chart widget (bars, line, cumulative, stacked, share bars, small multiples) has these settings, all saved with the widget:
 
 - **Period.** Besides Today, Yesterday, 7 days, 30 days, 90 days, This month, Year and All, **Custom dates…** lets you pick any first and last day (a calendar range picker, starting on the last seven days). The widget then keeps those two dates instead of a range, so it always shows exactly that period. The dashboard's own Day and Dates choice (above) still replaces it while it is on. The first date may not be after the last. The phone shows such a widget over the same dates.
-- **Colours.** A chart with one series has one **Colour**, picked with the same colour picker used everywhere (a free picker and the standard swatch sets). A chart with several series (split by energy type, area or subtype, or a combined chart) has a colour for each series, with a clear button to go back to that series' own colour (an area's or energy type's colour). Colours are saved with the widget (on the server, so every device shows them) and apply to bars, lines, stacked and share bars, small multiples and pies. A colour must be `#rrggbb`; the older palette names saved by earlier versions still work. The phone ignores them and draws with its own colours.
+- **Colours.** A chart with one series has one **Colour**, picked with the same colour picker used everywhere (a free picker and the standard swatch sets). A chart with several series (split by energy type, area or subtype, or a combined chart) has a colour for each series, with a clear button to go back to that series' own colour (an area's or energy type's colour). Colours are saved with the widget (on the server, so every device shows them) and apply to bars, lines, stacked and share bars, small multiples and pies. A colour must be `#rrggbb`; the older palette names saved by earlier versions still work. The phone ignores them and draws with its own colours; it also ignores any chart setting it does not know, so a widget set up on a newer web app still shows there.
 - **Show each value.** A switch writes each bar's value above it, and each line point's value above the point, in the measure's unit (for example `7.5h` or `12`). On stacked bars the value of each part is written inside its part (parts of zero show none). It is only a label for numbers the server already gave; nothing is added up on screen. Off by default.
 - **Show the average.** A switch draws the average as a dashed line across bars, lines and stacked bars, labelled "avg" with its value. The server works it out and sends it with the answer (`average`): the mean of the chart's figures, one per day, week, month or group value (all types of a stacked bar added up), with days that have nothing counting as zero. For example, 30 days with 60 hours logged in all average 2h a day. A line chart split into several series gets one dashed line per series, in that series' colour, each its own mean. It is never one type divided by another, and a running total (cumulative) has no average, so the switch is not offered there. Off by default.
+- **Points and hours in one chart.** The measure **Points and hours** is drawn only as **Bars and a line**: points as bars on the left scale, hours as a line on the right scale, each axis in its own colour and unit, with a legend. It takes the same filters as the session measures (area, energy type, subtype, task or event, task, tag) and can be grouped by day, week, month, area or energy type, but not split. The two series are only shown side by side: they are never added together, subtracted or divided (no points-per-hour), so this measure has no single total, and a chart too narrow to read shows each one's own figure instead of one number. Each series keeps its own colour setting, value labels and average line. The phone shows such a widget as "Shown in the web app".
 
 ### 10.3 Metrics
 
@@ -380,6 +381,7 @@ A chart widget (bars, line, cumulative, stacked, share bars, small multiples) ha
 | --- | --- |
 | Session hours | Hours logged. |
 | Points | Points stored on sessions. |
+| Points and hours | Both at once, as two series for the bars-and-a-line chart (10.2a). |
 | Sessions | How many sessions. |
 | Tasks closed | Tasks moved into done, by the day they were completed. |
 | Open tasks | Tasks open now. |

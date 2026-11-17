@@ -42,9 +42,14 @@ const GROUP_LABEL: Record<string, string> = {
 };
 
 // Charts that can write each value on the bars or line points.
-const LABEL_VIZZES: Viz[] = ["bar", "line", "cumulative", "split_bar", "share_bar"];
+const LABEL_VIZZES: Viz[] = ["bar", "line", "cumulative", "split_bar", "share_bar", "combo"];
 
-const CHART_VIZZES: Viz[] = ["bar", "line", "cumulative", "split_bar", "small_multiples", "share_bar"];
+const CHART_VIZZES: Viz[] = ["bar", "line", "cumulative", "split_bar", "small_multiples", "share_bar", "combo"];
+
+/** The chart types offered for a metric: the ones it asks for, else every ordinary one. */
+function vizChoices(catalog: MetricCatalog | null, m: MetricDef | undefined): Viz[] {
+  return m?.vizzes?.length ? m.vizzes : (catalog?.vizzes ?? []).filter((v) => v !== "combo");
+}
 
 let catalogCache: Promise<MetricCatalog> | null = null;
 function loadCatalog() {
@@ -191,6 +196,10 @@ function MetricWidgetEditor({
     if (!m) return;
     const keep: Filters = {};
     for (const [k, v] of Object.entries(filters)) if (m.filters?.includes(k)) keep[k] = v;
+    // A metric of two series is drawn only as the combined chart, and no
+    // other metric can be.
+    const fits = vizChoices(catalog, m);
+    if (!fits.includes(viz)) setViz(fits[0]);
     setQuery({
       metric: name,
       group: m.groups.includes(query.group ?? "") ? query.group : m.groups[0],
@@ -259,7 +268,7 @@ function MetricWidgetEditor({
           </Form.Item>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 12px" }}>
             <Form.Item label="Show as" htmlFor="metric-viz" {...item}>
-              <Select id="metric-viz" value={viz} onChange={pickViz} options={(catalog?.vizzes ?? []).map((v) => ({ value: v, label: VIZ_LABEL[v] }))} />
+              <Select id="metric-viz" value={viz} onChange={pickViz} options={vizChoices(catalog, metric).map((v) => ({ value: v, label: VIZ_LABEL[v] }))} />
             </Form.Item>
             <Form.Item label="Group by" htmlFor="metric-group" {...item}>
               <Select

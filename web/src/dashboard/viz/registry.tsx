@@ -5,6 +5,7 @@ import { ListViz, NumberViz, TableViz } from "./Simple";
 import { BandsViz } from "./Bands";
 import { SmallMultiplesViz } from "./SmallMultiples";
 import { PieViz } from "./Pie";
+import { ComboViz } from "./Combo";
 import { AppTableViz, ChecklistViz } from "./Checklist";
 
 // Every way a widget can be drawn, in one list. A new chart type is one
@@ -36,6 +37,8 @@ export const VIZZES: Record<Viz, VizEntry> = {
   cumulative: chart("cumulative"),
   split_bar: chart("split_bar"),
   share_bar: chart("share_bar"),
+  // Two measures of one metric (points and hours), each on its own axis.
+  combo: { draw: ({ res, options, narrow }) => <ComboViz res={res} options={options} narrow={narrow} />, drawsEmpty: false, keepsWhenNarrow: true },
   number: { draw: ({ res }) => <NumberViz res={res} />, drawsEmpty: true },
   list: { draw: ({ res }) => <ListViz res={res} />, scrolls: true },
   // An app's table brings its own columns; a metric's is drawn from points.

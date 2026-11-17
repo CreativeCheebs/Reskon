@@ -14,6 +14,7 @@ export const VIZ_LABEL: Record<Viz, string> = {
   table: "Table",
   pie: "Pie (each part's share)",
   share_bar: "Share bars (each day to 100%)",
+  combo: "Bars and a line (two measures, two scales)",
   checklist: "Checklist (ticks, read-only)",
 };
 

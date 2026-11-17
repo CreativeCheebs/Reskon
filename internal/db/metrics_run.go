@@ -31,6 +31,7 @@ type metricRun struct {
 	spans     []StateSpan
 	meta      map[string]any
 	sparse    bool // time groups list only keys that have values
+	multi     bool // the series are different measures (points, hours), not a split
 }
 
 const dateFmt = "2006-01-02"
@@ -222,7 +223,7 @@ func (r *metricRun) finish() *MetricResult {
 		out.Reduce = r.def.Reduce
 	}
 	splitKeys := []string{""}
-	if r.q.Split != "" {
+	if r.q.Split != "" || r.multi {
 		splitKeys = splitKeys[:0]
 		for k := range r.series {
 			splitKeys = append(splitKeys, k)
@@ -274,6 +275,9 @@ func (r *metricRun) finish() *MetricResult {
 	}
 
 	out.Total = reduce(out.Reduce, keys, totals)
+	if r.multi {
+		out.Total = 0 // points and hours added together mean nothing; each series has its own total
+	}
 	for i := range out.Series {
 		own := map[string]float64{}
 		for _, k := range keys {
