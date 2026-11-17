@@ -171,10 +171,10 @@ const (
 	SourceAppPage = "app_page"
 )
 
-var WidgetSources = []string{SourceMetric, SourceView, SourceAppData, SourceAppPage, SourceJournal}
+var WidgetSources = []string{SourceMetric, SourceView, SourceAppData, SourceAppPage, SourceJournal, SourceStates}
 
 // builtSources can be saved today.
-var builtSources = []string{SourceMetric, SourceView, SourceAppPage, SourceAppData, SourceJournal}
+var builtSources = []string{SourceMetric, SourceView, SourceAppPage, SourceAppData, SourceJournal, SourceStates}
 
 // checkWidget rejects a source or viz that does not exist and a query the
 // metrics API would refuse, so a saved widget never fails for its shape.
@@ -217,6 +217,8 @@ func checkWidget(f Fields, cur *Widget) error {
 		return invalid("a view widget's viz is %q", VizBoard)
 	} else if ok && source == SourceJournal && v != VizJournal {
 		return invalid("a journal widget's viz is %q", VizJournal)
+	} else if ok && source == SourceStates && v != VizStates {
+		return invalid("a states widget's viz is %q", VizStates)
 	} else if ok && source == SourceAppData && !appDataVizAny(v) {
 		// Which of these suits the app's shape is checked by the API.
 		return invalid("an app data widget's viz must be one of number, bar, line, cumulative, split_bar, table, list, checklist")
@@ -235,6 +237,10 @@ func checkWidget(f Fields, cur *Widget) error {
 			}
 		case SourceJournal:
 			if _, err := ParseJournalQuery(raw); err != nil {
+				return err
+			}
+		case SourceStates:
+			if err := ParseStatesQuery(raw); err != nil {
 				return err
 			}
 		case SourceAppData:
@@ -272,7 +278,7 @@ func (d *DB) GetWidget(ctx context.Context, id int64) (*Widget, error) {
 func (d *DB) CreateWidget(ctx context.Context, f Fields) (*Widget, error) {
 	src, _, _ := f.stringField("source")
 	if _, ok := f["viz"]; !ok {
-		// An app's page, a view's board and a journal draw themselves: one viz each.
+		// An app's page, a view's board, a journal and the states draw themselves: one viz each.
 		switch src {
 		case SourceAppPage:
 			f["viz"], _ = json.Marshal(VizPage)
@@ -280,6 +286,8 @@ func (d *DB) CreateWidget(ctx context.Context, f Fields) (*Widget, error) {
 			f["viz"], _ = json.Marshal(VizBoard)
 		case SourceJournal:
 			f["viz"], _ = json.Marshal(VizJournal)
+		case SourceStates:
+			f["viz"], _ = json.Marshal(VizStates)
 		}
 	}
 	for _, req := range []string{"dashboard_id", "viz", "query"} {

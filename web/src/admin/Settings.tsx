@@ -158,7 +158,7 @@ const groupsFor = (T: Terms): { label: string; sections: Section[] }[] => [
       {
         key: "screens",
         label: "Screens",
-        intro: "Choose which screens are offered. The phone follows the same choice.",
+        intro: "Choose which screens are offered, and where the dashboard toolbar sits. The phone follows the screens choice.",
         render: () => <ScreensSettings />,
       },
       {
