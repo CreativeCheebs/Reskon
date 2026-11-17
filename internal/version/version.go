@@ -5,9 +5,9 @@
 package version
 
 // Version is the Reskon version, major.minor.patch.
-const Version = "0.4.1"
+const Version = "0.5.0"
 
 // Updated is the day this version was last updated, as year-month-day. Settings
 // and the health check show it beside the version. Set it to the day you send a
 // new build out (a test checks it is a real day and not in the future).
-const Updated = "2026-11-16"
+const Updated = "2026-11-18"
