@@ -36,7 +36,7 @@ export type CardActionKey = "log" | "snooze" | "note" | "move" | "open" | "delet
 export const cardActionsFor = (T: Terms): { key: CardActionKey; label: string; hint: string; icon: ReactNode }[] => [
   { key: "log", label: "Log time", hint: `Open the worklog form with this ${T.task} filled in`, icon: <ClockCircleOutlined /> },
   { key: "snooze", label: "Snooze", hint: `Hide this open ${T.task} for some days`, icon: <MoonOutlined /> },
-  { key: "note", label: "Note", hint: `Edit the ${T.task}'s description in place`, icon: <FileTextOutlined /> },
+  { key: "note", label: "Edit description", hint: `Edit the ${T.task}'s description in place`, icon: <FileTextOutlined /> },
   { key: "move", label: "Move to", hint: "Send the card to another status", icon: <SwapRightOutlined /> },
   { key: "open", label: `Open ${T.task}`, hint: `Open the ${T.task} panel`, icon: <ExpandAltOutlined /> },
   { key: "delete", label: "Delete", hint: `Delete the ${T.task}, after asking`, icon: <DeleteOutlined /> },
@@ -259,7 +259,7 @@ export function CardActionRail({ task, actions, onChanged }: { task: Task; actio
           open={actions.noteOpen && actions.noteOnRail}
           onOpenChange={(v) => online && actions.setNoteOpen(v)}
           placement="bottomRight"
-          title="Note"
+          title="Edit description"
           destroyOnHidden
           content={note}
         >
@@ -273,7 +273,7 @@ export function CardActionRail({ task, actions, onChanged }: { task: Task; actio
     <div className="jb-card-rail" role="toolbar" aria-label="Card actions" onClick={stop} onPointerDown={stop} onKeyDown={stop} onContextMenu={stop}>
       {/* Note chosen from a menu, with no Note button to open beside: a dialog. */}
       {actions.noteOpen && !actions.noteOnRail && (
-        <Modal open title="Note" footer={null} width={360} onCancel={() => actions.setNoteOpen(false)} destroyOnHidden>
+        <Modal open title="Edit description" footer={null} width={360} onCancel={() => actions.setNoteOpen(false)} destroyOnHidden>
           {note}
         </Modal>
       )}

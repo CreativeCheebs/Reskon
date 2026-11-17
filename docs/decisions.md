@@ -575,6 +575,8 @@ Before snoozing a task you can see how busy the day it would return is. Next to 
 - **An epic made from the task panel gets the default priority**, like every task the server creates without one.
 - **Tooltips are inverted** (main text colour as the background, the page colour as the text) so they read in the light themes as well as the dark ones.
 
+- **The card action "Note" is now called "Edit description" (owner decision).** It shows under that name on the card's hover button and tooltip, in the right-click menu and in Settings › Card actions (web and phone). The saved action id stays `note`, so anyone's saved Card actions settings keep working unchanged.
+
 ## Open questions
 
 - **"Too low" on the ceiling question.** It only cancels a "too high" hold. Should it suggest more hours for the next days?

@@ -155,7 +155,7 @@ fun CompletenessScreen() {
     }
 }
 
-private val CARD_ACTIONS get() = listOf("log" to "Log time", "snooze" to "Snooze", "note" to "Note", "move" to "Move to", "open" to "Open ${Terms.task}", "delete" to "Delete")
+private val CARD_ACTIONS get() = listOf("log" to "Log time", "snooze" to "Snooze", "note" to "Edit description", "move" to "Move to", "open" to "Open ${Terms.task}", "delete" to "Delete")
 
 /** Settings › Card actions: the web board's hover buttons (up to 3) and right-click menu. */
 @OptIn(ExperimentalLayoutApi::class)

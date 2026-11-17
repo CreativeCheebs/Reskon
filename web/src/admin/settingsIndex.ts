@@ -28,7 +28,7 @@ export const SETTINGS_INDEX: SettingEntry[] = [
   { section: "snooze", title: "Longest snooze", description: "The most days a task can be snoozed for." },
   { section: "snooze", title: "Snooze menu", description: "The ready-made snooze choices (tomorrow, 1 week, 1 month...): add, remove and put them in order." },
   { section: "details", title: "Complete details", description: "The details an open task should have, such as an estimate or due date; tasks missing them are listed as incomplete." },
-  { section: "card-actions", title: "Card actions", description: "Which quick actions are buttons on a board card and which are in the right-click menu." },
+  { section: "card-actions", title: "Card actions", description: "Which quick actions (Log time, Snooze, Edit description, Move to, Open task, Delete) are buttons on a board card and which are in the right-click menu." },
   { section: "custom", title: "Custom fields", description: "Your own extra fields on tasks or sessions, such as a customer name or a ticket number." },
   // Time and points
   { section: "energy", title: "Energy types", description: "The kinds of effort you log; each earns points per hour at its own rate." },

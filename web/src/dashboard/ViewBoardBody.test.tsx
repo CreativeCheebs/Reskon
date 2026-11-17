@@ -205,7 +205,7 @@ describe("ViewBoardBody", () => {
       fireEvent.contextMenu(cardOne());
       const menu = await screen.findByRole("menu");
       const items = within(menu).getAllByRole("menuitem").map((i) => i.textContent);
-      expect(items).toEqual(["Log time", "Snooze", "Note", "Move to", "Open task", "Delete"]);
+      expect(items).toEqual(["Log time", "Snooze", "Edit description", "Move to", "Open task", "Delete"]);
       fireEvent.click(within(menu).getByText("Open task"));
       expect(screen.getByRole("dialog").textContent).toContain("panel 1");
     });

@@ -59,7 +59,7 @@ export function RowMenu({
         <span aria-hidden style={{ position: "fixed", left: x, top: y, width: 1, height: 1, pointerEvents: "none" }} />
       </Dropdown>
       {actions.noteOpen && (
-        <Modal open title="Note" footer={null} width={360} onCancel={() => actions.setNoteOpen(false)} destroyOnHidden>
+        <Modal open title="Edit description" footer={null} width={360} onCancel={() => actions.setNoteOpen(false)} destroyOnHidden>
           <NoteEditor task={task} onSaved={handlers.onChanged} onClose={() => actions.setNoteOpen(false)} />
         </Modal>
       )}
