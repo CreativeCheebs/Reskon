@@ -11,6 +11,13 @@ import (
 func (s *Server) captureRoutes() {
 	s.mux.HandleFunc("POST /api/capture", s.capture)
 	s.mux.HandleFunc("GET /api/capture/config", s.captureConfig)
+	s.mux.HandleFunc("GET /api/capture/suggest", s.captureSuggest)
+}
+
+// captureSuggest lists past lines and task titles that match ?q= (read only).
+func (s *Server) captureSuggest(w http.ResponseWriter, r *http.Request) {
+	list, err := dbOf(r.Context()).CaptureSuggest(r.Context(), r.URL.Query().Get("q"))
+	respond(w, list, err)
 }
 
 // captureConfig says which endpoint and model capture actually uses, and

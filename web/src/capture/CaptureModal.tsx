@@ -15,6 +15,7 @@ import { defaultPriorityId } from "../task/defaultPriority";
 import { palette } from "../theme/palette";
 import { today } from "../format";
 import { SimilarTasksList, useSimilarTasks } from "../task/SimilarTasks";
+import { CaptureInput } from "./CaptureInput";
 import { SnoozeField } from "../task/SnoozeField";
 import { useTerms } from "../terms";
 
@@ -73,6 +74,8 @@ export function CaptureModal({ onClose, takeEarlyKeys, initialText, onSaved }: P
   // While the line is typed: tasks like it, so a duplicate shows up first.
   const similar = useSimilarTasks(text, { enabled: !parse });
   const inputRef = useRef<InputRef>(null);
+  // A task (or a past session line on one) picked from the suggestions: a session read from exactly that text is linked to it.
+  const pickedTask = useRef<{ id: number; text: string } | null>(null);
 
   // Whether a provider is set up, asked as the dialog opens, so a missing
   // one is said before anything is typed rather than after.
@@ -150,7 +153,12 @@ export function CaptureModal({ onClose, takeEarlyKeys, initialText, onSaved }: P
     }
     setParsing(false);
     setParse(p);
-    setEntries((p.entries?.length ? p.entries : [p]).map((e) => toEntry(e, text.trim())));
+    const list = (p.entries?.length ? p.entries : [p]).map((e) => toEntry(e, text.trim()));
+    const picked = pickedTask.current;
+    if (picked && picked.text === text.trim() && list.length === 1 && !list[0].session.task_id && list[0].session.kind === "task") {
+      list[0].session = { ...list[0].session, task_id: picked.id, label: "" };
+    }
+    setEntries(list);
   };
 
   const update = (id: number, patch: Partial<Entry>) => setEntries((es) => es.map((e) => (e.id === id ? { ...e, ...patch } : e)));
@@ -270,16 +278,16 @@ export function CaptureModal({ onClose, takeEarlyKeys, initialText, onSaved }: P
                 }
               />
             )}
-            <Input
-              ref={inputRef}
-              data-capture-input
-              autoFocus
-              size="large"
-              placeholder="Worked on stm32 demo, 2 hours · Need to order a replacement NVR drive"
-              value={text}
+            <CaptureInput
+              text={text}
+              onText={setText}
+              onEnter={runParse}
+              onPick={(s) => {
+                pickedTask.current = s.task_id ? { id: s.task_id, text: s.text.trim() } : null;
+                setText(s.text);
+              }}
               disabled={!online}
-              onChange={(e) => setText(e.target.value)}
-              onPressEnter={runParse}
+              inputRef={inputRef}
               onFocus={() => {
                 const typed = takeEarlyKeys?.() ?? "";
                 if (typed) setText((t) => typed + t);
