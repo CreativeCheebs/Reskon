@@ -40,7 +40,13 @@ export interface DayItem {
   logged_day_h: number;
   status_id: number | null;
   status_behaviour: "todo" | "in_progress" | "done" | "cancelled" | null;
+  /** The line is ticked, or its task is done or cancelled. */
   done: boolean;
+  /** The task's own status is done or cancelled (task lines). */
+  task_done: boolean;
+  /** Minutes logged on this line today. */
+  logged_line_min: number;
+  reserved_min: number;
   session_count: number;
   created_at: string;
   updated_at: string;
@@ -53,6 +59,10 @@ export interface PlanTotals {
   available_min: number | null;
   available_from: "day" | "weekday" | null;
   over: boolean;
+  reserved_min: number;
+  unplanned_logged_min: number;
+  /** Available minus what is still to do; null when available is not set; below 0 when over. */
+  free_min: number | null;
 }
 
 export interface TimerRow {
