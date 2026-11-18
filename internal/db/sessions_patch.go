@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"strings"
 )
 
@@ -53,6 +54,16 @@ func (d *DB) PatchSession(ctx context.Context, id int64, f Fields) (*Session, er
 	}
 	if err := loadEnergies(ctx, tx, []*Session{cur}); err != nil {
 		return nil, err
+	}
+	if err := checkMergedTimes(cur, f); err != nil {
+		return nil, err
+	}
+	if raw, ok := f["day_item_id"]; ok && !isNull(raw) {
+		var item int64
+		_ = json.Unmarshal(raw, &item) // decode above already accepted it as an integer
+		if checkLive(ctx, tx, "day_item", item) != nil {
+			return nil, invalid("plan item %d does not exist", item)
+		}
 	}
 	if hasCustom {
 		merged, err := d.mergeCustom(ctx, tx, "session", string(cur.Custom), customPatch)

@@ -64,7 +64,7 @@ type StoppedTimer struct {
 	Draft   SessionDraft `json:"draft"`
 }
 
-const timerSelect = `SELECT tm.id, tm.day, COALESCE(i.kind, 'task'), COALESCE(tm.task_id, i.task_id), tm.day_item_id,
+const timerSelect = `SELECT tm.id, tm.day, COALESCE(i.kind, 'task'), COALESCE(tm.task_id, i.task_id), CASE WHEN i.deleted_at IS NULL THEN tm.day_item_id END,
 	COALESCE(t.title, i.title, ''), tm.started_at, tm.resumed_at, tm.accumulated_s, tm.created_at, tm.updated_at
 	FROM timer tm
 	LEFT JOIN day_item i ON i.id = tm.day_item_id
@@ -298,7 +298,8 @@ func (d *DB) StopTimer(ctx context.Context, id int64) (*StoppedTimer, error) {
 	}
 	draft := SessionDraft{
 		Kind: tm.Kind, TaskID: tm.TaskID, DayItemID: tm.DayItemID, LoggedFor: tm.Day,
-		Hours: math.Min(24, math.Round(float64(tm.ElapsedS)/3600*10000)/10000), StartedAt: tm.StartedAt, EndedAt: FormatTime(end),
+		// At least 0.01 h, the smallest value a session accepts, so the draft can be saved.
+		Hours: math.Max(0.01, math.Min(24, math.Round(float64(tm.ElapsedS)/3600*10000)/10000)), StartedAt: tm.StartedAt, EndedAt: FormatTime(end),
 	}
 	if tm.Kind == "event" {
 		draft.Label = &tm.Title
