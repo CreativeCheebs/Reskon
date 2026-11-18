@@ -211,12 +211,12 @@ export function CaptureModal({ onClose, takeEarlyKeys, initialText, onSaved }: P
     }
   };
 
-  // Enter saves from anywhere in the form except multi-line fields and
-  // open dropdowns, which need Enter for themselves.
+  // Enter saves from anywhere in the form except multi-line fields, open
+  // dropdowns and popovers (the Snooze until menu), which need Enter for themselves.
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key !== "Enter" || e.shiftKey || !parse) return;
     const t = e.target as HTMLElement;
-    if (t.tagName === "TEXTAREA" || t.closest(".ant-select") || t.closest(".ant-picker") || t.tagName === "BUTTON") return;
+    if (t.tagName === "TEXTAREA" || t.closest(".ant-select") || t.closest(".ant-picker") || t.closest(".ant-popover") || t.tagName === "BUTTON") return;
     e.preventDefault();
     save();
   };

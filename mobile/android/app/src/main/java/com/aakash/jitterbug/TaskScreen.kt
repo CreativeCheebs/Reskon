@@ -358,6 +358,7 @@ fun NewTaskScreen(r: Route) {
     var tags by remember { mutableStateOf(listOf<String>()) }
     var pickTags by remember { mutableStateOf(false) }
     var creating by remember { mutableStateOf(false) }
+    val canSnooze = status == null || boot.status(status)?.behaviour in setOf("todo", "in_progress")
     val scope = rememberCoroutineScope()
     var epics by remember { mutableStateOf(EpicNames.all()) }
     LaunchedEffect(Unit) { runCatching { EpicNames.load(); epics = EpicNames.all() } }
@@ -402,8 +403,9 @@ fun NewTaskScreen(r: Route) {
                 Box(Modifier.weight(1f)) { TextBox("Estimate", estimate, "e.g. 2h", keyboard = KeyboardType.Text) { estimate = it } }
                 FieldBox("Due", due?.let { dayLabel(it.toString()) } ?: "–", Modifier.weight(1f)) { pickDue = true }
             }
+            // Only an open task can be snoozed: with a Done or Cancelled status the box is hidden and nothing is sent.
             val named = snooze?.let { snoozeChoices(boot.settings, LocalDate.now()) }.orEmpty()
-            FieldBox(
+            if (canSnooze) FieldBox(
                 "Snooze until", snooze?.let { snoozeWhenLabel(it, named) } ?: "Not snoozed",
                 valueColor = if (snooze == null) Palette.subtle else Palette.fg,
                 borderColor = if (snooze == null) Palette.border else Palette.accent,
@@ -411,7 +413,7 @@ fun NewTaskScreen(r: Route) {
                     IconButton(Icons.close, "Don't snooze", size = 40) { snooze = null }
                 }),
             ) { pickSnooze = true }
-            snooze?.let { d ->
+            snooze?.takeIf { canSnooze }?.let { d ->
                 val back = alsoBackText(snoozeBack)
                 T("Hidden until then." + (back?.let { " Also back that day: $it" } ?: ""), Palette.muted, 12.sp)
                 if (dueBeforeSnooze(due, d)) T("Due before it shows again", Palette.yellow, 12.sp)
@@ -427,7 +429,7 @@ fun NewTaskScreen(r: Route) {
                         "title" to title.trim(), "area_id" to area, "type" to if (epic) "epic" else "task", "difficulty" to difficulty, "estimate_h" to parseHours(estimate),
                         "due_at" to due?.toString(), "today" to today(),
                     ).apply {
-                        snooze?.let { put("snooze_until", it.toString()) }
+                        if (canSnooze) snooze?.let { put("snooze_until", it.toString()) }
                         if (tags.isNotEmpty()) put("tags", tags.asJson())
                         // Left out (not null) when not chosen, so the server's own default applies.
                         status?.let { put("status_id", it) }
