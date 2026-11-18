@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reskon · Android day planner mock</title>
+  <link rel="stylesheet" href="day-planner-android.css">
+  <script defer src="day-planner-android.js"></script>
+</head>
+<body>
+  <main class="preview">
+    <header class="caption"><strong>Reskon <span>/</span> Android</strong><small>Sample data · <a href="day-planner-web.html">Web mock</a></small></header>
+    <section class="phone" aria-label="Reskon Android prototype">
+      <svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" class="symbols" aria-hidden="true">
+        <symbol id="left" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></symbol>
+        <symbol id="right" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+        <symbol id="calendar-icon" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v5m10-5v5M3 10h18m-13 4h2m4 0h2m-8 3h2"/></symbol>
+        <symbol id="board" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16m6-16v16"/></symbol>
+        <symbol id="sessions" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+        <symbol id="inbox" viewBox="0 0 24 24"><path d="m3 12 3-7h12l3 7v7H3zM3 12h5l1 3h6l1-3h5"/></symbol>
+        <symbol id="more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol>
+        <symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+        <symbol id="note" viewBox="0 0 24 24"><path d="M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm2 5h8m-8 4h8m-8 4h4"/></symbol>
+      </svg>
+      <div class="status" aria-hidden="true"><span>9:41</span><span class="signal">▴ ◒ ▰</span></div>
+      <header class="datebar">
+        <button id="previous" class="icon" type="button" aria-label="Previous day"><svg><use href="#left"/></svg></button>
+        <button id="date" type="button" aria-label="Open calendar"><strong id="day-name">Today</strong><small id="day-date">Wed, 18 Nov 2026</small></button>
+        <button id="next" class="icon" type="button" aria-label="Next day"><svg><use href="#right"/></svg></button>
+      </header>
+      <div class="segments" aria-label="Today views">
+        <button type="button" data-mode="tasks" aria-pressed="true">Tasks</button>
+        <button type="button" data-mode="morning" aria-pressed="false">Morning plan</button>
+        <button type="button" data-mode="evening" aria-pressed="false">Evening readout</button>
+      </div>
+      <div class="screen" id="screen">
+        <div id="planner">
+          <div class="section-title"><h1>Day planner</h1><button class="icon calendar-action" id="calendar" type="button" aria-label="Calendar"><svg><use href="#calendar-icon"/></svg></button></div>
+          <div class="totals" aria-label="Day totals">
+            <div><span>Planned</span><strong id="planned-total"></strong></div>
+            <div><span>Logged that day</span><strong id="logged-total"></strong></div>
+            <div><span>Available</span><strong id="available-total"></strong></div>
+          </div>
+          <div class="section-title"><h2>Planned tasks <span id="task-count" class="count"></span></h2><button id="pick" class="text-button" type="button">Add existing</button></div>
+          <div id="tasks" class="card"></div>
+          <div class="section-title"><h2><svg><use href="#note"/></svg> Day note</h2><button id="edit-note" class="text-button" type="button">Edit</button></div>
+          <p id="day-note" class="card note"></p>
+        </div>
+        <div id="reflection" hidden></div>
+      </div>
+      <button id="create" class="fab" type="button" aria-label="New task" title="New task"><svg><use href="#plus"/></svg></button>
+      <nav class="bottom" aria-label="Reskon navigation">
+        <button type="button" aria-current="page" data-tab="Today"><span><svg><use href="#calendar-icon"/></svg></span>Today</button>
+        <button type="button" data-tab="Board"><span><svg><use href="#board"/></svg></span>Board</button>
+        <button type="button" data-tab="Sessions"><span><svg><use href="#sessions"/></svg></span>Sessions</button>
+        <button type="button" data-tab="Inbox"><span><svg><use href="#inbox"/></svg></span>Inbox</button>
+        <button type="button" data-tab="More"><span><svg><use href="#more"/></svg></span>More</button>
+      </nav>
+      <div class="gesture" aria-hidden="true"></div>
+      <p id="status" role="status" class="toast" hidden></p>
+      <dialog id="sheet" aria-labelledby="sheet-title">
+        <div class="handle" aria-hidden="true"></div>
+        <header class="section-title"><h2 id="sheet-title"></h2><button id="close" class="icon" type="button" aria-label="Close sheet">×</button></header>
+        <div id="sheet-content"></div>
+      </dialog>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reskon · Day Planner</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="day-planner-web.css">
+  <script src="day-planner-web.js" defer></script>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <a class="brand" href="index.html"><span class="brand-mark">◕</span><strong>Reskon</strong></a>
+      <nav class="sidebar-scroll" aria-label="Workspace">
+        <div class="nav-label">VIEWS</div>
+        <a class="nav" href="index.html"><span aria-hidden="true">▦</span> Personal</a>
+        <div class="nav-label workspace-label">WORKSPACE</div>
+        <span class="nav"><span aria-hidden="true">▥</span> Dashboards</span>
+        <a class="nav active" href="day-planner-web.html" aria-current="page"><span aria-hidden="true">▦</span> Day Planner</a>
+        <span class="nav"><span aria-hidden="true">◷</span> Sessions</span>
+        <span class="nav"><span aria-hidden="true">⌁</span> Cycle time</span>
+        <span class="nav"><span aria-hidden="true">⚙</span> Settings</span>
+      </nav>
+      <div class="sidebar-bottom"><span class="avatar">A</span><span><strong>Alex Morgan</strong><small>Personal workspace</small></span></div>
+    </aside>
+    <main class="main">
+      <header class="topbar">
+        <details class="mobile-nav"><summary aria-label="Open navigation">☰</summary><nav aria-label="Workspace"><a href="index.html">Personal board</a><a href="day-planner-android.html">Android preview</a></nav></details>
+        <div class="breadcrumbs">Workspace <span>/</span> <strong>Day Planner</strong></div>
+        <div class="top-actions"><span class="preview-pill"><span></span> DESIGN PREVIEW</span><a class="button subtle android-preview" href="day-planner-android.html">Android preview ↗</a></div>
+      </header>
+      <div class="content planner">
+        <div class="page-heading">
+          <h1>Day Planner</h1>
+          <button class="button primary" id="new-task">＋ New task</button>
+        </div>
+        <div class="planner-datebar">
+          <div class="date-controls" aria-label="Select a date">
+            <button class="button icon-only" id="previous" aria-label="Previous day">‹</button>
+            <button class="button outline" id="calendar-open" aria-haspopup="dialog"><span aria-hidden="true">▦</span> <span id="date-text"></span></button>
+            <button class="button icon-only" id="next" aria-label="Next day">›</button>
+            <button class="button subtle" id="today">Today</button>
+          </div>
+          <button class="button subtle" id="capacity-open" aria-haspopup="dialog">⚙ Planner settings</button>
+        </div>
+        <div id="week" class="week" aria-label="Week overview"></div>
+        <div class="segmented planner-views" role="group" aria-label="Day views">
+          <button type="button" data-view="tasks" class="selected" aria-pressed="true">Tasks</button>
+          <button type="button" data-view="morning" aria-pressed="false">Morning</button>
+          <button type="button" data-view="evening" aria-pressed="false">Evening</button>
+        </div>
+        <div class="planner-grid" id="tasks">
+          <aside class="candidates" aria-labelledby="candidates-heading">
+            <h2 id="candidates-heading">Available tasks</h2>
+            <p class="muted">Drag a task to the plan or use its add button.</p>
+            <section class="group">
+              <div class="group-heading"><span class="status-dot coral"></span><h3>To do</h3><span id="todo-count" class="count"></span></div>
+              <div class="task-list" id="todo"></div>
+            </section>
+            <section class="group">
+              <div class="group-heading"><span class="status-dot blue"></span><h3>In progress</h3><span id="active-count" class="count"></span></div>
+              <div class="task-list" id="active"></div>
+            </section>
+          </aside>
+          <section class="plan" aria-labelledby="plan-heading">
+            <header class="plan-header">
+              <h2 id="plan-heading"></h2>
+              <div class="plan-count muted" id="plan-count"></div>
+              <dl class="totals" id="totals"></dl>
+              <div class="capacity-track" id="capacity-track" aria-hidden="true"><div id="capacity-bar"></div></div>
+            </header>
+            <div class="plan-body">
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th scope="col">Task</th><th scope="col">Estimate</th><th scope="col">Planned</th><th scope="col">Logged this day</th><th scope="col"><span class="sr-only">Remove</span></th></tr></thead>
+                  <tbody id="planned"></tbody>
+                </table>
+              </div>
+              <div class="drop-target" id="drop-target">Drop a task here or add one from Available tasks</div>
+            </div>
+            <div class="notes">
+              <label for="notes">Day notes</label>
+              <textarea id="notes" rows="2" placeholder="Add a note for this day…"></textarea>
+            </div>
+          </section>
+        </div>
+        <section class="plan day-summary" id="morning" hidden>
+          <h2>Morning · plan</h2>
+          <dl><dt>Focus</dt><dd>Work, Personal</dd><dt>Ceilings</dt><dd>Focus work · 3h</dd><dt>In force</dt><dd>Nothing in force</dd></dl>
+          <p class="muted">Preview of the existing morning view.</p>
+        </section>
+        <section class="plan day-summary" id="evening" hidden>
+          <h2>Evening · readout</h2>
+          <dl><dt>Focus work</dt><dd>3h ceiling</dd><dt>Time logged</dt><dd id="evening-logged"></dd></dl>
+          <p class="muted">Preview of the existing evening view.</p>
+        </section>
+        <p class="preview-note">Sample data. Edits reset when you reload this preview.</p>
+      </div>
+    </main>
+  </div>
+  <div class="sr-only" id="announcement" role="status"></div>
+  <dialog id="task-dialog" aria-labelledby="task-dialog-heading">
+    <form id="task-form" method="dialog">
+      <div class="dialog-head"><h2 id="task-dialog-heading">New task</h2></div>
+      <label for="task-name">Task name</label>
+      <input id="task-name" required maxlength="80" placeholder="What do you want to work on?">
+      <div class="form-fields">
+        <div><label for="estimate">Whole task estimate (min)</label><input type="number" id="estimate" min="1" max="99999"></div>
+        <div><label for="planned-time">Plan for this day (min)</label><input type="number" id="planned-time" min="1" max="1440"></div>
+      </div>
+      <div class="dialog-actions"><button class="button outline" type="button" data-close>Cancel</button><button class="button primary">Add to plan</button></div>
+    </form>
+  </dialog>
+  <dialog id="calendar-dialog" aria-labelledby="month">
+    <header class="calendar-header">
+      <button class="button icon-only" id="previous-month" aria-label="Previous month">‹</button>
+      <h2 id="month" aria-live="polite"></h2>
+      <button class="button icon-only" id="next-month" aria-label="Next month">›</button>
+    </header>
+    <div class="month-grid" id="month-grid"></div>
+    <div class="dialog-actions"><button class="button outline" type="button" data-close>Close</button></div>
+  </dialog>
+  <dialog id="capacity-dialog" aria-labelledby="capacity-heading">
+    <form id="capacity-form" method="dialog">
+      <div class="dialog-head"><h2 id="capacity-heading">Planner settings</h2></div>
+      <label for="capacity">Time available on this day (min)</label>
+      <input type="number" id="capacity" min="0" max="1440" placeholder="No capacity set">
+      <div class="dialog-actions"><button class="button outline" type="button" data-close>Cancel</button><button class="button primary">Save</button></div>
+    </form>
+  </dialog>
+</body>
+</html>
