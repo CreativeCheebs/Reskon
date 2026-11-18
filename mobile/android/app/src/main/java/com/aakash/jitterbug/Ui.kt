@@ -161,6 +161,11 @@ object Icons {
     const val snooze = "M12 7v5l3 2M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0"
     const val calendar = "M4 6h16v14H4zM4 10h16M8 3v4M16 3v4"
     const val dots = "M12 5h.01M12 12h.01M12 19h.01"
+    const val dotsH = "M5 12h.01M12 12h.01M19 12h.01"
+    const val pencil = "M4 20h4L19 9l-4-4L4 16zM13 7l4 4"
+    const val moveTo = "M4 8h14M14 4l4 4-4 4M20 16H6M10 12l-4 4 4 4"
+    const val openTask = "M7 17L17 7M9 7h8v8"
+    const val trash = "M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"
     const val sync = "M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3M18 3v4h-4M6 21v-4h4"
     const val download = "M12 4v11M7 10l5 5 5-5M5 20h14"
 }

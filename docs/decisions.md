@@ -579,6 +579,8 @@ Before snoozing a task you can see how busy the day it would return is. Next to 
 
 - **Label text darkens on light themes.** Chips and labels (priority, area, column counts) put their colour as text on a faint tint of itself. The text was only ever lightened, so a yellow or grey priority was nearly invisible in the Light theme. It now moves toward black on a light surface and toward white on a dark one, only as far as needed for 4.5:1 contrast.
 
+- **Phone swipe actions (owner-approved mock).** The phone's swipe buttons are their own setting, `phone_card_actions`, not the web's `card_actions`, because a swiped row has room for a different set than a hovered web card. It is an ordinary entry in the key-value `setting` table (no migration); the server checks it (at most 3, no repeats, only the six known actions) the way it checks other settings. Order is the tap order, not the catalogue order. Button words are short ("Edit" for Edit description) because a button is 64 dp wide; the More sheet and the screen-reader names use the full names. The swipe is a hand-made horizontal drag, so vertical scrolling is untouched. The task screen and the row actions now share one snooze sheet and one delete question instead of two copies. The Today screen has no task rows, so it has nothing to swipe.
+
 ## Open questions
 
 - **"Too low" on the ceiling question.** It only cancels a "too high" hold. Should it suggest more hours for the next days?

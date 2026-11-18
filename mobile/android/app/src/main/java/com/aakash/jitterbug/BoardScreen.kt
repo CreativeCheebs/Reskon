@@ -76,7 +76,7 @@ fun BoardScreen(r: Route) {
     var searching by remember { mutableStateOf(false) }
     var choosingView by remember { mutableStateOf(false) }
     var layoutSheet by remember { mutableStateOf(false) }
-    var moving by remember { mutableStateOf<JSONObject?>(null) }
+    val host = rememberTaskActionHost()
     val tasks by loaded(view.id, query) { EpicNames.load(); Api.arr("/tasks?view=${view.id}" + if (query.isNotBlank()) "&q=${java.net.URLEncoder.encode(query, "UTF-8")}" else "").objs() }
     val scope = rememberCoroutineScope()
     // Snoozed tasks, and blocked ones while this view hides them, are not listed; their buttons open them.
@@ -125,7 +125,7 @@ fun BoardScreen(r: Route) {
             val list = split?.shown
             if (list != null) when (view.kind) {
                 "Timeline" -> TimelineLayout(list)
-                else -> ListLayout(view, list) { moving = it }
+                else -> ListLayout(view, list, host)
             }
         }
         Fab(null, Modifier.align(Alignment.BottomEnd).padding(16.dp)) { App.go("newtask", "view" to view.id) }
@@ -146,7 +146,7 @@ fun BoardScreen(r: Route) {
                     if (done == null) hiddenSheet = null
                 }
             }
-        }) { hiddenSheet = null }
+        }, { hiddenSheet = null }, host)
         "blocked" -> BlockedSheet(split.blocked, hideBlocked, { hide ->
             scope.launch {
                 val done = attempt("Not saved") {
@@ -155,15 +155,10 @@ fun BoardScreen(r: Route) {
                 }
                 if (done == null) hiddenSheet = null
             }
-        }) { hiddenSheet = null }
-        "incomplete" -> IncompleteSheet(split.incomplete) { hiddenSheet = null }
+        }, { hiddenSheet = null }, host)
+        "incomplete" -> IncompleteSheet(split.incomplete, { hiddenSheet = null }, host)
     }
-    moving?.let { t ->
-        PickSheet("Move \"${t.optString("title")}\" to", boot.statuses.filter { it.id != t.getLong("status_id") }.map { it.id to it.name }, { moving = null }) { sid ->
-            moving = null
-            scope.launch { attempt("Not moved") { Api.post("/tasks/${t.getLong("id")}/move", jsonOf("status_id" to sid, "today" to today())); App.changed() } }
-        }
-    }
+    TaskActionSheets(host)
 }
 
 /** Remembers the last view opened, so Board opens on it. */
@@ -231,7 +226,7 @@ private class Group(
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ListLayout(view: ViewRef, allTasks: List<JSONObject>, onLongPress: (JSONObject) -> Unit) {
+private fun ListLayout(view: ViewRef, allTasks: List<JSONObject>, host: TaskActionHost) {
     val boot = App.boot ?: return
     // Tasks in a hidden status (Backlog...) stay out of the list until their button is tapped.
     var opened by remember(view.id) { mutableStateOf(OpenedStatuses.of(view.id)) }
@@ -309,7 +304,9 @@ private fun ListLayout(view: ViewRef, allTasks: List<JSONObject>, onLongPress: (
     }
     if (allTasks.isEmpty()) Empty("No ${Terms.tasks} in this view.")
     else if (tasks.isEmpty()) Empty("Nothing to show here. Tap a status above to see its ${Terms.tasks}.")
-    LazyColumn(state = listState, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    // A swiped-open row closes when the list scrolls or a finger lands elsewhere.
+    LaunchedEffect(listState.isScrollInProgress) { if (listState.isScrollInProgress) host.openId = null }
+    LazyColumn(state = listState, modifier = Modifier.closeSwipeOnTouch(host), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         items(groups, key = { it.key }) { g ->
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(Modifier.fillMaxWidth().heightIn(min = 40.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -336,7 +333,7 @@ private fun ListLayout(view: ViewRef, allTasks: List<JSONObject>, onLongPress: (
                 else Card(radius = 12.dp, bordered = false) {
                     g.rows.forEachIndexed { i, t ->
                         if (i > 0) Line()
-                        ListRowTask(t, onLongPress)
+                        ListRowTask(t, host)
                     }
                 }
             }
@@ -346,13 +343,13 @@ private fun ListLayout(view: ViewRef, allTasks: List<JSONObject>, onLongPress: (
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-internal fun ListRowTask(t: JSONObject, onLongPress: (JSONObject) -> Unit) {
+internal fun ListRowTask(t: JSONObject, host: TaskActionHost) {
     val boot = App.boot ?: return
     val overdue = (t.num("days_to_due") ?: 1.0) < 0 && t.optString("behaviour") in setOf("todo", "in_progress")
     val flag = when { t.optBoolean("stalled") -> Palette.red; overdue -> Palette.yellow; else -> Color.Transparent }
+    SwipeRow(t, host, onLongClick = { host.run("move", t) }, onClick = { App.go("task", "id" to t.getLong("id")) }) {
     Row(
         Modifier.fillMaxWidth().drawBehind { drawRect(flag, size = androidx.compose.ui.geometry.Size(3.dp.toPx(), size.height)) }
-            .combinedClickable(onLongClickLabel = "Move to another status", onLongClick = { onLongPress(t) }) { App.go("task", "id" to t.getLong("id")) }
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -368,6 +365,7 @@ internal fun ListRowTask(t: JSONObject, onLongPress: (JSONObject) -> Unit) {
             boot.tagNames(t.tagIds()).takeIf { it.isNotEmpty() }?.let { names -> T(names.joinToString(" ") { "#$it" }, Palette.subtle, 12.sp, oneLine = true) }
         }
         T(age(t.num("time_in_status_h")), if (t.optBoolean("stalled")) Palette.red else Palette.fg, 14.sp, FontWeight.SemiBold)
+    }
     }
 }
 

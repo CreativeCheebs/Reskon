@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -58,18 +60,21 @@ fun HiddenGroup(split: ListSplit, modifier: Modifier = Modifier, onOpen: (String
 
 /** One task in a sheet: tap it to open the task. */
 @Composable
-private fun SheetTask(t: JSONObject, onOpen: () -> Unit, trailing: @Composable () -> Unit = {}, detail: @Composable () -> Unit = {}) {
+private fun SheetTask(t: JSONObject, host: TaskActionHost?, onOpen: () -> Unit, trailing: @Composable () -> Unit = {}, detail: @Composable () -> Unit = {}) {
     val boot = App.boot ?: return
-    Row(
-        Modifier.fillMaxWidth().heightIn(min = 64.dp).clickable(role = Role.Button, onClick = onOpen).padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            T(t.optString("title"), Palette.fg, 15.sp, FontWeight.Medium)
-            T(listOfNotNull(boot.status(t.id("status_id"))?.name, boot.area(t.id("area_id"))?.name).joinToString(" · "), Palette.muted, 13.sp, oneLine = true)
-            detail()
+    // Swipe left reveals the same buttons as on the list (when the sheet is given a host).
+    SwipeRow(t, host, faceColor = Palette.raised, onClick = onOpen) {
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(horizontal = 20.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                T(t.optString("title"), Palette.fg, 15.sp, FontWeight.Medium)
+                T(listOfNotNull(boot.status(t.id("status_id"))?.name, boot.area(t.id("area_id"))?.name).joinToString(" · "), Palette.muted, 13.sp, oneLine = true)
+                detail()
+            }
+            trailing()
         }
-        trailing()
     }
 }
 
@@ -79,14 +84,18 @@ private fun SheetTask(t: JSONObject, onOpen: () -> Unit, trailing: @Composable (
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TaskSheet(title: String, tasks: List<JSONObject>, onDismiss: () -> Unit, header: @Composable () -> Unit = {}, row: @Composable (JSONObject) -> Unit) {
+private fun TaskSheet(title: String, tasks: List<JSONObject>, host: TaskActionHost?, onDismiss: () -> Unit, header: @Composable () -> Unit = {}, row: @Composable (JSONObject) -> Unit) {
     val close by rememberUpdatedState(onDismiss)
     LaunchedEffect(tasks.isEmpty()) { if (tasks.isEmpty()) close() }
+    val listState = rememberLazyListState()
+    if (host != null) LaunchedEffect(listState.isScrollInProgress) { if (listState.isScrollInProgress) host.openId = null }
+    // A row left swiped open must not stay "open" once the sheet is gone.
+    if (host != null) DisposableEffect(host) { onDispose { host.openId = null } }
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = Palette.raised) {
-        Column(Modifier.padding(horizontal = 20.dp)) {
-            T(title, Palette.fg, 18.sp, FontWeight.SemiBold, Modifier.padding(bottom = 4.dp).semantics { heading() })
-            header()
-            LazyColumn(Modifier.weight(1f, fill = false)) { items(tasks, key = { it.optLong("id") }) { row(it) } }
+        Column {
+            T(title, Palette.fg, 18.sp, FontWeight.SemiBold, Modifier.padding(horizontal = 20.dp).padding(bottom = 4.dp).semantics { heading() })
+            Box(Modifier.padding(horizontal = 20.dp)) { header() }
+            LazyColumn(Modifier.weight(1f, fill = false).then(if (host != null) Modifier.closeSwipeOnTouch(host) else Modifier), state = listState) { items(tasks, key = { it.optLong("id") }) { row(it) } }
             Spacer(Modifier.height(24.dp))
         }
     }
@@ -97,11 +106,11 @@ private fun TaskSheet(title: String, tasks: List<JSONObject>, onDismiss: () -> U
  * so a second tap does nothing; the screen runs the write, so closing this sheet cannot cancel it.
  */
 @Composable
-fun SnoozedSheet(tasks: List<JSONObject>, waking: Set<Long>, onWake: (JSONObject) -> Unit, onDismiss: () -> Unit) {
-    TaskSheet("Snoozed · ${tasks.size}", tasks, onDismiss) { t ->
+fun SnoozedSheet(tasks: List<JSONObject>, waking: Set<Long>, onWake: (JSONObject) -> Unit, onDismiss: () -> Unit, host: TaskActionHost? = null) {
+    TaskSheet("Snoozed · ${tasks.size}", tasks, host, onDismiss) { t ->
         val title = t.optString("title")
         SheetTask(
-            t, onOpen = { onDismiss(); App.go("task", "id" to t.getLong("id")) },
+            t, host, onOpen = { onDismiss(); App.go("task", "id" to t.getLong("id")) },
             detail = { wakeLabel(t, today()).takeIf { it.isNotEmpty() }?.let { T(it, Palette.yellow, 13.sp) } },
             trailing = {
                 Box(
@@ -116,11 +125,11 @@ fun SnoozedSheet(tasks: List<JSONObject>, waking: Set<Long>, onWake: (JSONObject
 
 /** Open tasks waiting on another open task. The switch is the view's own "hide blocked" choice, shared with the web. */
 @Composable
-fun BlockedSheet(tasks: List<JSONObject>, hidden: Boolean, onHidden: (Boolean) -> Unit, onDismiss: () -> Unit) {
+fun BlockedSheet(tasks: List<JSONObject>, hidden: Boolean, onHidden: (Boolean) -> Unit, onDismiss: () -> Unit, host: TaskActionHost? = null) {
     // Move the switch at once; the saved view follows a moment later.
     var on by remember(hidden) { mutableStateOf(hidden) }
     TaskSheet(
-        "Blocked · ${tasks.size}", tasks, onDismiss,
+        "Blocked · ${tasks.size}", tasks, host, onDismiss,
         header = {
             Row(
                 Modifier.fillMaxWidth().heightIn(min = 56.dp).toggleable(value = on, role = Role.Switch) { on = it; onHidden(it) },
@@ -135,16 +144,16 @@ fun BlockedSheet(tasks: List<JSONObject>, hidden: Boolean, onHidden: (Boolean) -
         },
     ) { t ->
         val waiting = waitingOn(t)
-        SheetTask(t, onOpen = { onDismiss(); App.go("task", "id" to t.getLong("id")) }, detail = { if (waiting.isNotEmpty()) T("Waiting on $waiting", Palette.yellow, 13.sp) })
+        SheetTask(t, host, onOpen = { onDismiss(); App.go("task", "id" to t.getLong("id")) }, detail = { if (waiting.isNotEmpty()) T("Waiting on $waiting", Palette.yellow, 13.sp) })
     }
 }
 
 /** Open tasks lacking details Settings › Complete details asks for, with what each lacks. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun IncompleteSheet(tasks: List<JSONObject>, onDismiss: () -> Unit) {
-    TaskSheet("Incomplete details · ${tasks.size}", tasks.sortedByDescending { it.optJSONArray("missing")?.length() ?: 0 }, onDismiss) { t ->
-        SheetTask(t, onOpen = { onDismiss(); App.go("task", "id" to t.getLong("id")) }, detail = {
+fun IncompleteSheet(tasks: List<JSONObject>, onDismiss: () -> Unit, host: TaskActionHost? = null) {
+    TaskSheet("Incomplete details · ${tasks.size}", tasks.sortedByDescending { it.optJSONArray("missing")?.length() ?: 0 }, host, onDismiss) { t ->
+        SheetTask(t, host, onOpen = { onDismiss(); App.go("task", "id" to t.getLong("id")) }, detail = {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 t.strs("missing").forEach { Tag(fieldLabel(it)) }
             }

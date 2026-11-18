@@ -328,6 +328,11 @@ func (d *DB) PutSetting(ctx context.Context, key string, value json.RawMessage) 
 			return err
 		}
 	}
+	if key == "phone_card_actions" {
+		if err := checkPhoneCardActions(value); err != nil {
+			return err
+		}
+	}
 	if boolSettings[key] {
 		if err := checkBoolSetting(key, value); err != nil {
 			return err

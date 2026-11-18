@@ -155,7 +155,7 @@ fun CompletenessScreen() {
     }
 }
 
-private val CARD_ACTIONS get() = listOf("log" to "Log time", "snooze" to "Snooze", "note" to "Edit description", "move" to "Move to", "open" to "Open ${Terms.task}", "delete" to "Delete")
+internal val CARD_ACTIONS get() = listOf("log" to "Log time", "snooze" to "Snooze", "note" to "Edit description", "move" to "Move to", "open" to "Open ${Terms.task}", "delete" to "Delete")
 
 /** Settings › Card actions: the web board's hover buttons (up to 3) and right-click menu. */
 @OptIn(ExperimentalLayoutApi::class)
@@ -171,8 +171,10 @@ fun CardActionsScreen() {
         attempt("Not saved") { saveSetting("card_actions", jsonOf("rail" to JSONArray(order.filter { it in r }), "menu" to JSONArray(order.filter { it in m }))) }
     }
     SettingPage("Card actions") {
-        T("What a card offers on the web board: buttons on a hovered card, and the right-click menu. On the phone, long-press a card to move it.", Palette.muted, 14.sp)
-        SectionTitle("Buttons on a card · up to 3")
+        T("What a ${Terms.task} offers when you swipe it on this phone. The web app's buttons and right-click menu are set below, separately. Long-press a row to move it.", Palette.muted, 14.sp)
+        SwipeActionsSection()
+        Line()
+        SectionTitle("Web app · buttons on a card · up to 3")
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             CARD_ACTIONS.forEach { (k, label) ->
                 val on = k in rail
@@ -181,7 +183,7 @@ fun CardActionsScreen() {
                 }
             }
         }
-        SectionTitle("Right-click menu")
+        SectionTitle("Web app · right-click menu")
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             CARD_ACTIONS.forEach { (k, label) -> Pill(label, k in menu) { save(rail, if (k in menu) menu - k else menu + k) } }
         }
