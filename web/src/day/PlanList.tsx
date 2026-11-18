@@ -7,6 +7,7 @@ import { useApp } from "../store";
 import { palette } from "../theme/palette";
 import { WriteButton } from "../offline";
 import { Totals } from "./Totals";
+import { BringForward } from "./BringForward";
 import { PlanRow, type RowActions } from "./PlanRow";
 import { reorderIds, stepIds } from "./plan";
 import { drag } from "./drag";
@@ -108,6 +109,8 @@ export function PlanList({
       >
         Drop a task here, or add one from Available tasks
       </div>
+
+      <BringForward day={day} run={run} />
 
       <DayNote key={`${day}:${data.plan.note ?? ""}`} note={data.plan.note ?? ""} onSave={(note) => run(() => api.patch(`/day/${day}`, { note: note || null }))} disabled={!online} />
     </section>

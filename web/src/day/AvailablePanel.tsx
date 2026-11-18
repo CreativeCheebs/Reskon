@@ -7,7 +7,6 @@ import { useApp } from "../store";
 import { palette } from "../theme/palette";
 import { formatHM } from "../format";
 import { groupAvailable } from "./availableGroups";
-import { BringForward } from "./BringForward";
 import { drag } from "./drag";
 import type { Run } from "./usePlanner";
 import type { DayData } from "./types";
@@ -96,7 +95,6 @@ export function AvailablePanel({ day, data, run, onMoveBack, tasksVersion }: { d
           </ul>
         </section>
       ))}
-      <BringForward day={data.day} run={run} />
     </aside>
   );
 }
