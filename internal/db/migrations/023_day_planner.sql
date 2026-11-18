@@ -38,14 +38,21 @@ ALTER TABLE day_plan ADD COLUMN available_min INTEGER;
 -- closing the app or restarting the device. Elapsed time is worked out when
 -- read: accumulated_s plus the time since resumed_at (NULL while paused).
 -- More than one row can be running only when two devices each started one
--- while offline; the API says so. Stopping or discarding soft-deletes it.
+-- while offline; the API says so. Stopping does NOT end the row: it sets
+-- stopped_at and freezes the count, so the time survives until the session
+-- draft is saved (the save retires the row) or discarded. Retiring
+-- soft-deletes it. kind and title are kept so a timer on an event whose line
+-- was later deleted still says what it was.
 CREATE TABLE timer (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   day           TEXT NOT NULL,
   day_item_id   INTEGER REFERENCES day_item(id),
   task_id       INTEGER REFERENCES task(id),
+  kind          TEXT NOT NULL DEFAULT 'task',
+  title         TEXT,
   started_at    TEXT NOT NULL,
   resumed_at    TEXT,
+  stopped_at    TEXT,
   accumulated_s INTEGER NOT NULL DEFAULT 0,
   created_at    TEXT NOT NULL,
   updated_at    TEXT NOT NULL,

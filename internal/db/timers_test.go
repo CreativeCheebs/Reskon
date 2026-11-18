@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -73,25 +74,34 @@ func TestTimerPauseResumeStopWithAClock(t *testing.T) {
 		dr.StartedAt != FormatTime(clock0) || dr.EndedAt != FormatTime(clock0.Add(2*time.Hour+40*time.Minute)) {
 		t.Errorf("draft = %+v", dr)
 	}
-	// Stop saves nothing, and the timer is gone.
+	// Stop saves nothing; the timer stays, stopped, with its draft, and stopping again gives the same draft.
 	if count(t, d, "session") != 0 {
 		t.Error("stop logged a session")
 	}
-	if list, _ := d.ListTimers(ctx); len(list.Timers) != 0 {
+	if list, _ := d.ListTimers(ctx); len(list.Timers) != 1 || !list.Timers[0].Stopped || list.Timers[0].Running || list.Timers[0].Draft == nil || !reflect.DeepEqual(*list.Timers[0].Draft, dr) || list.Conflict {
 		t.Errorf("timers after stop: %+v", list.Timers)
 	}
-	if _, err := d.StopTimer(ctx, tm.ID); !errors.Is(err, ErrNotFound) {
-		t.Errorf("stopping twice: %v", err)
+	advance(time.Hour)
+	if again, err := d.StopTimer(ctx, tm.ID); err != nil || !reflect.DeepEqual(again.Draft, dr) {
+		t.Errorf("stopping twice: %+v %v", again, err)
+	}
+	if _, err := d.ResumeTimer(ctx, tm.ID); err == nil {
+		t.Error("a stopped timer was resumed")
 	}
 
 	// Saving the draft goes through the ordinary session create and keeps both stamps.
 	body, _ := json.Marshal(dr)
-	s, err := d.CreateSession(ctx, fields(t, string(body)))
+	saveBody := fields(t, string(body))
+	saveBody["timer_id"] = json.RawMessage(fmt.Sprint(tm.ID))
+	s, err := d.CreateSession(ctx, saveBody)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if s.StartedAt == nil || s.EndedAt == nil || *s.EndedAt != dr.EndedAt || s.TaskID == nil {
 		t.Errorf("saved session = %+v", s)
+	}
+	if list, _ := d.ListTimers(ctx); len(list.Timers) != 0 {
+		t.Errorf("saving the draft did not retire the timer: %+v", list.Timers)
 	}
 	if _, err := d.CreateSession(ctx, fields(t, fmt.Sprintf(`{"task_id":%d,"hours":1,"logged_for":"2026-11-16","started_at":"2026-11-16T10:00:00Z","ended_at":"2026-11-16T09:00:00Z"}`, tk.ID))); err == nil {
 		t.Error("ended_at before started_at accepted")
@@ -201,7 +211,7 @@ func TestTwoRunningTimersAfterSyncFlagAConflict(t *testing.T) {
 	}
 	// Stopping one ends the conflict, on both devices after sync.
 	list, _ := srv.ListTimers(ctx)
-	if _, err := srv.StopTimer(ctx, list.Timers[0].ID); err != nil {
+	if err := srv.DiscardTimer(ctx, list.Timers[0].ID); err != nil {
 		t.Fatal(err)
 	}
 	syncOnce(t, phone, srv)

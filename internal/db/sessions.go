@@ -244,6 +244,12 @@ func (d *DB) CreateSession(ctx context.Context, f Fields) (*Session, error) {
 	if err != nil {
 		return nil, err
 	}
+	// A draft saved from a stopped timer names it: the timer is retired with the save.
+	timerID, _, err := f.int64Field("timer_id")
+	if err != nil {
+		return nil, err
+	}
+	delete(f, "timer_id")
 	// The tags put on by hand; the task's own tags need no copying (see tags.go).
 	tagNames, hasTags, err := parseTags(f)
 	if err != nil {
@@ -322,6 +328,16 @@ func (d *DB) CreateSession(ctx context.Context, f Fields) (*Session, error) {
 	if hasTags {
 		if err := setSessionTags(ctx, tx, id, tagNames); err != nil {
 			return nil, err
+		}
+	}
+	if timerID != 0 {
+		// Saving the draft retires its timer in the same transaction.
+		res, err := tx.ExecContext(ctx, `UPDATE timer SET deleted_at = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL`, Now(), Now(), timerID)
+		if err != nil {
+			return nil, err
+		}
+		if n, _ := res.RowsAffected(); n == 0 {
+			return nil, invalid("timer %d does not exist or was already saved", timerID)
 		}
 	}
 	if err := tx.Commit(); err != nil {
