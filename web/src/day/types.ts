@@ -29,8 +29,11 @@ export interface DayItem {
   title: string;
   area_id: number | null;
   position: number;
-  /** Events only: the minutes reserved. */
+  /** Minutes planned on this day (an event's reserved time, or a task line's own plan); null = not set. */
   planned_min: number | null;
+  /** Task lines: the linked task's own title, and whether this line carries its own name. */
+  task_title: string | null;
+  renamed: boolean;
   /** Tasks only: the one whole-task estimate, and hours logged in all time and on this day. */
   estimate_h: number | null;
   logged_h: number;

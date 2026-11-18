@@ -1,15 +1,20 @@
-import { Button, Dropdown, Tag, type MenuProps } from "antd";
+import { Button, Checkbox, Dropdown, Tag, type MenuProps } from "antd";
 import { CheckCircleFilled, ClockCircleOutlined, HolderOutlined, MoreOutlined, PlayCircleOutlined } from "@ant-design/icons";
 import { useApp } from "../store";
 import { palette } from "../theme/palette";
-import { formatHM } from "../format";
-import { rowFigures } from "./plan";
+import { dayFigure, loggedOfEstimate } from "./plan";
 import { drag } from "./drag";
 import type { DayItem } from "./types";
 
 export interface RowActions {
   onLog: (item: DayItem) => void;
   onReschedule: (item: DayItem) => void;
+  /** Edit the line's planned time and name. */
+  onEdit: (item: DayItem) => void;
+  /** Events only: mark done or not done. */
+  onToggleDone?: (item: DayItem) => void;
+  /** Show the linked task. */
+  onOpenTask?: (taskId: number) => void;
   onRemove: (item: DayItem) => void;
   onStep: (item: DayItem, step: -1 | 1) => void;
   /** Put the dragged line before this one (null: at the end). */
@@ -32,6 +37,8 @@ export function PlanRow({ item, first, last, actions }: { item: DayItem; first: 
   const menu: MenuProps["items"] = [
     { key: "log", label: "Log a session" },
     ...(actions.onStartTimer ? [{ key: "timer", label: actions.timing ? "Timer running" : "Start timer", disabled: actions.timing }] : []),
+    { key: "edit", label: "Edit plan…" },
+    ...(!isTask && actions.onToggleDone ? [{ key: "done", label: item.done ? "Mark not done" : "Mark done" }] : []),
     { key: "reschedule", label: "Reschedule…" },
     { key: "up", label: "Move up", disabled: first },
     { key: "down", label: "Move down", disabled: last },
@@ -50,6 +57,8 @@ export function PlanRow({ item, first, last, actions }: { item: DayItem; first: 
   const onMenu: MenuProps["onClick"] = ({ key }) => {
     if (key === "log") actions.onLog(item);
     else if (key === "timer") actions.onStartTimer?.(item);
+    else if (key === "edit") actions.onEdit(item);
+    else if (key === "done") actions.onToggleDone?.(item);
     else if (key === "reschedule") actions.onReschedule(item);
     else if (key === "up") actions.onStep(item, -1);
     else if (key === "down") actions.onStep(item, 1);
@@ -91,21 +100,44 @@ export function PlanRow({ item, first, last, actions }: { item: DayItem; first: 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           {item.done && <CheckCircleFilled aria-label="Done" style={{ color: palette.success }} />}
-          <span style={{ fontWeight: 600, textDecoration: item.done ? "line-through" : undefined, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.title}</span>
+          {!isTask && (
+            <Checkbox
+              checked={item.done}
+              disabled={!online}
+              onChange={() => actions.onToggleDone?.(item)}
+              aria-label={`${item.done ? "Mark not done" : "Mark done"}: ${item.title}`}
+            />
+          )}
+          {isTask && item.task_id && actions.onOpenTask ? (
+            <Button
+              type="link"
+              onClick={() => actions.onOpenTask?.(item.task_id as number)}
+              aria-label={`Open task ${item.task_title ?? item.title}`}
+              style={{ padding: 0, height: "auto", fontWeight: 600, color: palette.fg, textDecoration: item.done ? "line-through" : undefined, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block", textAlign: "left" }}
+            >
+              {item.title}
+            </Button>
+          ) : (
+            <span style={{ fontWeight: 600, textDecoration: item.done ? "line-through" : undefined, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.title}</span>
+          )}
           {!isTask && <Tag style={{ marginInlineEnd: 0 }}>Event</Tag>}
         </div>
         <div style={{ color: palette.muted, fontSize: 12 }}>
+          {isTask && item.renamed && item.task_title && `Part of: ${item.task_title} · `}
           {area?.name ?? "No area"}
           {item.done && " · done"}
           {item.session_count > 0 && !isTask && ` · ${item.session_count} session${item.session_count === 1 ? "" : "s"}`}
         </div>
       </div>
       <div style={{ textAlign: "right", fontSize: 12, fontVariantNumeric: "tabular-nums" }}>
-        <div title={isTask ? "Logged on this task in all time, against its one whole-task estimate" : "Minutes reserved for this event"}>
-          {isTask && <span style={{ color: palette.subtle }}>All time </span>}
-          <span style={{ fontWeight: 600 }}>{rowFigures(item)}</span>
+        <div style={{ fontWeight: 600 }} title={isTask ? "Planned and logged on this day" : "Minutes reserved for this event"}>
+          {dayFigure(item)}
         </div>
-        {isTask && <div style={{ color: palette.muted }}>This day {formatHM(item.logged_day_h)}</div>}
+        {isTask && (
+          <div style={{ color: palette.muted }} title="Logged on the task in all time, against its one whole-task estimate">
+            {loggedOfEstimate(item)}
+          </div>
+        )}
       </div>
       {actions.onStartTimer && (
         <Button

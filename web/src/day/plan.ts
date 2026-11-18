@@ -24,16 +24,36 @@ export function unestimatedText(n: number): string {
   return n === 1 ? "1 task has no estimate" : `${n} tasks have no estimate`;
 }
 
-/** The task row's all-time figures: "35m / 3h" or "35m / no estimate". Not the day's totals. */
+/** A task's all-time figures: "35m / 3h" or "35m / no estimate". Not the day's totals. */
 export function loggedOfEstimate(item: Pick<DayItem, "logged_h" | "estimate_h">): string {
   const est = item.estimate_h === null ? "no estimate" : formatHM(item.estimate_h);
   return `${formatHM(item.logged_h)} / ${est}`;
 }
 
-/** What the row's right-hand side says: a task's logged / estimate, an event's reserved minutes. */
-export function rowFigures(item: DayItem): string {
+/** The line's figure for this day: "1h of 2h today", "2h today", "1h today" (nothing planned) or "not planned". */
+export function dayFigure(item: Pick<DayItem, "kind" | "planned_min" | "logged_day_h">): string {
   if (item.kind === "event") return item.planned_min === null ? "–" : `${minutesText(item.planned_min)} reserved`;
-  return loggedOfEstimate(item);
+  const planned = item.planned_min === null ? null : minutesText(item.planned_min);
+  const logged = item.logged_day_h > 0 ? formatHM(item.logged_day_h) : null;
+  if (planned && logged) return `${logged} of ${planned} today`;
+  if (planned) return `${planned} today`;
+  if (logged) return `${logged} today`;
+  return "not planned";
+}
+
+/** The Add-to-plan body for a task line: the day's planned minutes and a name only when it differs from the task's. */
+export function addLineBody(taskId: number, taskTitle: string, plannedText: string, name: string): Record<string, unknown> {
+  const mins = parseMinutes(plannedText);
+  const n = name.trim();
+  return { task_id: taskId, ...(mins ? { planned_min: mins } : {}), ...(n && n !== taskTitle ? { title: n } : {}) };
+}
+
+/** The PATCH body for "Edit plan": a blank time clears it; a blank or unchanged name goes back to the task's own. */
+export function editLineBody(item: Pick<DayItem, "kind" | "task_title">, plannedText: string, name: string): Record<string, unknown> {
+  const mins = parseMinutes(plannedText);
+  const n = name.trim();
+  if (item.kind === "event") return { title: n, planned_min: mins };
+  return { planned_min: mins, title: n && n !== item.task_title ? n : "" };
 }
 
 /** Whether a running or paused timer of this day is counting on the line (a stopped one is not). */

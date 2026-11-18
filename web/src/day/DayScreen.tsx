@@ -18,6 +18,8 @@ import { PlanList } from "./PlanList";
 import { InForce } from "./InForce";
 import { AddToPlanModal } from "./AddToPlanModal";
 import { RescheduleModal } from "./RescheduleModal";
+import { LinePlanModal, type LineTarget } from "./LinePlanModal";
+import { TaskPanel } from "../task/TaskPanel";
 import { sessionStartFor } from "./logSession";
 import type { DayItem } from "./types";
 
@@ -25,7 +27,7 @@ import type { DayItem } from "./types";
 // time against available time, and the day note. It replaces the old
 // ceilings morning plan; any day can be opened and edited, nothing locks.
 
-type Dialog = { type: "add" } | { type: "log"; item: DayItem } | { type: "reschedule"; item: DayItem } | { type: "settings" } | null;
+type Dialog = { type: "add" } | { type: "log"; item: DayItem } | { type: "reschedule"; item: DayItem } | { type: "settings" } | { type: "line"; target: LineTarget } | { type: "task"; id: number } | null;
 
 export function DayScreen({ date, onDate }: { date?: string; onDate: (d: string) => void }) {
   const { boot, behaviourOf } = useApp();
@@ -37,7 +39,9 @@ export function DayScreen({ date, onDate }: { date?: string; onDate: (d: string)
   const [dialog, setDialog] = useState<Dialog>(null);
 
   const shift = (n: number) => onDate(dayjs(day).add(n, "day").format("YYYY-MM-DD"));
-  const addTask = (taskId: number) => run(() => api.post(`/day/${day}/items`, { task_id: taskId }));
+  // Putting a task on the plan asks for the day's planned time and an optional name first.
+  const addTask = (taskId: number) => setDialog({ type: "line", target: { type: "add", taskId } });
+  const toggleDone = (item: DayItem) => run(() => api.patch(`/day-items/${item.id}`, { done: !item.done }));
 
   // Back to a status: the task moves (the ordinary move, which logs the status change), then leaves the day.
   const moveBack = (itemId: number, taskId: number, statusId: number) =>
@@ -99,7 +103,7 @@ export function DayScreen({ date, onDate }: { date?: string; onDate: (d: string)
             handlers={{ onPause: timers.pause, onResume: timers.resume, onStop: timers.stop, onReview: timers.reviewStopped, onDiscard: timers.discard, busy: timers.busy }}
           />
           <div style={{ display: "grid", gridTemplateColumns: "minmax(260px, 340px) minmax(0, 1fr)", gap: 12, alignItems: "start" }}>
-            <AvailablePanel day={day} data={data} run={run} onMoveBack={moveBack} tasksVersion={tasksVersion} />
+            <AvailablePanel day={day} data={data} onAdd={addTask} onMoveBack={moveBack} tasksVersion={tasksVersion} />
             <PlanList
               data={data}
               run={run}
@@ -108,6 +112,9 @@ export function DayScreen({ date, onDate }: { date?: string; onDate: (d: string)
               rowActions={(i) => ({
                 onLog: (it) => setDialog({ type: "log", item: it }),
                 onReschedule: (it) => setDialog({ type: "reschedule", item: it }),
+                onEdit: (it) => setDialog({ type: "line", target: { type: "edit", item: it } }),
+                onToggleDone: toggleDone,
+                onOpenTask: (id) => setDialog({ type: "task", id }),
                 onMoveToStatus: (it, statusId) => it.task_id && moveBack(it.id, it.task_id, statusId),
                 statusChoices,
                 onStartTimer: timers.start,
@@ -120,11 +127,28 @@ export function DayScreen({ date, onDate }: { date?: string; onDate: (d: string)
       {dialog?.type === "add" && (
         <AddToPlanModal
           day={day}
+          plannedTaskIds={new Set(data?.items.flatMap((i) => (i.task_id ? [i.task_id] : [])))}
+          onPickTask={addTask}
           onDone={() => {
             setTasksVersion((v) => v + 1);
             void load();
           }}
           onClose={() => setDialog(null)}
+        />
+      )}
+      {dialog?.type === "line" && <LinePlanModal target={dialog.target} day={day} onDone={load} onClose={() => setDialog(null)} />}
+      {dialog?.type === "task" && (
+        <TaskPanel
+          taskId={dialog.id}
+          onChanged={() => undefined}
+          onDeleted={() => {
+            setDialog(null);
+            void load();
+          }}
+          onClose={() => {
+            setDialog(null);
+            void load();
+          }}
         />
       )}
       {dialog?.type === "settings" && data && <PlannerSettings day={day} totals={data.plan_totals} dayOverride={data.plan.available_min ?? null} onDone={load} onClose={() => setDialog(null)} />}

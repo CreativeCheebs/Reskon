@@ -30,7 +30,7 @@ export function PlanList({
   run: Run;
   onAdd: () => void;
   /** The actions that open a dialog or need more state (log, reschedule, timer, move to status). */
-  rowActions: (item: DayItem) => Pick<RowActions, "onLog" | "onReschedule" | "onStartTimer" | "onMoveToStatus" | "statusChoices" | "timing">;
+  rowActions: (item: DayItem) => Pick<RowActions, "onLog" | "onReschedule" | "onEdit" | "onToggleDone" | "onOpenTask" | "onStartTimer" | "onMoveToStatus" | "statusChoices" | "timing">;
   /** A task dragged in from Available tasks was dropped on the plan. */
   onDropTask: (taskId: number) => void;
 }) {
@@ -72,11 +72,7 @@ export function PlanList({
         <Totals totals={data.plan_totals} />
       </header>
 
-      <div style={{ display: "flex", justifyContent: "space-between", color: palette.subtle, fontSize: 11, textTransform: "uppercase", letterSpacing: 0.6, margin: "14px 0 6px" }} aria-hidden>
-        <span>Plan</span>
-        <span>Logged / estimate (all time)</span>
-      </div>
-      <ul aria-label="Planned tasks and events" style={{ margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+      <ul aria-label="Planned tasks and events" style={{ margin: "14px 0 0", padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
         {data.items.map((item, i) => (
           <PlanRow key={item.id} item={item} first={i === 0} last={i === data.items.length - 1} actions={base(item)} />
         ))}

@@ -8,20 +8,32 @@ import type { DayItem, PlanTotals } from "./types";
 vi.mock("../store", () => ({ useApp: () => ({ boot: { areas: [{ id: 1, name: "Work" }] }, online: true }) }));
 
 const item = (p: Partial<DayItem>): DayItem => ({
-  id: 1, day: "2026-11-18", kind: "task", task_id: 5, title: "Write outline", area_id: 1, position: 1, planned_min: null,
+  id: 1, day: "2026-11-18", kind: "task", task_id: 5, title: "Write outline", area_id: 1, position: 1, planned_min: null, task_title: "Write outline", renamed: false,
   estimate_h: 3, logged_h: 0.75, logged_day_h: 0.25, status_id: 2, status_behaviour: "todo", done: false, session_count: 0, created_at: "", updated_at: "", ...p,
 });
-const actions = (p: Partial<RowActions> = {}): RowActions => ({ onLog: vi.fn(), onReschedule: vi.fn(), onRemove: vi.fn(), onStep: vi.fn(), onDropBefore: vi.fn(), ...p });
+const actions = (p: Partial<RowActions> = {}): RowActions => ({ onLog: vi.fn(), onReschedule: vi.fn(), onEdit: vi.fn(), onRemove: vi.fn(), onStep: vi.fn(), onDropBefore: vi.fn(), ...p });
 
 describe("PlanRow", () => {
-  it("shows all-time logged against the estimate, apart from the day's figure", () => {
-    render(<ul><PlanRow item={item({})} first last actions={actions()} /></ul>);
+  it("shows the day's figure apart from the task's all-time logged / estimate", () => {
+    render(<ul><PlanRow item={item({ planned_min: 120 })} first last actions={actions()} /></ul>);
     expect(screen.getByText("45m / 3h")).toBeInTheDocument();
-    expect(screen.getByText(/All time/)).toBeInTheDocument();
-    expect(screen.getByText(/This day 15m/)).toBeInTheDocument();
+    expect(screen.getByText("15m of 2h today")).toBeInTheDocument();
+  });
+  it("a renamed line shows its own name and the task it is part of, and opens the task", async () => {
+    const open = vi.fn();
+    render(<ul><PlanRow item={item({ title: "Outline part 1", renamed: true })} first last actions={actions({ onOpenTask: open })} /></ul>);
+    expect(screen.getByText(/Part of: Write outline/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Open task Write outline" }));
+    expect(open).toHaveBeenCalledWith(5);
+  });
+  it("an event is marked done by its checkbox", async () => {
+    const toggle = vi.fn();
+    render(<ul><PlanRow item={item({ kind: "event", task_id: null, task_title: null, planned_min: 30, title: "Meeting" })} first last actions={actions({ onToggleDone: toggle })} /></ul>);
+    await userEvent.click(screen.getByRole("checkbox", { name: "Mark done: Meeting" }));
+    expect(toggle).toHaveBeenCalled();
   });
   it("shows an event's reserved minutes and a done task as done", () => {
-    render(<ul><PlanRow item={item({ kind: "event", task_id: null, planned_min: 30, title: "Meeting" })} first last actions={actions()} /><PlanRow item={item({ id: 2, done: true })} first last actions={actions()} /></ul>);
+    render(<ul><PlanRow item={item({ kind: "event", task_id: null, planned_min: 30, title: "Meeting", done: false })} first last actions={actions()} /><PlanRow item={item({ id: 2, done: true })} first last actions={actions()} /></ul>);
     expect(screen.getByText("30m reserved")).toBeInTheDocument();
     expect(screen.getByLabelText("Done")).toBeInTheDocument();
   });

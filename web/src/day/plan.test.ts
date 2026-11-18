@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { availableText, clock, elapsedNow, loggedOfEstimate, minutesText, parseAvailable, parseMinutes, readAvailable, reorderIds, rowFigures, stepIds, unestimatedText } from "./plan";
-import type { DayItem, PlanTotals } from "./types";
+import { availableText, clock, elapsedNow, loggedOfEstimate, minutesText, parseAvailable, parseMinutes, readAvailable, reorderIds, dayFigure, addLineBody, editLineBody, stepIds, unestimatedText } from "./plan";
+import type { PlanTotals } from "./types";
 
 const totals = (p: Partial<PlanTotals>): PlanTotals => ({ planned_min: 0, logged_min: 0, unestimated: 0, available_min: null, available_from: null, over: false, ...p });
 
@@ -23,7 +23,21 @@ describe("planner wording", () => {
   it("shows a task as all-time logged over its estimate, an event as reserved", () => {
     expect(loggedOfEstimate({ logged_h: 0.75, estimate_h: 3 })).toBe("45m / 3h");
     expect(loggedOfEstimate({ logged_h: 1, estimate_h: null })).toBe("1h / no estimate");
-    expect(rowFigures({ kind: "event", planned_min: 30 } as DayItem)).toBe("30m reserved");
+    expect(dayFigure({ kind: "event", planned_min: 30, logged_day_h: 0 })).toBe("30m reserved");
+  });
+  it("words a task line's day: planned, logged, both or neither", () => {
+    const f = (planned_min: number | null, logged_day_h: number) => dayFigure({ kind: "task", planned_min, logged_day_h });
+    expect(f(120, 0)).toBe("2h today");
+    expect(f(120, 1)).toBe("1h of 2h today");
+    expect(f(null, 0.5)).toBe("30m today");
+    expect(f(null, 0)).toBe("not planned");
+  });
+  it("builds the add and edit bodies", () => {
+    expect(addLineBody(5, "Outline", "2h", "Outline")).toEqual({ task_id: 5, planned_min: 120 });
+    expect(addLineBody(5, "Outline", "", "Outline part 1")).toEqual({ task_id: 5, title: "Outline part 1" });
+    expect(editLineBody({ kind: "task", task_title: "Outline" }, "", "Outline")).toEqual({ planned_min: null, title: "" });
+    expect(editLineBody({ kind: "task", task_title: "Outline" }, "45", "Draft")).toEqual({ planned_min: 45, title: "Draft" });
+    expect(editLineBody({ kind: "event", task_title: null }, "30", "Meeting")).toEqual({ title: "Meeting", planned_min: 30 });
   });
 });
 
