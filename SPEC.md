@@ -79,7 +79,7 @@ Every task gets a key when it is created, made of its area's prefix and a number
 - Every task has exactly one area. A new server has no areas; the first thing you do is create one (the phone does the same on first start).
 - Creating an area also creates a board view for it.
 - An area has a default energy type. A new task in that area starts with it, and you can change it.
-- When you create a task from a board, it takes the area of that view. If the view shows several areas, you pick one (the last one used is preselected).
+- When you create a task from a board, it starts in the area of that view (the first one if the view shows several); the New task pop-up has an Area box to change it (5.3).
 
 ### 4.3 Statuses
 
@@ -205,6 +205,7 @@ Per view: area, created age, started age, time in status, level, priority, energ
 ### 5.3 Board
 
 - Columns are the visible statuses. Drag cards to move or reorder them. From the keyboard, Tab to a card, **Enter opens it**, **Space picks it up**, the arrow keys move it, Space drops it and Escape cancels; a screen reader announces the task title and the column it is over.
+- **Adding a task on the web.** Each column header ends with a **+ Add** button (accent colour, like the phone's), not on Done or Cancelled columns. It opens a **New task** pop-up with the cursor already in **Title**: type the name and press Enter and the task is made and the pop-up closes (Esc cancels). It has the phone's New task fields: Title, Task or Epic, Status (the column's, preselected; a status kept off the board is offered only when it is the column's), Area (always one: the lane's, else the view's first area, else the first area), Epic (not for an epic), Energy type, Priority, Level 1-5, Tags, Estimate (such as 2h or 1h 30m), Due and Snooze until (hidden for a Done or Cancelled status, with the "Due before it shows again" warning when the due date is earlier). Enter also creates from the Estimate box, but not while a drop-down or date pop-up is open. A task made inside a swimlane starts with the lane's value (its epic, priority, area, energy type or level); a lane with no value ("No epic") starts with nothing. Priority, energy type, status, epic and snooze you do not choose are not sent, so the server's own defaults apply (the Default priority setting, the area's energy type, the first to do status). If the server refuses, the reason shows in the pop-up and what you typed stays. The dashboard's board widget has no add button.
 - **Grouping** makes swimlanes (by epic, priority, area, energy type, level, type or status). Cards move between columns inside their lane, not between lanes. A task created in a lane gets that lane's value.
 - **Sorting**: manual (default), priority, due, level, estimate, time in status, newest, oldest. While sorted, you can still move cards between columns.
 - **Collapsed columns** are shared by every lane and still accept drops.

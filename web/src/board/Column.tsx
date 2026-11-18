@@ -3,7 +3,6 @@ import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Button, Tooltip } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
 import { useApp } from "../store";
 import { blend, palette, readable } from "../theme/palette";
 import { columnBg, columnBorder } from "./columnStyle";
@@ -12,7 +11,7 @@ import { ColumnLimitControl } from "./ColumnLimitControl";
 import { DoneWindow } from "./DoneWindow";
 import { TaskCard } from "./TaskCard";
 import { CardActionRail, CardContextMenu, useCardActions, type CardHandlers } from "./CardActions";
-import { Composer } from "./Composer";
+import { AddTaskModal } from "./AddTaskModal";
 import { COLLAPSED_W, COL_MIN } from "./useBoardFit";
 import { useSurfaceOpacity } from "../views/ViewBackdrop";
 import { pressable } from "../a11y";
@@ -67,8 +66,8 @@ export function Column(props: Props) {
   const dot = <span style={{ width: 8, height: 8, borderRadius: 4, background: color, flex: "none" }} />;
   const behaviour = behaviourOf(status.id);
   const canAdd = behaviour !== "done" && behaviour !== "cancelled";
-  // The empty state's "Add task" opens the composer at the foot.
-  const [composing, setComposing] = useState(false);
+  // The header's "+ Add" opens the New task pop-up for this column.
+  const [adding, setAdding] = useState(false);
   const pillBg = blend(color, palette.bg, 0.2);
 
   // Collapsed: a narrow strip that still accepts drops (they land at the end).
@@ -152,6 +151,19 @@ export function Column(props: Props) {
           {taskIds.length}
         </span>
         <span style={{ flex: 1 }} />
+        {canAdd && (
+          <Button
+            size="small"
+            type="text"
+            className="jb-hit jb-col-add"
+            disabled={disabled}
+            onClick={() => setAdding(true)}
+            aria-label={`Add a ${T.task} to ${status.name}`}
+            style={{ color: palette.accent, fontWeight: 600 }}
+          >
+            + Add
+          </Button>
+        )}
         <ColumnLimitControl statusName={status.name} limit={limit?.limit} use={limit?.use ?? 0} disabled={disabled} onChange={onSetLimit} />
         <Tooltip title="Collapse column" mouseEnterDelay={0.5}>
           <Button size="small" type="text" className="jb-hit" onClick={onToggleCollapse} aria-label={`Collapse ${status.name}`} style={{ color: palette.muted }}>
@@ -161,11 +173,7 @@ export function Column(props: Props) {
       </div>
       <div ref={setNodeRef} style={{ flex: 1, overflowY: inLane ? undefined : "auto", padding: "4px 10px 10px", minHeight: 40 }}>
         {taskIds.length === 0 && (
-          <EmptyColumn
-            done={behaviour === "done"}
-            isOver={isOver}
-            onAdd={canAdd && !disabled ? () => setComposing(true) : undefined}
-          />
+          <EmptyColumn done={behaviour === "done"} isOver={isOver} />
         )}
         <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -186,19 +194,7 @@ export function Column(props: Props) {
           </div>
         </SortableContext>
       </div>
-      {canAdd && (
-        <div style={{ padding: "4px 8px 8px", borderTop: `1px solid ${columnBorder(surface)}` }}>
-          <Composer
-            statusId={status.id}
-            view={view}
-            defaults={createDefaults}
-            onCreated={onCreated}
-            open={composing}
-            onOpenChange={setComposing}
-            onOpenTask={onOpenTask}
-          />
-        </div>
-      )}
+      {adding && <AddTaskModal statusId={status.id} view={view} defaults={createDefaults} onCreated={onCreated} onClose={() => setAdding(false)} />}
       {behaviourOf(status.id) === "done" && !inLane && (
         <div style={{ padding: "2px 8px 6px", borderTop: `1px solid ${columnBorder(surface)}` }}>
           <DoneWindow view={view} disabled={disabled} />
@@ -257,7 +253,7 @@ const SortableCard = memo(function SortableCard({
 
 /** A small, friendly placeholder for a column with no cards, which also
  *  shows where a dragged card will land. */
-function EmptyColumn({ done, isOver, onAdd }: { done: boolean; isOver: boolean; onAdd?: () => void }) {
+function EmptyColumn({ done, isOver }: { done: boolean; isOver: boolean }) {
   const T = useTerms();
   return (
     <div
@@ -279,10 +275,6 @@ function EmptyColumn({ done, isOver, onAdd }: { done: boolean; isOver: boolean; 
       <span>{done ? "Nothing finished lately" : `No ${T.tasks} here yet`}</span>
       {isOver ? (
         <span style={{ color: palette.fg }}>Drop to move it here</span>
-      ) : onAdd ? (
-        <Button size="small" type="dashed" icon={<PlusOutlined />} onClick={onAdd}>
-          Add {T.task}
-        </Button>
       ) : (
         <span>Drag a card here</span>
       )}

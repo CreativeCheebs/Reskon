@@ -543,7 +543,7 @@ Question: does every real setting live on the server (so it follows the person t
 
 - **Colour-picker last tab** (`theme/ColorField.tsx`): which tab (swatches or custom) the picker opened on last. Stays in the browser: it is a habit of one person at one screen, losing it costs one click.
 - **Table column widths** (`views/useColumnWidths.tsx`): stays in the browser on purpose. A width that fits a wide monitor does not fit a laptop, so sharing it between machines would be worse than keeping it per machine.
-- **Sidebar folded** (`Sidebar.tsx`) and **last area used** when adding a task (`board/Composer.tsx`, `capture/CaptureModal.tsx`): the same kind of per-screen habit. Stay.
+- **Sidebar folded** (`Sidebar.tsx`) and **last area used** when adding a task (`board/AddTaskModal.tsx`, `capture/CaptureModal.tsx`): the same kind of per-screen habit. Stay.
 - **Theme** (`theme/ThemeProvider.tsx`): the browser copy is only a cache so the page is not drawn in the wrong colours before the server answers; the real choice is saved to the account (`ThemeSync`). Nothing to move.
 - **`offline.tsx`**: only the small wrapper around browser storage that the items above use (it also copes with private windows where storage fails). It holds no setting of its own.
 
@@ -565,6 +565,10 @@ The owner asked for five dashboard chart improvements. Choices common to all:
 ### The snooze menu shows what is already coming back (owner, 2026-11-17)
 
 Before snoozing a task you can see how busy the day it would return is. Next to each choice the menu shows the hours (the estimates) and the points of tasks already snoozed to that exact day. The owner approved the look (a mock with a header row, the date under each choice, numbers on the right, a dash for nothing) and chose no "busy" or "light" labels and no bars: just the numbers. Points use the existing formulas, not a new one: a session's points (hours × the energy type's points per hour × level) times the task's priority weight, with 1 for anything missing. The server works it out (`GET /api/snooze/forecast`), because derived values never live in the browser. The menu fetches when it opens and works without numbers while loading or if the call fails, so snoozing is never blocked. The rows are the snooze intervals chosen in Settings › Snooze, in that order. The phone's menu is not changed in this step.
+
+### Adding a task on the web board is a pop-up, like the phone (owner, 2026-11-18)
+
+The "Add task" row at the foot of each column is gone. A **+ Add** button at the right of the column header opens a New task pop-up with the same fields as the phone's New task screen, so the two apps behave alike. Choices made without asking: the fields are Ant Design drop-downs and a Task/Epic switch (compact, and they match the rest of the web app) rather than the phone's chips; the area starts as the lane's, else the view's first area, else the first one (the phone's rule; the old inline box remembered the last area used, the pop-up does not); the empty-column "Add task" button went too, since the header button is always there; the old duplicate-title hint was dropped because the phone has none. Enter creates from Title and Estimate only, so it can never clash with an open drop-down.
 
 ### Review fixes (2026-11-17)
 

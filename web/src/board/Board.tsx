@@ -85,7 +85,7 @@ export const Board = memo(function Board({ view, tasks, setTasks, refetch, onOpe
   );
 
   // Columns read their width from --col-w. The bottom padding keeps the
-  // horizontal scrollbar clear of the columns' "Add task" rows.
+  // horizontal scrollbar clear of the columns.
   const scroller: CSSProperties = {
     height: "100%",
     paddingBottom: 6,

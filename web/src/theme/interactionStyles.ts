@@ -314,8 +314,6 @@ export function interactionCss(): string {
       .jb-content { padding-top: 46px !important; }
     }
 
-    .jb-add-task.ant-btn { color: ${palette.muted}; }
-    .jb-add-task.ant-btn:not(:disabled):hover { color: ${palette.fg}; background: ${palette.hover}; }
 
     /* A quiet frame groups view controls without hiding any active settings. */
     .jb-toolbar, .jb-dashboard-toolbar {
