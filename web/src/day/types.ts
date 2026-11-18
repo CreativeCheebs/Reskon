@@ -21,6 +21,78 @@ export interface StateRow {
 
 export type Feedback = "about_right" | "too_high" | "too_low";
 
+export interface DayItem {
+  id: number;
+  day: string;
+  kind: "task" | "event";
+  task_id: number | null;
+  title: string;
+  area_id: number | null;
+  position: number;
+  /** Events only: the minutes reserved. */
+  planned_min: number | null;
+  /** Tasks only: the one whole-task estimate, and hours logged in all time and on this day. */
+  estimate_h: number | null;
+  logged_h: number;
+  logged_day_h: number;
+  status_id: number | null;
+  status_behaviour: "todo" | "in_progress" | "done" | "cancelled" | null;
+  done: boolean;
+  session_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PlanTotals {
+  planned_min: number;
+  logged_min: number;
+  unestimated: number;
+  available_min: number | null;
+  available_from: "day" | "weekday" | null;
+  over: boolean;
+}
+
+export interface TimerRow {
+  id: number;
+  day: string;
+  kind: "task" | "event";
+  task_id: number | null;
+  day_item_id: number | null;
+  title: string;
+  started_at: string;
+  resumed_at: string | null;
+  accumulated_s: number;
+  elapsed_s: number;
+  running: boolean;
+}
+
+export interface TimerList {
+  timers: TimerRow[];
+  conflict: boolean;
+}
+
+/** What Stop hands back: a session to review, not yet saved. */
+export interface TimerDraft {
+  kind: "task" | "event";
+  task_id?: number;
+  day_item_id?: number;
+  label?: string;
+  logged_for: string;
+  hours: number;
+  started_at: string;
+  ended_at: string;
+}
+
+export interface BringCandidate {
+  task_id: number;
+  title: string;
+  area_id: number;
+  estimate_h: number | null;
+  logged_h: number;
+  from_day: string;
+  days: number;
+}
+
 export interface DayData {
   day: string;
   plan: {
@@ -28,6 +100,8 @@ export interface DayData {
     focus: string[];
     ceilings: Record<string, number>;
     note: string | null;
+    /** The day's own available minutes, or null to use the weekday's. */
+    available_min?: number | null;
     /** energy type id -> answer, for types that had a ceiling */
     ceiling_feedback: Record<string, Feedback>;
   };
@@ -40,6 +114,9 @@ export interface DayData {
   totals: { energy_type_id: number; name: string; hours: number }[];
   in_force: StateRow[];
   sessions: Session[];
+  items: DayItem[];
+  plan_totals: PlanTotals;
+  timers: TimerList;
 }
 
 /** "1.4 (from 4)" when decay has moved it, else "4". Display only. */

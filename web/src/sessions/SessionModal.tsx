@@ -14,11 +14,14 @@ import { palette } from "../theme/palette";
 
 export function SessionModal({
   initial,
+  extra,
   editing,
   onClose,
   onSaved,
 }: {
   initial?: Partial<SessionDraft>;
+  /** Added to the saved session as it is (the Day Planner's day_item_id and ended_at). */
+  extra?: Record<string, unknown>;
   editing?: Session;
   onClose: () => void;
   onSaved: (s: Session) => void;
@@ -60,7 +63,7 @@ export function SessionModal({
       const body = sessionBody(draft);
       const s = editing
         ? await api.patch<Session>(`/sessions/${editing.id}`, { ...body, ...(recalc ? { recalculate: true } : {}) })
-        : await api.post<Session>("/sessions", body);
+        : await api.post<Session>("/sessions", extra ? { ...body, ...extra } : body);
       refreshIfNew(draft.tags);
       onSaved(s);
       onClose();
