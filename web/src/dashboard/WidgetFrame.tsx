@@ -230,7 +230,7 @@ export const WidgetFrame = memo(function WidgetFrame({
         cursor: editing ? "grab" : undefined,
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: widget.h <= 2 ? 2 : 14, paddingBottom: widget.h <= 2 ? 0 : 10, borderBottom: `1px solid ${palette.border}`, minHeight: 32 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: widget.h <= 2 ? 2 : 6, minHeight: 32 }}>
         {editing && <HolderOutlined style={{ color: palette.subtle }} />}
         <span style={{ flex: 1, fontWeight: 600, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {widget.title || view?.name || (journal ? "Journal" : undefined) || (states ? "Buffs and debuffs" : undefined) || widget.query.metric || widget.query.widget}
