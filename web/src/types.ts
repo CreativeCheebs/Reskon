@@ -80,7 +80,12 @@ export interface ViewFilter {
   tags?: number[] | null; // tasks with any of these tags; 0 = tasks with no tags
   /** Show subtasks as their own cards; they are left out when false. */
   subtasks?: boolean;
+  /** Lists above that mean "is not": tasks matching any chosen value are left out. */
+  not?: NotField[] | null;
 }
+
+/** Lists in a view's filter that can read "is not". */
+export type NotField = "areas" | "statuses" | "types" | "epics" | "tags";
 
 export type TaskType = "task" | "epic";
 
