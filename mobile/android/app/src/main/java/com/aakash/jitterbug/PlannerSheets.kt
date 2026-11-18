@@ -45,7 +45,7 @@ private fun actionIcon(k: String) = when (k) {
     "open" -> Icons.openTask
     "move" -> Icons.moveTo
     "reschedule" -> Icons.calendar
-    "up" -> Icons.down
+    "up" -> Icons.up
     "down" -> Icons.down
     else -> Icons.trash
 }
@@ -109,8 +109,8 @@ fun EventSheet(existing: JSONObject?, onSave: (title: String, minutes: Long, are
                 T(if (existing == null) "Add event" else "Edit event", Palette.fg, 18.sp, FontWeight.SemiBold, Modifier.semantics { heading() })
                 T("An event reserves time on the day. Log a session when it happens and it is complete.", Palette.muted, 13.sp)
                 TextBox("Event name", title, "What is it?") { title = it }
-                TextBox("Minutes reserved", minutes, keyboard = KeyboardType.Number) { minutes = it }
-                if (mins == null || mins <= 0) T("Enter the minutes, 1 to 1440 (or 1h 30m).", Palette.red, 12.sp)
+                TextBox("Minutes reserved (e.g. 45 or 1h 30m)", minutes, "45") { minutes = it }
+                if (mins == null || mins <= 0) T("Enter whole minutes (1 to 1440), or like 1h 30m.", Palette.red, 12.sp)
                 SectionTitle("Area (optional)")
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     boot.areas.forEach { a -> Pill(a.name, area == a.id) { area = if (area == a.id) null else a.id } }
@@ -159,8 +159,8 @@ fun MinutesDialog(title: String, hint: String, initial: Long?, clearLabel: Strin
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 T(hint, Palette.muted, 13.sp)
-                TextBox("Minutes (0 for a day off)", v, "e.g. 480 or 8h", keyboard = KeyboardType.Number) { v = it }
-                if (v.isNotBlank() && parsed == null) T("Enter 0 to 1440 minutes.", Palette.red, 12.sp)
+                TextBox("Minutes (0 for a day off; e.g. 480 or 8h)", v, "480") { v = it }
+                if (v.isNotBlank() && parsed == null) T("Enter whole minutes (0 to 1440), or like 8h or 1h 30m.", Palette.red, 12.sp)
             }
         },
         confirmButton = { TextButton({ parsed?.let { onSave(it) } }, enabled = parsed != null) { T("Save", if (parsed != null) Palette.accent else Palette.subtle, 15.sp, FontWeight.SemiBold) } },

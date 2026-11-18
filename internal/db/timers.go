@@ -34,8 +34,12 @@ type Timer struct {
 	AccumulatedS int64   `json:"accumulated_s"`
 	ElapsedS     int64   `json:"elapsed_s"` // derived now: accumulated_s plus the time since resumed_at
 	Running      bool    `json:"running"`
-	CreatedAt    string  `json:"created_at"`
-	UpdatedAt    string  `json:"updated_at"`
+	Stopped      bool    `json:"stopped"` // stopped, waiting for its draft to be saved or discarded
+	// Draft is the session to save for a stopped timer (the same as Stop returns); nil otherwise.
+	Draft     *SessionDraft `json:"draft"`
+	CreatedAt string        `json:"created_at"`
+	UpdatedAt string        `json:"updated_at"`
+	stoppedAt *string
 }
 
 // TimerList is every live timer. Conflict is true when more than one is
@@ -64,8 +68,8 @@ type StoppedTimer struct {
 	Draft   SessionDraft `json:"draft"`
 }
 
-const timerSelect = `SELECT tm.id, tm.day, COALESCE(i.kind, 'task'), COALESCE(tm.task_id, i.task_id), CASE WHEN i.deleted_at IS NULL THEN tm.day_item_id END,
-	COALESCE(t.title, i.title, ''), tm.started_at, tm.resumed_at, tm.accumulated_s, tm.created_at, tm.updated_at
+const timerSelect = `SELECT tm.id, tm.day, COALESCE(i.kind, tm.kind), COALESCE(tm.task_id, i.task_id), CASE WHEN i.deleted_at IS NULL THEN tm.day_item_id END,
+	COALESCE(t.title, i.title, tm.title, ''), tm.started_at, tm.resumed_at, tm.stopped_at, tm.accumulated_s, tm.created_at, tm.updated_at
 	FROM timer tm
 	LEFT JOIN day_item i ON i.id = tm.day_item_id
 	LEFT JOIN task t ON t.id = COALESCE(tm.task_id, i.task_id)
@@ -74,12 +78,39 @@ const timerSelect = `SELECT tm.id, tm.day, COALESCE(i.kind, 'task'), COALESCE(tm
 func scanTimer(r *sql.Rows, now time.Time) (*Timer, error) {
 	var tm Timer
 	if err := r.Scan(&tm.ID, &tm.Day, &tm.Kind, &tm.TaskID, &tm.DayItemID, &tm.Title, &tm.StartedAt,
-		&tm.ResumedAt, &tm.AccumulatedS, &tm.CreatedAt, &tm.UpdatedAt); err != nil {
+		&tm.ResumedAt, &tm.stoppedAt, &tm.AccumulatedS, &tm.CreatedAt, &tm.UpdatedAt); err != nil {
 		return nil, err
 	}
-	tm.Running = tm.ResumedAt != nil
-	tm.ElapsedS = tm.AccumulatedS + sinceSeconds(tm.ResumedAt, now)
+	tm.Stopped = tm.stoppedAt != nil
+	tm.Running = tm.ResumedAt != nil && !tm.Stopped
+	if tm.Running {
+		tm.ElapsedS = tm.AccumulatedS + sinceSeconds(tm.ResumedAt, now)
+	} else {
+		tm.ElapsedS = tm.AccumulatedS
+	}
+	if tm.Stopped {
+		tm.Draft = draftOf(&tm)
+	}
 	return &tm, nil
+}
+
+// draftOf is the session a stopped timer would save. Hours are never under
+// 0.01 (the smallest a session accepts) nor over 24.
+func draftOf(tm *Timer) *SessionDraft {
+	end := tm.UpdatedAt
+	if tm.stoppedAt != nil {
+		end = *tm.stoppedAt
+	}
+	dr := &SessionDraft{
+		Kind: tm.Kind, TaskID: tm.TaskID, DayItemID: tm.DayItemID, LoggedFor: tm.Day,
+		Hours:     math.Max(0.01, math.Min(24, math.Round(float64(tm.ElapsedS)/3600*10000)/10000)),
+		StartedAt: tm.StartedAt, EndedAt: end,
+	}
+	if tm.Kind == "event" {
+		title := tm.Title
+		dr.Label = &title
+	}
+	return dr
 }
 
 // sinceSeconds is whole seconds from the stamp to now; 0 for no stamp or a
@@ -180,22 +211,25 @@ func (d *DB) StartTimer(ctx context.Context, f Fields) (*Timer, error) {
 	defer tx.Rollback()
 	var task any
 	var item any
+	kind, title := "task", ""
 	if hasTask {
-		if err := checkLive(ctx, tx, "task", taskID); err != nil {
+		err := tx.QueryRowContext(ctx, `SELECT title FROM task WHERE id = ? AND deleted_at IS NULL`, taskID).Scan(&title)
+		if err != nil {
 			return nil, invalid("task %d does not exist", taskID)
 		}
 		task = taskID
 	} else {
-		var kind string
 		var itemTask sql.NullInt64
-		err := tx.QueryRowContext(ctx, `SELECT kind, task_id FROM day_item WHERE id = ? AND deleted_at IS NULL`, itemID).Scan(&kind, &itemTask)
+		var itemTitle sql.NullString
+		err := tx.QueryRowContext(ctx, `SELECT i.kind, i.task_id, COALESCE(t.title, i.title) FROM day_item i
+			LEFT JOIN task t ON t.id = i.task_id WHERE i.id = ? AND i.deleted_at IS NULL`, itemID).Scan(&kind, &itemTask, &itemTitle)
 		if err == sql.ErrNoRows {
 			return nil, invalid("plan item %d does not exist", itemID)
 		}
 		if err != nil {
 			return nil, err
 		}
-		item = itemID
+		item, title = itemID, itemTitle.String
 		if itemTask.Valid {
 			task = itemTask.Int64
 		}
@@ -204,8 +238,8 @@ func (d *DB) StartTimer(ctx context.Context, f Fields) (*Timer, error) {
 		return nil, err
 	}
 	now := FormatTime(timeNow())
-	res, err := tx.ExecContext(ctx, `INSERT INTO timer (day, day_item_id, task_id, started_at, resumed_at, accumulated_s, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, 0, ?, ?)`, day, item, task, now, now, now, now)
+	res, err := tx.ExecContext(ctx, `INSERT INTO timer (day, day_item_id, task_id, kind, title, started_at, resumed_at, accumulated_s, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`, day, item, task, kind, title, now, now, now, now)
 	if err != nil {
 		return nil, err
 	}
@@ -243,6 +277,9 @@ func (d *DB) ResumeTimer(ctx context.Context, id int64) (*Timer, error) {
 		if tm.Running {
 			return nil
 		}
+		if tm.Stopped {
+			return invalid("that timer is stopped; save or discard its draft")
+		}
 		if err := runningConflict(ctx, tx, id); err != nil {
 			return err
 		}
@@ -276,38 +313,28 @@ func (d *DB) changeTimer(ctx context.Context, id int64, change func(*sql.Tx, *Ti
 	return tm, tx.Commit()
 }
 
-// StopTimer ends the timer and returns a session draft; the timer is
-// retired (soft-deleted) and nothing is logged until the draft is saved.
+// StopTimer stops the timer and returns its session draft. The timer is NOT
+// retired: it stays, stopped, with its count frozen, until the draft is saved
+// (POST /api/sessions with timer_id) or the timer is discarded, so the time is
+// never lost to a closed app. Stopping again returns the same draft.
 func (d *DB) StopTimer(ctx context.Context, id int64) (*StoppedTimer, error) {
-	tx, err := d.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback()
-	tm, err := getTimer(ctx, tx, id)
-	if err != nil {
-		return nil, err
-	}
-	now := timeNow()
-	// A paused timer ended when it was paused.
-	end := now
-	if !tm.Running {
-		if t, err := ParseTime(tm.UpdatedAt); err == nil {
-			end = t
+	tm, err := d.changeTimer(ctx, id, func(tx *sql.Tx, tm *Timer, now time.Time) error {
+		if tm.Stopped {
+			return nil
 		}
-	}
-	draft := SessionDraft{
-		Kind: tm.Kind, TaskID: tm.TaskID, DayItemID: tm.DayItemID, LoggedFor: tm.Day,
-		// At least 0.01 h, the smallest value a session accepts, so the draft can be saved.
-		Hours: math.Max(0.01, math.Min(24, math.Round(float64(tm.ElapsedS)/3600*10000)/10000)), StartedAt: tm.StartedAt, EndedAt: FormatTime(end),
-	}
-	if tm.Kind == "event" {
-		draft.Label = &tm.Title
-	}
-	if _, err := tx.ExecContext(ctx, `UPDATE timer SET deleted_at = ?, updated_at = ? WHERE id = ?`, FormatTime(now), FormatTime(now), id); err != nil {
+		// A paused timer ended when it was paused.
+		stamp := FormatTime(now)
+		if !tm.Running {
+			stamp = tm.UpdatedAt
+		}
+		_, err := tx.ExecContext(ctx, `UPDATE timer SET resumed_at = NULL, stopped_at = ?, accumulated_s = ?, updated_at = ? WHERE id = ?`,
+			stamp, tm.AccumulatedS+sinceSeconds(tm.ResumedAt, now), FormatTime(now), id)
+		return err
+	})
+	if err != nil {
 		return nil, err
 	}
-	return &StoppedTimer{TimerID: id, Draft: draft}, tx.Commit()
+	return &StoppedTimer{TimerID: id, Draft: *tm.Draft}, nil
 }
 
 // DiscardTimer throws a timer away without a draft.

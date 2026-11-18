@@ -25,6 +25,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -42,6 +45,12 @@ import java.time.LocalDate
 import java.time.ZoneOffset
 
 /** Which sheet or dialog is open on the planner. */
+private sealed class DayLoad {
+    object Loading : DayLoad()
+    data class Ok(val date: String, val day: JSONObject) : DayLoad()
+    data class Failed(val date: String, val msg: String) : DayLoad()
+}
+
 private sealed class Open {
     object Add : Open()
     object PickTask : Open()
@@ -64,11 +73,24 @@ private sealed class Open {
 fun TodayScreen(r: Route) {
     var date by remember { mutableStateOf(r.args["date"]?.let { LocalDate.parse(it) } ?: LocalDate.now()) }
     var open by remember { mutableStateOf<Open?>(null) }
-    val day by loaded(date) { Api.obj("/day/$date") }
+    var retry by remember { mutableIntStateOf(0) }
+    val iso = date.toString()
+    // The day shown is always the day asked for: changing date drops the old day's lines at once, and a failed read says so (with Retry) instead of leaving them.
+    val load by produceState<DayLoad>(DayLoad.Loading, date, App.version, retry) {
+        val before = value
+        if (before !is DayLoad.Ok || before.date != iso) value = DayLoad.Loading
+        value = try {
+            DayLoad.Ok(iso, Api.obj("/day/$iso"))
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            DayLoad.Failed(iso, e.message ?: "Could not load")
+        }
+    }
     val scope = rememberCoroutineScope()
     val host = rememberTaskActionHost()
-    val d = day
-    val iso = date.toString()
+    val d = (load as? DayLoad.Ok)?.takeIf { it.date == iso }?.day
+    var discarding by remember { mutableStateOf<JSONObject?>(null) }
     val items = d?.objs("items").orEmpty()
     val timerList = d?.optJSONObject("timers")
     val timers = timerList?.objs("timers").orEmpty()
@@ -89,9 +111,11 @@ fun TodayScreen(r: Route) {
         } } } },
         onPause = { t -> run("Not paused") { Planner.pause(t.getLong("id")) } },
         onResume = { t -> scope.launch { attempt("Not resumed") { try { Planner.resume(t.getLong("id")); App.changed() } catch (e: ApiError) {
-            if (e.status == 409) open = Open.Busy(e.body?.optJSONObject("current")?.objs("timers").orEmpty().filter { it.optBoolean("running") }) else throw e
+            if (e.status == 409) open = Open.Busy(Planner.runningFrom(e)) else throw e
         } } } },
         onStop = { t -> run("Not stopped") { Planner.stop(t.getLong("id")) } },
+        onReview = { t -> Planner.review(t.getLong("id")) },
+        onDiscard = { t -> discarding = t },
         onAction = { k, item ->
             when (k) {
                 "log" -> logFor(item, iso)
@@ -117,6 +141,12 @@ fun TodayScreen(r: Route) {
                 Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(start = 14.dp, end = 14.dp, top = 4.dp, bottom = 96.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
+                if (load is DayLoad.Failed && d == null) {
+                    Card(pad = 16.dp) {
+                        T("This day could not be loaded: ${(load as DayLoad.Failed).msg}", Palette.red, 14.sp)
+                        TextLink("Retry") { retry++ }
+                    }
+                }
                 if (d != null) {
                     Totals(totals, items.isNotEmpty()) { open = Open.Available }
                     TimerStrip(stripTimers(timers, conflict, items, iso), conflict, now, anyRunning, cb) { date = LocalDate.parse(it) }
@@ -130,8 +160,13 @@ fun TodayScreen(r: Route) {
                             TextLink("Add to plan") { open = Open.Add }
                         }
                         items.forEachIndexed { i, item ->
-                            if (i > 0) Line()
-                            PlanLine(item, timers.firstOrNull { timerIsFor(it, item, iso) }, now, anyRunning, host, cb)
+                            // Keyed by the line's id, so swipe and focus state stay with the line when the list changes.
+                            key(item.getLong("id")) {
+                                if (i > 0) Line()
+                                // A running timer for the line wins over a stopped one waiting for review.
+                                val mine = timers.filter { timerIsFor(it, item, iso) }.minByOrNull { if (isPending(it)) 1 else 0 }
+                                PlanLine(item, mine, now, anyRunning, host, cb)
+                            }
                         }
                     }
                     if (items.isNotEmpty()) T("Swipe for Log or Remove · press and hold for every action", Palette.muted, 11.sp, modifier = Modifier.padding(horizontal = 10.dp))
@@ -149,6 +184,15 @@ fun TodayScreen(r: Route) {
         Fab("Add", Modifier.align(Alignment.BottomEnd).padding(16.dp)) { open = Open.Add }
     }
     TaskActionSheets(host)
+    discarding?.let { t ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { discarding = null }, containerColor = Palette.raised,
+            title = { T("Discard this time?", Palette.fg, 18.sp, FontWeight.SemiBold) },
+            text = { T("\"${t.optString("title")}\": the time counted (${clockText(elapsedSeconds(t, now))}) is thrown away and nothing is saved.", Palette.muted, 14.sp) },
+            confirmButton = { TextButton({ discarding = null; run("Not discarded") { Planner.discard(t.getLong("id")) } }) { T("Discard time", Palette.red, 15.sp, FontWeight.SemiBold) } },
+            dismissButton = { TextButton({ discarding = null }) { T("Keep it", Palette.fg, 15.sp) } },
+        )
+    }
 
     when (val o = open) {
         null -> {}
@@ -225,7 +269,7 @@ private fun Totals(t: JSONObject, hasItems: Boolean, onAvailable: () -> Unit) {
         Cell("Logged today", minText(t.optLong("logged_min")), Palette.green, Modifier.weight(1f))
         Cell("Available", availableText(t), if (over) Palette.red else Palette.fg,
             Modifier.weight(1f).clickable(onClickLabel = "Set the time available") { onAvailable() },
-            if (t.str("available_from") == "day") "this day" else null)
+            if (over) "over" + (if (t.str("available_from") == "day") " · this day" else "") else if (t.str("available_from") == "day") "this day" else null)
     }
 }
 

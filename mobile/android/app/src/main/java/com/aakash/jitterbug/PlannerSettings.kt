@@ -32,7 +32,7 @@ fun PlannerSettingsScreen() {
     }
     editing?.let { (key, name) ->
         MinutesDialog(
-            name, "Time available on every $name.", current?.takeIf { it.has(key) }?.optLong(key), "Clear",
+            name, "Time available on every $name.", current?.takeIf { it.has(key) && !it.isNull(key) }?.optLong(key), "Clear",
             { v ->
                 editing = null
                 scope.launch { attempt("Not saved") { saveSetting("planner_available", withWeekday(current, key, v)) } }

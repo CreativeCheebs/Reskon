@@ -23,18 +23,16 @@ import java.time.LocalDate
 /** A session handed to the Log screen for editing (set by Sessions and Task). */
 object Editing {
     var session: JSONObject? = null
-
-    /** What a timer's Stop handed back, for the Log screen opened with the "draft" argument. */
-    var timerDraft: JSONObject? = null
 }
 
 /**
- * The Log screen's first draft. Editing a session fills it from that session; "draft" is a stopped
- * timer's; "item" is a planner event (its title, its reserved minutes) so saving completes it.
+ * The Log screen's first draft. Editing a session fills it from that session; "item" is a planner
+ * event (its title, its reserved minutes) so saving completes it. A stopped timer's draft (route
+ * argument "timer") is read from the core after the screen opens, so it survives the app being closed.
  */
 private fun startingDraft(r: Route, editing: JSONObject?): Draft {
     editing?.let { return Draft.of(it) }
-    if (r.args["draft"] != null) Editing.timerDraft?.let { return Draft.ofTimer(it) }
+    if (r.long("timer") != null) return Draft(timerId = r.long("timer"))
     val date = r.args["date"]?.let { LocalDate.parse(it) } ?: LocalDate.now()
     r.long("item")?.let { item ->
         return Draft(
@@ -52,24 +50,40 @@ private fun startingDraft(r: Route, editing: JSONObject?): Draft {
 @Composable
 fun LogScreen(r: Route) {
     val editing = remember { r.long("session")?.let { id -> Editing.session?.takeIf { it.getLong("id") == id } } }
-    val fromTimer = r.args["draft"] != null && editing == null
+    val timerId = if (editing == null) r.long("timer") else null
     var d by remember { mutableStateOf(startingDraft(r, editing)) }
+    var timerReady by remember { mutableStateOf(timerId == null) }
     var confirmDiscard by remember { mutableStateOf(false) }
-    // Leaving a timer's draft without saving throws the counted time away: ask first.
-    val leave: () -> Unit = { if (fromTimer) confirmDiscard = true else App.back() }
-    if (fromTimer) androidx.activity.compose.BackHandler { confirmDiscard = true }
+    var text by remember { mutableStateOf(durationText(d.hours)) }
+    val scope = rememberCoroutineScope()
+    // Leaving the form keeps the stopped timer's time: it stays on the planner as "Stopped, review" until saved or discarded.
     if (confirmDiscard) androidx.compose.material3.AlertDialog(
         onDismissRequest = { confirmDiscard = false }, containerColor = Palette.raised,
         title = { T("Discard this time?", Palette.fg, 18.sp, androidx.compose.ui.text.font.FontWeight.SemiBold) },
-        text = { T("The timer is stopped. Nothing has been saved, so this time is lost.", Palette.muted, 14.sp) },
-        confirmButton = { androidx.compose.material3.TextButton({ Editing.timerDraft = null; App.back() }) { T("Discard", Palette.red, 15.sp, androidx.compose.ui.text.font.FontWeight.SemiBold) } },
-        dismissButton = { androidx.compose.material3.TextButton({ confirmDiscard = false }) { T("Keep editing", Palette.fg, 15.sp) } },
+        text = { T("The time counted by the timer is thrown away and nothing is saved.", Palette.muted, 14.sp) },
+        confirmButton = {
+            androidx.compose.material3.TextButton({
+                confirmDiscard = false
+                scope.launch { attempt("Not discarded") { Api.del("/timers/$timerId"); App.changed(); App.back() } }
+            }) { T("Discard time", Palette.red, 15.sp, androidx.compose.ui.text.font.FontWeight.SemiBold) }
+        },
+        dismissButton = { androidx.compose.material3.TextButton({ confirmDiscard = false }) { T("Keep it", Palette.fg, 15.sp) } },
     )
-    var text by remember { mutableStateOf(durationText(d.hours)) }
-    val scope = rememberCoroutineScope()
+
+    // A stopped timer: its draft is on the timer in the core.
+    LaunchedEffect(timerId) {
+        if (timerId == null) return@LaunchedEffect
+        val t = runCatching { Api.obj("/timers").objs("timers").firstOrNull { it.getLong("id") == timerId } }.getOrNull()
+        val draft = t?.optJSONObject("draft")
+        if (draft == null) { App.say("That timer is gone"); App.back(); return@LaunchedEffect }
+        d = Draft.ofTimer(timerId, draft)
+        text = durationText(d.hours)
+        timerReady = true
+    }
 
     // Opened from a task: fill in the task, its area and energy type.
-    LaunchedEffect(Unit) {
+    LaunchedEffect(timerReady) {
+        if (!timerReady) return@LaunchedEffect
         val id = r.long("task") ?: d.taskId ?: return@LaunchedEffect
         runCatching { Api.obj("/tasks/$id") }.getOrNull()?.let { t ->
             val fromTask = App.boot?.tagNames(t.tagIds()) ?: emptyList()
@@ -107,7 +121,8 @@ fun LogScreen(r: Route) {
     val enterSaves: (() -> Unit) = { if (d.valid) save() }
 
     Column(Modifier.fillMaxSize()) {
-        TopBar(if (editing != null) "Edit session" else "Log session", onBack = leave) {
+        TopBar(if (editing != null) "Edit session" else "Log session", onBack = { App.back() }) {
+            if (timerId != null) TextLink("Discard time", Palette.red) { confirmDiscard = true }
             if (editing != null) TextLink("Delete", Palette.red) {
                 scope.launch {
                     attempt("Not deleted") { Api.del("/sessions/${editing.getLong("id")}"); App.changed(); App.back(); App.say("Session deleted") }

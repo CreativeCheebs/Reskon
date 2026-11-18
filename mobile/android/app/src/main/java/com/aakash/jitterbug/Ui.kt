@@ -167,6 +167,7 @@ object Icons {
     const val openTask = "M7 17L17 7M9 7h8v8"
     const val trash = "M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"
     const val sync = "M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3M18 3v4h-4M6 21v-4h4"
+    const val up = "M18 15l-6-6-6 6"
     const val play = "M8 5l11 7-11 7z"
     const val pause = "M9 6v12M15 6v12"
     const val stop = "M7 7h10v10H7z"
