@@ -19,6 +19,8 @@ type Day struct {
 	InForce       []*State       `json:"in_force"`  // states in force that day, shown not entered
 	SubtypeTotals []SubtypeTotal `json:"subtype_totals"`
 	Sessions      []*Session     `json:"sessions"`
+	Items         []*DayItem     `json:"items"`       // the planner's list for the day, in order
+	PlanTotals    PlanTotals     `json:"plan_totals"` // planned and logged minutes against the day's available time
 }
 
 type DayPlan struct {
@@ -94,6 +96,12 @@ func (d *DB) GetDay(ctx context.Context, day string) (*Day, error) {
 		}
 	}
 
+	if out.Items, err = d.dayItems(ctx, day, day); err != nil {
+		return nil, err
+	}
+	if out.PlanTotals, err = d.planTotals(ctx, day, out.Items); err != nil {
+		return nil, err
+	}
 	if out.Sessions, err = d.ListSessions(ctx, SessionQuery{From: day, To: day}); err != nil {
 		return nil, err
 	}

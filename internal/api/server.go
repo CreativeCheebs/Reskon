@@ -128,6 +128,7 @@ func (s *Server) routes() {
 	s.similarRoutes()
 	s.lookupRoutes()
 	s.sessionRoutes()
+	s.dayPlannerRoutes()
 	s.captureRoutes()
 	s.stateRoutes()
 	s.imageRoutes()
