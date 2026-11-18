@@ -56,8 +56,6 @@ button.planned-row:hover { background: #35333a; border-color: #827c85; }
 .total:first-child dd { color: var(--accent); }
 .total:last-child dd { color: #a3cda4; }
 .total.over dd { color: #efc979; }
-.capacity-track { height: 4px; border-radius: 6px; overflow: hidden; background: #454249; margin-top: 10px; }
-.capacity-track > div { height: 100%; background: var(--accent); }
 .plan-body, .notes { border-top: 1px solid var(--border); }
 .drop-target { margin-top: 8px; padding: 8px; border: 1px dashed var(--border); border-radius: 6px; text-align: center; color: var(--muted); font-size: 12px; }
 .plan.over-target .drop-target { border-color: var(--accent); background: #353650; color: var(--text); }

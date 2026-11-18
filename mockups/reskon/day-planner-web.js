@@ -209,8 +209,6 @@ function renderPlan() {
     item.append(create('dt', label), create('dd', value));
     return item;
   }));
-  $('capacity-track').hidden = capacity === null;
-  $('capacity-bar').style.width = `${Math.min(100, capacity ? 100 * minutes / capacity : minutes ? 100 : 0)}%`;
   $('planned').replaceChildren();
   for (const [id, planned] of plan) {
     const task = tasks.get(id);
