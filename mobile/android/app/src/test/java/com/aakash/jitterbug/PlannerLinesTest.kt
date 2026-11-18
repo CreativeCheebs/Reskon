@@ -74,12 +74,33 @@ class PlannerLinesTest {
         assertEquals("0m / –", pickerFigures(obj("""{"logged_h":0,"estimate_h":null}""")))
     }
 
-    @Test fun onlyEventsCanBeMarkedDone() {
+    @Test fun bothKindsOfLineCanBeMarkedDoneFromTheMenu() {
         val ev = planActions(obj("""{"kind":"event","done":false}""")).map { it.first }
         assertTrue("done" in ev && "undone" !in ev && "edit" in ev && "plan" !in ev)
         val done = planActions(obj("""{"kind":"event","done":true}""")).map { it.first }
         assertTrue("undone" in done && "done" !in done)
-        val task = planActions(obj("""{"kind":"task"}""")).map { it.first }
-        assertTrue("plan" in task && "done" !in task && "undone" !in task && "log" in task)
+        val task = planActions(obj("""{"kind":"task","done":false}""")).map { it.first }
+        assertTrue("plan" in task && "done" in task && "log" in task)
+        assertTrue("undone" in planActions(obj("""{"kind":"task","done":true,"task_done":false}""")).map { it.first })
+    }
+
+    @Test fun aTaskThatIsItselfDoneCannotBeUntickedHere() {
+        val t = obj("""{"kind":"task","done":true,"task_done":true}""")
+        assertTrue(isTaskDone(t))
+        val keys = planActions(t).map { it.first }
+        assertTrue("done" !in keys && "undone" !in keys)
+        assertTrue(!isTaskDone(obj("""{"kind":"event","done":true,"task_done":true}""")))
+    }
+
+    @Test fun aTickedLineSaysDoneAfterItsFigure() {
+        assertEquals("1h of 3h · done", todayText(obj("""{"kind":"task","done":true,"planned_min":180,"logged_line_min":60,"logged_day_h":0}""")))
+        assertEquals("1h · done", todayText(obj("""{"kind":"task","done":true,"planned_min":null,"logged_line_min":60}""")))
+        assertEquals("3h · done", todayText(obj("""{"kind":"task","done":true,"planned_min":180,"logged_line_min":0}""")))
+        assertEquals("done", todayText(obj("""{"kind":"task","done":true,"planned_min":null,"logged_line_min":0}""")))
+        assertEquals("45m reserved · done", todayText(obj("""{"kind":"event","done":true,"planned_min":45}""")))
+    }
+
+    @Test fun anOpenLineStillSaysToday() {
+        assertEquals("1h of 3h today", todayText(obj("""{"kind":"task","done":false,"planned_min":180,"logged_line_min":60}""")))
     }
 }
