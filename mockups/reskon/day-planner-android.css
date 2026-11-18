@@ -53,18 +53,25 @@ h2 svg { width: 18px; height: 18px; color: var(--muted); }
 .list-meta { display: flex; justify-content: space-between; padding: 5px 10px; color: var(--muted); font-size: 11px; }
 .text-button { min-height: 44px; padding: 0 10px; border-radius: 14px; color: var(--accent-fg); font-weight: 650; font-size: 13px; }
 .card { overflow: hidden; border: 1px solid var(--border); border-radius: 16px; background: var(--panel); }
-.plan-entry { position: relative; overflow: hidden; }
+.plan-entry { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; overflow: hidden; }
 .plan-entry + .plan-entry, .picker-row + .picker-row { border-top: 1px solid var(--border); }
 .task { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 7px; width: 100%; min-height: 44px; padding: 4px 10px; background: var(--panel); text-align: left; touch-action: pan-y; user-select: none; transition: transform .16s ease-out; }
-.plan-entry.revealed .task { transform: translateX(-100px); }
-.swipe-action { position: absolute; z-index: 1; inset: 0 0 0 auto; width: 100px; background: var(--selected); color: var(--accent-fg); font-size: 12px; font-weight: 700; }
-.task:focus-visible, .swipe-action:focus-visible { outline-offset: -2px; }
+.task:focus-visible { outline-offset: -2px; }
 @media (prefers-reduced-motion: reduce) { .task { transition: none; } }
 .entry-kind { padding: 2px 4px; border-radius: 4px; background: var(--raised); color: var(--muted); font-size: 10px; }
 .event-kind { background: var(--selected); color: var(--accent-fg); }
 .event-logged { color: var(--green); }
 .task-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 650; }
 .task-ratio { color: var(--muted); white-space: nowrap; font-size: 12px; font-variant-numeric: tabular-nums; }
+.timer-controls { display: flex; align-items: center; flex-wrap: nowrap; }
+.timer-button { display: grid; place-items: center; width: 36px; height: 44px; border-radius: 5px; color: var(--accent-fg); }
+.timer-button svg { width: 17px; height: 17px; }
+.timer-button:disabled { color: var(--muted); opacity: .42; cursor: default; }
+.timer-button[data-control="stop"] { color: var(--red); }
+.timer-button:focus-visible { outline-offset: -2px; }
+.timer-elapsed { padding: 0 2px; color: var(--accent-fg); white-space: nowrap; font-size: 11px; font-variant-numeric: tabular-nums; }
+.active-timer { display: flex; align-items: center; gap: 8px; min-width: 0; margin-top: 5px; padding-left: 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); }
+.timer-jump { flex: 1; min-width: 0; min-height: 44px; overflow: hidden; color: var(--accent-fg); text-align: left; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
 .note, .empty { padding: 12px; color: var(--muted); font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .note { margin-bottom: 8px; padding-right: 64px; }
 .fab { position: absolute; right: 16px; bottom: 98px; display: grid; place-items: center; width: 56px; height: 56px; border-radius: 16px; background: var(--accent); color: var(--dim); box-shadow: 0 4px 12px #0006; }
@@ -97,13 +104,6 @@ dialog h2 { font-size: 19px; }
 .sheet-form label, .task-picker label { display: grid; gap: 5px; color: var(--muted); font-size: 13px; }
 .sheet-form input, .sheet-form textarea, .task-picker input { width: 100%; min-height: 46px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--dim); color: var(--fg); }
 .sheet-form textarea { resize: vertical; }
-.estimate-presets { display: flex; flex-wrap: wrap; gap: 5px; }
-.estimate-presets button { flex: 1; min-height: 44px; padding: 0 6px; border-radius: 8px; border: 1px solid var(--border); font-size: 13px; white-space: nowrap; }
-.estimate-presets [aria-pressed="true"] { background: var(--selected); border-color: var(--accent); color: var(--accent-fg); }
-.day-time summary { padding: 5px 0; color: var(--muted); font-size: 13px; cursor: pointer; }
-.day-time label { margin-top: 5px; }
-.day-time .estimate-toggle { display: flex; align-items: center; gap: 7px; min-height: 44px; }
-.day-time input[type="checkbox"] { width: 18px; min-height: 18px; }
 .form-error { color: var(--red); font-size: 13px; }
 .form-error:empty { display: none; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }

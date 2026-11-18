@@ -19,23 +19,24 @@ const catalog = [
   { id: 13, title: 'Back up test results', area: 'Work', status: 'To do', estimate: 15 },
   { id: 14, title: 'Review spare parts list', area: 'Work', status: 'Backlog', estimate: 25 },
   { id: 15, title: 'Archive old test notes', area: 'Work', status: 'Done', estimate: 15 },
+  { id: 16, title: 'Review delivery update', area: 'Work', status: 'Inbox', estimate: 15 },
 ];
 let nextId = catalog.length + 1;
 const plans = new Map([
-  ['2026-11-17', [{ id: 6, planned: 60 }]],
+  ['2026-11-17', [{ id: 6 }]],
   [today, [
-    { id: 1, planned: 60 }, { id: 2, planned: 45 }, { id: 3, planned: 30 },
-    { id: 7, planned: 15 }, { id: 8, planned: 15 }, { id: 9, planned: 10 },
-    { id: 10, planned: 10 }, { id: 11, planned: 10 }, { id: 12, planned: 5 }, { id: 13, planned: 10 },
+    { id: 1 }, { id: 2 }, { id: 3 }, { id: 7 }, { id: 8 }, { id: 9 },
+    { id: 10 }, { id: 11 }, { id: 12 }, { id: 13 },
   ]],
-  ['2026-11-19', [{ id: 5, planned: 75 }, { id: 3, planned: 30 }]],
-  ['2026-11-20', [{ id: 4, planned: 30 }]],
+  ['2026-11-19', [{ id: 5 }, { id: 3 }]],
+  ['2026-11-20', [{ id: 4 }]],
 ]);
 const sessions = new Map([
   ['2026-11-17', [{ id: 6, minutes: 45 }]],
   [today, [{ id: 1, minutes: 35 }, { id: 2, minutes: 15 }]],
 ]);
 const capacity = new Map(['2026-11-17', today, '2026-11-19', '2026-11-20'].map((key) => [key, 240]));
+capacity.set(today, 480);
 const notes = new Map([[today, 'Finish the outline before lunch. Leave room for reading later.']]);
 const sheet = $('sheet');
 const sheetContent = $('sheet-content');
@@ -97,8 +98,13 @@ function stepDate(amount) {
   setDate(dayKey(date));
 }
 
+function plannedMinutes(item) {
+  const entry = catalog.find(({ id }) => id === item.id);
+  return entry.kind === 'event' ? item.planned : entry.estimate;
+}
+
 function plannedFor(key) {
-  return (plans.get(key) || []).reduce((sum, item) => sum + item.planned, 0);
+  return (plans.get(key) || []).reduce((sum, item) => sum + (plannedMinutes(item) ?? 0), 0);
 }
 
 function loggedFor(key, id) {
@@ -117,7 +123,7 @@ function availableFor(key) {
 function taskRow(task, item) {
   const isEvent = task.kind === 'event';
   const logged = loggedFor(selected, task.id);
-  const ratioTarget = isEvent ? item.planned : task.estimate;
+  const ratioTarget = plannedMinutes(item);
   const row = action('', 'task', () => isEvent ? openEvent(task, item) : openTask(task, item));
   row.dataset.taskId = task.id;
   const label = isEvent ? 'Event' : 'Task';
@@ -131,7 +137,9 @@ function taskRow(task, item) {
     element('span', 'task-name', task.title),
     ratio,
   );
-  return withSwipeAction(row, isEvent && logged ? null : task);
+  const entry = withSwipeAction(row, task);
+  if (!isEvent || !logged) entry.append(entryTimerControls(task, item, selected));
+  return entry;
 }
 
 function planCount(items) {
@@ -160,6 +168,7 @@ function render() {
   $('ratio-label').textContent = items.some(({ id }) => catalog.find((entry) => entry.id === id)?.kind === 'event')
     ? 'Logged / estimate or plan' : 'Logged / estimate';
   $('tasks').replaceChildren(...items.map((item) => taskRow(catalog.find((task) => task.id === item.id), item)));
+  renderAwayTimer(items);
   if (!items.length) $('tasks').append(element('p', 'empty', 'Nothing planned for this day.'));
   $('day-note').textContent = notes.get(selected) || 'No note for this day.';
 }
@@ -304,7 +313,7 @@ function renderCalendar(focus) {
   for (const item of items) {
     const entry = catalog.find((task) => task.id === item.id);
     const row = element('div', 'summary-row', (entry.kind === 'event' ? 'Event: ' : 'Task: ') + entry.title);
-    row.append(element('b', '', duration(item.planned)));
+    row.append(element('b', '', duration(plannedMinutes(item))));
     card.append(row);
   }
   container.append(header, grid, foot, dayName, card);

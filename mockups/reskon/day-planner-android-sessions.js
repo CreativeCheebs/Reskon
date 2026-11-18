@@ -3,7 +3,7 @@ function focusPlanEntry(id) {
 }
 
 function removePlanEntry(id) {
-  plans.set(selected, plans.get(selected).filter((entry) => entry.id !== id));
+  plans.set(selected, (plans.get(selected) || []).filter((entry) => entry.id !== id));
   sheet.close();
   render();
   $('create').focus();
@@ -27,7 +27,7 @@ function openEvent(eventEntry, item, query = '') {
 
   if (item) {
     if (!logged) form.append(action('Log session', 'text-button', () => openLogSession(eventEntry, item.planned)));
-    form.append(action('Remove from this day', 'text-button remove', () => removePlanEntry(eventEntry.id)));
+    form.append(action('More actions', 'text-button', () => openPlanActions(eventEntry)));
   } else {
     form.append(action('Back to task search', 'text-button', () => openPicker(query)));
   }
@@ -62,8 +62,7 @@ function openEvent(eventEntry, item, query = '') {
   input.focus();
 }
 
-function openLogSession(entry, initialMinutes) {
-  const date = selected;
+function openLogSession(entry, initialMinutes, date = selected) {
   const form = element('form', 'sheet-form');
   const actual = field('Actual duration (min)', 'actual', 'number', initialMinutes ?? '');
   const input = actual.querySelector('input');
@@ -77,6 +76,7 @@ function openLogSession(entry, initialMinutes) {
     event.preventDefault();
     if (entry.kind === 'event' && loggedFor(date, entry.id)) return;
     sessions.set(date, [...(sessions.get(date) || []), { id: entry.id, minutes: Number(input.value) }]);
+    if (entry.kind === 'event') stopTimerForEvent(entry.id, date);
     sheet.close();
     render();
     focusPlanEntry(entry.id);
@@ -102,55 +102,131 @@ function openSessions() {
 
 function withSwipeAction(row, entry) {
   const wrapper = element('div', 'plan-entry');
-  wrapper.append(row);
-  if (!entry) return wrapper;
+  const feedback = element('span', 'plan-gesture-feedback', 'Log session');
+  feedback.setAttribute('aria-hidden', 'true');
+  wrapper.append(feedback, row);
 
-  function logEntry() {
-    setRevealed(false);
-    const planned = plans.get(selected)?.find(({ id }) => id === entry.id)?.planned;
-    openLogSession(entry, entry.kind === 'event' ? planned : undefined);
-  }
-  const log = action('Log session', 'swipe-action', logEntry);
-  log.setAttribute('aria-label', 'Log session for ' + entry.title);
-  wrapper.prepend(log);
-  let tapStart;
-  log.addEventListener('touchstart', (event) => {
-    tapStart = event.touches.length === 1 ? event.touches[0] : null;
-  }, { passive: true });
-  log.addEventListener('touchend', (event) => {
-    const end = event.changedTouches[0];
-    if (!tapStart || Math.hypot(end.clientX - tapStart.clientX, end.clientY - tapStart.clientY) > 12) return;
-    event.preventDefault();
-    logEntry();
-  }, { passive: false });
-  function setRevealed(revealed) {
-    wrapper.classList.toggle('revealed', revealed);
-    log.hidden = !revealed;
-  }
-  setRevealed(false);
-
-  let start;
+  const swipeDistance = 56;
+  const holdMs = 500;
+  const canLog = entry.kind !== 'event' || !loggedFor(selected, entry.id);
+  let gesture;
+  let hold;
   let suppressClick = false;
+
+  function resetGesture() {
+    clearTimeout(hold);
+    gesture = undefined;
+    wrapper.classList.remove('plan-swiping', 'plan-swipe-ready');
+    wrapper.style.removeProperty('--plan-swipe-x');
+  }
+
+  function openActions() {
+    resetGesture();
+    suppressClick = true;
+    if (row.isConnected && !sheet.open) openPlanActions(entry);
+  }
+
   row.addEventListener('pointerdown', (event) => {
     if (!event.isPrimary || event.button !== 0) return;
-    start = { id: event.pointerId, x: event.clientX, y: event.clientY };
+    resetGesture();
+    gesture = { id: event.pointerId, x: event.clientX, y: event.clientY };
     suppressClick = false;
     row.setPointerCapture(event.pointerId);
+    hold = setTimeout(openActions, holdMs);
   });
-  row.addEventListener('pointercancel', () => { start = undefined; });
-  row.addEventListener('pointerup', (event) => {
-    if (start?.id !== event.pointerId) return;
-    const x = event.clientX - start.x;
-    const y = event.clientY - start.y;
-    start = undefined;
-    if (Math.abs(x) < 35 || Math.abs(x) <= Math.abs(y) * 1.25) return;
+  row.addEventListener('pointermove', (event) => {
+    if (gesture?.id !== event.pointerId) return;
+    const x = event.clientX - gesture.x;
+    const y = event.clientY - gesture.y;
+    if (Math.hypot(x, y) <= 10 && gesture.axis === undefined) return;
+    clearTimeout(hold);
     suppressClick = true;
-    setRevealed(x < 0);
+    if (gesture.axis === undefined) gesture.axis = Math.abs(x) > Math.abs(y) * 1.25 ? 'horizontal' : 'vertical';
+    if (gesture.axis !== 'horizontal' || !canLog) return;
+    wrapper.classList.add('plan-swiping');
+    wrapper.classList.toggle('plan-swipe-ready', Math.abs(x) >= swipeDistance);
+    wrapper.dataset.swipeDirection = x > 0 ? 'right' : 'left';
+    wrapper.style.setProperty('--plan-swipe-x', Math.max(-96, Math.min(96, x)) + 'px');
+  });
+  row.addEventListener('pointercancel', resetGesture);
+  row.addEventListener('lostpointercapture', resetGesture);
+  row.addEventListener('pointerup', (event) => {
+    if (gesture?.id !== event.pointerId) return;
+    const x = Math.abs(event.clientX - gesture.x);
+    const y = Math.abs(event.clientY - gesture.y);
+    const shouldLog = canLog && gesture.axis !== 'vertical' && x >= swipeDistance && x > y * 1.25;
+    resetGesture();
+    if (!shouldLog) return;
+    suppressClick = true;
+    const planned = plans.get(selected)?.find(({ id }) => id === entry.id)?.planned;
+    openLogSession(entry, entry.kind === 'event' ? planned : undefined);
+  });
+  row.addEventListener('contextmenu', (event) => {
+    event.preventDefault();
+    openActions();
+  });
+  row.addEventListener('keydown', (event) => {
+    if (event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) return;
+    event.preventDefault();
+    openActions();
   });
   row.addEventListener('click', (event) => {
     if (!suppressClick || event.detail === 0) return;
+    event.preventDefault();
     event.stopImmediatePropagation();
     suppressClick = false;
   }, true);
   return wrapper;
+}
+
+function openPlanActions(entry) {
+  const content = element('div', 'plan-context-actions');
+  content.append(
+    element('p', 'sheet-copy', entry.title),
+    action('Reschedule', 'text-button', () => openReschedule(entry)),
+    action('Delete from plan', 'text-button remove', () => removePlanEntry(entry.id)),
+  );
+  openSheet('Plan actions', content);
+  content.querySelector('button').focus();
+}
+
+function openReschedule(entry) {
+  const source = selected;
+  const tomorrow = asDate(source);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const form = element('form', 'sheet-form');
+  const date = field('New date', 'date', 'date', dayKey(tomorrow));
+  const input = date.querySelector('input');
+  input.required = true;
+  const error = element('p', 'form-error');
+  error.setAttribute('role', 'status');
+  const move = element('button', 'primary', 'Move to date');
+  move.type = 'submit';
+  form.append(element('p', 'sheet-copy', entry.title), date, error, move,
+    action('Back to plan actions', 'text-button', () => openPlanActions(entry)));
+  input.addEventListener('change', () => { error.textContent = ''; });
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const target = input.value;
+    if (target === source) {
+      error.textContent = 'Choose a different date.';
+      return;
+    }
+    const targetItems = plans.get(target) || [];
+    if (targetItems.some(({ id }) => id === entry.id)) {
+      error.textContent = 'This is already on the plan for that day.';
+      return;
+    }
+    const sourceItems = plans.get(source) || [];
+    const item = sourceItems.find(({ id }) => id === entry.id);
+    if (!item) return;
+    plans.set(source, sourceItems.filter(({ id }) => id !== entry.id));
+    plans.set(target, [...targetItems, item]);
+    sheet.close();
+    render();
+    $('create').focus();
+    showToast('Moved to ' + dateLabel(target));
+  });
+  openSheet('Reschedule', form);
+  input.focus();
 }

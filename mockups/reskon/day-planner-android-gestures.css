@@ -1,0 +1,41 @@
+.plan-entry.plan-swiping {
+  background: var(--selected);
+}
+
+.plan-entry.plan-swiping .task {
+  transform: translateX(var(--plan-swipe-x, 0));
+  transition: none;
+}
+
+.plan-gesture-feedback {
+  position: absolute;
+  grid-column: 1 / 2;
+  inset: 0 auto 0 10px;
+  display: none;
+  align-items: center;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+[data-swipe-direction="left"] .plan-gesture-feedback {
+  inset: 0 10px 0 auto;
+}
+
+.plan-swiping .plan-gesture-feedback {
+  display: flex;
+}
+
+.plan-swipe-ready .plan-gesture-feedback {
+  color: var(--accent-fg);
+}
+
+.plan-context-actions {
+  display: grid;
+  gap: 4px;
+}
+
+.plan-context-actions button {
+  text-align: left;
+}

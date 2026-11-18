@@ -7,45 +7,8 @@ function openTask(task, item, pickerQuery) {
     title.querySelector('input').maxLength = 160;
     form.append(title);
   }
-  const estimate = field('Task estimate (min)', 'estimate', 'number', task?.estimate ?? '');
-  const estimateInput = estimate.querySelector('input');
-  estimateInput.max = '99999';
-  estimateInput.placeholder = 'No estimate';
-  const presets = element('div', 'estimate-presets');
-  presets.setAttribute('role', 'group');
-  presets.setAttribute('aria-label', 'Common estimates');
-  for (const minutes of [15, 30, 45, 60, 90]) {
-    const preset = action(duration(minutes), '', () => {
-      estimateInput.value = minutes;
-      syncPresets();
-    });
-    preset.dataset.minutes = minutes;
-    presets.append(preset);
-  }
-  function syncPresets() {
-    for (const preset of presets.children) {
-      preset.setAttribute('aria-pressed', String(preset.dataset.minutes === estimateInput.value));
-    }
-  }
-  estimateInput.addEventListener('input', syncPresets);
-  syncPresets();
-  form.append(estimate, presets);
-
-  const dayTime = element('details', 'day-time');
-  const planned = createDurationPicker('Planned duration', item?.planned ?? task?.estimate ?? 30);
-  const initialPlannedValue = planned.value;
-  const estimateToggle = element('label', 'estimate-toggle');
-  const useEstimate = element('input');
-  useEstimate.type = 'checkbox';
-  useEstimate.checked = !item;
-  planned.element.hidden = useEstimate.checked;
-  useEstimate.addEventListener('change', () => {
-    if (!useEstimate.checked) planned.value = Number(estimateInput.value) || 30;
-    planned.element.hidden = useEstimate.checked;
-  });
-  estimateToggle.append(useEstimate, 'Use task estimate');
-  dayTime.append(element('summary', '', 'Time set aside for this day'), estimateToggle, planned.element);
-  form.append(dayTime);
+  const estimate = createDurationPicker('Estimate', task?.estimate ?? 0);
+  form.append(estimate.element);
   if (item) {
     form.append(element('p', 'sheet-copy',
       duration(loggedFor(selected, task.id)) + ' logged in sessions on this day.'));
@@ -58,7 +21,7 @@ function openTask(task, item, pickerQuery) {
   }
   if (item) form.append(
     action('Log session', 'text-button', () => openLogSession(task)),
-    action('Remove from this day', 'text-button remove', () => removePlanEntry(task.id)),
+    action('More actions', 'text-button', () => openPlanActions(task)),
   );
   form.addEventListener('submit', (event) => {
     event.preventDefault();
@@ -69,20 +32,17 @@ function openTask(task, item, pickerQuery) {
       return;
     }
     const currentTask = task || { id: nextId++, title, area: '', status: 'To do' };
-    currentTask.estimate = data.get('estimate') === '' ? null : Number(data.get('estimate'));
+    currentTask.estimate = estimate.value || null;
+    if (currentTask.status === 'Inbox') currentTask.status = 'To do';
     if (!task) catalog.push(currentTask);
-    let minutes = planned.value;
-    if (useEstimate.checked) minutes = Math.min(currentTask.estimate ?? 0, 1440);
-    else if (item && minutes === initialPlannedValue) minutes = item.planned;
-    if (item) item.planned = minutes;
-    else plans.set(selected, [...(plans.get(selected) || []), { id: currentTask.id, planned: minutes }]);
+    if (!item) plans.set(selected, [...(plans.get(selected) || []), { id: currentTask.id }]);
     sheet.close();
     render();
     focusPlanEntry(currentTask.id);
     showToast(item ? 'Plan updated' : 'Added to plan');
   });
   openSheet(task ? task.title : 'New task', form);
-  form.querySelector('[name="title"], [name="estimate"]').focus();
+  form.querySelector('[name="title"], [role="spinbutton"]').focus();
 }
 
 function openPicker(query = '') {
@@ -108,7 +68,7 @@ function openPicker(query = '') {
   function renderResults() {
     const typed = searchInput.value.trim();
     const words = typed.toLowerCase().split(/\s+/).filter(Boolean);
-    const groups = typed ? ['To do', 'In progress', 'Backlog'] : ['To do', 'In progress'];
+    const groups = typed ? ['Inbox', 'To do', 'In progress', 'Backlog'] : ['Inbox', 'To do', 'In progress'];
     createTask.textContent = typed ? 'Create “' + typed + '”' : 'Create new task';
     results.replaceChildren();
     let matches = 0;

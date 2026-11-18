@@ -14,15 +14,14 @@ const tasks = new Map([
   ['receipts', { name: 'Sort receipts', area: 'Personal', estimate: 20, status: 'todo' }],
   ['plants', { name: 'Water balcony plants', area: 'Personal', estimate: 10, status: 'todo' }],
   ['results', { name: 'Back up test results', area: 'Work', estimate: 15, status: 'todo' }],
+  ['delivery', { name: 'Review delivery update', area: 'Work', estimate: 15, status: 'inbox' }],
 ]);
+const taskPlan = (...ids) => new Map(ids.map((id) => [id, null]));
 const plans = new Map([
-  ['2026-11-17', new Map([['checklist', 60]])],
-  [today, new Map([
-    ['outline', 60], ['week', 45], ['reading', 30], ['supplier', 15], ['firmware', 15],
-    ['recap', 10], ['photos', 10], ['receipts', 10], ['plants', 5], ['results', 10],
-  ])],
-  ['2026-11-19', new Map([['sprint', 75], ['reading', 30]])],
-  ['2026-11-20', new Map([['health', 30]])],
+  ['2026-11-17', taskPlan('checklist')],
+  [today, taskPlan('outline', 'week', 'reading', 'supplier', 'firmware', 'recap', 'photos', 'receipts', 'plants', 'results')],
+  ['2026-11-19', taskPlan('sprint', 'reading')],
+  ['2026-11-20', taskPlan('health')],
 ]);
 const sessions = new Map([
   ['2026-11-17', [{ id: 'checklist', minutes: 45 }]],
@@ -30,6 +29,7 @@ const sessions = new Map([
 ]);
 const notes = new Map([[today, 'Finish the outline before lunch. Leave room for reading later.']]);
 const capacities = new Map([...plans.keys()].map((day) => [day, 240]));
+capacities.set(today, 480);
 let date = today;
 let month = today.slice(0, 7);
 let editing = null;
@@ -67,9 +67,14 @@ function displayDate(iso, options) {
 
 function summary(iso) {
   const plan = plans.get(iso) ?? new Map();
-  const minutes = [...plan.values()].reduce((sum, value) => sum + (value ?? 0), 0);
+  const minutes = [...plan].reduce((sum, [id, planned]) => sum + (plannedMinutes(id, planned) ?? 0), 0);
   const capacity = capacities.get(iso) ?? null;
   return { plan, minutes, capacity, available: capacity === null ? null : capacity - minutes };
+}
+
+function plannedMinutes(id, eventMinutes) {
+  const item = tasks.get(id);
+  return item.kind === 'event' ? eventMinutes : item.estimate;
 }
 
 function capacityText(minutes) {
@@ -96,8 +101,8 @@ function itemName(item) {
   return name;
 }
 
-function loggedMinutes(id) {
-  const records = sessions.get(date) ?? [];
+function loggedMinutes(id, day = date) {
+  const records = sessions.get(day) ?? [];
   return records.reduce((total, record) => total + (id === undefined || record.id === id ? record.minutes : 0), 0);
 }
 
@@ -174,10 +179,12 @@ function candidates(status, plan) {
 function addTask(id, obeyFocus) {
   const { plan } = summary(date);
   if (plan.has(id) || !tasks.has(id)) return;
+  const task = tasks.get(id);
+  if (task.status === 'inbox') task.status = 'todo';
   plan.set(id, null);
   plans.set(date, plan);
   render();
-  $('announcement').textContent = `Added ${tasks.get(id).name} to plan.`;
+  $('announcement').textContent = `Added ${task.name} to plan.`;
   if (obeyFocus) document.querySelector(`[data-planned-id="${id}"]`)?.focus();
 }
 
@@ -210,24 +217,28 @@ function renderPlan() {
     const logged = loggedMinutes(id);
     const time = duration(logged);
     const event = task.kind === 'event';
-    const estimateMinutes = event ? planned : task.estimate;
+    const estimateMinutes = plannedMinutes(id, planned);
     const estimate = estimateMinutes ? duration(estimateMinutes) : '—';
     const estimateLabel = estimateMinutes ? `${estimate} ${event ? 'planned' : 'estimated'}` : 'no estimate';
-    const row = create('li');
+    const row = create('li', '', 'plan-item');
     const button = create('button', '', 'planned-row');
     button.type = 'button';
     button.dataset.plannedId = id;
+    button.setAttribute('aria-keyshortcuts', 'Shift+F10');
     const completion = event && logged ? ', completed' : '';
     button.setAttribute('aria-label', `${kindLabel(task.kind)}: ${task.name}. ${time} logged this day / ${estimateLabel}${completion}`);
     button.addEventListener('click', () => openTask(id));
     const ratio = create('span', `${time} / ${estimate}`, 'task-time');
     if (event && logged) ratio.append(create('span', ' ✓', 'event-logged'));
     button.append(itemName(task), ratio);
-    row.append(button);
+    row.append(button, timerActions(id, date, event && Boolean(logged)));
+    bindPlanMenu(row, button, id);
     $('planned').append(row);
   }
+  candidates('inbox', plan);
   candidates('todo', plan);
   candidates('active', plan);
+  renderTimerStrip();
 }
 
 function render() {
@@ -256,19 +267,18 @@ function openTask(id = null, kind = 'task') {
   $('estimate-field').hidden = event;
   $('estimate').disabled = event;
   $('estimate').value = task?.estimate ?? '';
-  $('planned-label').textContent = event ? 'Planned duration (min)' : 'Plan for this day (min)';
+  $('planned-field').hidden = !event;
+  $('planned-time').disabled = !event;
   $('planned-time').required = event;
   $('planned-time').value = summary(date).plan.get(id) ?? '';
   $('task-logging').hidden = !task;
   const logged = task ? loggedMinutes(id) : 0;
-  $('log-open').hidden = event && Boolean(logged);
   $('task-logged').textContent = event && !logged
     ? 'Log the session when the event happens.'
     : `Logged this day: ${duration(logged)}`;
-  $('remove-task').hidden = !task;
   $('task-form').querySelector('.primary').textContent = task ? 'Save' : 'Add to plan';
   $('task-dialog').showModal();
-  $(task ? 'planned-time' : 'task-name').focus();
+  $(task ? (event ? 'planned-time' : 'estimate') : 'task-name').focus();
 }
 
 $('task-form').addEventListener('submit', (event) => {
@@ -284,7 +294,7 @@ $('task-form').addEventListener('submit', (event) => {
   task.estimate = Number($('estimate').value) || null;
   tasks.set(id, task);
   const { plan } = summary(date);
-  plan.set(id, Number($('planned-time').value) || null);
+  plan.set(id, draftKind === 'event' ? Number($('planned-time').value) : null);
   plans.set(date, plan);
   $('task-dialog').close();
   render();
@@ -296,10 +306,6 @@ $('task-dialog').addEventListener('close', () => {
     document.querySelector(`[data-planned-id="${editing}"]`)?.focus();
   }
 });
-$('remove-task').addEventListener('click', () => {
-  $('task-dialog').close();
-  removeTask(editing);
-});
 $('new-task').addEventListener('click', () => $('type-dialog').showModal());
 for (const button of document.querySelectorAll('[data-new-kind]')) {
   button.addEventListener('click', () => {
@@ -307,27 +313,6 @@ for (const button of document.querySelectorAll('[data-new-kind]')) {
     openTask(null, button.dataset.newKind);
   });
 }
-$('log-open').addEventListener('click', () => {
-  const item = tasks.get(editing);
-  $('log-context').textContent = `${item.name} · ${$('date-text').textContent}`;
-  $('actual-time').value = item.kind === 'event' ? summary(date).plan.get(editing) : '';
-  $('log-dialog').showModal();
-  $('actual-time').focus();
-});
-$('log-form').addEventListener('submit', (event) => {
-  event.preventDefault();
-  const item = tasks.get(editing);
-  if (item.kind === 'event' && loggedMinutes(editing)) return;
-  const minutes = Number($('actual-time').value);
-  const records = sessions.get(date) ?? [];
-  sessions.set(date, [...records, { id: editing, minutes }]);
-  $('log-dialog').close();
-  $('log-open').hidden = item.kind === 'event';
-  $('task-logged').textContent = `Logged this day: ${duration(loggedMinutes(editing))}`;
-  $('announcement').textContent = `Logged ${duration(minutes)} for ${item.name}.`;
-  if (item.kind === 'event') $('planned-time').focus();
-  renderPlan();
-});
 for (const button of document.querySelectorAll('[data-open-sessions]')) {
   button.addEventListener('click', () => {
     $('sessions-date').textContent = $('date-text').textContent;
@@ -393,4 +378,4 @@ dropSurface.addEventListener('drop', (event) => {
   clearDrag();
 });
 
-render();
+document.addEventListener('DOMContentLoaded', render);

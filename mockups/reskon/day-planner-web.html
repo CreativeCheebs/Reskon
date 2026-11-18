@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="day-planner-web.css">
   <script src="day-planner-web.js" defer></script>
+  <script src="day-planner-web-actions.js" defer></script>
 </head>
 <body>
   <div class="app">
@@ -40,10 +41,15 @@
           </div>
           <button class="button subtle" id="capacity-open" aria-haspopup="dialog">⚙ Planner settings</button>
         </div>
+        <div class="timer-strip" id="timer-strip" hidden></div>
         <div class="planner-grid">
           <aside class="candidates" aria-labelledby="candidates-heading">
             <h2 id="candidates-heading">Available tasks</h2>
             <p class="muted">Drag a task to the plan or use its add button.</p>
+            <section class="group">
+              <div class="group-heading"><span class="status-dot inbox-dot"></span><h3>Inbox</h3><span id="inbox-count" class="count"></span></div>
+              <div class="task-list" id="inbox"></div>
+            </section>
             <section class="group">
               <div class="group-heading"><span class="status-dot coral"></span><h3>To do</h3><span id="todo-count" class="count"></span></div>
               <div class="task-list" id="todo"></div>
@@ -96,17 +102,28 @@
       <input id="task-name" required maxlength="80" placeholder="What do you want to work on?">
       <div class="form-fields">
         <div id="estimate-field"><label for="estimate">Whole task estimate (min)</label><input type="number" id="estimate" min="1" max="99999"></div>
-        <div><label for="planned-time" id="planned-label">Plan for this day (min)</label><input type="number" id="planned-time" min="1" max="1440"></div>
+        <div id="planned-field" hidden><label for="planned-time">Planned duration (min)</label><input type="number" id="planned-time" min="1" max="1440" disabled></div>
       </div>
       <div class="task-logging" id="task-logging" hidden>
         <p class="muted" id="task-logged"></p>
-        <button class="button outline" type="button" id="log-open" aria-haspopup="dialog">Log session</button>
       </div>
       <div class="dialog-actions">
-        <button class="button subtle remove-task" type="button" id="remove-task" hidden>Remove from plan</button>
         <button class="button outline" type="button" data-close>Cancel</button>
         <button class="button primary">Add to plan</button>
       </div>
+    </form>
+  </dialog>
+  <div id="row-menu" class="row-menu" aria-label="Plan actions" hidden>
+    <button class="button subtle" type="button" id="reschedule-open">Reschedule</button>
+    <button class="button subtle remove-task" type="button" id="delete-row">Delete from plan</button>
+  </div>
+  <dialog id="reschedule-dialog" aria-labelledby="reschedule-heading">
+    <form id="reschedule-form" method="dialog">
+      <div class="dialog-head"><h2 id="reschedule-heading">Reschedule</h2></div>
+      <p class="muted" id="reschedule-context"></p>
+      <label for="reschedule-date">Move to date</label>
+      <input id="reschedule-date" type="date" required>
+      <div class="dialog-actions"><button class="button outline" type="button" data-close>Cancel</button><button class="button primary">Move</button></div>
     </form>
   </dialog>
   <dialog id="log-dialog" aria-labelledby="log-heading">
