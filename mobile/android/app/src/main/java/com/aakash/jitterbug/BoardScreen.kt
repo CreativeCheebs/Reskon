@@ -274,7 +274,7 @@ private fun ListLayout(view: ViewRef, allTasks: List<JSONObject>, onLongPress: (
                 val n = allTasks.count { it.optLong("status_id", -1) == s.id }
                 val open = !s.onBoard && s.id in opened
                 Pill(
-                    "${s.name} $n", on = open, dot = s.color, action = true, rect = true,
+                    "${s.name} $n", on = open, dot = s.color, action = true, rect = true, filled = true, height = 32,
                     description = (if (!s.onBoard) (if (open) "Close ${s.name}" else "Show ${s.name}") else "Go to ${s.name}") + ", ${Terms.countTasks(n)}",
                 ) {
                     // A shown hidden status closes again; any other button jumps to its section.
@@ -293,7 +293,7 @@ private fun ListLayout(view: ViewRef, allTasks: List<JSONObject>, onLongPress: (
                 val n = allTasks.count { it.optLong("status_id", -1) == s.id }
                 val open = s.id in opened
                 Pill(
-                    "${s.name} $n", on = open, dot = s.color, action = true, rect = true,
+                    "${s.name} $n", on = open, dot = s.color, action = true, rect = true, filled = true, height = 32,
                     description = (if (open) "Close ${s.name}" else "Show ${s.name}") + ", ${Terms.countTasks(n)}",
                 ) {
                     opened = if (open) opened - s.id else opened + s.id
@@ -301,7 +301,7 @@ private fun ListLayout(view: ViewRef, allTasks: List<JSONObject>, onLongPress: (
                 }
             }
             groups.forEach { g ->
-                Pill("${g.name} ${g.rows.size}", dot = g.color, action = true, rect = true, description = "Go to ${g.name}, ${Terms.countTasks(g.rows.size)}") { pending = g.key }
+                Pill("${g.name} ${g.rows.size}", dot = g.color, action = true, rect = true, filled = true, height = 32, description = "Go to ${g.name}, ${Terms.countTasks(g.rows.size)}") { pending = g.key }
             }
         }
     }
@@ -315,7 +315,7 @@ private fun ListLayout(view: ViewRef, allTasks: List<JSONObject>, onLongPress: (
                         Modifier.weight(1f).semantics(mergeDescendants = true) { heading(); contentDescription = "${g.name}, ${Terms.countTasks(g.rows.size)}" },
                         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Dot(g.color)
+                        Dot(g.color, 9)
                         T("${g.name} · ${g.rows.size}", Palette.fg, 14.sp, FontWeight.SemiBold, oneLine = true)
                     }
                     // "+ Add": a new task that starts in this group (its status, priority, area...).
@@ -331,7 +331,7 @@ private fun ListLayout(view: ViewRef, allTasks: List<JSONObject>, onLongPress: (
                     ) { T("+ Add", Palette.accentFg, 14.sp, FontWeight.Medium, oneLine = true) }
                 }
                 if (g.rows.isEmpty()) T("No ${Terms.tasks}", Palette.subtle, 13.sp, modifier = Modifier.padding(start = 4.dp))
-                else Card {
+                else Card(radius = 12.dp, bordered = false) {
                     g.rows.forEachIndexed { i, t ->
                         if (i > 0) Line()
                         ListRowTask(t, onLongPress)

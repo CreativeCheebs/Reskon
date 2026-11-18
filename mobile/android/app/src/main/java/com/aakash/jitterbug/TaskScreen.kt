@@ -362,8 +362,8 @@ fun NewTaskScreen(r: Route) {
         ) {
             TextBox("Title", title, "What needs doing?") { title = it }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Pill(Terms.capTask, !epic) { epic = false }
-                Pill(Terms.capEpic, epic) { epic = true }
+                Pill(Terms.capTask, !epic, height = 32, dense = true) { epic = false }
+                Pill(Terms.capEpic, epic, height = 32, dense = true) { epic = true }
             }
             // Each field is a small label over a row of chips; tap a chosen chip again to clear it (Area always keeps one).
             @Composable fun Chips(label: String, content: @Composable () -> Unit) {
@@ -374,29 +374,29 @@ fun NewTaskScreen(r: Route) {
             }
             // Statuses off the board (Backlog...) are offered only when the group you came from is one.
             Chips("Status") {
-                boot.statuses.filter { it.onBoard || it.id == status }.forEach { s -> Pill(s.name, status == s.id, s.color) { status = if (status == s.id) null else s.id } }
+                boot.statuses.filter { it.onBoard || it.id == status }.forEach { s -> Pill(s.name, status == s.id, s.color, height = 32, dense = true) { status = if (status == s.id) null else s.id } }
             }
-            Chips("Area") { boot.areas.forEach { a -> Pill(a.name, area == a.id) { area = a.id } } }
+            Chips("Area") { boot.areas.forEach { a -> Pill(a.name, area == a.id, height = 32, dense = true) { area = a.id } } }
             if (!epic && epics.isNotEmpty()) Chips(Terms.capEpic) {
-                epics.forEach { (id, name) -> Pill(name, epicId == id) { epicId = if (epicId == id) null else id } }
+                epics.forEach { (id, name) -> Pill(name, epicId == id, height = 32, dense = true) { epicId = if (epicId == id) null else id } }
             }
-            Chips("Energy type") { boot.energyTypes.forEach { t -> Pill(t.name, type == t.id, t.color) { type = if (type == t.id) null else t.id } } }
-            Chips("Priority") { boot.priorities.forEach { p -> Pill(p.name, priority == p.id, p.color) { priority = if (priority == p.id) null else p.id } } }
+            Chips("Energy type") { boot.energyTypes.forEach { t -> Pill(t.name, type == t.id, t.color, height = 32, dense = true) { type = if (type == t.id) null else t.id } } }
+            Chips("Priority") { boot.priorities.forEach { p -> Pill(p.name, priority == p.id, p.color, height = 32, dense = true) { priority = if (priority == p.id) null else p.id } } }
             Chips("Level") {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    (1..5).forEach { n -> Box(Modifier.weight(1f)) { Pill(n.toString(), difficulty == n, Palette.intensity[n - 1]) { difficulty = if (difficulty == n) null else n } } }
+                    (1..5).forEach { n -> Box(Modifier.weight(1f)) { Pill(n.toString(), difficulty == n, Palette.intensity[n - 1], height = 32, dense = true) { difficulty = if (difficulty == n) null else n } } }
                 }
             }
             Chips("Tags") {
-                tags.forEach { n -> Pill("#$n", true, action = true, description = "Remove tag $n") { tags = tags - n } }
-                Pill("+ Tags", action = true, description = "Choose tags") { pickTags = true }
+                tags.forEach { n -> Pill("#$n", true, action = true, description = "Remove tag $n", height = 32, dense = true) { tags = tags - n } }
+                Pill("+ Tags", action = true, description = "Choose tags", height = 32, dense = true) { pickTags = true }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Box(Modifier.weight(1f)) { TextBox("Estimate", estimate, "e.g. 2h", keyboard = KeyboardType.Text) { estimate = it } }
                 FieldBox("Due", due?.let { dayLabel(it.toString()) } ?: "–", Modifier.weight(1f)) { pickDue = true }
             }
         }
-        BottomAction("Create ${Terms.task}", enabled = title.isNotBlank() && !creating) {
+        BottomAction("Add ${Terms.task}", enabled = title.isNotBlank() && !creating, slim = true) {
             if (creating) return@BottomAction
             creating = true // before launching, so a second tap in the same frame is ignored
             scope.launch {
