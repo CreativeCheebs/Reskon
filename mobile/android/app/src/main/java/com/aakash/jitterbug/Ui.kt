@@ -158,7 +158,7 @@ object Icons {
     const val mic = "M9 5a3 3 0 0 1 6 0v6a3 3 0 0 1-6 0zM5 11a7 7 0 0 0 14 0M12 18v3"
     const val select = "M4 4h16v16H4zM8 12l3 3 5-6"
     const val filters = "M4 7h10M18 7h2M4 17h2M10 17h10M14 5v4M6 15v4"
-    const val snooze = "M12 7v5l3 2M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0"
+    const val snooze = "M12 3a6 6 0 0 0 9 9a9 9 0 1 1-9-9z" // a moon, so it is not mistaken for Log time's clock
     const val calendar = "M4 6h16v14H4zM4 10h16M8 3v4M16 3v4"
     const val dots = "M12 5h.01M12 12h.01M12 19h.01"
     const val dotsH = "M5 12h.01M12 12h.01M19 12h.01"
