@@ -23,6 +23,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -325,7 +326,7 @@ fun TaskScreen(r: Route) {
     }
 }
 
-/** New task: POST /api/tasks. Opened from the board's + button. */
+/** New task: POST /api/tasks. Opened from the board's + button, or from a group's "+ Add" (which fills in that group's status, priority, area, energy type or epic). */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun NewTaskScreen(r: Route) {
@@ -333,9 +334,15 @@ fun NewTaskScreen(r: Route) {
     val view = boot.views.firstOrNull { it.id == r.long("view") }
     val viewAreas = view?.raw?.optJSONObject("filter")?.optJSONArray("areas")?.let { a -> (0 until a.length()).map { a.getLong(it) } }
     var title by remember { mutableStateOf("") }
-    var area by remember { mutableStateOf(viewAreas?.firstOrNull() ?: boot.areas.first().id) }
-    var type by remember { mutableStateOf<Long?>(null) }
-    var priority by remember { mutableStateOf<Long?>(null) }
+    // A group's "+ Add" starts the task with that group's value (route: pre = the field, preid = its id).
+    val pre = r.args["pre"]
+    val preId = r.long("preid")
+    fun pick(field: String) = preId.takeIf { pre == field }
+    var area by remember { mutableStateOf(pick("area_id") ?: viewAreas?.firstOrNull() ?: boot.areas.first().id) }
+    var status by remember { mutableStateOf(pick("status_id")?.takeIf { id -> boot.statuses.any { it.id == id } }) }
+    var epicId by remember { mutableStateOf(pick("epic_id")) }
+    var type by remember { mutableStateOf(pick("energy_type_id")) }
+    var priority by remember { mutableStateOf(pick("priority_id")) }
     var difficulty by remember { mutableStateOf<Int?>(null) }
     var estimate by remember { mutableStateOf("") }
     var due by remember { mutableStateOf<LocalDate?>(null) }
@@ -345,6 +352,8 @@ fun NewTaskScreen(r: Route) {
     var pickTags by remember { mutableStateOf(false) }
     var creating by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    var epics by remember { mutableStateOf(EpicNames.all()) }
+    LaunchedEffect(Unit) { runCatching { EpicNames.load(); epics = EpicNames.all() } }
     Column(Modifier.fillMaxSize()) {
         TopBar("New ${Terms.task}", onBack = { App.back() })
         Column(
@@ -353,36 +362,41 @@ fun NewTaskScreen(r: Route) {
         ) {
             TextBox("Title", title, "What needs doing?") { title = it }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Pill(Terms.capTask, !epic) { epic = false }
-                Pill(Terms.capEpic, epic) { epic = true }
+                Pill(Terms.capTask, !epic, height = 32, dense = true) { epic = false }
+                Pill(Terms.capEpic, epic, height = 32, dense = true) { epic = true }
             }
-            SectionTitle("Area")
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                boot.areas.forEach { a -> Pill(a.name, area == a.id) { area = a.id } }
+            // Each field is a small label over a row of chips; tap a chosen chip again to clear it (Area always keeps one).
+            @Composable fun Chips(label: String, content: @Composable () -> Unit) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    T(label, Palette.muted, 12.sp)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { content() }
+                }
             }
-            SectionTitle("Energy type")
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                boot.energyTypes.forEach { t -> Pill(t.name, type == t.id, t.color) { type = if (type == t.id) null else t.id } }
+            // Statuses off the board (Backlog...) are offered only when the group you came from is one.
+            Chips("Status") {
+                boot.statuses.filter { it.onBoard || it.id == status }.forEach { s -> Pill(s.name, status == s.id, s.color, height = 32, dense = true) { status = if (status == s.id) null else s.id } }
             }
-            SectionTitle("Priority")
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                boot.priorities.forEach { p -> Pill(p.name, priority == p.id, p.color) { priority = if (priority == p.id) null else p.id } }
+            Chips("Area") { boot.areas.forEach { a -> Pill(a.name, area == a.id, height = 32, dense = true) { area = a.id } } }
+            if (!epic && epics.isNotEmpty()) Chips(Terms.capEpic) {
+                epics.forEach { (id, name) -> Pill(name, epicId == id, height = 32, dense = true) { epicId = if (epicId == id) null else id } }
             }
-            SectionTitle("Level")
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                (1..5).forEach { n -> Box(Modifier.weight(1f)) { Pill(n.toString(), difficulty == n, Palette.intensity[n - 1]) { difficulty = if (difficulty == n) null else n } } }
+            Chips("Energy type") { boot.energyTypes.forEach { t -> Pill(t.name, type == t.id, t.color, height = 32, dense = true) { type = if (type == t.id) null else t.id } } }
+            Chips("Priority") { boot.priorities.forEach { p -> Pill(p.name, priority == p.id, p.color, height = 32, dense = true) { priority = if (priority == p.id) null else p.id } } }
+            Chips("Level") {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    (1..5).forEach { n -> Box(Modifier.weight(1f)) { Pill(n.toString(), difficulty == n, Palette.intensity[n - 1], height = 32, dense = true) { difficulty = if (difficulty == n) null else n } } }
+                }
             }
-            SectionTitle("Tags")
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                tags.forEach { n -> Pill("#$n", true, action = true, description = "Remove tag $n") { tags = tags - n } }
-                Pill("+ Tags", action = true, description = "Choose tags") { pickTags = true }
+            Chips("Tags") {
+                tags.forEach { n -> Pill("#$n", true, action = true, description = "Remove tag $n", height = 32, dense = true) { tags = tags - n } }
+                Pill("+ Tags", action = true, description = "Choose tags", height = 32, dense = true) { pickTags = true }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Box(Modifier.weight(1f)) { TextBox("Estimate", estimate, "e.g. 2h", keyboard = KeyboardType.Text) { estimate = it } }
                 FieldBox("Due", due?.let { dayLabel(it.toString()) } ?: "–", Modifier.weight(1f)) { pickDue = true }
             }
         }
-        BottomAction("Create ${Terms.task}", enabled = title.isNotBlank() && !creating) {
+        BottomAction("Add ${Terms.task}", enabled = title.isNotBlank() && !creating, slim = true) {
             if (creating) return@BottomAction
             creating = true // before launching, so a second tap in the same frame is ignored
             scope.launch {
@@ -392,7 +406,12 @@ fun NewTaskScreen(r: Route) {
                         "title" to title.trim(), "area_id" to area, "type" to if (epic) "epic" else "task", "energy_type_id" to type,
                         "priority_id" to priority, "difficulty" to difficulty, "estimate_h" to parseHours(estimate),
                         "due_at" to due?.toString(), "today" to today(),
-                    ).apply { if (tags.isNotEmpty()) put("tags", tags.asJson()) })
+                    ).apply {
+                        if (tags.isNotEmpty()) put("tags", tags.asJson())
+                        // Left out (not null) when not chosen, so the server's own default applies.
+                        status?.let { put("status_id", it) }
+                        if (!epic) epicId?.let { put("epic_id", it) }
+                    })
                     // A tag typed here may be new, so the lists that name tags are read again.
                     if (tags.isNotEmpty()) runCatching { App.reloadBoot() }
                     App.changed()

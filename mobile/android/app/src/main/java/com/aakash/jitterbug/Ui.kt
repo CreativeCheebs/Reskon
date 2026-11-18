@@ -169,9 +169,9 @@ fun Dot(c: Color, d: Int = 8) = Box(Modifier.size(d.dp).clip(CircleShape).backgr
 
 /** A panel: #22272B with a 1px border, as every mockup card. */
 @Composable
-fun Card(modifier: Modifier = Modifier, radius: Dp = 16.dp, pad: Dp = 0.dp, content: @Composable ColumnScope.() -> Unit) {
+fun Card(modifier: Modifier = Modifier, radius: Dp = 16.dp, pad: Dp = 0.dp, bordered: Boolean = true, content: @Composable ColumnScope.() -> Unit) {
     val shape = RoundedCornerShape(radius)
-    Column(modifier.fillMaxWidth().clip(shape).background(Palette.panel).border(1.dp, Palette.border, shape).padding(pad), content = content)
+    Column(modifier.fillMaxWidth().clip(shape).background(Palette.panel).then(if (bordered) Modifier.border(1.dp, Palette.border, shape) else Modifier).padding(pad), content = content)
 }
 
 /** Divider between rows of a card. */
@@ -194,24 +194,29 @@ fun Pill(
     rect: Boolean = false,
     /** Smaller text and padding, for a button that sits in a header line. */
     small: Boolean = false,
+    /** Slightly smaller text and padding (13sp, 12dp), with the card border colour, as in the phone mockups. */
+    dense: Boolean = false,
+    /** A button that is filled (the chip colour) with no outline until selected, as the jump buttons on the list. Also dense. */
+    filled: Boolean = false,
     onClick: (() -> Unit)? = null,
 ) {
+    val tight = dense || filled
     val shape = RoundedCornerShape(if (rect) 8.dp else (height / 2).dp)
     Row(
         Modifier.heightIn(min = height.dp).clip(shape)
-            .background(if (on) Palette.selected else Color.Transparent)
-            .border(1.dp, if (on) Palette.accent else Palette.strong, shape)
+            .background(if (on) Palette.selected else if (filled) Palette.chip else Color.Transparent)
+            .then(if (filled && !on) Modifier else Modifier.border(1.dp, if (on) Palette.accent else if (tight) Palette.border else Palette.strong, shape))
             .then(
                 if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick).semantics {
                     if (!action) selected = on
                     description?.let { contentDescription = it }
                 } else Modifier,
             )
-            .padding(horizontal = if (small) 10.dp else 14.dp),
+            .padding(horizontal = if (small) 10.dp else if (tight) 12.dp else 14.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         dot?.let { Dot(it) }
-        T(text, if (on) Palette.accentFg else Palette.muted, if (small) 12.sp else 14.sp, FontWeight.Medium, oneLine = true)
+        T(text, if (on) Palette.accentFg else if (filled) Palette.fg else Palette.muted, if (small) 12.sp else if (tight) 13.sp else 14.sp, if (filled) FontWeight.Normal else FontWeight.Medium, oneLine = true)
         trailing?.let { Icon(it, if (on) Palette.accentFg else Palette.muted, 16) }
     }
 }
@@ -256,20 +261,25 @@ fun TopBar(title: String, onBack: (() -> Unit)? = null, sub: String? = null, act
 /** Extended floating button, bottom right above the nav bar. */
 @Composable
 fun Fab(label: String?, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    // A plain "+" is a 56 dp square with 16 dp corners (the mockup); one with a label is a wider pill.
+    val shape = RoundedCornerShape(if (label != null) 18.dp else 16.dp)
     Row(
-        modifier.height(56.dp).shadow(8.dp, RoundedCornerShape(18.dp)).clip(RoundedCornerShape(18.dp))
+        modifier.height(56.dp).then(if (label == null) Modifier.width(56.dp) else Modifier).shadow(if (label == null) 6.dp else 8.dp, shape).clip(shape)
             .background(Palette.accent).clickable(role = Role.Button, onClick = onClick).semantics { contentDescription = label ?: "New" }
-            .padding(start = 16.dp, end = if (label != null) 20.dp else 16.dp),
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(start = if (label != null) 16.dp else 0.dp, end = if (label != null) 20.dp else 0.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = if (label == null) Arrangement.Center else Arrangement.spacedBy(8.dp),
     ) {
-        Icon(Icons.plus, Palette.onAccent, 22, 2.2f)
+        Icon(Icons.plus, Palette.onAccent, if (label == null) 28 else 22, 2.2f)
         label?.let { T(it, Palette.onAccent, 15.sp, FontWeight.SemiBold) }
     }
 }
 
 /** Full-width primary button pinned to the bottom of a form. */
 @Composable
-fun BottomAction(label: String, enabled: Boolean = true, secondary: String? = null, onSecondary: () -> Unit = {}, onClick: () -> Unit) {
+fun BottomAction(label: String, enabled: Boolean = true, secondary: String? = null, onSecondary: () -> Unit = {}, slim: Boolean = false, onClick: () -> Unit) {
+    // slim: a 48 dp button with 15sp text (the mockup's save button) instead of 52 dp and 16sp.
+    val h = if (slim) 48.dp else 52.dp
+    val ts = if (slim) 15.sp else 16.sp
     Column(Modifier.fillMaxWidth().background(Palette.bg)) {
         Line()
         Row(
@@ -278,16 +288,16 @@ fun BottomAction(label: String, enabled: Boolean = true, secondary: String? = nu
         ) {
             secondary?.let {
                 Box(
-                    Modifier.weight(1f).heightIn(min = 52.dp).clip(RoundedCornerShape(26.dp)).border(1.dp, Palette.strong, RoundedCornerShape(26.dp))
+                    Modifier.weight(1f).heightIn(min = h).clip(RoundedCornerShape(26.dp)).border(1.dp, Palette.strong, RoundedCornerShape(26.dp))
                         .clickable(role = Role.Button, onClick = onSecondary),
                     contentAlignment = Alignment.Center,
-                ) { T(it, Palette.fg, 16.sp, FontWeight.SemiBold) }
+                ) { T(it, Palette.fg, ts, FontWeight.SemiBold) }
             }
             Box(
-                Modifier.weight(if (secondary != null) 2f else 1f).heightIn(min = 52.dp).clip(RoundedCornerShape(26.dp))
+                Modifier.weight(if (secondary != null) 2f else 1f).heightIn(min = h).clip(RoundedCornerShape(26.dp))
                     .background(if (enabled) Palette.accent else Palette.chip).clickable(enabled = enabled, role = Role.Button, onClick = onClick),
                 contentAlignment = Alignment.Center,
-            ) { T(label, if (enabled) Palette.onAccent else Palette.subtle, 16.sp, FontWeight.SemiBold) }
+            ) { T(label, if (enabled) Palette.onAccent else Palette.subtle, ts, FontWeight.SemiBold) }
         }
     }
 }
