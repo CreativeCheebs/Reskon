@@ -152,7 +152,7 @@ fun TodayScreen(r: Route) {
                     }
                 }
                 if (d != null) {
-                    Totals(totals, items.isNotEmpty()) { open = Open.Available }
+                    Totals(totals, date) { open = Open.Available }
                     TimerStrip(stripTimers(timers, conflict, items, iso), conflict, now, anyRunning, cb) { date = LocalDate.parse(it) }
                     Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 2.dp)) {
                         T(planCountText(items), Palette.muted, 11.sp, modifier = Modifier.weight(1f))
@@ -285,15 +285,16 @@ private fun DateBar(date: LocalDate, set: (LocalDate) -> Unit, onPick: () -> Uni
 
 /** The day's own totals (never a task's all-time ones): planned, logged, available. Tap Available to set this day's time. */
 @Composable
-private fun Totals(t: JSONObject, hasItems: Boolean, onAvailable: () -> Unit) {
-    val over = t.optBoolean("over")
+private fun Totals(t: JSONObject, shown: LocalDate, onAvailable: () -> Unit) {
+    val over = isOver(t)
     val unest = t.optInt("unestimated")
+    val today = LocalDate.now()
     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Palette.panel)) {
-        Cell("Planned", minText(t.optLong("planned_min")), Palette.fg, Modifier.weight(1f), if (unest > 0) "$unest without planned time" else null)
-        Cell("Logged today", minText(t.optLong("logged_min")), Palette.green, Modifier.weight(1f))
-        Cell("Available", availableText(t), if (over) Palette.red else Palette.fg,
-            Modifier.weight(1f).clickable(onClickLabel = "Set the time available") { onAvailable() },
-            if (over) "over" + (if (t.str("available_from") == "day") " · this day" else "") else if (t.str("available_from") == "day") "this day" else null)
+        Cell(totalLabel("Planned", shown, today), minText(t.optLong("planned_min")), Palette.fg, Modifier.weight(1f), if (unest > 0) "$unest without planned time" else null)
+        Cell(totalLabel("Logged", shown, today), minText(t.optLong("logged_min")), Palette.green, Modifier.weight(1f))
+        // Free time as the server works it out; a negative one is shown as "over" in the warning colour.
+        Cell("Available", freeText(t), if (over) Palette.yellow else Palette.fg,
+            Modifier.weight(1f).clickable(onClickLabel = "Set the time available") { onAvailable() }, availableNote(t))
     }
 }
 

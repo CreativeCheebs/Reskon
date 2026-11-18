@@ -37,8 +37,26 @@ fun clockText(seconds: Long): String {
 private fun JSONObject.minutes(k: String): Long? = num(k)?.let { Math.round(it) }
 
 
-/** What the Available box says: the server's available minutes, or "Not set". Whether the day is over is the server's `over`; nothing is worked out here. */
-fun availableText(totals: JSONObject): String = totals.minutes("available_min")?.let { minText(it) } ?: "Not set"
+/**
+ * The Available tile: the server's `free_min` ("4h"), "1h over" when it is negative, "Not set" when
+ * null (no available time). Nothing is worked out here; the sign is only written as a word.
+ */
+fun freeText(totals: JSONObject): String {
+    val free = totals.minutes("free_min") ?: return "Not set"
+    return if (free < 0) "${minText(-free)} over" else minText(free)
+}
+
+/** Under the Available figure: "of 8h" (the day's available time), with where it came from when it is this day's own. Null when not set. */
+fun availableNote(totals: JSONObject): String? {
+    val avail = totals.minutes("available_min") ?: return null
+    return "of ${minText(avail)}" + if (totals.str("available_from") == "day") " · this day" else ""
+}
+
+/** Is the day over? The server's `over` (free time below zero). */
+fun isOver(totals: JSONObject) = totals.optBoolean("over") || (totals.minutes("free_min") ?: 0L) < 0
+
+/** "Logged today" / "Planned today" for today, plain "Logged" / "Planned" for any other day. */
+fun totalLabel(word: String, shown: LocalDate, today: LocalDate) = if (shown == today) "$word today" else word
 
 /** "3 tasks · 1 event". */
 fun planCountText(items: List<JSONObject>): String {

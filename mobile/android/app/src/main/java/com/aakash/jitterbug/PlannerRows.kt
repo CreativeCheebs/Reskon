@@ -104,18 +104,24 @@ fun PlanLine(item: JSONObject, timer: JSONObject?, now: Instant, anyRunning: Boo
         onLongClick = { cb.onAction("more", item) }, onClick = { cb.onAction(if (event) "edit" else "open", item) },
     ) {
         Row(
-            Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(start = if (event) 0.dp else 10.dp, end = 2.dp),
-            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp),
+            Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(end = 2.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            if (event) TimerButton(if (done) Icons.select else Icons.circle, if (done) "Mark $title not done" else "Mark $title done", if (done) Palette.green else Palette.muted) {
-                cb.onAction(if (done) "undone" else "done", item)
-            }
+            // The check at the start of every line: ticks the line done for this day (a task's own status is not changed).
+            // A task that is itself done shows ticked and cannot be unticked here.
+            val taskDone = isTaskDone(item)
+            TimerButton(
+                if (done) Icons.select else Icons.circle,
+                if (taskDone) "Task done" else if (done) "Mark $title not done" else "Mark $title done",
+                if (done) Palette.green else Palette.muted, enabled = !taskDone,
+            ) { cb.onAction(if (done) "undone" else "done", item) }
             // The kind, title and figures are read once, as one sentence; the buttons after them are their own.
             Row(
                 Modifier.weight(1f).clearAndSetSemantics { contentDescription = rowDescription(item) },
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp),
             ) {
-                if (!event) Box(Modifier.clip(RoundedCornerShape(4.dp)).background(Palette.dim).padding(horizontal = 4.dp, vertical = 2.dp)) { T("Task", Palette.muted, 10.sp) }
+                // A checklist for a task, a calendar for an event (the row is read as "Task, ..." / "Event, ...").
+                Icon(if (event) Icons.calendar else Icons.checklist, if (event) Palette.accentFg else Palette.muted, 16)
                 Column(Modifier.weight(1f).padding(vertical = 4.dp)) {
                     T(title, if (done) Palette.subtle else Palette.fg, 13.sp, FontWeight.SemiBold, oneLine = true, strike = done)
                     lineDetails(item).forEach { T(it, Palette.muted, 11.sp) }
@@ -132,7 +138,8 @@ fun planActions(item: JSONObject): List<Pair<String, String>> {
     val event = isEvent(item)
     return buildList {
         add("log" to "Log session")
-        if (event) add(if (item.optBoolean("done")) "undone" to "Mark not done" else "done" to "Mark done")
+        // A task that is itself done stays done; its line cannot be unticked.
+        if (!isTaskDone(item)) add(if (item.optBoolean("done")) "undone" to "Mark not done" else "done" to "Mark done")
         if (event) add("edit" to "Edit event") else {
             add("plan" to "Edit plan (time and name)")
             add("open" to "Open task")

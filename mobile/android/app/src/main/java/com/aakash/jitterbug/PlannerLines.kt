@@ -21,15 +21,35 @@ fun lineTitle(item: JSONObject): String = item.optString("title")
 fun partOfText(item: JSONObject): String? =
     if (!isEvent(item) && item.optBoolean("renamed")) item.str("task_title")?.takeIf { it.isNotBlank() }?.let { "Part of $it" } else null
 
-/** "2h today", "35m of 2h today", "35m today", or null when nothing is planned or logged today. Events: "45m reserved". */
+/** Is the line ticked done for its day, or its task done or cancelled (the server's `done`)? */
+fun isLineDone(item: JSONObject) = item.optBoolean("done")
+
+/** The task behind the line is itself done or cancelled: the tick cannot be undone from here. */
+fun isTaskDone(item: JSONObject) = !isEvent(item) && item.optBoolean("task_done")
+
+/**
+ * The line's figure for its day. Open: "2h today", "35m of 2h today", "35m today" (nothing: null); an
+ * event "45m reserved". Ticked done: "1h of 3h · done", "1h · done", or just "done".
+ */
 fun todayText(item: JSONObject): String? {
     val planned = item.mins("planned_min")
-    if (isEvent(item)) return planned?.let { "${minText(it)} reserved" }
-    val day = item.loggedMin("logged_day_h")
+    val done = isLineDone(item)
+    if (isEvent(item)) return planned?.let { "${minText(it)} reserved" + if (done) " · done" else "" } ?: if (done) "done" else null
+    // What was logged against this line, else on its day.
+    val logged = if (item.has("logged_line_min") && !item.isNull("logged_line_min")) item.optLong("logged_line_min") else item.loggedMin("logged_day_h")
+    if (done) {
+        val head = when {
+            planned != null && logged > 0 -> "${minText(logged)} of ${minText(planned)}"
+            logged > 0 -> minText(logged)
+            planned != null -> minText(planned)
+            else -> null
+        }
+        return listOfNotNull(head, "done").joinToString(" · ")
+    }
     return when {
-        planned != null && day > 0 -> "${minText(day)} of ${minText(planned)} today"
+        planned != null && logged > 0 -> "${minText(logged)} of ${minText(planned)} today"
         planned != null -> "${minText(planned)} today"
-        day > 0 -> "${minText(day)} today"
+        logged > 0 -> "${minText(logged)} today"
         else -> null
     }
 }
@@ -51,7 +71,7 @@ fun lineDetails(item: JSONObject): List<String> = listOfNotNull(partOfText(item)
 
 /** What a screen reader says for a row. */
 fun rowDescription(item: JSONObject): String =
-    (listOf(if (isEvent(item)) "Event" else "Task", lineTitle(item)) + lineDetails(item) + listOfNotNull(if (isEvent(item) && item.optBoolean("done")) "done" else null))
+    (listOf(if (isEvent(item)) "Event" else "Task", lineTitle(item)) + lineDetails(item))
         .joinToString(", ")
 
 /**

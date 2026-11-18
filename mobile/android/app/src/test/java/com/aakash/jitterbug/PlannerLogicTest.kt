@@ -26,11 +26,34 @@ class PlannerLogicTest {
     }
 
 
-    @Test fun availableIsTheServersNumberOrNotSetAndIsNeverWorkedOutHere() {
-        assertEquals("Not set", availableText(obj("""{"planned_min":600,"available_min":null}""")))
-        assertEquals("8h", availableText(obj("""{"planned_min":360,"available_min":480}""")))
-        assertEquals("8h", availableText(obj("""{"planned_min":570,"available_min":480,"over":true}""")))
-        assertEquals("0m", availableText(obj("""{"planned_min":0,"available_min":0}""")))
+    @Test fun theAvailableTileShowsTheServersFreeTime() {
+        assertEquals("Not set", freeText(obj("""{"planned_min":600,"available_min":null,"free_min":null}""")))
+        assertEquals("4h", freeText(obj("""{"available_min":480,"free_min":240}""")))
+        assertEquals("0m", freeText(obj("""{"available_min":480,"free_min":0}""")))
+        assertEquals("1h over", freeText(obj("""{"available_min":480,"free_min":-60,"over":true}""")))
+        // Nothing is worked out from planned_min here: a free_min the server did not send is "Not set".
+        assertEquals("Not set", freeText(obj("""{"planned_min":999,"available_min":480}""")))
+    }
+
+    @Test fun underTheFreeTimeSitsTheDaysAvailableTime() {
+        assertEquals("of 8h", availableNote(obj("""{"available_min":480,"free_min":240,"available_from":"weekday"}""")))
+        assertEquals("of 8h · this day", availableNote(obj("""{"available_min":480,"free_min":240,"available_from":"day"}""")))
+        assertNull(availableNote(obj("""{"available_min":null,"free_min":null}""")))
+    }
+
+    @Test fun overIsTheServersFlagOrNegativeFreeTime() {
+        assertTrue(isOver(obj("""{"over":true,"free_min":-5}""")))
+        assertTrue(isOver(obj("""{"free_min":-5}""")))
+        assertTrue(!isOver(obj("""{"over":false,"free_min":0}""")))
+        assertTrue(!isOver(obj("""{"free_min":null}""")))
+    }
+
+    @Test fun theTotalsSayTodayOnlyOnToday() {
+        val today = LocalDate.of(2026, 11, 19)
+        assertEquals("Logged today", totalLabel("Logged", today, today))
+        assertEquals("Planned today", totalLabel("Planned", today, today))
+        assertEquals("Logged", totalLabel("Logged", today.minusDays(1), today))
+        assertEquals("Planned", totalLabel("Planned", today.plusDays(1), today))
     }
 
     @Test fun theCountNamesTasksAndEvents() {
