@@ -1,4 +1,4 @@
-const $ = (id) => document.getElementById(id);
+﻿const $ = (id) => document.getElementById(id);
 const today = '2026-11-18';
 const tasks = new Map([
   ['outline', { name: 'Finish project outline', area: 'Work', estimate: 180, status: 'active' }],
@@ -195,6 +195,15 @@ function removeTask(id) {
   $('new-task').focus();
 }
 
+function returnToStatus(id, planDate, status) {
+  const task = tasks.get(id);
+  if (!task || task.kind === 'event' || !plans.get(planDate)?.delete(id)) return;
+  task.status = status;
+  render();
+  const label = document.querySelector(`.group[data-status="${status}"] h3`).textContent;
+  $('announcement').textContent = `Removed ${task.name} from the plan and moved it to ${label}.`;
+}
+
 function renderPlan() {
   const { plan, minutes, capacity, available } = summary(date);
   const totals = [
@@ -238,7 +247,12 @@ function renderPlan() {
     const ratio = create('span', `${time} / ${estimate}`, 'task-time');
     if (event && logged) ratio.append(create('span', ' ✓', 'event-logged'));
     button.append(itemName(task), ratio);
-    row.append(button, timerActions(id, date, event && Boolean(logged)));
+    const menuButton = action('\u22ef', `Actions for ${task.name}`, () => {
+      const bounds = menuButton.getBoundingClientRect();
+      openPlanMenu(id, bounds.left, bounds.bottom);
+    });
+    menuButton.setAttribute('aria-haspopup', 'true');
+    row.append(button, timerActions(id, date, event && Boolean(logged)), menuButton);
     bindPlanMenu(row, button, id);
     $('planned').append(row);
   }
@@ -400,12 +414,7 @@ for (const group of document.querySelectorAll('.group[data-status]')) {
     if (draggedTask?.source !== 'plan') return;
     event.preventDefault();
     const { id, date: planDate } = draggedTask;
-    const task = tasks.get(id);
-    if (task && task.kind !== 'event' && plans.get(planDate)?.delete(id)) {
-      task.status = group.dataset.status;
-      render();
-      $('announcement').textContent = `Removed ${task.name} from the plan and moved it to ${group.querySelector('h3').textContent}.`;
-    }
+    returnToStatus(id, planDate, group.dataset.status);
     clearDrag();
   });
 }

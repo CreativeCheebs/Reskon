@@ -135,6 +135,7 @@ function closePlanMenu(returnFocus = false) {
 function openPlanMenu(id, x, y) {
   const menu = $('row-menu');
   menuItem = { id, day: date };
+  $('move-to-status').hidden = tasks.get(id).kind === 'event';
   menu.hidden = false;
   menu.style.left = `${Math.max(0, Math.min(x, window.innerWidth - menu.offsetWidth - 4))}px`;
   menu.style.top = `${Math.max(0, Math.min(y, window.innerHeight - menu.offsetHeight - 4))}px`;
@@ -200,3 +201,12 @@ $('reschedule-form').addEventListener('submit', (event) => {
   $('announcement').textContent = `Rescheduled ${tasks.get(id).name}.`;
   $('calendar-open').focus();
 });
+
+for (const button of document.querySelectorAll('[data-return-status]')) {
+  button.addEventListener('click', () => {
+    const { id, day } = menuItem;
+    closePlanMenu();
+    returnToStatus(id, day, button.dataset.returnStatus);
+    $('new-task').focus();
+  });
+}

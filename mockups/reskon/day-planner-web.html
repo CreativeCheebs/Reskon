@@ -45,7 +45,7 @@
         <div class="planner-grid">
           <aside class="candidates" aria-labelledby="candidates-heading">
             <h2 id="candidates-heading">Available tasks</h2>
-            <p class="muted">Drag a task to the plan or use its add button. Drag a planned task back to a status to remove it from this day.</p>
+            <p class="muted">Drag a task to the plan or use its add button. Drag a planned task back to a status, or use its actions menu, to remove it from this day.</p>
             <section class="group" data-status="inbox">
               <div class="group-heading"><span class="status-dot inbox-dot"></span><h3>Inbox</h3><span id="inbox-count" class="count"></span></div>
               <div class="task-list" id="inbox"></div>
@@ -114,6 +114,11 @@
   </dialog>
   <div id="row-menu" class="row-menu" aria-label="Plan actions" hidden>
     <button class="button subtle" type="button" id="reschedule-open">Reschedule</button>
+    <div id="move-to-status">
+      <button class="button subtle" type="button" data-return-status="inbox">Remove to Inbox</button>
+      <button class="button subtle" type="button" data-return-status="todo">Remove to To do</button>
+      <button class="button subtle" type="button" data-return-status="active">Remove to In progress</button>
+    </div>
     <button class="button subtle remove-task" type="button" id="delete-row">Delete from plan</button>
   </div>
   <dialog id="reschedule-dialog" aria-labelledby="reschedule-heading">
