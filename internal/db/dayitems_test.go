@@ -39,8 +39,11 @@ func TestPlannedTaskRowShowsAllTimeAndDayHours(t *testing.T) {
 	a := mustArea(t, d, "Main job", "OM2")
 	tk := mustTask(t, d, a.ID, "Write driver")
 	setEstimate(t, d, tk, 5)
-	planTask(t, d, "2026-11-10", tk.ID)
-	planTask(t, d, "2026-11-11", tk.ID)
+	l10 := planTask(t, d, "2026-11-10", tk.ID)
+	l11 := planTask(t, d, "2026-11-11", tk.ID)
+	// Each line has its own planned time for its day (not the estimate).
+	d.PatchDayItem(context.Background(), l10.ID, fields(t, `{"planned_min":180}`))
+	d.PatchDayItem(context.Background(), l11.ID, fields(t, `{"planned_min":90}`))
 	logHours(t, d, tk.ID, "2026-11-10", 2)
 	logHours(t, d, tk.ID, "2026-11-11", 1.5)
 	logHours(t, d, tk.ID, "2026-11-11", 0.5)
@@ -58,15 +61,15 @@ func TestPlannedTaskRowShowsAllTimeAndDayHours(t *testing.T) {
 	if r10.LoggedDayH != 2 || r11.LoggedDayH != 2 {
 		t.Errorf("day hours = %v and %v, want 2 and 2", r10.LoggedDayH, r11.LoggedDayH)
 	}
-	if r10.EstimateH == nil || *r10.EstimateH != 5 || *r10.PlannedMin != 300 {
-		t.Errorf("estimate = %v planned_min = %v, want the whole estimate 5h / 300", r10.EstimateH, r10.PlannedMin)
+	if r10.EstimateH == nil || *r10.EstimateH != 5 || *r10.PlannedMin != 180 || *r11.PlannedMin != 90 {
+		t.Errorf("estimate = %v planned_min = %v, %v, want the whole estimate 5h and the lines' own 180 / 90", r10.EstimateH, r10.PlannedMin, r11.PlannedMin)
 	}
 	// Day totals are day-specific; the planned total counts the full estimate on each day.
 	if day10.PlanTotals.LoggedMin != 120 || day11.PlanTotals.LoggedMin != 120 {
 		t.Errorf("day logged = %d, %d min, want 120, 120", day10.PlanTotals.LoggedMin, day11.PlanTotals.LoggedMin)
 	}
-	if day10.PlanTotals.PlannedMin != 300 || day11.PlanTotals.PlannedMin != 300 {
-		t.Errorf("planned = %d, %d, want 300 each", day10.PlanTotals.PlannedMin, day11.PlanTotals.PlannedMin)
+	if day10.PlanTotals.PlannedMin != 180 || day11.PlanTotals.PlannedMin != 90 {
+		t.Errorf("planned = %d, %d, want 180 and 90", day10.PlanTotals.PlannedMin, day11.PlanTotals.PlannedMin)
 	}
 }
 
@@ -82,6 +85,7 @@ func TestDayItemsEventsOrderRescheduleAndDuplicates(t *testing.T) {
 		t.Fatal(err)
 	}
 	i2 := planTask(t, d, "2026-11-10", t2.ID)
+	d.PatchDayItem(ctx, i1.ID, fields(t, `{"planned_min":60}`))
 	if ev.Kind != "event" || ev.Title != "Dentist" || *ev.PlannedMin != 45 || ev.Done {
 		t.Errorf("event = %+v", ev)
 	}
@@ -103,7 +107,7 @@ func TestDayItemsEventsOrderRescheduleAndDuplicates(t *testing.T) {
 	if got[0] != i2.ID || got[1] != ev.ID || got[2] != i1.ID {
 		t.Errorf("order = %v, want [%d %d %d]", got, i2.ID, ev.ID, i1.ID)
 	}
-	// 60 (task One's estimate) + 45; Two has no estimate.
+	// 60 (task One's line) + 45 (the event); Two's line has no planned time.
 	if day.PlanTotals.PlannedMin != 105 || day.PlanTotals.Unestimated != 1 {
 		t.Errorf("totals = %+v", day.PlanTotals)
 	}
@@ -117,8 +121,8 @@ func TestDayItemsEventsOrderRescheduleAndDuplicates(t *testing.T) {
 	if _, err := d.PatchDayItem(ctx, i1.ID, fields(t, `{"day":"2026-11-12"}`)); !errors.As(err, &conflict) {
 		t.Errorf("rescheduling onto a day that has the task: %v", err)
 	}
-	if _, err := d.PatchDayItem(ctx, i1.ID, fields(t, `{"title":"x"}`)); err == nil {
-		t.Error("a task line's title was changed")
+	if _, err := d.PatchDayItem(ctx, i1.ID, fields(t, `{"area_id":1}`)); err == nil {
+		t.Error("a task line took an area")
 	}
 	if err := d.DeleteDayItem(ctx, i1.ID); err != nil {
 		t.Fatal(err)

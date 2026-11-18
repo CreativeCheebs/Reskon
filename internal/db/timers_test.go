@@ -242,8 +242,12 @@ func TestEventCompletesWhenASessionIsSavedAndSurvivesReschedule(t *testing.T) {
 	if s.Kind != "event" || s.Label == nil || *s.Label != "Dentist" || s.StartedAt != nil || s.EndedAt != nil || *s.DayItemID != ev.ID {
 		t.Errorf("manual event session = %+v", s)
 	}
-	if ev, _ = d.GetDayItem(ctx, ev.ID); !ev.Done || ev.SessionCount != 1 || ev.LoggedH != 0.75 {
+	// A session does not complete an event; only marking it done does.
+	if ev, _ = d.GetDayItem(ctx, ev.ID); ev.Done || ev.SessionCount != 1 || ev.LoggedH != 0.75 {
 		t.Errorf("event after its session: %+v", ev)
+	}
+	if ev, err = d.PatchDayItem(ctx, ev.ID, fields(t, `{"done":true}`)); err != nil || !ev.Done || ev.DoneAt == nil {
+		t.Fatalf("marking the event done: %+v %v", ev, err)
 	}
 	day, _ := d.GetDay(ctx, "2026-11-16")
 	if len(day.Items) != 1 || !day.Items[0].Done {
@@ -284,15 +288,21 @@ func TestEventCompletesWhenASessionIsSavedAndSurvivesReschedule(t *testing.T) {
 	if saved.StartedAt == nil || saved.EndedAt == nil {
 		t.Errorf("timer session lost its stamps: %+v", saved)
 	}
-	if got, _ := d.GetDayItem(ctx, ev2.ID); !got.Done {
-		t.Error("saving the timer's session did not complete the event")
+	if got, _ := d.GetDayItem(ctx, ev2.ID); got.Done || got.SessionCount != 1 {
+		t.Errorf("saving the timer's session changed done: %+v", got)
 	}
-	// Deleting the session un-completes it: completion is only ever derived.
+	// Done toggles on and off by hand and survives deleting the session.
+	if got, err := d.PatchDayItem(ctx, ev2.ID, fields(t, `{"done":true}`)); err != nil || !got.Done {
+		t.Fatalf("done on: %+v %v", got, err)
+	}
 	if err := d.DeleteSession(ctx, saved.ID); err != nil {
 		t.Fatal(err)
 	}
-	if got, _ := d.GetDayItem(ctx, ev2.ID); got.Done {
-		t.Error("event stayed done after its session was deleted")
+	if got, _ := d.GetDayItem(ctx, ev2.ID); !got.Done || got.SessionCount != 0 {
+		t.Errorf("done after the session was deleted: %+v", got)
+	}
+	if got, err := d.PatchDayItem(ctx, ev2.ID, fields(t, `{"done":false}`)); err != nil || got.Done || got.DoneAt != nil {
+		t.Errorf("done off: %+v %v", got, err)
 	}
 	if _, err := d.CreateSession(ctx, fields(t, `{"day_item_id":9999,"hours":1,"logged_for":"2026-11-16","energy_type_id":1}`)); err == nil {
 		t.Error("a session for a missing plan item was accepted")

@@ -81,8 +81,16 @@ func (d *DB) BringForward(ctx context.Context, day string, taskIDs []int64) (*Da
 		if err != nil {
 			return nil, err
 		}
-		if _, err := tx.ExecContext(ctx, `INSERT INTO day_item (day, kind, task_id, position, created_at, updated_at) VALUES (?, 'task', ?, ?, ?, ?)`,
-			day, id, pos, now, now); err != nil {
+		// The line's own name comes along if the most recent earlier line had one;
+		// planned minutes start empty (a new day, a new plan).
+		var title sql.NullString
+		err = tx.QueryRowContext(ctx, `SELECT NULLIF(title, '') FROM day_item WHERE task_id = ? AND day < ? AND deleted_at IS NULL
+			ORDER BY day DESC, id DESC LIMIT 1`, id, day).Scan(&title)
+		if err != nil && err != sql.ErrNoRows {
+			return nil, err
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT INTO day_item (day, kind, task_id, title, position, created_at, updated_at) VALUES (?, 'task', ?, ?, ?, ?, ?)`,
+			day, id, title, pos, now, now); err != nil {
 			return nil, err
 		}
 	}

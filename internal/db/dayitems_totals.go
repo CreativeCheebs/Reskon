@@ -6,14 +6,14 @@ import (
 )
 
 // PlanTotals is the planner's one-line summary of a day, all worked out on
-// read. Planned time is the sum of the full whole-task estimates of the
-// planned tasks plus the minutes reserved by events; it is compared with
+// read. Planned time is the sum of the minutes planned on each line (tasks and
+// events, set by hand for that day); it is compared with
 // the day's available time. These are minutes of time, not energy types:
 // nothing here nets one kind of effort against another.
 type PlanTotals struct {
 	PlannedMin  int64 `json:"planned_min"`
 	LoggedMin   int64 `json:"logged_min"`  // everything logged for the day, planned or not
-	Unestimated int   `json:"unestimated"` // planned tasks with no estimate (they add 0 to planned_min)
+	Unestimated int   `json:"unestimated"` // lines with no planned time set (they add 0 to planned_min)
 	// AvailableMin is the day's override, else its weekday's value; nil when
 	// neither is set, and then Over is never true. AvailableFrom says which.
 	AvailableMin  *int64  `json:"available_min"`
@@ -31,7 +31,7 @@ func (d *DB) planTotals(ctx context.Context, day string, items []*DayItem, overr
 	for _, it := range items {
 		if it.PlannedMin != nil {
 			t.PlannedMin += *it.PlannedMin
-		} else if it.Kind == "task" {
+		} else {
 			t.Unestimated++
 		}
 	}

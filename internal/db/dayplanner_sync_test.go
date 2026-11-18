@@ -6,7 +6,6 @@ import (
 	"io/fs"
 	"path/filepath"
 	"sort"
-	"strings"
 	"testing"
 	"testing/fstest"
 )
@@ -22,7 +21,7 @@ func TestMigration023UpgradeKeepsData(t *testing.T) {
 	}
 	var names []string
 	for _, e := range entries {
-		if !strings.HasPrefix(e.Name(), "023_") {
+		if e.Name() < "023_" {
 			names = append(names, e.Name())
 		}
 	}

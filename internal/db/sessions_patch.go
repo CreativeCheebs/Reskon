@@ -61,8 +61,31 @@ func (d *DB) PatchSession(ctx context.Context, id int64, f Fields) (*Session, er
 	if raw, ok := f["day_item_id"]; ok && !isNull(raw) {
 		var item int64
 		_ = json.Unmarshal(raw, &item) // decode above already accepted it as an integer
-		if checkLive(ctx, tx, "day_item", item) != nil {
+		var kind string
+		var itemTask sql.NullInt64
+		err := tx.QueryRowContext(ctx, `SELECT kind, task_id FROM day_item WHERE id = ? AND deleted_at IS NULL`, item).Scan(&kind, &itemTask)
+		if err == sql.ErrNoRows {
 			return nil, invalid("plan item %d does not exist", item)
+		}
+		if err != nil {
+			return nil, err
+		}
+		if kind == "task" {
+			// The line must belong to the session's task (after the patch); with
+			// no task yet, the line's task is filled in.
+			merged := cur.TaskID
+			if sent, ok, _ := f.int64Field("task_id"); ok {
+				merged = &sent
+			} else if raw, has := f["task_id"]; has && isNull(raw) {
+				merged = nil
+			}
+			if merged != nil && *merged != itemTask.Int64 {
+				return nil, invalid("plan item %d is for task %d, not task %d", item, itemTask.Int64, *merged)
+			}
+			if merged == nil {
+				f["task_id"], _ = json.Marshal(itemTask.Int64)
+				cols, vals = append(cols, "task_id"), append(vals, itemTask.Int64)
+			}
 		}
 	}
 	if hasCustom {
