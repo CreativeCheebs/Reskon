@@ -115,13 +115,13 @@ fun TaskDatesScreen() {
 fun SnoozeSettingsScreen() {
     val boot = App.boot ?: return
     val scope = rememberCoroutineScope()
-    var max by remember { mutableStateOf((boot.settings.optJSONObject("snooze")?.optInt("max_days", 30) ?: 30).toString()) }
+    var max by remember { mutableStateOf(snoozeMaxDays(boot.settings).toString()) }
     SettingPage("Snooze") {
         TextBox("Longest snooze (days)", max, keyboard = KeyboardType.Number) { max = it.filter(Char::isDigit).take(3) }
         T("From 1 to 365 days. ${Terms.capTasks} already snoozed keep their date.", Palette.subtle, 13.sp)
         TextLink("Save") {
             val v = max.toIntOrNull()?.coerceIn(1, 365) ?: return@TextLink
-            scope.launch { attempt("Not saved") { saveSetting("snooze", jsonOf("max_days" to v)); App.say("Saved") } }
+            scope.launch { attempt("Not saved") { saveSetting("snooze", JSONObject(boot.settings.optJSONObject("snooze")?.toString() ?: "{}").put("max_days", v)); App.say("Saved") } }
         }
     }
 }

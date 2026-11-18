@@ -159,6 +159,7 @@ object Icons {
     const val select = "M4 4h16v16H4zM8 12l3 3 5-6"
     const val filters = "M4 7h10M18 7h2M4 17h2M10 17h10M14 5v4M6 15v4"
     const val snooze = "M12 7v5l3 2M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0"
+    const val calendar = "M4 6h16v14H4zM4 10h16M8 3v4M16 3v4"
     const val dots = "M12 5h.01M12 12h.01M12 19h.01"
     const val sync = "M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3M18 3v4h-4M6 21v-4h4"
     const val download = "M12 4v11M7 10l5 5 5-5M5 20h14"
@@ -304,17 +305,27 @@ fun BottomAction(label: String, enabled: Boolean = true, secondary: String? = nu
 
 /** Label over a value, in a tappable box (the mockups' field buttons). */
 @Composable
-fun FieldBox(label: String, value: String, modifier: Modifier = Modifier, dot: Color? = null, bg: Color = Palette.panel, height: Int = 60, onClick: (() -> Unit)? = null) {
+fun FieldBox(
+    label: String, value: String, modifier: Modifier = Modifier, dot: Color? = null, bg: Color = Palette.panel, height: Int = 60,
+    /** Colour of the value (the grey of a placeholder when nothing is chosen). */
+    valueColor: Color = Palette.fg,
+    /** The outline: accent when the field holds a choice. */
+    borderColor: Color = Palette.border,
+    /** A small control at the right end of the value line (a clear button). */
+    trailing: (@Composable () -> Unit)? = null,
+    onClick: (() -> Unit)? = null,
+) {
     val shape = RoundedCornerShape(14.dp)
     Column(
-        modifier.heightIn(min = height.dp).clip(shape).background(bg).border(1.dp, Palette.border, shape)
+        modifier.heightIn(min = height.dp).clip(shape).background(bg).border(1.dp, borderColor, shape)
             .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier).padding(horizontal = 14.dp),
         verticalArrangement = Arrangement.Center,
     ) {
         T(label, Palette.muted, 12.sp)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             dot?.let { Dot(it) }
-            T(value, Palette.fg, 15.sp, FontWeight.Medium, oneLine = true)
+            T(value, valueColor, 15.sp, FontWeight.Medium, oneLine = true, modifier = Modifier.weight(1f))
+            trailing?.invoke()
         }
     }
 }

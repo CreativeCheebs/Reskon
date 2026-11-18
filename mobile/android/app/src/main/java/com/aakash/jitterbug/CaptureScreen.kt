@@ -251,7 +251,7 @@ private fun EntryCard(e: Entry, onRemove: () -> Unit, onEdit: () -> Unit, onSwit
             )
             fields.chunked(2).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(end = 8.dp)) {
-                    row.forEach { (l, v, dot) -> FieldBox(l, v, Modifier.weight(1f), dot, Palette.bg, 52, onEdit) }
+                    row.forEach { (l, v, dot) -> FieldBox(l, v, Modifier.weight(1f), dot, Palette.bg, 52, onClick = onEdit) }
                     if (row.size == 1) Box(Modifier.weight(1f))
                 }
             }
