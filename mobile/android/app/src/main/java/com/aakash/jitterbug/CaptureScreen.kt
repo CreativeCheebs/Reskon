@@ -81,9 +81,16 @@ fun CaptureScreen(r: Route) {
     }
 
     LaunchedEffect(text) {
-        if (!suggestionsWanted(text) || picked?.text == text.trim()) { suggestions = emptyList(); return@LaunchedEffect }
+        if (!suggestionsWanted(text) || picked?.text?.trim() == text.trim()) { suggestions = emptyList(); return@LaunchedEffect }
         delay(150)
-        suggestions = runCatching { parseSuggestions(Api.arr("/capture/suggest?q=" + java.net.URLEncoder.encode(text.trim(), "UTF-8"))) }.getOrDefault(emptyList())
+        // A lookup cancelled by the next keystroke is left alone, so the list does not blink empty while typing.
+        suggestions = try {
+            parseSuggestions(Api.arr("/capture/suggest?q=" + java.net.URLEncoder.encode(text.trim(), "UTF-8")))
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            emptyList()
+        }
     }
 
     // Read the line a moment after typing stops.

@@ -81,11 +81,16 @@ func (d *DB) CaptureSuggest(ctx context.Context, q string) ([]CaptureSuggestion,
 		}
 	}
 
+	// Each source keeps its best candidates before ranking: lines that start with
+	// what was typed first (and open tasks before closed ones), then the newest,
+	// so a cap on many loose matches never drops a line that begins with it.
+
 	// 1. Task titles.
 	cond, args := match("t.title")
 	err := scanInto(ctx, d, `SELECT t.id, t.title, t.updated_at, c.behaviour IN ('done','cancelled')
 		FROM task t JOIN status s ON s.id = t.status_id JOIN status_category c ON c.id = s.category_id
-		WHERE t.deleted_at IS NULL AND `+cond+` ORDER BY t.updated_at DESC LIMIT ?`, func(r *sql.Rows) error {
+		WHERE t.deleted_at IS NULL AND `+cond+`
+		ORDER BY instr(lower(t.title), ?) = 1 DESC, c.behaviour IN ('done','cancelled'), t.updated_at DESC LIMIT ?`, func(r *sql.Rows) error {
 		var id int64
 		var title, at string
 		var closed bool
@@ -94,7 +99,7 @@ func (d *DB) CaptureSuggest(ctx context.Context, q string) ([]CaptureSuggestion,
 		}
 		add(suggestCand{CaptureSuggestion: CaptureSuggestion{Text: title, Kind: "task", TaskID: &id}, closed: closed, recent: at})
 		return nil
-	}, append(args, suggestCandidates)...)
+	}, append(args, q, suggestCandidates)...)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +109,8 @@ func (d *DB) CaptureSuggest(ctx context.Context, q string) ([]CaptureSuggestion,
 	cond, args = match(raw)
 	err = scanInto(ctx, d, `SELECT `+raw+`, x.created_at, x.task_id IS NOT NULL AND t.deleted_at IS NULL, x.task_id
 		FROM session x LEFT JOIN task t ON t.id = x.task_id
-		WHERE x.deleted_at IS NULL AND json_type(x.custom, '$._capture.raw') = 'text' AND `+cond+` ORDER BY x.created_at DESC LIMIT ?`,
+		WHERE x.deleted_at IS NULL AND json_type(x.custom, '$._capture.raw') = 'text' AND `+cond+`
+		ORDER BY instr(lower(`+raw+`), ?) = 1 DESC, x.created_at DESC LIMIT ?`,
 		func(r *sql.Rows) error {
 			var text, at string
 			var linked bool
@@ -118,12 +124,13 @@ func (d *DB) CaptureSuggest(ctx context.Context, q string) ([]CaptureSuggestion,
 			}
 			add(c)
 			return nil
-		}, append(args, suggestCandidates)...)
+		}, append(args, q, suggestCandidates)...)
 	if err != nil {
 		return nil, err
 	}
 	err = scanInto(ctx, d, `SELECT `+raw+`, x.created_at FROM task x
-		WHERE x.deleted_at IS NULL AND json_type(x.custom, '$._capture.raw') = 'text' AND `+cond+` ORDER BY x.created_at DESC LIMIT ?`,
+		WHERE x.deleted_at IS NULL AND json_type(x.custom, '$._capture.raw') = 'text' AND `+cond+`
+		ORDER BY instr(lower(`+raw+`), ?) = 1 DESC, x.created_at DESC LIMIT ?`,
 		func(r *sql.Rows) error {
 			var text, at string
 			if err := r.Scan(&text, &at); err != nil {
@@ -131,7 +138,7 @@ func (d *DB) CaptureSuggest(ctx context.Context, q string) ([]CaptureSuggestion,
 			}
 			add(suggestCand{CaptureSuggestion: CaptureSuggestion{Text: text, Kind: "history"}, recent: at})
 			return nil
-		}, append(args, suggestCandidates)...)
+		}, append(args, q, suggestCandidates)...)
 	if err != nil {
 		return nil, err
 	}

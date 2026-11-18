@@ -20,6 +20,6 @@ fun suggestionsWanted(text: String) = text.trim().length >= 2
  * task the suggestion named, so picking "Order NVR drive" does not log time against a duplicate.
  */
 fun linkPickedTask(picked: Suggestion?, text: String, entryCount: Int, d: Draft): Draft =
-    if (picked?.taskId != null && picked.text == text.trim() && entryCount == 1 && d.taskId == null && d.kind == "task")
+    if (picked?.taskId != null && picked.text.trim() == text.trim() && entryCount == 1 && d.taskId == null && d.kind == "task")
         d.copy(taskId = picked.taskId, taskTitle = picked.text, label = "")
     else d
