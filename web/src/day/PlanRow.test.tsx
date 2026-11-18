@@ -9,7 +9,7 @@ vi.mock("../store", () => ({ useApp: () => ({ boot: { areas: [{ id: 1, name: "Wo
 
 const item = (p: Partial<DayItem>): DayItem => ({
   id: 1, day: "2026-11-18", kind: "task", task_id: 5, title: "Write outline", area_id: 1, position: 1, planned_min: null, task_title: "Write outline", renamed: false,
-  estimate_h: 3, logged_h: 0.75, logged_day_h: 0.25, status_id: 2, status_behaviour: "todo", done: false, session_count: 0, created_at: "", updated_at: "", ...p,
+  estimate_h: 3, logged_h: 0.75, logged_day_h: 0.25, status_id: 2, status_behaviour: "todo", done: false, task_done: false, logged_line_min: 0, reserved_min: 0, session_count: 0, created_at: "", updated_at: "", ...p,
 });
 const actions = (p: Partial<RowActions> = {}): RowActions => ({ onLog: vi.fn(), onReschedule: vi.fn(), onEdit: vi.fn(), onRemove: vi.fn(), onStep: vi.fn(), onDropBefore: vi.fn(), ...p });
 
@@ -35,7 +35,22 @@ describe("PlanRow", () => {
   it("shows an event's reserved minutes and a done task as done", () => {
     render(<ul><PlanRow item={item({ kind: "event", task_id: null, planned_min: 30, title: "Meeting", done: false })} first last actions={actions()} /><PlanRow item={item({ id: 2, done: true })} first last actions={actions()} /></ul>);
     expect(screen.getByText("30m reserved")).toBeInTheDocument();
-    expect(screen.getByLabelText("Done")).toBeInTheDocument();
+    expect(screen.getAllByRole("checkbox")[1]).toBeChecked();
+  });
+  it("a task checkbox ticks the line; a done task shows checked and cannot be unticked here", async () => {
+    const toggle = vi.fn();
+    const { rerender } = render(<ul><PlanRow item={item({})} first last actions={actions({ onToggleDone: toggle })} /></ul>);
+    await userEvent.click(screen.getByRole("checkbox", { name: "Mark done: Write outline" }));
+    expect(toggle).toHaveBeenCalled();
+    rerender(<ul><PlanRow item={item({ done: true, task_done: true })} first last actions={actions({ onToggleDone: toggle })} /></ul>);
+    const box = screen.getByRole("checkbox", { name: "Task done: Write outline" });
+    expect(box).toBeChecked();
+    expect(box).toBeDisabled();
+  });
+  it("tasks and events have different icons", () => {
+    render(<ul><PlanRow item={item({})} first last actions={actions()} /><PlanRow item={item({ id: 2, kind: "event", task_id: null, title: "Meeting" })} first last actions={actions()} /></ul>);
+    expect(screen.getByLabelText("Task")).toBeInTheDocument();
+    expect(screen.getByLabelText("Event")).toBeInTheDocument();
   });
   it("logs from the Log button", async () => {
     const a = actions();
@@ -46,14 +61,21 @@ describe("PlanRow", () => {
 });
 
 describe("Totals", () => {
-  const t = (p: Partial<PlanTotals>): PlanTotals => ({ planned_min: 300, logged_min: 60, unestimated: 0, available_min: null, available_from: null, over: false, ...p });
+  const t = (p: Partial<PlanTotals>): PlanTotals => ({ planned_min: 300, logged_min: 60, unestimated: 0, available_min: null, available_from: null, over: false, reserved_min: 0, unplanned_logged_min: 0, free_min: null, ...p });
   it("does not warn when available time is not set", () => {
-    render(<Totals totals={t({})} />);
+    render(<Totals totals={t({})} day="2026-11-18" />);
     expect(screen.getByText("Available time not set")).toBeInTheDocument();
     expect(screen.queryByRole("status")).toBeNull();
   });
   it("warns when over", () => {
-    render(<Totals totals={t({ available_min: 240, available_from: "day", over: true })} />);
-    expect(screen.getByRole("status")).toHaveTextContent(/more than available/);
+    render(<Totals totals={t({ available_min: 240, available_from: "day", over: true, free_min: -60 })} day="2026-11-18" />);
+    expect(screen.getByRole("status")).toHaveTextContent("1h over");
+  });
+  it("shows free time from the server, and only says today on today", () => {
+    render(<Totals totals={t({ available_min: 480, available_from: "day", free_min: 240 })} day="2026-11-18" />);
+    expect(screen.getByText("4h")).toBeInTheDocument();
+    expect(screen.getByText("free of 8h")).toBeInTheDocument();
+    expect(screen.getByText("Planned")).toBeInTheDocument();
+    expect(screen.getByText("Logged")).toBeInTheDocument();
   });
 });

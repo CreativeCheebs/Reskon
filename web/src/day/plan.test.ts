@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { availableText, clock, elapsedNow, loggedOfEstimate, minutesText, parseAvailable, parseMinutes, readAvailable, reorderIds, dayFigure, addLineBody, editLineBody, stepIds, unestimatedText } from "./plan";
 import type { PlanTotals } from "./types";
 
-const totals = (p: Partial<PlanTotals>): PlanTotals => ({ planned_min: 0, logged_min: 0, unestimated: 0, available_min: null, available_from: null, over: false, ...p });
+const totals = (p: Partial<PlanTotals>): PlanTotals => ({ planned_min: 0, logged_min: 0, unestimated: 0, available_min: null, available_from: null, over: false, reserved_min: 0, unplanned_logged_min: 0, free_min: null, ...p });
 
 describe("planner wording", () => {
   it("words minutes", () => {
@@ -31,6 +31,12 @@ describe("planner wording", () => {
     expect(f(120, 1)).toBe("1h of 2h today");
     expect(f(null, 0.5)).toBe("30m today");
     expect(f(null, 0)).toBe("not planned");
+  });
+  it("a ticked line says what was logged, against what was planned", () => {
+    const f = (planned_min: number | null) => dayFigure({ kind: "task", planned_min, logged_day_h: 1, logged_line_min: 60, done: true });
+    expect(f(180)).toBe("1h of 3h · done");
+    expect(f(null)).toBe("1h · done");
+    expect(dayFigure({ kind: "event", planned_min: 30, logged_day_h: 0, done: true })).toBe("30m reserved · done");
   });
   it("builds the add and edit bodies", () => {
     expect(addLineBody(5, "Outline", "2h", "Outline")).toEqual({ task_id: 5, planned_min: 120 });

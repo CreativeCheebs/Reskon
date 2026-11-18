@@ -69,7 +69,7 @@ export function PlanList({
             Add to plan
           </WriteButton>
         </div>
-        <Totals totals={data.plan_totals} />
+        <Totals totals={data.plan_totals} day={day} />
       </header>
 
       <ul aria-label="Planned tasks and events" style={{ margin: "14px 0 0", padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>

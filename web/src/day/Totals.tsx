@@ -1,26 +1,38 @@
-import { Tag } from "antd";
-import { WarningOutlined } from "@ant-design/icons";
 import { palette } from "../theme/palette";
+import { today } from "../format";
 import { availableText, minutesText, unestimatedText } from "./plan";
 import type { PlanTotals } from "./types";
 
 /**
- * The day's own totals, all from the server. These are for this day only; a
- * task row shows that task's all-time figures and says so.
+ * The day's own totals, all from the server (free time included, with no sums
+ * here). These are for this day only; a task row shows that task's all-time
+ * figures. "today" is only said on today.
  */
-export function Totals({ totals }: { totals: PlanTotals }) {
+export function Totals({ totals, day }: { totals: PlanTotals; day: string }) {
   const unest = unestimatedText(totals.unestimated);
+  const when = day === today() ? " today" : "";
+  const free = totals.free_min;
   return (
     <div>
-      <dl style={{ display: "flex", flexWrap: "wrap", gap: "4px 24px", margin: "8px 0 0" }} aria-label="Totals for this day">
-        <Stat label="Planned today" value={minutesText(totals.planned_min)} />
-        <Stat label="Logged today" value={minutesText(totals.logged_min)} />
-        <Stat label="Available" value={totals.available_min === null ? "not set" : minutesText(totals.available_min)} />
-        {totals.over && (
-          <Tag color="warning" icon={<WarningOutlined />} style={{ alignSelf: "center", marginInlineEnd: 0 }} role="status">
-            Planned is more than available
-          </Tag>
-        )}
+      <dl style={{ display: "flex", flexWrap: "wrap", gap: "4px 28px", margin: "8px 0 0" }} aria-label="Totals for this day">
+        <div>
+          <dt style={labelStyle}>Available</dt>
+          {totals.available_min === null || free === null ? (
+            <dd style={{ ...valueStyle, color: palette.muted }}>not set</dd>
+          ) : free < 0 ? (
+            <dd style={{ ...valueStyle, fontSize: 22, color: palette.warn }} role="status">
+              {minutesText(-free)} over
+              <span style={subStyle}>of {minutesText(totals.available_min)} available</span>
+            </dd>
+          ) : (
+            <dd style={{ ...valueStyle, fontSize: 22 }}>
+              {minutesText(free)}
+              <span style={subStyle}>free of {minutesText(totals.available_min)}</span>
+            </dd>
+          )}
+        </div>
+        <Stat label={`Planned${when}`} value={minutesText(totals.planned_min)} />
+        <Stat label={`Logged${when}`} value={minutesText(totals.logged_min)} />
       </dl>
       <div style={{ color: palette.muted, fontSize: 12, marginTop: 4 }}>
         {availableText(totals)}
@@ -30,11 +42,15 @@ export function Totals({ totals }: { totals: PlanTotals }) {
   );
 }
 
+const labelStyle = { color: palette.subtle, fontSize: 11, textTransform: "uppercase", letterSpacing: 0.6 } as const;
+const valueStyle = { margin: 0, fontSize: 16, fontWeight: 600, fontVariantNumeric: "tabular-nums" } as const;
+const subStyle = { display: "block", color: palette.muted, fontSize: 12, fontWeight: 400 } as const;
+
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt style={{ color: palette.subtle, fontSize: 11, textTransform: "uppercase", letterSpacing: 0.6 }}>{label}</dt>
-      <dd style={{ margin: 0, fontSize: 16, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{value}</dd>
+      <dt style={labelStyle}>{label}</dt>
+      <dd style={valueStyle}>{value}</dd>
     </div>
   );
 }

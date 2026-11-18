@@ -1,5 +1,5 @@
-import { Button, Checkbox, Dropdown, Tag, type MenuProps } from "antd";
-import { CheckCircleFilled, ClockCircleOutlined, HolderOutlined, MoreOutlined, PlayCircleOutlined } from "@ant-design/icons";
+import { Button, Checkbox, Dropdown, Tooltip, type MenuProps } from "antd";
+import { CalendarOutlined, CheckSquareOutlined, ClockCircleOutlined, HolderOutlined, MoreOutlined, PlayCircleOutlined } from "@ant-design/icons";
 import { useApp } from "../store";
 import { palette } from "../theme/palette";
 import { dayFigure, loggedOfEstimate } from "./plan";
@@ -33,12 +33,13 @@ export function PlanRow({ item, first, last, actions }: { item: DayItem; first: 
   const { boot, online } = useApp();
   const area = boot.areas.find((a) => a.id === item.area_id);
   const isTask = item.kind === "task";
+  const taskDone = isTask && item.task_done;
 
   const menu: MenuProps["items"] = [
     { key: "log", label: "Log a session" },
     ...(actions.onStartTimer ? [{ key: "timer", label: actions.timing ? "Timer running" : "Start timer", disabled: actions.timing }] : []),
     { key: "edit", label: "Edit plan…" },
-    ...(!isTask && actions.onToggleDone ? [{ key: "done", label: item.done ? "Mark not done" : "Mark done" }] : []),
+    ...(actions.onToggleDone ? [{ key: "done", label: item.done ? "Mark not done" : "Mark done", disabled: taskDone }] : []),
     { key: "reschedule", label: "Reschedule…" },
     { key: "up", label: "Move up", disabled: first },
     { key: "down", label: "Move down", disabled: last },
@@ -99,14 +100,18 @@ export function PlanRow({ item, first, last, actions }: { item: DayItem; first: 
       <HolderOutlined aria-hidden style={{ color: palette.subtle, cursor: online ? "grab" : "default" }} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          {item.done && <CheckCircleFilled aria-label="Done" style={{ color: palette.success }} />}
-          {!isTask && (
+          <Tooltip title={taskDone ? "Task done" : item.done ? "Done for the day" : "Tick when it is done for the day"}>
             <Checkbox
               checked={item.done}
-              disabled={!online}
+              disabled={!online || taskDone}
               onChange={() => actions.onToggleDone?.(item)}
-              aria-label={`${item.done ? "Mark not done" : "Mark done"}: ${item.title}`}
+              aria-label={taskDone ? `Task done: ${item.title}` : `${item.done ? "Mark not done" : "Mark done"}: ${item.title}`}
             />
+          </Tooltip>
+          {isTask ? (
+            <CheckSquareOutlined aria-label="Task" style={{ color: palette.accent }} />
+          ) : (
+            <CalendarOutlined aria-label="Event" style={{ color: palette.warn }} />
           )}
           {isTask && item.task_id && actions.onOpenTask ? (
             <Button
@@ -120,7 +125,6 @@ export function PlanRow({ item, first, last, actions }: { item: DayItem; first: 
           ) : (
             <span style={{ fontWeight: 600, textDecoration: item.done ? "line-through" : undefined, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.title}</span>
           )}
-          {!isTask && <Tag style={{ marginInlineEnd: 0 }}>Event</Tag>}
         </div>
         <div style={{ color: palette.muted, fontSize: 12 }}>
           {isTask && item.renamed && item.task_title && `Part of: ${item.task_title} · `}
