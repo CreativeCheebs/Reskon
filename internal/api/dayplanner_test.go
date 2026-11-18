@@ -113,8 +113,8 @@ func TestDayPlannerOverHTTP(t *testing.T) {
 	if code := alice.do("PATCH", fmt.Sprintf("/api/day-items/%d", ev.ID), m{"done": true}, nil); code != 200 {
 		t.Errorf("mark done = %d", code)
 	}
-	if code := alice.do("PATCH", fmt.Sprintf("/api/day-items/%d", item.ID), m{"done": true}, nil); code != 400 {
-		t.Errorf("done on a task line = %d, want 400", code)
+	if code := alice.do("PATCH", fmt.Sprintf("/api/day-items/%d", item.ID), m{"done": true}, nil); code != 200 {
+		t.Errorf("tick a task line = %d, want 200", code)
 	}
 	alice.do("GET", "/api/day/2026-11-16", nil, &after)
 	for _, it := range after.Items {

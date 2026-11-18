@@ -43,11 +43,21 @@ type DayItem struct {
 	// Done: a task whose status is done or cancelled (it stays on the list, shown
 	// done), or an event the user marked done (DoneAt). Events: LoggedH is the
 	// hours of the linked sessions and SessionCount their number.
+	// A line can also be ticked done for its day (DoneAt, events and task lines): that
+	// does not touch the task's status. TaskDone is the task's own status (done or
+	// cancelled; false for an event), so a client can tell the two apart.
 	Done         bool    `json:"done"`
-	DoneAt       *string `json:"done_at"` // events only
+	DoneAt       *string `json:"done_at"`
+	TaskDone     bool    `json:"task_done"`
 	SessionCount int     `json:"session_count"`
-	CreatedAt    string  `json:"created_at"`
-	UpdatedAt    string  `json:"updated_at"`
+	// LoggedLineMin is the minutes logged on this line's day for it: for a task line
+	// all that task's sessions that day, for an event the sessions linked to it that
+	// day. ReservedMin is what the line takes from the day's available time: once
+	// done, what was logged; before, the larger of the planned and the logged minutes.
+	LoggedLineMin int64  `json:"logged_line_min"`
+	ReservedMin   int64  `json:"reserved_min"`
+	CreatedAt     string `json:"created_at"`
+	UpdatedAt     string `json:"updated_at"`
 }
 
 const dayItemSelect = `SELECT i.id, i.day, i.kind, i.task_id, COALESCE(NULLIF(i.title, ''), t.title, ''), t.title, COALESCE(i.title, '') != '',
@@ -56,6 +66,7 @@ const dayItemSelect = `SELECT i.id, i.day, i.kind, i.task_id, COALESCE(NULLIF(i.
 	COALESCE((SELECT SUM(hours) FROM session WHERE deleted_at IS NULL AND task_id = i.task_id AND logged_for = i.day), 0),
 	COALESCE((SELECT SUM(hours) FROM session WHERE deleted_at IS NULL AND day_item_id = i.id), 0),
 	(SELECT COUNT(*) FROM session WHERE deleted_at IS NULL AND day_item_id = i.id),
+	COALESCE((SELECT SUM(hours) FROM session WHERE deleted_at IS NULL AND day_item_id = i.id AND logged_for = i.day), 0),
 	i.created_at, i.updated_at, i.done_at
 	FROM day_item i
 	LEFT JOIN task t ON t.id = i.task_id AND t.deleted_at IS NULL
@@ -66,9 +77,9 @@ const dayItemSelect = `SELECT i.id, i.day, i.kind, i.task_id, COALESCE(NULLIF(i.
 func scanDayItem(r *sql.Rows) (*DayItem, error) {
 	var it DayItem
 	var planned sql.NullInt64
-	var evH float64
+	var evH, evDayH float64
 	err := r.Scan(&it.ID, &it.Day, &it.Kind, &it.TaskID, &it.Title, &it.TaskTitle, &it.Renamed, &it.AreaID, &it.Position, &planned,
-		&it.EstimateH, &it.StatusID, &it.StatusBehaviour, &it.LoggedH, &it.LoggedDayH, &evH, &it.SessionCount,
+		&it.EstimateH, &it.StatusID, &it.StatusBehaviour, &it.LoggedH, &it.LoggedDayH, &evH, &it.SessionCount, &evDayH,
 		&it.CreatedAt, &it.UpdatedAt, &it.DoneAt)
 	if err != nil {
 		return nil, err
@@ -80,12 +91,17 @@ func scanDayItem(r *sql.Rows) (*DayItem, error) {
 		it.LoggedH = evH
 		it.LoggedDayH = 0
 		it.Renamed = false
-		it.Done = it.DoneAt != nil
-		return &it, nil
+		it.LoggedLineMin = minutesOf(evDayH)
+	} else {
+		if b := it.StatusBehaviour; b != nil {
+			it.TaskDone = *b == "done" || *b == "cancelled"
+		}
+		it.LoggedLineMin = minutesOf(it.LoggedDayH)
 	}
-	it.DoneAt = nil
-	if b := it.StatusBehaviour; b != nil {
-		it.Done = *b == "done" || *b == "cancelled"
+	it.Done = it.DoneAt != nil || it.TaskDone
+	it.ReservedMin = it.LoggedLineMin
+	if !it.Done && it.PlannedMin != nil && *it.PlannedMin > it.ReservedMin {
+		it.ReservedMin = *it.PlannedMin
 	}
 	return &it, nil
 }
@@ -336,9 +352,7 @@ func (d *DB) PatchDayItem(ctx context.Context, id int64, f Fields) (*DayItem, er
 			}
 			sets[k] = area
 		case "done":
-			if cur.Kind != "event" {
-				return nil, invalid("done can only be set on an event; a task line is done when its task is")
-			}
+			// Ticking a line done for the day never changes the task's status.
 			var done bool
 			if json.Unmarshal(raw, &done) != nil {
 				return nil, invalid("done must be true or false")

@@ -18,7 +18,15 @@ type PlanTotals struct {
 	// neither is set, and then Over is never true. AvailableFrom says which.
 	AvailableMin  *int64  `json:"available_min"`
 	AvailableFrom *string `json:"available_from"` // "day", "weekday" or nil
-	Over          bool    `json:"over"`           // planned_min is more than available_min
+	// ReservedMin is the sum of the lines' reserved_min; UnplannedLoggedMin the
+	// minutes logged that day that no line counts (not for a planned task, not
+	// linked to a planned event). FreeMin is the time still free:
+	// available - reserved - unplanned logged (nil without an available time; it may
+	// be negative). Over means FreeMin is below zero.
+	ReservedMin        int64  `json:"reserved_min"`
+	UnplannedLoggedMin int64  `json:"unplanned_logged_min"`
+	FreeMin            *int64 `json:"free_min"`
+	Over               bool   `json:"over"`
 }
 
 // minutesOf turns hours to whole minutes.
@@ -34,7 +42,13 @@ func (d *DB) planTotals(ctx context.Context, day string, items []*DayItem, overr
 		} else {
 			t.Unestimated++
 		}
+		t.ReservedMin += it.ReservedMin
 	}
+	unplanned, err := d.unplannedLogged(ctx, day, day, items)
+	if err != nil {
+		return t, err
+	}
+	t.UnplannedLoggedMin = minutesOf(unplanned[day])
 	var h float64
 	if err := d.QueryRowContext(ctx, `SELECT COALESCE(SUM(hours), 0) FROM session WHERE deleted_at IS NULL AND logged_for = ?`, day).Scan(&h); err != nil {
 		return t, err

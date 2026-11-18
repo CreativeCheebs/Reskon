@@ -105,9 +105,9 @@ func TestSessionFromATaskLine(t *testing.T) {
 	if got, err := d.PatchSession(ctx, free.ID, fields(t, fmt.Sprintf(`{"day_item_id":%d}`, line.ID))); err != nil || got.TaskID == nil || *got.TaskID != tk.ID {
 		t.Errorf("a loose session patched onto a line: %+v %v", got, err)
 	}
-	// Task lines cannot be marked done by hand.
-	if _, err := d.PatchDayItem(ctx, line.ID, fields(t, `{"done":true}`)); !isInvalid(err) {
-		t.Errorf("done on a task line: %v", err)
+	// A task line can be ticked done for its day without touching the task.
+	if got, err := d.PatchDayItem(ctx, line.ID, fields(t, `{"done":true}`)); err != nil || !got.Done || got.TaskDone {
+		t.Errorf("tick a task line: %+v %v", got, err)
 	}
 }
 

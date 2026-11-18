@@ -70,7 +70,11 @@ func availableOn(day string, override *int64, weekly [7]*int64) (*int64, *string
 
 func (t *PlanTotals) setAvailable(day string, override *int64, weekly [7]*int64) {
 	t.AvailableMin, t.AvailableFrom = availableOn(day, override, weekly)
-	t.Over = t.AvailableMin != nil && t.PlannedMin > *t.AvailableMin
+	t.FreeMin, t.Over = nil, false
+	if t.AvailableMin != nil {
+		free := *t.AvailableMin - t.ReservedMin - t.UnplannedLoggedMin
+		t.FreeMin, t.Over = &free, free < 0
+	}
 }
 
 // DaySummary is one day of the calendar view: what is planned against what
@@ -81,8 +85,10 @@ type DaySummary struct {
 	DoneItems     int     `json:"done_items"`
 	PlannedMin    int64   `json:"planned_min"`
 	LoggedMin     int64   `json:"logged_min"`
+	ReservedMin   int64   `json:"reserved_min"`
 	AvailableMin  *int64  `json:"available_min"`
 	AvailableFrom *string `json:"available_from"`
+	FreeMin       *int64  `json:"free_min"`
 	Over          bool    `json:"over"`
 }
 
@@ -123,6 +129,10 @@ func (d *DB) DaySummaries(ctx context.Context, from, to string) ([]DaySummary, e
 		}, from, to); err != nil {
 		return nil, err
 	}
+	unplanned, err := d.unplannedLogged(ctx, from, to, items)
+	if err != nil {
+		return nil, err
+	}
 	weekly := d.weekdayAvailable(ctx)
 	out := []DaySummary{}
 	for day := from; day <= to; day = addDays(day, 1) {
@@ -142,6 +152,7 @@ func (d *DB) DaySummaries(ctx context.Context, from, to string) ([]DaySummary, e
 		if it.PlannedMin != nil {
 			s.PlannedMin += *it.PlannedMin
 		}
+		s.ReservedMin += it.ReservedMin
 	}
 	for i := range out {
 		s := &out[i]
@@ -150,9 +161,9 @@ func (d *DB) DaySummaries(ctx context.Context, from, to string) ([]DaySummary, e
 		if m, ok := overrides[s.Day]; ok {
 			ov = &m
 		}
-		t := PlanTotals{PlannedMin: s.PlannedMin}
+		t := PlanTotals{PlannedMin: s.PlannedMin, ReservedMin: s.ReservedMin, UnplannedLoggedMin: minutesOf(unplanned[s.Day])}
 		t.setAvailable(s.Day, ov, weekly)
-		s.AvailableMin, s.AvailableFrom, s.Over = t.AvailableMin, t.AvailableFrom, t.Over
+		s.AvailableMin, s.AvailableFrom, s.FreeMin, s.Over = t.AvailableMin, t.AvailableFrom, t.FreeMin, t.Over
 	}
 	return out, nil
 }
