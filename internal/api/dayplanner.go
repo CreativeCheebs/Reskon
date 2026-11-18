@@ -13,6 +13,7 @@ func (s *Server) dayPlannerRoutes() {
 	m.HandleFunc("PUT /api/day/{date}/order", s.orderDay)
 	m.HandleFunc("GET /api/day/{date}/bring-forward", s.bringForwardCandidates)
 	m.HandleFunc("POST /api/day/{date}/bring-forward", s.bringForward)
+	m.HandleFunc("GET /api/days", s.daySummaries)
 	m.HandleFunc("PATCH /api/day-items/{id}", s.patchDayItem)
 	m.HandleFunc("DELETE /api/day-items/{id}", s.deleteDayItem)
 }
@@ -61,6 +62,14 @@ func (s *Server) orderDay(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	v, err := dbOf(r.Context()).OrderDay(r.Context(), r.PathValue("date"), body.IDs)
+	respond(w, v, err)
+}
+
+// daySummaries: GET /api/days?from=&to= (YYYY-MM-DD, at most 100 days): one
+// row per day with planned and available minutes, for the calendar.
+func (s *Server) daySummaries(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	v, err := dbOf(r.Context()).DaySummaries(r.Context(), q.Get("from"), q.Get("to"))
 	respond(w, v, err)
 }
 

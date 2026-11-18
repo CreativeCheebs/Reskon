@@ -96,6 +96,16 @@ func (d *DB) PatchDay(ctx context.Context, day string, f Fields) (*Day, error) {
 				return nil, err
 			}
 			sets["note"] = v
+		case "available_min":
+			if isNull(raw) {
+				sets["available_min"] = nil
+				break
+			}
+			var m int64
+			if json.Unmarshal(raw, &m) != nil || m < 0 || m > 1440 {
+				return nil, invalid("available_min must be 0 to 1440 minutes, or null to use the weekday's")
+			}
+			sets["available_min"] = m
 		case "ceiling_feedback":
 			var answers map[string]*string
 			if json.Unmarshal(raw, &answers) != nil {

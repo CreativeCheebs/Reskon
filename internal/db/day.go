@@ -28,6 +28,7 @@ type DayPlan struct {
 	Focus           json.RawMessage   `json:"focus"`
 	Ceilings        json.RawMessage   `json:"ceilings"`
 	Note            *string           `json:"note"`
+	AvailableMin    *int64            `json:"available_min"`    // this day's own override of its weekday's available time; nil = use the weekday's
 	CeilingFeedback map[string]string `json:"ceiling_feedback"` // energy type id -> about_right, too_high, too_low
 }
 
@@ -49,8 +50,8 @@ func (d *DB) GetDay(ctx context.Context, day string) (*Day, error) {
 	}
 	out := &Day{Day: day, Totals: []EnergyTotal{}, SubtypeTotals: []SubtypeTotal{}}
 	var focus, ceilings, feedback string
-	err := d.QueryRowContext(ctx, `SELECT focus, ceilings, note, ceiling_feedbacks FROM day_plan WHERE day = ?`, day).
-		Scan(&focus, &ceilings, &out.Plan.Note, &feedback)
+	err := d.QueryRowContext(ctx, `SELECT focus, ceilings, note, ceiling_feedbacks, available_min FROM day_plan WHERE day = ?`, day).
+		Scan(&focus, &ceilings, &out.Plan.Note, &feedback, &out.Plan.AvailableMin)
 	switch {
 	case err == sql.ErrNoRows:
 		focus, ceilings, feedback = "[]", "{}", "{}"
@@ -99,7 +100,7 @@ func (d *DB) GetDay(ctx context.Context, day string) (*Day, error) {
 	if out.Items, err = d.dayItems(ctx, day, day); err != nil {
 		return nil, err
 	}
-	if out.PlanTotals, err = d.planTotals(ctx, day, out.Items); err != nil {
+	if out.PlanTotals, err = d.planTotals(ctx, day, out.Items, out.Plan.AvailableMin); err != nil {
 		return nil, err
 	}
 	if out.Sessions, err = d.ListSessions(ctx, SessionQuery{From: day, To: day}); err != nil {

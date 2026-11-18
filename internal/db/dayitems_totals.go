@@ -26,7 +26,7 @@ func minutesOf(h float64) int64 { return int64(math.Round(h * 60)) }
 
 // planTotals sums items (all of one day) and adds the day's logged time and
 // available time.
-func (d *DB) planTotals(ctx context.Context, day string, items []*DayItem) (PlanTotals, error) {
+func (d *DB) planTotals(ctx context.Context, day string, items []*DayItem, override *int64) (PlanTotals, error) {
 	var t PlanTotals
 	for _, it := range items {
 		if it.PlannedMin != nil {
@@ -40,5 +40,6 @@ func (d *DB) planTotals(ctx context.Context, day string, items []*DayItem) (Plan
 		return t, err
 	}
 	t.LoggedMin = minutesOf(h)
+	t.setAvailable(day, override, d.weekdayAvailable(ctx))
 	return t, nil
 }
