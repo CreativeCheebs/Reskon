@@ -37,9 +37,10 @@ export const Board = memo(function Board({ view, tasks, setTasks, refetch, onOpe
   const boardStatuses = useMemo(
     () =>
       boot.statuses
-        .filter((s) => s.on_board && (!filter.statuses || filter.statuses.includes(s.id)))
+        // "Status is not X" hides X's column; "Status is X" shows only those columns.
+        .filter((s) => s.on_board && (!filter.statuses || filter.statuses.includes(s.id) !== !!filter.not?.includes("statuses")))
         .sort((a, b) => a.position - b.position),
-    [boot.statuses, filter.statuses],
+    [boot.statuses, filter.statuses, filter.not],
   );
   const groups = useMemo(() => groupTasks(tasks, groupBy, boot, epics), [tasks, groupBy, boot, epics]);
 

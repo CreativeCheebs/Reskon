@@ -151,7 +151,7 @@ export function FilterSettings({ view, onClose }: { view: View; onClose: () => v
 /** How many filter constraints are active, for the button badge. */
 export function activeFilterCount(view: View): number {
   const f = filterOf(view);
-  return [f.types, f.epics, f.areas, f.statuses].filter((x) => x && x.length).length +
+  return [f.types, f.epics, f.areas, f.statuses, f.tags].filter((x) => x && x.length).length +
     (f.difficulty_min ? 1 : 0) +
     (f.open_only ? 1 : 0) +
     Object.keys(f.custom ?? {}).length;

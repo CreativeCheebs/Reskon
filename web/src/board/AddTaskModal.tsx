@@ -44,7 +44,9 @@ export function AddTaskModal({
   const { epics, refresh: refreshEpics } = useEpics();
   const { refreshIfNew } = useTags();
   const num = (k: string) => (typeof defaults[k] === "number" ? (defaults[k] as number) : null);
-  const viewAreas = filterOf(view).areas;
+  // A view's areas are a sensible default, unless the view leaves them out ("Area is not ...").
+  const viewFilter = filterOf(view);
+  const viewAreas = viewFilter.not?.includes("areas") ? undefined : viewFilter.areas;
 
   const [title, setTitle] = useState("");
   const [isEpic, setIsEpic] = useState(defaults.type === "epic");
@@ -148,6 +150,7 @@ export function AddTaskModal({
         <Form.Item style={{ marginBottom: 10 }}>
           <Segmented
             size="small"
+            aria-label="Type"
             value={isEpic ? "epic" : "task"}
             onChange={(v) => setIsEpic(v === "epic")}
             options={[

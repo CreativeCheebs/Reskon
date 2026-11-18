@@ -307,7 +307,10 @@ fun TaskScreen(r: Route) {
 fun NewTaskScreen(r: Route) {
     val boot = App.boot ?: return
     val view = boot.views.firstOrNull { it.id == r.long("view") }
-    val viewAreas = view?.raw?.optJSONObject("filter")?.optJSONArray("areas")?.let { a -> (0 until a.length()).map { a.getLong(it) } }
+    // A view's areas are the default, unless the view leaves them out ("Area is not ...").
+    val viewFilter = view?.raw?.optJSONObject("filter")
+    val areasExcluded = viewFilter?.optJSONArray("not")?.let { n -> (0 until n.length()).any { n.optString(it) == "areas" } } == true
+    val viewAreas = viewFilter?.optJSONArray("areas")?.takeIf { !areasExcluded }?.let { a -> (0 until a.length()).map { a.getLong(it) } }
     var title by remember { mutableStateOf("") }
     // A group's "+ Add" starts the task with that group's value (route: pre = the field, preid = its id).
     val pre = r.args["pre"]

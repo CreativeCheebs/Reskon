@@ -27,9 +27,11 @@ export function openColumns(
   boot: Pick<Bootstrap, "statuses" | "priorities">,
   behaviourOf: (statusId: number) => Behaviour | undefined,
 ): OpenColumn[] {
-  const allowed = filterOf(view as View).statuses;
+  const f = filterOf(view as View);
+  const allowed = f.statuses;
+  const negated = !!f.not?.includes("statuses");
   const statuses = boot.statuses
-    .filter((s) => s.on_board && (!allowed || allowed.includes(s.id)))
+    .filter((s) => s.on_board && (!allowed || allowed.includes(s.id) !== negated))
     .filter((s) => OPEN.includes(behaviourOf(s.id) as Behaviour))
     .sort((a, b) => a.position - b.position);
   // The same tasks the full board shows: snoozed ones are asleep, and
