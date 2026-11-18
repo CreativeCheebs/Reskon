@@ -66,12 +66,8 @@
               <div class="capacity-track" id="capacity-track" aria-hidden="true"><div id="capacity-bar"></div></div>
             </header>
             <div class="plan-body">
-              <div class="table-wrap">
-                <table>
-                  <thead><tr><th scope="col">Task</th><th scope="col">Estimate</th><th scope="col">Planned</th><th scope="col">Logged this day</th><th scope="col"><span class="sr-only">Remove</span></th></tr></thead>
-                  <tbody id="planned"></tbody>
-                </table>
-              </div>
+              <div class="list-heading" aria-hidden="true"><span>Task</span><span>Logged / Estimate</span></div>
+              <ul id="planned" class="planned-list" aria-label="Planned tasks"></ul>
               <div class="drop-target" id="drop-target">Drop a task here or add one from Available tasks</div>
             </div>
             <div class="notes">
@@ -94,7 +90,12 @@
         <div><label for="estimate">Whole task estimate (min)</label><input type="number" id="estimate" min="1" max="99999"></div>
         <div><label for="planned-time">Plan for this day (min)</label><input type="number" id="planned-time" min="1" max="1440"></div>
       </div>
-      <div class="dialog-actions"><button class="button outline" type="button" data-close>Cancel</button><button class="button primary">Add to plan</button></div>
+      <p class="muted" id="task-logged" hidden></p>
+      <div class="dialog-actions">
+        <button class="button subtle remove-task" type="button" id="remove-task" hidden>Remove from plan</button>
+        <button class="button outline" type="button" data-close>Cancel</button>
+        <button class="button primary">Add to plan</button>
+      </div>
     </form>
   </dialog>
   <dialog id="calendar-dialog" aria-labelledby="month">

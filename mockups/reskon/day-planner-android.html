@@ -29,20 +29,19 @@
         <button id="next" class="icon" type="button" aria-label="Next day"><svg><use href="#right"/></svg></button>
       </header>
       <div class="screen" id="screen">
-        <div class="section-title"><h1>Day planner</h1></div>
         <div class="totals" aria-label="Day totals">
           <div><span>Planned</span><strong id="planned-total"></strong></div>
-          <div><span>Logged that day</span><strong id="logged-total"></strong></div>
+          <div><span>Logged</span><strong id="logged-total"></strong></div>
           <div><span>Available</span><strong id="available-total"></strong></div>
         </div>
-        <div class="section-title"><h2>Planned tasks <span id="task-count" class="count"></span></h2><button id="pick" class="text-button" type="button">Add existing</button></div>
+        <div class="list-meta"><span id="task-count"></span><span>Logged / estimate</span></div>
         <div id="tasks" class="card"></div>
         <div class="section-title"><h2><svg><use href="#note"/></svg> Day note</h2><button id="edit-note" class="text-button" type="button">Edit</button></div>
         <p id="day-note" class="card note"></p>
       </div>
-      <button id="create" class="fab" type="button" aria-label="New task" title="New task"><svg><use href="#plus"/></svg></button>
+      <button id="create" class="fab" type="button" aria-label="Add task" title="Add task"><svg><use href="#plus"/></svg></button>
       <nav class="bottom" aria-label="Reskon navigation">
-        <button type="button" aria-current="page" data-tab="Today"><span><svg><use href="#calendar-icon"/></svg></span>Today</button>
+        <button type="button" aria-current="page" data-tab="Planner"><span><svg><use href="#calendar-icon"/></svg></span>Day planner</button>
         <button type="button" data-tab="Board"><span><svg><use href="#board"/></svg></span>Board</button>
         <button type="button" data-tab="Sessions"><span><svg><use href="#sessions"/></svg></span>Sessions</button>
         <button type="button" data-tab="Inbox"><span><svg><use href="#inbox"/></svg></span>Inbox</button>

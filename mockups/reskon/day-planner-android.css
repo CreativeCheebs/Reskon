@@ -22,7 +22,7 @@ button, input, textarea { font: inherit; color: inherit; }
 button { border: 0; background: transparent; padding: 0; cursor: pointer; }
 button:hover { background-color: var(--raised); }
 button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-h1, h2, p { margin: 0; }
+h2, p { margin: 0; }
 svg { width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .symbols { position: absolute; }
 [hidden] { display: none !important; }
@@ -35,42 +35,37 @@ svg { width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width:
 .phone { position: relative; min-width: 0; height: min(830px, calc(100dvh - 83px)); min-height: 530px; display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--border); border-radius: 28px; background: var(--bg); box-shadow: 0 18px 60px #0007; }
 .status { height: 29px; display: flex; justify-content: space-between; align-items: center; padding: 0 23px; font-size: 12px; font-weight: 600; }
 .signal { letter-spacing: 2px; }
-.datebar { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 61px; padding: 0 8px; }
+.datebar { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 50px; padding: 0 8px; }
 .icon { display: inline-grid; place-items: center; width: 44px; min-width: 44px; height: 44px; border-radius: 50%; font-size: 23px; }
-#date { flex: 1; height: 52px; display: grid; align-content: center; justify-items: center; border-radius: 12px; }
+#date { flex: 1; height: 48px; display: grid; align-content: center; justify-items: center; border-radius: 12px; }
 #date strong { font-size: 20px; font-weight: 650; line-height: 1.2; }
 #date small { font-size: 13px; }
-.screen { padding: 8px 16px 88px; overflow: auto; flex: 1; scrollbar-width: thin; }
+.screen { padding: 4px 14px 72px; overflow: auto; flex: 1; scrollbar-width: thin; }
 .section-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; }
-h1 { font-size: 22px; font-weight: 700; }
 h2 { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 650; }
 h2 svg { width: 18px; height: 18px; color: var(--muted); }
-.totals { display: grid; grid-template-columns: repeat(3, 1fr); margin-bottom: 8px; border: 1px solid var(--border); border-radius: 16px; background: var(--panel); }
-.totals > div { min-width: 0; padding: 11px 8px 12px 12px; }
+.totals { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--border); border-radius: 10px; background: var(--panel); }
+.totals > div { min-width: 0; padding: 4px 8px 5px; }
 .totals > div + div { border-left: 1px solid var(--border); }
-.totals span { display: block; font-size: 12px; color: var(--muted); }
-.totals strong { display: block; overflow-wrap: anywhere; margin-top: 2px; font-size: 18px; font-weight: 650; }
+.totals span { display: block; font-size: 11px; color: var(--muted); }
+.totals strong { display: block; overflow-wrap: anywhere; font-size: 15px; font-weight: 650; }
 .totals > div:nth-child(2) strong { color: var(--green); }
-.count { min-width: 20px; padding: 2px 6px; border-radius: 12px; background: var(--raised); text-align: center; color: var(--muted); font-size: 11px; }
+.list-meta { display: flex; justify-content: space-between; padding: 5px 10px; color: var(--muted); font-size: 11px; }
 .text-button { min-height: 44px; padding: 0 10px; border-radius: 14px; color: var(--accent-fg); font-weight: 650; font-size: 13px; }
 .card { overflow: hidden; border: 1px solid var(--border); border-radius: 16px; background: var(--panel); }
-.task { display: grid; grid-template-columns: 9px minmax(0, 1fr) 18px; align-items: center; gap: 10px; width: 100%; padding: 12px; text-align: left; }
+.task { display: grid; grid-template-columns: 7px minmax(0, 1fr) auto; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 4px 10px; text-align: left; }
 .task + .task, .picker-row + .picker-row { border-top: 1px solid var(--border); }
-.dot { width: 8px; height: 8px; align-self: start; margin-top: 7px; border-radius: 50%; background: var(--muted); }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
 .dot.progress { background: var(--accent); }
-.task-body { min-width: 0; }
-.task-name { display: block; font-weight: 650; overflow-wrap: anywhere; }
-.area { color: var(--muted); font-size: 12px; }
-.metrics { display: flex; flex-wrap: wrap; gap: 2px 11px; margin-top: 4px; font-size: 11px; color: var(--muted); }
-.metrics b { color: var(--fg); font-weight: 600; }
-.task svg { width: 18px; height: 18px; color: var(--muted); }
+.task-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 650; }
+.task-ratio { color: var(--muted); white-space: nowrap; font-size: 12px; font-variant-numeric: tabular-nums; }
 .note, .empty { padding: 12px; color: var(--muted); font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere; }
-.note { margin-bottom: 8px; }
+.note { margin-bottom: 8px; padding-right: 64px; }
 .fab { position: absolute; right: 16px; bottom: 98px; display: grid; place-items: center; width: 56px; height: 56px; border-radius: 16px; background: var(--accent); color: var(--dim); box-shadow: 0 4px 12px #0006; }
 .fab:hover { background: var(--accent-fg); }
 .fab svg { width: 28px; height: 28px; stroke-width: 2; }
 .bottom { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 8px 0 10px; border-top: 1px solid var(--border); background: var(--panel); }
-.bottom button { display: grid; justify-items: center; align-content: center; gap: 4px; min-height: 54px; border-radius: 14px; color: var(--muted); font-size: 12px; }
+.bottom button { display: grid; justify-items: center; align-content: center; gap: 4px; min-height: 54px; border-radius: 14px; color: var(--muted); font-size: 11px; }
 .bottom button span { display: grid; place-items: center; width: 56px; max-width: 100%; height: 32px; border-radius: 16px; }
 .bottom button[aria-current] { color: var(--fg); font-weight: 650; }
 .bottom button[aria-current] span { background: var(--selected); color: var(--accent); }
@@ -84,16 +79,21 @@ dialog h2 { font-size: 19px; }
 .handle { width: 32px; height: 4px; margin: 3px auto; border-radius: 4px; background: var(--border); }
 .sheet-copy { margin-bottom: 10px; color: var(--muted); font-size: 13px; }
 .sheet-section { font-size: 14px; margin: 13px 0 6px; }
-.picker-row { display: flex; gap: 10px; align-items: center; width: 100%; padding: 8px 12px; min-height: 52px; text-align: left; }
-.picker-row span:first-child { flex: 1; overflow-wrap: anywhere; }
-.picker-row b { font-weight: 650; }
-.picker-row small { display: block; }
-.picker-row svg { color: var(--accent-fg); }
+.picker-row { display: flex; justify-content: space-between; gap: 8px; align-items: center; width: 100%; padding: 5px 10px; min-height: 44px; text-align: left; }
+.picker-row b { font-size: 13px; font-weight: 650; overflow-wrap: anywhere; }
+.picker-row small { white-space: nowrap; }
+.task-picker { display: grid; gap: 8px; }
+.picker-create { overflow-wrap: anywhere; margin-top: 2px; }
 .sheet-form { display: grid; gap: 12px; }
-.sheet-form label { display: grid; gap: 5px; color: var(--muted); font-size: 13px; }
-.sheet-form input, .sheet-form textarea { width: 100%; min-height: 46px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--dim); color: var(--fg); }
+.sheet-form label, .task-picker label { display: grid; gap: 5px; color: var(--muted); font-size: 13px; }
+.sheet-form input, .sheet-form textarea, .task-picker input { width: 100%; min-height: 46px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--dim); color: var(--fg); }
 .sheet-form textarea { resize: vertical; }
-.form-columns { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
+.estimate-presets { display: flex; flex-wrap: wrap; gap: 5px; }
+.estimate-presets button { flex: 1; min-height: 44px; padding: 0 6px; border-radius: 8px; border: 1px solid var(--border); font-size: 13px; white-space: nowrap; }
+.estimate-presets [aria-pressed="true"] { background: var(--selected); border-color: var(--accent); color: var(--accent-fg); }
+.day-time summary { padding: 5px 0; color: var(--muted); font-size: 13px; cursor: pointer; }
+.day-time label { margin-top: 5px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .primary { min-height: 48px; padding: 0 14px; border-radius: 12px; background: var(--accent); color: var(--dim); font-weight: 700; }
 .primary:hover { background: var(--accent-fg); }
 .remove { color: var(--red); }

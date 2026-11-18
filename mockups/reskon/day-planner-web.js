@@ -7,10 +7,20 @@ const tasks = new Map([
   ['health', { name: 'Book a health check', area: 'Health', estimate: 30, status: 'todo' }],
   ['sprint', { name: 'Draft next sprint notes', area: 'Work', estimate: 75, status: 'todo' }],
   ['checklist', { name: 'Update test checklist', area: 'Work', estimate: 60, status: 'active' }],
+  ['supplier', { name: 'Reply to supplier', area: 'Work', estimate: 15, status: 'todo' }],
+  ['firmware', { name: 'Check firmware notes', area: 'Work', estimate: 30, status: 'active' }],
+  ['recap', { name: 'Send meeting recap', area: 'Work', estimate: 15, status: 'todo' }],
+  ['photos', { name: 'Review sample photos', area: 'Personal', estimate: 20, status: 'todo' }],
+  ['receipts', { name: 'Sort receipts', area: 'Personal', estimate: 20, status: 'todo' }],
+  ['plants', { name: 'Water balcony plants', area: 'Personal', estimate: 10, status: 'todo' }],
+  ['results', { name: 'Back up test results', area: 'Work', estimate: 15, status: 'todo' }],
 ]);
 const plans = new Map([
   ['2026-11-17', new Map([['checklist', 60]])],
-  [today, new Map([['outline', 60], ['week', 45], ['reading', 30]])],
+  [today, new Map([
+    ['outline', 60], ['week', 45], ['reading', 30], ['supplier', 15], ['firmware', 15],
+    ['recap', 10], ['photos', 10], ['receipts', 10], ['plants', 5], ['results', 10],
+  ])],
   ['2026-11-19', new Map([['sprint', 75], ['reading', 30]])],
   ['2026-11-20', new Map([['health', 30]])],
 ]);
@@ -123,11 +133,12 @@ function candidates(status, plan) {
   if (!items.length) list.append(create('span', 'No available tasks', 'muted'));
   for (const [id, task] of items) {
     const row = create('div', '', 'candidate');
-    const description = create('div');
+    const controls = create('div', '', 'row-controls');
     const grip = create('span', '⠿', 'grip');
     grip.setAttribute('aria-hidden', 'true');
-    const detail = task.estimate ? `${task.area} · ${duration(task.estimate)} estimated` : task.area;
-    description.append(create('strong', task.name), create('small', detail));
+    const estimate = create('span', task.estimate ? duration(task.estimate) : '—', 'task-time');
+    estimate.title = task.estimate ? 'Whole task estimate' : 'No estimate';
+    controls.append(grip, action('＋', `Add ${task.name} to plan`, () => addTask(id, true)));
     row.draggable = true;
     row.addEventListener('dragstart', (event) => {
       draggedTask = id;
@@ -135,7 +146,7 @@ function candidates(status, plan) {
       event.dataTransfer.effectAllowed = 'copy';
     });
     row.addEventListener('dragend', clearDrag);
-    row.append(grip, description, action('＋', `Add ${task.name} to plan`, () => addTask(id, true)));
+    row.append(controls, create('strong', task.name), estimate);
     list.append(row);
   }
 }
@@ -176,18 +187,18 @@ function renderPlan() {
   $('capacity-track').hidden = capacity === null;
   $('capacity-bar').style.width = `${Math.min(100, capacity ? 100 * minutes / capacity : minutes ? 100 : 0)}%`;
   $('planned').replaceChildren();
-  for (const [id, planned] of plan) {
+  for (const id of plan.keys()) {
     const task = tasks.get(id);
-    const row = create('tr');
-    const title = create('td');
-    const plannedCell = create('td');
-    const removeCell = create('td');
-    const edit = action(planned === null ? 'Set time' : duration(planned), `Edit planned time for ${task.name}`, () => openTask(id));
-    edit.dataset.plannedId = id;
-    title.append(create('strong', task.name, 'task-name'), create('span', task.area, 'task-area'));
-    plannedCell.append(edit);
-    removeCell.append(action('×', `Remove ${task.name} from plan`, () => removeTask(id)));
-    row.append(title, create('td', task.estimate ? duration(task.estimate) : '—'), plannedCell, create('td', duration(logged.get(id) ?? 0)), removeCell);
+    const time = duration(logged.get(id) ?? 0);
+    const estimate = task.estimate ? duration(task.estimate) : '—';
+    const row = create('li');
+    const button = create('button', '', 'planned-row');
+    button.type = 'button';
+    button.dataset.plannedId = id;
+    button.setAttribute('aria-label', `Edit planned time for ${task.name}. ${time} logged this day / ${task.estimate ? `${estimate} estimated` : 'no estimate'}`);
+    button.addEventListener('click', () => openTask(id));
+    button.append(create('strong', task.name, 'task-name'), create('span', `${time} / ${estimate}`, 'task-time'));
+    row.append(button);
     $('planned').append(row);
   }
   candidates('todo', plan);
@@ -215,6 +226,9 @@ function openTask(id = null) {
   $('task-name').readOnly = Boolean(task);
   $('estimate').value = task?.estimate ?? '';
   $('planned-time').value = summary(date).plan.get(id) ?? '';
+  $('task-logged').hidden = !task;
+  $('task-logged').textContent = `Logged this day: ${duration(sessions.get(date)?.get(id) ?? 0)}`;
+  $('remove-task').hidden = !task;
   $('task-form').querySelector('.primary').textContent = task ? 'Save' : 'Add to plan';
   $('task-dialog').showModal();
   $(task ? 'planned-time' : 'task-name').focus();
@@ -240,6 +254,10 @@ $('task-form').addEventListener('submit', (event) => {
   document.querySelector(`[data-planned-id="${id}"]`)?.focus();
 });
 $('task-name').addEventListener('input', () => $('task-name').setCustomValidity(''));
+$('remove-task').addEventListener('click', () => {
+  $('task-dialog').close();
+  removeTask(editing);
+});
 $('new-task').addEventListener('click', () => openTask());
 $('notes').addEventListener('input', (event) => notes.set(date, event.target.value));
 $('previous').addEventListener('click', () => selectDate(shifted(date, -1)));
