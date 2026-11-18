@@ -588,6 +588,10 @@ The "Add task" row at the foot of each column is gone. A **+ Add** button at the
 
 - **Phone swipe actions (owner-approved mock).** The phone's swipe buttons are their own setting, `phone_card_actions`, not the web's `card_actions`, because a swiped row has room for a different set than a hovered web card. It is an ordinary entry in the key-value `setting` table (no migration); the server checks it (at most 3, no repeats, only the six known actions) the way it checks other settings. Order is the tap order, not the catalogue order. Button words are short ("Edit" for Edit description) because a button is 64 dp wide; the More sheet and the screen-reader names use the full names. The swipe is a hand-made horizontal drag, so vertical scrolling is untouched. The task screen and the row actions now share one snooze sheet and one delete question instead of two copies. The Today screen has no task rows, so it has nothing to swipe.
 
+### Quick capture suggests past lines and task titles (owner chose the idea, 2026-11-18)
+
+Nothing new is stored. Every task or session saved from Quick capture already keeps the line you typed (`custom._capture.raw`, see 7.1), so the suggestions read those lines back, plus task titles. This keeps "capture never writes" true, needs no new table or cleanup, and forgets a line when its task or session is deleted. Lines that were never saved (typed, then cancelled) are not remembered; that is on purpose, as nobody needs a suggestion for something they threw away. Picking a suggestion only fills the box, so reading and saving stay the two steps they were. A picked task links the session to it only when the text is unchanged and the line became a single plain session (never an event). The dropdown does not highlight a row by itself, so Enter keeps meaning "read this line" until you move to a row.
+
 ## Open questions
 
 - **"Too low" on the ceiling question.** It only cancels a "too high" hold. Should it suggest more hours for the next days?

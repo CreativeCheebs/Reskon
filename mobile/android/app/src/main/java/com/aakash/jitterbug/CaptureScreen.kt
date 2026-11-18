@@ -70,11 +70,20 @@ fun CaptureScreen(r: Route) {
     var reading by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<Int?>(null) }
     var busy by remember { mutableStateOf(false) }
+    // Lines typed before and matching task titles, offered under the box; a tapped one fills it (and names its task).
+    var suggestions by remember { mutableStateOf<List<Suggestion>>(emptyList()) }
+    var picked by remember { mutableStateOf<Suggestion?>(null) }
     val scope = rememberCoroutineScope()
     val dictate = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { res ->
         if (res.resultCode == Activity.RESULT_OK) {
             res.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()?.let { text = if (text.isBlank()) it else "$text $it" }
         }
+    }
+
+    LaunchedEffect(text) {
+        if (!suggestionsWanted(text) || picked?.text == text.trim()) { suggestions = emptyList(); return@LaunchedEffect }
+        delay(150)
+        suggestions = runCatching { parseSuggestions(Api.arr("/capture/suggest?q=" + java.net.URLEncoder.encode(text.trim(), "UTF-8"))) }.getOrDefault(emptyList())
     }
 
     // Read the line a moment after typing stops.
@@ -88,7 +97,10 @@ fun CaptureScreen(r: Route) {
             parsed = p
             entries.clear()
             val list = p.objs("entries").ifEmpty { listOf(p) }
-            entries.addAll(list.map { withTaskTags(toEntry(it, text.trim())) })
+            entries.addAll(list.map { e ->
+                val entry = toEntry(e, text.trim())
+                withTaskTags(entry.copy(session = linkPickedTask(picked, text, list.size, entry.session)))
+            })
         }
     }
 
@@ -118,6 +130,16 @@ fun CaptureScreen(r: Route) {
                         .border(1.dp, Palette.accent, RoundedCornerShape(14.dp)).padding(horizontal = 14.dp, vertical = 12.dp),
                     decorationBox = { inner -> if (text.isEmpty()) T("e.g. 2 hours on the tax receipts, level 4", Palette.strong, 16.sp); inner() },
                 )
+                suggestions.forEach { sg ->
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Palette.bg)
+                            .clickable { picked = sg; suggestions = emptyList(); text = sg.text }.padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        T(sg.text, Palette.fg, 14.sp, modifier = Modifier.weight(1f))
+                        T(if (sg.kind == "task") Terms.capTask else if (sg.kind == "session") "Session" else "Before", Palette.muted, 12.sp)
+                    }
+                }
                 val status = when {
                     reading -> "Reading…"
                     parsed == null -> "Type a line. Nothing is saved until you confirm."
