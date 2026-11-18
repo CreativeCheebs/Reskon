@@ -40,15 +40,11 @@ svg { width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width:
 #date { flex: 1; height: 52px; display: grid; align-content: center; justify-items: center; border-radius: 12px; }
 #date strong { font-size: 20px; font-weight: 650; line-height: 1.2; }
 #date small { font-size: 13px; }
-.segments { display: grid; grid-template-columns: 0.8fr 1fr 1.2fr; gap: 2px; margin: 6px 16px 3px; padding: 4px; border-radius: 22px; background: var(--dim); }
-.segments button { min-height: 36px; border-radius: 18px; font-size: 12px; font-weight: 650; color: var(--muted); white-space: nowrap; }
-.segments [aria-pressed="true"] { background: var(--panel); color: var(--fg); }
 .screen { padding: 8px 16px 88px; overflow: auto; flex: 1; scrollbar-width: thin; }
 .section-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; }
 h1 { font-size: 22px; font-weight: 700; }
 h2 { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 650; }
 h2 svg { width: 18px; height: 18px; color: var(--muted); }
-.calendar-action { color: var(--accent-fg); }
 .totals { display: grid; grid-template-columns: repeat(3, 1fr); margin-bottom: 8px; border: 1px solid var(--border); border-radius: 16px; background: var(--panel); }
 .totals > div { min-width: 0; padding: 11px 8px 12px 12px; }
 .totals > div + div { border-left: 1px solid var(--border); }

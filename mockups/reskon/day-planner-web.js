@@ -70,9 +70,8 @@ function taskCount(count) {
   return `${count} ${count === 1 ? 'task' : 'tasks'}`;
 }
 
-function dayButton(iso, monthly) {
+function dayButton(iso) {
   const { plan, minutes, available } = summary(iso);
-  const weekday = displayDate(iso, { weekday: 'short' });
   const number = Number(iso.slice(8));
   const count = plan.size;
   const button = create('button', '', 'day-cell');
@@ -80,23 +79,14 @@ function dayButton(iso, monthly) {
   button.setAttribute('aria-pressed', String(iso === date));
   const fullDate = displayDate(iso, { weekday: 'long', day: 'numeric', month: 'long' });
   button.setAttribute('aria-label', `${fullDate}${iso === today ? ' (Today)' : ''}, ${taskCount(count)}, ${duration(minutes)} planned, ${capacityText(available)}`);
-  button.append(create('strong', monthly ? number : `${weekday} ${number}`));
-  if (monthly && count) button.append(create('small', `${count} · ${duration(minutes)}`));
-  if (!monthly) {
-    button.append(create('small', `${taskCount(count)} · ${duration(minutes)}`));
-    button.append(create('small', capacityText(available), 'day-extra'));
-  }
+  button.append(create('strong', number));
+  if (count) button.append(create('small', `${taskCount(count)} · ${duration(minutes)}`));
+  if (available !== null) button.append(create('small', capacityText(available)));
   button.addEventListener('click', () => {
     selectDate(iso);
-    if (monthly) $('calendar-dialog').close();
-    else $('week').querySelector('[aria-pressed=true]')?.focus();
+    $('calendar-dialog').close();
   });
   return button;
-}
-
-function renderWeek() {
-  const monday = shifted(date, -(localDate(date).getUTCDay() + 6) % 7);
-  $('week').replaceChildren(...Array.from({ length: 7 }, (_, i) => dayButton(shifted(monday, i), false)));
 }
 
 function renderCalendar() {
@@ -106,7 +96,7 @@ function renderCalendar() {
   $('month').textContent = displayDate(first, { month: 'long', year: 'numeric' });
   grid.replaceChildren(...['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => create('span', day, 'calendar-weekday')));
   for (let i = 0; i < start; i += 1) grid.append(create('span'));
-  for (let day = first; day.startsWith(month); day = shifted(day, 1)) grid.append(dayButton(day, true));
+  for (let day = first; day.startsWith(month); day = shifted(day, 1)) grid.append(dayButton(day));
 }
 
 function shiftMonth(amount) {
@@ -185,7 +175,6 @@ function renderPlan() {
   }));
   $('capacity-track').hidden = capacity === null;
   $('capacity-bar').style.width = `${Math.min(100, capacity ? 100 * minutes / capacity : minutes ? 100 : 0)}%`;
-  $('evening-logged').textContent = duration(totalLogged);
   $('planned').replaceChildren();
   for (const [id, planned] of plan) {
     const task = tasks.get(id);
@@ -209,7 +198,6 @@ function render() {
   $('date-text').textContent = displayDate(date, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
   $('today').disabled = date === today;
   $('notes').value = notes.get(date) ?? '';
-  renderWeek();
   renderPlan();
 }
 
@@ -282,19 +270,6 @@ $('capacity-form').addEventListener('submit', (event) => {
 for (const close of document.querySelectorAll('[data-close]')) {
   close.addEventListener('click', () => close.closest('dialog').close());
 }
-const views = document.querySelectorAll('[data-view]');
-for (const button of views) {
-  button.addEventListener('click', () => {
-    for (const view of views) {
-      const selected = view === button;
-      view.classList.toggle('selected', selected);
-      view.setAttribute('aria-pressed', String(selected));
-      $(view.dataset.view).hidden = !selected;
-    }
-    $('new-task').hidden = button.dataset.view !== 'tasks';
-  });
-}
-
 const dropSurface = document.querySelector('.plan');
 function clearDrag() {
   draggedTask = null;

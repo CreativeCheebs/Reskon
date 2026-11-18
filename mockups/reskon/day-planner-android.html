@@ -28,25 +28,17 @@
         <button id="date" type="button" aria-label="Open calendar"><strong id="day-name">Today</strong><small id="day-date">Wed, 18 Nov 2026</small></button>
         <button id="next" class="icon" type="button" aria-label="Next day"><svg><use href="#right"/></svg></button>
       </header>
-      <div class="segments" aria-label="Today views">
-        <button type="button" data-mode="tasks" aria-pressed="true">Tasks</button>
-        <button type="button" data-mode="morning" aria-pressed="false">Morning plan</button>
-        <button type="button" data-mode="evening" aria-pressed="false">Evening readout</button>
-      </div>
       <div class="screen" id="screen">
-        <div id="planner">
-          <div class="section-title"><h1>Day planner</h1><button class="icon calendar-action" id="calendar" type="button" aria-label="Calendar"><svg><use href="#calendar-icon"/></svg></button></div>
-          <div class="totals" aria-label="Day totals">
-            <div><span>Planned</span><strong id="planned-total"></strong></div>
-            <div><span>Logged that day</span><strong id="logged-total"></strong></div>
-            <div><span>Available</span><strong id="available-total"></strong></div>
-          </div>
-          <div class="section-title"><h2>Planned tasks <span id="task-count" class="count"></span></h2><button id="pick" class="text-button" type="button">Add existing</button></div>
-          <div id="tasks" class="card"></div>
-          <div class="section-title"><h2><svg><use href="#note"/></svg> Day note</h2><button id="edit-note" class="text-button" type="button">Edit</button></div>
-          <p id="day-note" class="card note"></p>
+        <div class="section-title"><h1>Day planner</h1></div>
+        <div class="totals" aria-label="Day totals">
+          <div><span>Planned</span><strong id="planned-total"></strong></div>
+          <div><span>Logged that day</span><strong id="logged-total"></strong></div>
+          <div><span>Available</span><strong id="available-total"></strong></div>
         </div>
-        <div id="reflection" hidden></div>
+        <div class="section-title"><h2>Planned tasks <span id="task-count" class="count"></span></h2><button id="pick" class="text-button" type="button">Add existing</button></div>
+        <div id="tasks" class="card"></div>
+        <div class="section-title"><h2><svg><use href="#note"/></svg> Day note</h2><button id="edit-note" class="text-button" type="button">Edit</button></div>
+        <p id="day-note" class="card note"></p>
       </div>
       <button id="create" class="fab" type="button" aria-label="New task" title="New task"><svg><use href="#plus"/></svg></button>
       <nav class="bottom" aria-label="Reskon navigation">

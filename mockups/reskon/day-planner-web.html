@@ -27,16 +27,12 @@
     <main class="main">
       <header class="topbar">
         <details class="mobile-nav"><summary aria-label="Open navigation">☰</summary><nav aria-label="Workspace"><a href="index.html">Personal board</a><a href="day-planner-android.html">Android preview</a></nav></details>
-        <div class="breadcrumbs">Workspace <span>/</span> <strong>Day Planner</strong></div>
+        <h1 class="planner-title">Day Planner</h1>
         <div class="top-actions"><span class="preview-pill"><span></span> DESIGN PREVIEW</span><a class="button subtle android-preview" href="day-planner-android.html">Android preview ↗</a></div>
       </header>
       <div class="content planner">
-        <div class="page-heading">
-          <h1>Day Planner</h1>
-          <button class="button primary" id="new-task">＋ New task</button>
-        </div>
         <div class="planner-datebar">
-          <div class="date-controls" aria-label="Select a date">
+          <div class="date-controls" role="group" aria-label="Select a date">
             <button class="button icon-only" id="previous" aria-label="Previous day">‹</button>
             <button class="button outline" id="calendar-open" aria-haspopup="dialog"><span aria-hidden="true">▦</span> <span id="date-text"></span></button>
             <button class="button icon-only" id="next" aria-label="Next day">›</button>
@@ -44,13 +40,7 @@
           </div>
           <button class="button subtle" id="capacity-open" aria-haspopup="dialog">⚙ Planner settings</button>
         </div>
-        <div id="week" class="week" aria-label="Week overview"></div>
-        <div class="segmented planner-views" role="group" aria-label="Day views">
-          <button type="button" data-view="tasks" class="selected" aria-pressed="true">Tasks</button>
-          <button type="button" data-view="morning" aria-pressed="false">Morning</button>
-          <button type="button" data-view="evening" aria-pressed="false">Evening</button>
-        </div>
-        <div class="planner-grid" id="tasks">
+        <div class="planner-grid">
           <aside class="candidates" aria-labelledby="candidates-heading">
             <h2 id="candidates-heading">Available tasks</h2>
             <p class="muted">Drag a task to the plan or use its add button.</p>
@@ -65,8 +55,13 @@
           </aside>
           <section class="plan" aria-labelledby="plan-heading">
             <header class="plan-header">
-              <h2 id="plan-heading"></h2>
-              <div class="plan-count muted" id="plan-count"></div>
+              <div class="plan-heading-row">
+                <div>
+                  <h2 id="plan-heading"></h2>
+                  <div class="plan-count muted" id="plan-count"></div>
+                </div>
+                <button class="button primary" id="new-task">＋ New task</button>
+              </div>
               <dl class="totals" id="totals"></dl>
               <div class="capacity-track" id="capacity-track" aria-hidden="true"><div id="capacity-bar"></div></div>
             </header>
@@ -85,16 +80,6 @@
             </div>
           </section>
         </div>
-        <section class="plan day-summary" id="morning" hidden>
-          <h2>Morning · plan</h2>
-          <dl><dt>Focus</dt><dd>Work, Personal</dd><dt>Ceilings</dt><dd>Focus work · 3h</dd><dt>In force</dt><dd>Nothing in force</dd></dl>
-          <p class="muted">Preview of the existing morning view.</p>
-        </section>
-        <section class="plan day-summary" id="evening" hidden>
-          <h2>Evening · readout</h2>
-          <dl><dt>Focus work</dt><dd>3h ceiling</dd><dt>Time logged</dt><dd id="evening-logged"></dd></dl>
-          <p class="muted">Preview of the existing evening view.</p>
-        </section>
         <p class="preview-note">Sample data. Edits reset when you reload this preview.</p>
       </div>
     </main>
@@ -119,6 +104,7 @@
       <button class="button icon-only" id="next-month" aria-label="Next month">›</button>
     </header>
     <div class="month-grid" id="month-grid"></div>
+    <p class="calendar-key muted">Each date shows task count, planned time and time available where set.</p>
     <div class="dialog-actions"><button class="button outline" type="button" data-close>Close</button></div>
   </dialog>
   <dialog id="capacity-dialog" aria-labelledby="capacity-heading">

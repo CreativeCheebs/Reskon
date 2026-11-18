@@ -1,7 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const today = '2026-11-18';
 let selected = today;
-let mode = 'tasks';
 let nextId = 7;
 let calendarMonth = new Date(2026, 10, 1);
 let toastTimeout;
@@ -85,12 +84,6 @@ function stepDate(amount) {
   setDate(dayKey(date));
 }
 
-function setMode(value) {
-  mode = value;
-  $('screen').scrollTop = 0;
-  render();
-}
-
 function plannedFor(key) {
   return (plans.get(key) || []).reduce((sum, item) => sum + item.planned, 0);
 }
@@ -133,18 +126,6 @@ function render() {
     date.toLocaleDateString('en-GB', { weekday: 'long' });
   $('day-date').textContent = dateLabel(selected);
   $('date').setAttribute('aria-label', 'Open calendar, ' + dateLabel(selected));
-  document.querySelectorAll('[data-mode]').forEach((button) => {
-    button.setAttribute('aria-pressed', button.dataset.mode === mode);
-  });
-
-  const inPlanner = mode === 'tasks';
-  $('planner').hidden = !inPlanner;
-  $('reflection').hidden = inPlanner;
-  $('create').hidden = !inPlanner;
-  if (!inPlanner) {
-    renderReflection();
-    return;
-  }
   $('planned-total').textContent = duration(plannedFor(selected));
   $('logged-total').textContent = duration(loggedFor(selected));
   $('available-total').textContent = availableFor(selected);
@@ -155,16 +136,6 @@ function render() {
   $('tasks').replaceChildren(...items.map((item) => taskRow(catalog.find((task) => task.id === item.id), item)));
   if (!items.length) $('tasks').append(element('p', 'empty', 'No tasks planned for this day.'));
   $('day-note').textContent = notes.get(selected) || 'No note for this day.';
-}
-
-function renderReflection() {
-  const morning = mode === 'morning';
-  const title = element('h2', 'section-title', morning ? 'Focus and ceilings' : 'Planned and actual');
-  const card = element('div', 'card');
-  card.append(element('p', 'empty', morning ?
-    'The existing morning plan is where you choose your focus areas and ceilings by energy type.' :
-    'The existing evening readout compares logged time with ceilings by energy type.'));
-  $('reflection').replaceChildren(title, card);
 }
 
 function openSheet(title, content) {
@@ -358,7 +329,7 @@ function renderCalendar(focus) {
     calendarMonth = new Date(date.getFullYear(), date.getMonth(), 1);
     renderCalendar(today);
   }), action('Open day', 'primary', () => {
-    setMode('tasks');
+    $('screen').scrollTop = 0;
     sheet.close();
   }));
   const dayName = element('h3', 'sheet-section', dateLabel(selected));
@@ -390,19 +361,15 @@ function renderCalendar(focus) {
 $('previous').addEventListener('click', () => stepDate(-1));
 $('next').addEventListener('click', () => stepDate(1));
 $('date').addEventListener('click', openCalendar);
-$('calendar').addEventListener('click', openCalendar);
 $('create').addEventListener('click', () => openTask());
 $('pick').addEventListener('click', openPicker);
 $('edit-note').addEventListener('click', openNote);
 $('close').addEventListener('click', () => sheet.close());
-document.querySelectorAll('[data-mode]').forEach((button) => {
-  button.addEventListener('click', () => setMode(button.dataset.mode));
-});
 document.querySelectorAll('[data-tab]').forEach((button) => {
   button.addEventListener('click', () => {
     if (button.dataset.tab === 'Today') {
       setDate(today);
-      setMode('tasks');
+      $('screen').scrollTop = 0;
     } else {
       showToast(button.dataset.tab + ' is outside this mock');
     }
