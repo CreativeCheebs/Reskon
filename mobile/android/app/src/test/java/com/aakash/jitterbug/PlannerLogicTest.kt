@@ -25,15 +25,6 @@ class PlannerLogicTest {
         assertEquals("1:02:03", clockText(3723))
     }
 
-    @Test fun aTaskRowIsAllTimeLoggedAgainstTheWholeEstimate() {
-        val t = obj("""{"kind":"task","logged_h":1.0833,"logged_day_h":0.25,"estimate_h":3}""")
-        assertEquals("1h 5m / 3h", ratioText(t))
-        assertEquals("1h 5m / –", ratioText(obj("""{"kind":"task","logged_h":1.0833}""")))
-    }
-
-    @Test fun anEventRowIsLoggedAgainstItsReservedMinutes() {
-        assertEquals("0m / 45m", ratioText(obj("""{"kind":"event","logged_h":0,"planned_min":45}""")))
-    }
 
     @Test fun availableIsTheServersNumberOrNotSetAndIsNeverWorkedOutHere() {
         assertEquals("Not set", availableText(obj("""{"planned_min":600,"available_min":null}""")))

@@ -84,15 +84,19 @@ fun TimerControls(title: String, timer: JSONObject?, now: Instant, canStart: Boo
     }
 }
 
-/** One compact line of the day's list: kind, title, logged / estimate, timer and Log buttons. Swipe for Log and Remove, hold for every action. */
+/**
+ * One compact line of the day's list. An event starts with a check button (Mark done / Mark not done:
+ * the only thing that completes an event); a task has its Task tag. Then the line's name, small lines
+ * under it (Part of the task, today's time, the task's all-time figures), the timer and Log buttons.
+ * Swipe for Log and Remove, hold for every action.
+ */
 @Composable
 fun PlanLine(item: JSONObject, timer: JSONObject?, now: Instant, anyRunning: Boolean, host: TaskActionHost, cb: RowCallbacks) {
-    val event = item.optString("kind") == "event"
+    val event = isEvent(item)
     val done = item.optBoolean("done")
-    val canLog = !(event && done)
-    val title = item.optString("title")
+    val title = lineTitle(item)
     val swipe = PlanSwipe(
-        buttons = (if (canLog) listOf("log" to "Log") else emptyList()) + ("remove" to "Remove"),
+        buttons = listOf("log" to "Log", "remove" to "Remove"),
         all = planActions(item), onAction = { k -> cb.onAction(k, item) },
     )
     SwipeRow(
@@ -100,34 +104,40 @@ fun PlanLine(item: JSONObject, timer: JSONObject?, now: Instant, anyRunning: Boo
         onLongClick = { cb.onAction("more", item) }, onClick = { cb.onAction(if (event) "edit" else "open", item) },
     ) {
         Row(
-            Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(start = 10.dp, end = 2.dp),
+            Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(start = if (event) 0.dp else 10.dp, end = 2.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp),
         ) {
+            if (event) TimerButton(if (done) Icons.select else Icons.circle, if (done) "Mark $title not done" else "Mark $title done", if (done) Palette.green else Palette.muted) {
+                cb.onAction(if (done) "undone" else "done", item)
+            }
             // The kind, title and figures are read once, as one sentence; the buttons after them are their own.
             Row(
                 Modifier.weight(1f).clearAndSetSemantics { contentDescription = rowDescription(item) },
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp),
             ) {
-                Box(
-                    Modifier.clip(RoundedCornerShape(4.dp)).background(if (event) Palette.selected else Palette.dim).padding(horizontal = 4.dp, vertical = 2.dp),
-                ) { T(if (event) "Event" else "Task", if (event) Palette.accentFg else Palette.muted, 10.sp) }
-                T(title, if (done) Palette.subtle else Palette.fg, 13.sp, FontWeight.SemiBold, modifier = Modifier.weight(1f), oneLine = true, strike = done && !event)
-                T(ratioText(item) + if (event && done) " ✓" else "", Palette.muted, 12.sp, oneLine = true)
+                if (!event) Box(Modifier.clip(RoundedCornerShape(4.dp)).background(Palette.dim).padding(horizontal = 4.dp, vertical = 2.dp)) { T("Task", Palette.muted, 10.sp) }
+                Column(Modifier.weight(1f).padding(vertical = 4.dp)) {
+                    T(title, if (done) Palette.subtle else Palette.fg, 13.sp, FontWeight.SemiBold, oneLine = true, strike = done)
+                    lineDetails(item).forEach { T(it, Palette.muted, 11.sp) }
+                }
             }
-            if (!done || !event) TimerControls(title, timer, now, !anyRunning, cb, startTarget = item.takeIf { canLog })
-            if (canLog) TimerButton(Icons.logTime, "Log session for $title", Palette.accentFg) { cb.onLog(item) }
-            else Box(Modifier.width(8.dp))
+            TimerControls(title, timer, now, !anyRunning, cb, startTarget = item)
+            TimerButton(Icons.logTime, "Log session for $title", Palette.accentFg) { cb.onLog(item) }
         }
     }
 }
 
 /** Every action of a line, in the order the More sheet and a screen reader list them. */
 fun planActions(item: JSONObject): List<Pair<String, String>> {
-    val event = item.optString("kind") == "event"
+    val event = isEvent(item)
     return buildList {
-        if (!(event && item.optBoolean("done"))) add("log" to "Log session")
-        if (event) add("edit" to "Edit event") else add("open" to "Open task")
-        if (!event) add("move" to "Move task to a status")
+        add("log" to "Log session")
+        if (event) add(if (item.optBoolean("done")) "undone" to "Mark not done" else "done" to "Mark done")
+        if (event) add("edit" to "Edit event") else {
+            add("plan" to "Edit plan (time and name)")
+            add("open" to "Open task")
+            add("move" to "Move task to a status")
+        }
         add("reschedule" to "Reschedule to another day")
         add("up" to "Move up")
         add("down" to "Move down")

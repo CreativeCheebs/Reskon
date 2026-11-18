@@ -55,6 +55,8 @@ private sealed class Open {
     object Add : Open()
     object PickTask : Open()
     data class Event(val item: JSONObject?) : Open()
+    /** Planning a chosen task ([task], new line) or editing a task line ([item]). */
+    data class PlanLine(val task: JSONObject?, val item: JSONObject?) : Open()
     data class Actions(val item: JSONObject) : Open()
     data class Reschedule(val item: JSONObject) : Open()
     data class MoveTo(val item: JSONObject) : Open()
@@ -121,6 +123,8 @@ fun TodayScreen(r: Route) {
                 "log" -> logFor(item, iso)
                 "open" -> App.go("task", "id" to item.getLong("task_id"))
                 "edit" -> open = Open.Event(item)
+                "plan" -> open = Open.PlanLine(null, item)
+                "done", "undone" -> run("Not saved") { Planner.setDone(item.getLong("id"), k == "done") }
                 "move" -> open = Open.MoveTo(item)
                 "reschedule" -> open = Open.Reschedule(item)
                 "more" -> open = Open.Actions(item)
@@ -152,7 +156,6 @@ fun TodayScreen(r: Route) {
                     TimerStrip(stripTimers(timers, conflict, items, iso), conflict, now, anyRunning, cb) { date = LocalDate.parse(it) }
                     Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 2.dp)) {
                         T(planCountText(items), Palette.muted, 11.sp, modifier = Modifier.weight(1f))
-                        T("All-time logged / estimate", Palette.muted, 11.sp)
                     }
                     Card {
                         if (items.isEmpty()) Column(Modifier.padding(12.dp)) {
@@ -197,9 +200,23 @@ fun TodayScreen(r: Route) {
     when (val o = open) {
         null -> {}
         Open.Add -> AddToPlanSheet({ open = null }, { open = Open.PickTask }, { open = Open.Event(null) })
-        Open.PickTask -> TaskPicker({ open = null }, allowNone = false, createIn = 0L) { t ->
-            open = null
-            if (t != null) run("Not added") { Planner.addTask(iso, t.getLong("id")); App.say("Added to plan") }
+        Open.PickTask -> PlannerTaskPicker({ open = null }) { t -> open = Open.PlanLine(t, null) }
+        is Open.PlanLine -> {
+            val line = o.item
+            val taskTitle = o.task?.optString("title") ?: line?.str("task_title") ?: line?.optString("title").orEmpty()
+            PlanLineSheet(
+                taskTitle = taskTitle,
+                initialName = if (line != null) lineTitle(line) else taskTitle,
+                initialMin = line?.num("planned_min")?.toLong(),
+                editing = line != null,
+                estimateHint = (o.task ?: line)?.let { pickerFigures(it) },
+                onSave = { min, name ->
+                    open = null
+                    if (line == null) run("Not added") { Planner.addTask(iso, o.task!!.getLong("id"), min, name); App.say("Added to plan") }
+                    else run("Not saved") { Planner.editLine(line.getLong("id"), min, name.orEmpty()) }
+                },
+                onDismiss = { open = null },
+            )
         }
         is Open.Event -> EventSheet(o.item, { title, min, area ->
             open = null
@@ -236,8 +253,15 @@ fun TodayScreen(r: Route) {
 }
 
 private fun logFor(item: JSONObject, iso: String) {
-    if (item.optString("kind") == "event") App.go("log", "item" to item.getLong("id"), "label" to item.optString("title"), "date" to iso, "min" to (item.num("planned_min")?.toLong() ?: 30))
-    else App.go("log", "task" to item.getLong("task_id"), "date" to iso)
+    val planned = item.num("planned_min")?.toLong()
+    if (isEvent(item)) App.go("log", "item" to item.getLong("id"), "kind" to "event", "label" to lineTitle(item), "date" to iso, "min" to (planned ?: 30))
+    else {
+        // A task line: the session is tied to the line; a renamed line's name starts the description.
+        val args = mutableListOf<Pair<String, Any>>("task" to item.getLong("task_id"), "item" to item.getLong("id"), "kind" to "task", "date" to iso)
+        if (item.optBoolean("renamed")) args += "label" to lineTitle(item)
+        planned?.let { args += "min" to it }
+        App.go("log", *args.toTypedArray())
+    }
 }
 
 @Composable
@@ -265,7 +289,7 @@ private fun Totals(t: JSONObject, hasItems: Boolean, onAvailable: () -> Unit) {
     val over = t.optBoolean("over")
     val unest = t.optInt("unestimated")
     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Palette.panel)) {
-        Cell("Planned", minText(t.optLong("planned_min")), Palette.fg, Modifier.weight(1f), if (unest > 0) "$unest without an estimate" else null)
+        Cell("Planned", minText(t.optLong("planned_min")), Palette.fg, Modifier.weight(1f), if (unest > 0) "$unest without planned time" else null)
         Cell("Logged today", minText(t.optLong("logged_min")), Palette.green, Modifier.weight(1f))
         Cell("Available", availableText(t), if (over) Palette.red else Palette.fg,
             Modifier.weight(1f).clickable(onClickLabel = "Set the time available") { onAvailable() },

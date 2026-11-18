@@ -8,7 +8,18 @@ import org.json.JSONObject
  * so all of it works offline and syncs later). The screens decide when; this says what is sent.
  */
 object Planner {
-    suspend fun addTask(day: String, taskId: Long) = Api.post("/day/$day/items", jsonOf("task_id" to taskId))
+    /** Plans a task on a day. [plannedMin] is the time planned for it on this day (null: not set; the task's estimate is never used); [title] its own name for the line (null: the task's). */
+    suspend fun addTask(day: String, taskId: Long, plannedMin: Long? = null, title: String? = null) =
+        Api.post("/day/$day/items", jsonOf("task_id" to taskId).apply {
+            plannedMin?.let { put("planned_min", it) }
+            title?.let { put("title", it) }
+        })
+
+    /** A task line's planned time and name. null clears the time; "" clears the name (the task's title shows again). */
+    suspend fun editLine(id: Long, plannedMin: Long?, title: String) = Api.patch("/day-items/$id", jsonOf("planned_min" to plannedMin, "title" to title))
+
+    /** Marks an event done or not done; the only thing that completes an event. */
+    suspend fun setDone(id: Long, done: Boolean) = Api.patch("/day-items/$id", jsonOf("done" to done))
 
     suspend fun addEvent(day: String, title: String, minutes: Long, areaId: Long?) =
         Api.post("/day/$day/items", jsonOf("title" to title.trim(), "planned_min" to minutes, "area_id" to areaId))
