@@ -28,7 +28,9 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -394,8 +396,19 @@ fun TextBox(label: String, value: String, placeholder: String = "", single: Bool
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DateDialog(initial: LocalDate?, onDismiss: () -> Unit, clearLabel: String? = null, onClear: () -> Unit = {}, onPick: (LocalDate) -> Unit) {
-    val state = rememberDatePickerState(initialSelectedDateMillis = (initial ?: LocalDate.now()).atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli())
+fun DateDialog(
+    initial: LocalDate?, onDismiss: () -> Unit, clearLabel: String? = null, onClear: () -> Unit = {},
+    /** Only days in this range can be chosen (the snooze picker: tomorrow to the longest snooze). */
+    range: ClosedRange<LocalDate>? = null,
+    onPick: (LocalDate) -> Unit,
+) {
+    val state = rememberDatePickerState(
+        initialSelectedDateMillis = (initial ?: LocalDate.now()).atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli(),
+        selectableDates = if (range == null) DatePickerDefaults.AllDates else object : SelectableDates {
+            override fun isSelectableDate(utcTimeMillis: Long) = Instant.ofEpochMilli(utcTimeMillis).atZone(ZoneOffset.UTC).toLocalDate() in range
+            override fun isSelectableYear(year: Int) = year in range.start.year..range.endInclusive.year
+        },
+    )
     DatePickerDialog(
         onDismissRequest = onDismiss,
         confirmButton = {

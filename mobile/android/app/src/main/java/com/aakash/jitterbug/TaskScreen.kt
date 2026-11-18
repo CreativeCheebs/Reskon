@@ -253,14 +253,15 @@ fun TaskScreen(r: Route) {
         "due" -> DateDialog(t.str("due_at")?.let { LocalDate.parse(it.take(10)) }, { sheet = null }, "No due date", { change(jsonOf("due_at" to null)) }) { change(jsonOf("due_at" to it.toString())) }
         "dates" -> DateDialog(t.str("start_date")?.let { LocalDate.parse(it) }, { sheet = "dates2" }, "No start", { change(jsonOf("start_date" to null)) }) { change(jsonOf("start_date" to it.toString())) }
         "dates2" -> DateDialog(t.str("end_date")?.let { LocalDate.parse(it) }, { sheet = null }, "No end", { change(jsonOf("end_date" to null)) }) { change(jsonOf("end_date" to it.toString())) }
-        "snooze" -> PickSheet("Snooze", listOf(1L to "1 day", 3L to "3 days", 7L to "1 week", -1L to "Until unblocked", 0L to "Wake up now"), { sheet = null }) { v ->
-            sheet = null
-            scope.launch {
-                attempt("Not snoozed") {
-                    snoozeTask(id, v.coerceAtLeast(0).toInt(), v == -1L)
-                    App.changed()
-                }
+        "snooze" -> {
+            fun snooze(days: Int, untilUnblocked: Boolean = false) {
+                sheet = null
+                scope.launch { attempt("Not snoozed") { snoozeTask(id, days, untilUnblocked); App.changed() } }
             }
+            SnoozeSheet(
+                id, { sheet = null },
+                extras = listOf(SnoozeExtra("Until unblocked") { snooze(0, true) }, SnoozeExtra("Wake up now") { snooze(0) }),
+            ) { date -> snooze(snoozeDaysUntil(LocalDate.parse(today()), date)) }
         }
         "actions" -> PickSheet(Terms.capTask, listOf(1L to "Log time", 2L to "Delete ${Terms.task}"), { sheet = null }) {
             sheet = null
@@ -349,6 +350,11 @@ fun NewTaskScreen(r: Route) {
     var due by remember { mutableStateOf<LocalDate?>(null) }
     var epic by remember { mutableStateOf(false) }
     var pickDue by remember { mutableStateOf(false) }
+    // Snooze until: the day the new task should come back (empty = not snoozed), and what else wakes that day.
+    var snooze by remember { mutableStateOf<LocalDate?>(null) }
+    var pickSnooze by remember { mutableStateOf(false) }
+    var snoozeBack by remember { mutableStateOf<SnoozeForecast?>(null) }
+    LaunchedEffect(snooze) { snoozeBack = snooze?.let { d -> loadSnoozeForecast(listOf(d), 0)?.get(d.toString()) } }
     var tags by remember { mutableStateOf(listOf<String>()) }
     var pickTags by remember { mutableStateOf(false) }
     var creating by remember { mutableStateOf(false) }
@@ -396,6 +402,20 @@ fun NewTaskScreen(r: Route) {
                 Box(Modifier.weight(1f)) { TextBox("Estimate", estimate, "e.g. 2h", keyboard = KeyboardType.Text) { estimate = it } }
                 FieldBox("Due", due?.let { dayLabel(it.toString()) } ?: "–", Modifier.weight(1f)) { pickDue = true }
             }
+            val named = snooze?.let { snoozeChoices(boot.settings, LocalDate.now()) }.orEmpty()
+            FieldBox(
+                "Snooze until", snooze?.let { snoozeWhenLabel(it, named) } ?: "Not snoozed",
+                valueColor = if (snooze == null) Palette.subtle else Palette.fg,
+                borderColor = if (snooze == null) Palette.border else Palette.accent,
+                trailing = if (snooze == null) null else ({
+                    IconButton(Icons.close, "Don't snooze", size = 40) { snooze = null }
+                }),
+            ) { pickSnooze = true }
+            snooze?.let { d ->
+                val back = alsoBackText(snoozeBack)
+                T("Hidden until then." + (back?.let { " Also back that day: $it" } ?: ""), Palette.muted, 12.sp)
+                if (dueBeforeSnooze(due, d)) T("Due before it shows again", Palette.yellow, 12.sp)
+            }
         }
         BottomAction("Add ${Terms.task}", enabled = title.isNotBlank() && !creating, slim = true) {
             if (creating) return@BottomAction
@@ -407,6 +427,7 @@ fun NewTaskScreen(r: Route) {
                         "title" to title.trim(), "area_id" to area, "type" to if (epic) "epic" else "task", "difficulty" to difficulty, "estimate_h" to parseHours(estimate),
                         "due_at" to due?.toString(), "today" to today(),
                     ).apply {
+                        snooze?.let { put("snooze_until", it.toString()) }
                         if (tags.isNotEmpty()) put("tags", tags.asJson())
                         // Left out (not null) when not chosen, so the server's own default applies.
                         status?.let { put("status_id", it) }
@@ -427,5 +448,6 @@ fun NewTaskScreen(r: Route) {
         }
     }
     if (pickDue) DateDialog(due, { pickDue = false }, "No due date", { due = null }) { due = it }
+    if (pickSnooze) SnoozeSheet(0, { pickSnooze = false }) { snooze = it; pickSnooze = false }
     if (pickTags) TagsSheet("Tags on this ${Terms.task}", tags, onDone = { tags = it }) { pickTags = false }
 }

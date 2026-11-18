@@ -131,15 +131,11 @@ func (d *DB) Snooze(ctx context.Context, id int64, days int, untilUnblocked bool
 			if behaviour != "todo" && behaviour != "in_progress" {
 				return invalid("only open tasks (to do or in progress) can be snoozed")
 			}
-			r, err := loadSnoozeRules(ctx, tx)
+			u, err := snoozeDate(ctx, tx, days, today)
 			if err != nil {
 				return err
 			}
-			if days < 0 || days > r.MaxDays {
-				return invalid("snooze for 1 to %d days (Settings → Snooze)", r.MaxDays)
-			}
-			t, _ := time.Parse("2006-01-02", today)
-			until = t.AddDate(0, 0, days).Format("2006-01-02")
+			until = u
 		}
 		// Waking, or a dated snooze, ends a snooze until unblocked.
 		_, err = tx.ExecContext(ctx, `UPDATE task SET snoozed_until = ?, snooze_until_unblocked = 0, updated_at = ? WHERE id = ?`, until, Now(), id)
@@ -149,6 +145,50 @@ func (d *DB) Snooze(ctx context.Context, id int64, days int, untilUnblocked bool
 		return nil, err
 	}
 	return d.GetTask(ctx, id)
+}
+
+// snoozeDate checks a snooze of `days` days against the `snooze` setting and
+// returns the local date it ends: today + days. Snooze and a task created
+// already snoozed (CreateTask) share this one rule.
+func snoozeDate(ctx context.Context, q querier, days int, today string) (string, error) {
+	r, err := loadSnoozeRules(ctx, q)
+	if err != nil {
+		return "", err
+	}
+	if days < 1 || days > r.MaxDays {
+		return "", invalid("snooze for 1 to %d days (Settings → Snooze)", r.MaxDays)
+	}
+	t, _ := time.Parse("2006-01-02", today)
+	return t.AddDate(0, 0, days).Format("2006-01-02"), nil
+}
+
+// snoozeNew snoozes a task just inserted, inside the create transaction.
+func snoozeNew(ctx context.Context, tx *sql.Tx, id, statusID int64, days int, today string) error {
+	var behaviour string
+	if err := tx.QueryRowContext(ctx, `SELECT c.behaviour FROM status s JOIN status_category c ON c.id = s.category_id
+		WHERE s.id = ?`, statusID).Scan(&behaviour); err != nil {
+		return err
+	}
+	if behaviour != "todo" && behaviour != "in_progress" {
+		return invalid("only open tasks (to do or in progress) can be snoozed")
+	}
+	until, err := snoozeDate(ctx, tx, days, today)
+	if err != nil {
+		return err
+	}
+	_, err = tx.ExecContext(ctx, `UPDATE task SET snoozed_until = ? WHERE id = ?`, until, id)
+	return err
+}
+
+// snoozeDateDays turns a snooze date into days from today. A date that is
+// not today or later gives 0 or less, which snoozeDate then rejects.
+func snoozeDateDays(until, today string) (int, error) {
+	if !validDate(until) {
+		return 0, invalid("snooze_until must be a date like 2026-11-25")
+	}
+	u, _ := time.Parse("2006-01-02", until)
+	t, _ := time.Parse("2006-01-02", today)
+	return int(u.Sub(t).Hours() / 24), nil
 }
 
 // wakeIfFinished clears the snooze of a task that has just moved into a
