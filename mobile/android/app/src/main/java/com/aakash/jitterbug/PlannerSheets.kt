@@ -46,6 +46,8 @@ private fun actionIcon(k: String) = when (k) {
     "move" -> Icons.moveTo
     "reschedule" -> Icons.calendar
     "up" -> Icons.up
+    "plan" -> Icons.pencil
+    "done", "undone" -> Icons.select
     "down" -> Icons.down
     else -> Icons.trash
 }
@@ -55,11 +57,10 @@ private fun actionIcon(k: String) = when (k) {
 @Composable
 fun PlanActionsSheet(item: JSONObject, onDismiss: () -> Unit, onPick: (String) -> Unit) {
     val event = item.optString("kind") == "event"
-    val detail = if (event) "Reserves ${minText(item.num("planned_min")?.toLong())}"
-    else "Estimate ${minText(hoursToMin(item.num("estimate_h")))} · logged ${minText(hoursToMin(item.optDouble("logged_h")))} in all, ${minText(hoursToMin(item.optDouble("logged_day_h")))} on this day"
+    val detail = lineDetails(item).joinToString(" · ")
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = Palette.raised) {
         Column(Modifier.verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
-            T(item.optString("title"), Palette.fg, 17.sp, FontWeight.SemiBold, Modifier.padding(horizontal = 20.dp).semantics { heading() }, oneLine = true)
+            T(lineTitle(item), Palette.fg, 17.sp, FontWeight.SemiBold, Modifier.padding(horizontal = 20.dp).semantics { heading() }, oneLine = true)
             T(detail, Palette.muted, 13.sp, modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 8.dp))
             planActions(item).forEach { (k, label) ->
                 val color: Color = if (k == "remove") Palette.red else Palette.fg

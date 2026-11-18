@@ -36,7 +36,8 @@ private fun startingDraft(r: Route, editing: JSONObject?): Draft {
     val date = r.args["date"]?.let { LocalDate.parse(it) } ?: LocalDate.now()
     r.long("item")?.let { item ->
         return Draft(
-            kind = "event", dayItemId = item, label = r.args["label"] ?: "", loggedFor = date,
+            // A task line's session names its task (filled in once the task is read) and the line; an event line's is the event.
+            kind = if (r.args["kind"] == "task") "task" else "event", dayItemId = item, label = r.args["label"] ?: "", loggedFor = date,
             hours = r.args["min"]?.toDoubleOrNull()?.let { it / 60 } ?: 1.0,
         )
     }

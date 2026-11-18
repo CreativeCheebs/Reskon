@@ -36,12 +36,6 @@ fun clockText(seconds: Long): String {
 
 private fun JSONObject.minutes(k: String): Long? = num(k)?.let { Math.round(it) }
 
-/** A row's "logged / estimate" (a task) or "logged / planned" (an event). Logged is all time, not the day. */
-fun ratioText(item: JSONObject): String {
-    val logged = minText(hoursToMin(item.optDouble("logged_h", 0.0)))
-    val target = if (item.optString("kind") == "event") item.minutes("planned_min") else hoursToMin(item.num("estimate_h"))
-    return "$logged / ${minText(target)}"
-}
 
 /** What the Available box says: the server's available minutes, or "Not set". Whether the day is over is the server's `over`; nothing is worked out here. */
 fun availableText(totals: JSONObject): String = totals.minutes("available_min")?.let { minText(it) } ?: "Not set"
@@ -55,17 +49,6 @@ fun planCountText(items: List<JSONObject>): String {
     return if (events == 0) t else if (tasks == 0) e else "$t · $e"
 }
 
-/** What a screen reader says for a row. */
-fun rowDescription(item: JSONObject): String {
-    val event = item.optString("kind") == "event"
-    val target = if (event) item.minutes("planned_min")?.let { "${minText(it)} planned" }
-    else hoursToMin(item.num("estimate_h"))?.let { "${minText(it)} estimated" }
-    return listOfNotNull(
-        if (event) "Event" else "Task", item.optString("title"),
-        "${minText(hoursToMin(item.optDouble("logged_h", 0.0)))} logged in all",
-        target ?: "no estimate", if (item.optBoolean("done")) "done" else null,
-    ).joinToString(", ")
-}
 
 /** Seconds a timer has counted at [now]: what it had before, plus the time since it last (re)started. A paused timer holds still. */
 fun elapsedSeconds(timer: JSONObject, now: Instant): Long {
