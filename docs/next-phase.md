@@ -143,33 +143,12 @@ Each step below is built, tested, reviewed and committed on its own.
 
 Last full pass (see the end of the `phase-2` commits): Go format, vet, tests, race, lint, govulncheck clean for both Go modules; web typecheck, ESLint (0 errors), 20 component tests, 11 browser tests; Android lint 0 errors, 27 unit tests, 19 on-device tests, 16 KB alignment; Trivy file scan, base image and built image clean; container built, started empty, restarted on its data and signed in.
 
-## Day Planner handoff
+## Day Planner (built in 0.6.0)
 
-Continue this work from this section and the repository, without needing the original chat.
+The Day Planner shipped in 0.6.0 on the server, web and phone; SPEC.md section 8.3 describes it and `docs/decisions.md` records the choices. Tested on the test server in the browser and on the test phone: plan totals and over-warning, weekday available time, event timer to session (event done), second start refused, a stopped timer kept through reload until saved, timer surviving the app being killed and syncing to the web, Bring forward copying without touching the earlier day. Empty and existing databases checked bare and in the container.
 
-The owner is reviewing the Day Planner design. The web and Android pages in `mockups/reskon/` are interactive previews with sample data: edits reset on reload. They are not the shipped feature and do not yet save or sync real plans. Open `day-planner-web.html` and `day-planner-android.html` to inspect them. Check the current working tree and recent commits before changing anything; preserve the owner's unrelated files.
-
-### Owner's decisions
-
-- **Bring forward:** Put a Bring forward area below Today's plan or at the bottom of Available tasks. The user can pull unfinished tasks from previous days on demand. Do not automatically roll them over; preserve the previous days' history.
-- **Events:** An event reserves its planned duration, as in the preview. If started from the planner, its timer captures actual start and end timestamps. Manually logging it does not require those fields. Scheduled time-of-day blocks, such as 2–3 PM, and calendar integration are deferred. The existing day picker and date calendar are separate from time blocking.
-- **Available time:** Settings provide available time for each day of the week, Sunday through Saturday. The current day supports an override. Events and sleep feeding availability automatically through a calendar are for later.
-- **Task totals:** Each task row shows all-time logged time against its one whole-task estimate. Clearly distinguish a day's totals from a task's all-time total.
-- **Timer:** It survives app close or device restart and keeps counting until stopped or paused. Stop opens a session draft for review and saving.
-
-### Preview flows and next steps
-
-The preview lets the user choose a day, add existing tasks or create a task or event, log a session or use a timer, reschedule or remove an item, and write a day note. On web, tasks can be dragged back to a status; the actions menu offers the same move. On Android, the list stays compact, with a Log control and swipe and hold gestures. Events complete when their session is saved. The task has one whole-task estimate; the web preview has no progress bar. The date picker and calendar already exist.
-
-First finish and review the preview changes already underway, then ask the owner about any behaviour still genuinely unspecified before implementing it. Work out storage, API, sync and recovery with the existing architecture; do not treat sample preview data as real persistence. Update `SPEC.md` alongside actual behaviour or schema changes and `docs/decisions.md` when a choice is made. Deliver server, web and phone work in reviewable steps, with tests and a commit for each step. Use Terra for visual and device review when delegation is available; have review agents independently check changes as the owner requests.
-
-### Acceptance checks
-
-- Bring forward an unfinished task from an earlier day on demand and verify the earlier plan remains intact; check that nothing moves automatically overnight.
-- Check event reservation, timer start/end timestamps, and a manual event session without timestamps; saving a session completes the event.
-- Check all seven weekday settings and a current-day override, including persistence and sync between devices.
-- Log a task on more than one day and verify its row shows all-time logged time against its single estimate, while day totals remain day-specific.
-- Close and reopen the app and restart the device with a running timer; elapsed time continues. Check pause, resume, stop, draft cancellation and saving.
-- Exercise both interfaces, including keyboard/accessibility alternatives and the phone's explicit Log control. Test empty and existing databases on the Linux test server, bare and in a container, as required by `AGENTS.md`; run `make test` or its Windows equivalents. Phone changes also need a signed release APK.
-
-This Windows machine is for building and editing only: never start the server or Docker here. Test deployment is allowed using the documented Linux tool; the live server requires the owner's request and a backup first. Do not claim a step is done until tested, reviewed and committed, with a signed release for phone changes. Commits are by CreativeCheebs.
+Left for later:
+- The calendar view with planned counts per day (`GET /api/days` exists; no screen uses it yet).
+- Phone reorder is Move up/Move down, not drag.
+- The Available tasks list is filtered on the client because the tasks API has no status filter (see decisions.md).
+- Time-of-day blocks and calendar integration (deferred by the owner).
