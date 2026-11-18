@@ -43,12 +43,8 @@ fun ratioText(item: JSONObject): String {
     return "$logged / ${minText(target)}"
 }
 
-/** What the Available box says: what is left, "Xm over", or "Not set" (then nothing ever warns). */
-fun availableText(totals: JSONObject): String {
-    val avail = totals.minutes("available_min") ?: return "Not set"
-    val left = avail - totals.optLong("planned_min")
-    return if (left < 0) "${minText(-left)} over" else minText(left)
-}
+/** What the Available box says: the server's available minutes, or "Not set". Whether the day is over is the server's `over`; nothing is worked out here. */
+fun availableText(totals: JSONObject): String = totals.minutes("available_min")?.let { minText(it) } ?: "Not set"
 
 /** "3 tasks · 1 event". */
 fun planCountText(items: List<JSONObject>): String {
@@ -92,14 +88,23 @@ fun stripTimers(timers: List<JSONObject>, conflict: Boolean, items: List<JSONObj
 /** The seven keys of the planner_available setting, Sunday first, with the day's name. */
 val WEEKDAYS = listOf("sun" to "Sunday", "mon" to "Monday", "tue" to "Tuesday", "wed" to "Wednesday", "thu" to "Thursday", "fri" to "Friday", "sat" to "Saturday")
 
-/** Typed time ("90", "1:30", "1h 30m", "45m") to whole minutes, 0 to 1440; null for blank or unreadable. */
+/**
+ * Typed time to whole minutes, 0 to 1440; null for blank or unreadable. A plain whole number is
+ * minutes ("90"); "1:30", "1h 30m" and "45m" are read as they say; a decimal such as "1.5" is refused
+ * because it could mean hours or minutes.
+ */
 fun parseMinutes(s: String): Long? {
     val t = s.trim().lowercase()
-    // A bare number is minutes here (the session form's is hours).
-    val hours = if (Regex("""^\d+$""").matches(t)) t.toDouble() / 60 else parseHours(t)
-    val m = hours?.let { Math.round(it * 60) } ?: return null
+    val m = when {
+        Regex("""^\d+$""").matches(t) -> t.toLongOrNull()
+        t.toDoubleOrNull() != null -> null
+        else -> parseHours(t)?.let { Math.round(it * 60) }
+    } ?: return null
     return if (m < 0 || m > 1440) null else m
 }
+
+/** A stopped timer waiting for its time to be reviewed and saved (or discarded). */
+fun isPending(timer: JSONObject) = timer.optBoolean("stopped")
 
 /** The planner_available setting with one weekday changed (or cleared with null): the whole object to save. */
 fun withWeekday(current: JSONObject?, key: String, minutes: Long?): JSONObject {
@@ -126,9 +131,11 @@ fun daysAgoText(from: String, to: LocalDate): String {
  * is changed by hand the end no longer fits it, so only a start worked out from the day and the time is
  * sent. Returns (started_at, ended_at), either null.
  */
-fun sessionStamps(loggedFor: LocalDate, startedAt: java.time.LocalTime?, start: Instant?, end: Instant?, zone: java.time.ZoneId): Pair<String?, String?> {
+fun sessionStamps(
+    loggedFor: LocalDate, startedAt: java.time.LocalTime?, start: Instant?, end: Instant?, zone: java.time.ZoneId, hoursUnchanged: Boolean = true,
+): Pair<String?, String?> {
     fun minute(t: java.time.LocalTime) = t.withSecond(0).withNano(0)
-    if (start != null && end != null && startedAt != null && minute(start.atZone(zone).toLocalTime()) == minute(startedAt)) {
+    if (hoursUnchanged && start != null && end != null && startedAt != null && minute(start.atZone(zone).toLocalTime()) == minute(startedAt)) {
         return start.toString() to end.toString()
     }
     return startedAt?.let { loggedFor.atTime(it).atZone(zone).toInstant().toString() } to null

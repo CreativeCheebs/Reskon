@@ -154,7 +154,7 @@ fun SwipeRow(
     val keys = plan?.buttons?.map { it.first } ?: swipeActions(App.boot?.settings ?: JSONObject())
     val reveal = with(LocalDensity.current) { (BUTTON_W * (keys.size + 1)).toPx() }
     fun act(k: String) { if (plan != null) { host.openId = null; plan.onAction(k) } else host.run(k, t) }
-    val x = remember { Animatable(0f) }
+    val x = remember(id) { Animatable(0f) }
     val scope = rememberCoroutineScope()
     val open = host.openId == id
     // Closed from outside (another row opened, a scroll, a tap elsewhere, an action ran): slide back.

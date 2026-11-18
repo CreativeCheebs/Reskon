@@ -46,19 +46,30 @@ object Planner {
             Start.Started(Api.post("/timers", body))
         } catch (e: ApiError) {
             if (e.status != 409) throw e
-            val current = e.body?.optJSONObject("current")
-            Start.Busy(current?.objs("timers")?.filter { it.optBoolean("running") }.orEmpty())
+            Start.Busy(runningFrom(e))
         }
+    }
+
+    /** The running timers a 409 names (`current`); if it names none, ask the core, so there is always something to stop. */
+    suspend fun runningFrom(e: ApiError): List<JSONObject> {
+        val named = e.body?.optJSONObject("current")?.objs("timers")?.filter { it.optBoolean("running") }.orEmpty()
+        return named.ifEmpty { runCatching { Api.obj("/timers").objs("timers").filter { it.optBoolean("running") } }.getOrDefault(emptyList()) }
     }
 
     suspend fun pause(id: Long) = Api.post("/timers/$id/pause")
     suspend fun resume(id: Long) = Api.post("/timers/$id/resume")
 
-    /** Stops a timer and hands its draft to the Log screen to review; nothing is saved until the user saves. */
+    /**
+     * Stops a timer. The core keeps it as a stopped timer with its draft, so the time stays pending
+     * (shown as "Stopped, review") even if the app closes; the Log screen reads the draft from it.
+     */
     suspend fun stop(id: Long) {
-        val draft = Api.post("/timers/$id/stop").getJSONObject("draft")
-        Editing.timerDraft = draft
+        Api.post("/timers/$id/stop")
         App.changed()
-        App.go("log", "draft" to 1)
+        review(id)
     }
+
+    fun review(id: Long) = App.go("log", "timer" to id)
+
+    suspend fun discard(id: Long) = Api.del("/timers/$id")
 }

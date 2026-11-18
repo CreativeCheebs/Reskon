@@ -19,6 +19,8 @@ import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -35,6 +37,9 @@ class RowCallbacks(
     val onPause: (JSONObject) -> Unit,
     val onResume: (JSONObject) -> Unit,
     val onStop: (JSONObject) -> Unit,
+    /** A stopped timer: open its time to review and save, or throw it away (the screen asks first). */
+    val onReview: (JSONObject) -> Unit,
+    val onDiscard: (JSONObject) -> Unit,
     val onAction: (String, JSONObject) -> Unit,
 )
 
@@ -47,8 +52,9 @@ fun rememberNow(active: Boolean): State<Instant> = produceState(Instant.now(), a
 
 @Composable
 private fun TimerButton(icon: String, label: String, tint: androidx.compose.ui.graphics.Color, enabled: Boolean = true, onClick: () -> Unit) {
+    // The label is the button's name (read once); a 48 dp square is the touch target.
     Box(
-        Modifier.size(width = 38.dp, height = 44.dp).clip(RoundedCornerShape(6.dp)).clickable(enabled = enabled, onClickLabel = label, onClick = onClick)
+        Modifier.size(48.dp).clip(RoundedCornerShape(6.dp)).clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) { Icon(icon, if (enabled) tint else Palette.subtle, 18) }
@@ -58,7 +64,14 @@ private fun TimerButton(icon: String, label: String, tint: androidx.compose.ui.g
 @Composable
 fun TimerControls(title: String, timer: JSONObject?, now: Instant, canStart: Boolean, cb: RowCallbacks, startTarget: JSONObject? = null) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        if (timer != null) {
+        if (timer != null && isPending(timer)) {
+            Box(
+                Modifier.heightIn(min = 48.dp).clip(RoundedCornerShape(6.dp)).clickable(role = Role.Button) { cb.onReview(timer) }.padding(horizontal = 6.dp)
+                    .semantics { contentDescription = "Review the stopped time for $title" },
+                contentAlignment = Alignment.Center,
+            ) { T("Stopped, review", Palette.yellow, 12.sp, FontWeight.SemiBold) }
+            TimerButton(Icons.trash, "Discard the stopped time for $title", Palette.red) { cb.onDiscard(timer) }
+        } else if (timer != null) {
             val running = timer.optBoolean("running")
             T(clockText(elapsedSeconds(timer, now)), Palette.accentFg, 12.sp, modifier = Modifier.padding(end = 2.dp)
                 .semantics { contentDescription = if (running) "Elapsed time" else "Elapsed time, paused" })
@@ -87,15 +100,20 @@ fun PlanLine(item: JSONObject, timer: JSONObject?, now: Instant, anyRunning: Boo
         onLongClick = { cb.onAction("more", item) }, onClick = { cb.onAction(if (event) "edit" else "open", item) },
     ) {
         Row(
-            Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(start = 10.dp, end = 2.dp)
-                .semantics(mergeDescendants = false) { },
+            Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(start = 10.dp, end = 2.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp),
         ) {
-            Box(
-                Modifier.clip(RoundedCornerShape(4.dp)).background(if (event) Palette.selected else Palette.dim).padding(horizontal = 4.dp, vertical = 2.dp),
-            ) { T(if (event) "Event" else "Task", if (event) Palette.accentFg else Palette.muted, 10.sp) }
-            T(title, if (done) Palette.subtle else Palette.fg, 13.sp, FontWeight.SemiBold, modifier = Modifier.weight(1f).semantics { contentDescription = rowDescription(item) }, oneLine = true, strike = done && !event)
-            T(ratioText(item) + if (event && done) " ✓" else "", Palette.muted, 12.sp, oneLine = true)
+            // The kind, title and figures are read once, as one sentence; the buttons after them are their own.
+            Row(
+                Modifier.weight(1f).clearAndSetSemantics { contentDescription = rowDescription(item) },
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp),
+            ) {
+                Box(
+                    Modifier.clip(RoundedCornerShape(4.dp)).background(if (event) Palette.selected else Palette.dim).padding(horizontal = 4.dp, vertical = 2.dp),
+                ) { T(if (event) "Event" else "Task", if (event) Palette.accentFg else Palette.muted, 10.sp) }
+                T(title, if (done) Palette.subtle else Palette.fg, 13.sp, FontWeight.SemiBold, modifier = Modifier.weight(1f), oneLine = true, strike = done && !event)
+                T(ratioText(item) + if (event && done) " ✓" else "", Palette.muted, 12.sp, oneLine = true)
+            }
             if (!done || !event) TimerControls(title, timer, now, !anyRunning, cb, startTarget = item.takeIf { canLog })
             if (canLog) TimerButton(Icons.logTime, "Log session for $title", Palette.accentFg) { cb.onLog(item) }
             else Box(Modifier.width(8.dp))

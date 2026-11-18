@@ -35,12 +35,11 @@ class PlannerLogicTest {
         assertEquals("0m / 45m", ratioText(obj("""{"kind":"event","logged_h":0,"planned_min":45}""")))
     }
 
-    @Test fun availableIsWhatIsLeftOrHowFarOverOrNotSet() {
+    @Test fun availableIsTheServersNumberOrNotSetAndIsNeverWorkedOutHere() {
         assertEquals("Not set", availableText(obj("""{"planned_min":600,"available_min":null}""")))
-        assertEquals("2h", availableText(obj("""{"planned_min":360,"available_min":480}""")))
-        assertEquals("1h 30m over", availableText(obj("""{"planned_min":570,"available_min":480}""")))
-        assertEquals("0m", availableText(obj("""{"planned_min":480,"available_min":480}""")))
-        assertEquals("1h", availableText(obj("""{"planned_min":0,"available_min":60}""")))
+        assertEquals("8h", availableText(obj("""{"planned_min":360,"available_min":480}""")))
+        assertEquals("8h", availableText(obj("""{"planned_min":570,"available_min":480,"over":true}""")))
+        assertEquals("0m", availableText(obj("""{"planned_min":0,"available_min":0}""")))
     }
 
     @Test fun theCountNamesTasksAndEvents() {
@@ -90,6 +89,9 @@ class PlannerLogicTest {
         assertEquals(0L, parseMinutes("0"))
         assertEquals(1440L, parseMinutes("24h"))
         assertNull(parseMinutes("25h"))
+        assertNull(parseMinutes("1.5"))
+        assertNull(parseMinutes("1441"))
+        assertEquals(45L, parseMinutes("45m"))
         assertNull(parseMinutes(""))
         assertNull(parseMinutes("soon"))
     }
@@ -137,6 +139,36 @@ class PlannerLogicTest {
 
     @Test fun noStartTimeMeansNoStamps() {
         assertEquals(null to null, sessionStamps(day, null, null, null, zone))
+    }
+
+    @Test fun changingTheHoursDropsTheEnd() {
+        val s = Instant.parse("2026-11-18T04:30:20Z")
+        val e = Instant.parse("2026-11-18T05:15:00Z")
+        val (a, b) = sessionStamps(day, java.time.LocalTime.of(10, 0), s, e, zone, hoursUnchanged = false)
+        assertEquals("2026-11-18T04:30:00Z", a)
+        assertNull(b)
+    }
+
+    @Test fun aStoppedTimerIsPendingAndHoldsItsTime() {
+        val t = obj("""{"stopped":true,"running":false,"accumulated_s":90,"resumed_at":null}""")
+        assertTrue(isPending(t))
+        assertTrue(!isPending(obj("""{"running":true}""")))
+        assertEquals(90, elapsedSeconds(t, Instant.parse("2027-01-01T00:00:00Z")))
+    }
+
+    @Test fun aStoppedTimerStillShowsInTheStripWhenNotOnARow() {
+        val stopped = obj("""{"id":3,"day":"2026-11-17","day_item_id":null,"task_id":9,"stopped":true}""")
+        assertEquals(listOf(3L), stripTimers(listOf(stopped), false, emptyList(), "2026-11-18").map { it.getLong("id") })
+    }
+
+    @Test fun aTimerOnAnotherLineIsNotThisEventsTimer() {
+        val event = obj("""{"id":7,"kind":"event","task_id":null}""")
+        assertTrue(!timerIsFor(obj("""{"day":"2026-11-18","day_item_id":8,"task_id":null}"""), event, "2026-11-18"))
+    }
+
+    @Test fun movingOutOfRangeChangesNothing() {
+        assertEquals(listOf(1L, 2L, 3L), reordered(listOf(1, 2, 3), 0, -1))
+        assertEquals(listOf(1L, 2L, 3L), reordered(listOf(1, 2, 3), 2, 3))
     }
 
     @Test fun theSevenWeekdaysStartOnSunday() {

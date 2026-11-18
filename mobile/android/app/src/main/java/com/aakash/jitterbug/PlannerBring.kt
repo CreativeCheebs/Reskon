@@ -40,8 +40,10 @@ fun BringForward(day: String, items: List<JSONObject>, onDone: () -> Unit) {
     var chosen by remember(day) { mutableStateOf(setOf<Long>()) }
     val scope = rememberCoroutineScope()
     val key = items.map { it.getLong("id") }
-    LaunchedEffect(day, open, key, App.version) {
-        if (open) candidates = runCatching { Planner.candidates(day) }.getOrNull()
+    var failed by remember(day) { mutableStateOf<String?>(null) }
+    var retry by remember(day) { mutableStateOf(0) }
+    LaunchedEffect(day, open, key, App.version, retry) {
+        if (open) runCatching { Planner.candidates(day) }.onSuccess { candidates = it; failed = null }.onFailure { failed = it.message ?: "Could not load" }
     }
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(Modifier.fillMaxWidth().heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -51,6 +53,7 @@ fun BringForward(day: String, items: List<JSONObject>, onDone: () -> Unit) {
         if (open) Card {
             val list = candidates
             when {
+                failed != null && list == null -> Column { Empty("Could not load: $failed"); TextLink("Retry") { failed = null; retry++ } }
                 list == null -> Empty("Looking…")
                 list.isEmpty() -> Empty("Nothing unfinished on earlier days.")
                 else -> {
