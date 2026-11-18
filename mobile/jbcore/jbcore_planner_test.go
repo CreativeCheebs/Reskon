@@ -162,7 +162,11 @@ func TestDayPlannerRoutesThroughTheCore(t *testing.T) {
 		t.Fatalf("bootstrap: %v", err)
 	}
 	call("POST", "/api/sessions", `{"kind":"event","label":"Dentist","energy_type_id":`+itoa(boot.EnergyTypes[0].ID)+`,"hours":0.75,"logged_for":"2026-11-18","started_at":"`+st.Draft.StartedAt+`","ended_at":"`+st.Draft.EndedAt+`","day_item_id":`+itoa(item.ID)+`}`)
+	if day := call("GET", "/api/day/2026-11-18", ""); strings.Contains(day, `"done":true`) {
+		t.Errorf("saving a session must not complete the event: %s", day)
+	}
+	call("PATCH", "/api/day-items/"+itoa(item.ID), `{"done":true}`)
 	if day := call("GET", "/api/day/2026-11-18", ""); !strings.Contains(day, `"done":true`) {
-		t.Errorf("saving the session should complete the event: %s", day)
+		t.Errorf("marking the event done should complete it: %s", day)
 	}
 }

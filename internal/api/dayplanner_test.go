@@ -18,7 +18,7 @@ func TestDayPlannerOverHTTP(t *testing.T) {
 		ID         int64  `json:"id"`
 		PlannedMin *int64 `json:"planned_min"`
 	}
-	if code := alice.do("POST", "/api/day/2026-11-16/items", m{"task_id": task.ID}, &item); code != 200 || *item.PlannedMin != 120 {
+	if code := alice.do("POST", "/api/day/2026-11-16/items", m{"task_id": task.ID, "planned_min": 120}, &item); code != 200 || *item.PlannedMin != 120 {
 		t.Fatalf("plan a task = %d %+v", code, item)
 	}
 	if code := alice.do("POST", "/api/day/2026-11-16/items", m{"task_id": task.ID}, nil); code != 409 {
@@ -107,8 +107,23 @@ func TestDayPlannerOverHTTP(t *testing.T) {
 			done = it.Done
 		}
 	}
+	if done {
+		t.Errorf("a session completed the event: %+v", after.Items)
+	}
+	if code := alice.do("PATCH", fmt.Sprintf("/api/day-items/%d", ev.ID), m{"done": true}, nil); code != 200 {
+		t.Errorf("mark done = %d", code)
+	}
+	if code := alice.do("PATCH", fmt.Sprintf("/api/day-items/%d", item.ID), m{"done": true}, nil); code != 400 {
+		t.Errorf("done on a task line = %d, want 400", code)
+	}
+	alice.do("GET", "/api/day/2026-11-16", nil, &after)
+	for _, it := range after.Items {
+		if it.ID == ev.ID {
+			done = it.Done
+		}
+	}
 	if !done {
-		t.Errorf("the event is not done after its session: %+v", after.Items)
+		t.Errorf("the event is not done after marking it: %+v", after.Items)
 	}
 
 	// Another user sees none of it.
