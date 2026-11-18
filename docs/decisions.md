@@ -592,6 +592,17 @@ The "Add task" row at the foot of each column is gone. A **+ Add** button at the
 
 Nothing new is stored. Every task or session saved from Quick capture already keeps the line you typed (`custom._capture.raw`, see 7.1), so the suggestions read those lines back, plus task titles. This keeps "capture never writes" true, needs no new table or cleanup, and forgets a line when its task or session is deleted. Lines that were never saved (typed, then cancelled) are not remembered; that is on purpose, as nobody needs a suggestion for something they threw away. Picking a suggestion only fills the box, so reading and saving stay the two steps they were. A picked task links the session to it only when the text is unchanged and the line became a single plain session (never an event). The dropdown does not highlight a row by itself, so Enter keeps meaning "read this line" until you move to a row.
 
+### Day Planner: server design (owner decided the behaviour; the choices below are the engineering ones)
+
+- **Plan lines are their own table** (`day_item`), not tasks, so an event never appears on a board and a task can be planned on many days. "Done" and "complete" are worked out when read (a task from its status behaviour, an event from a saved session linked to it), never stored.
+- **One line per task per day is checked in code, not by a database rule.** A synced insert that broke a database rule would be skipped by the sync with only a log line. Instead the line's sync id is made from the day and the task, so two devices planning the same task for the same day end up with one line.
+- **Bring forward copies** and is on request only. Its candidates are worked out on read from the lines, so there is nothing to roll over overnight and nothing that can run by itself.
+- **Day totals are named `plan_totals`**, because `totals` on the day answer already means hours per energy type. Planned minutes use the full task estimate on every day the task is planned, as decided.
+- **Available time** is the `planner_available` setting (`{"sun": 300, ...}`, a weekday missing or null is "not set") plus `day_plan.available_min` for one day. It uses the existing setting table, so it syncs without new work; the server checks the values.
+- **Timers are rows of wall-clock timestamps** (`timer`), several allowed, so an offline phone's timer survives a sync; the list says `conflict: true` when more than one is running. Starting is refused (409 with the running timers) while one is running; a paused timer does not block starting another. Stop returns a draft and soft-deletes the timer in one step, as decided; if the app is closed before the draft is saved, the time is lost (the phone and web should keep the draft until saved). A paused timer's end time in the draft is the moment it was paused. A timer is logged for the day it was started on, even if it runs past midnight.
+- **A draft is saved through the normal session create**, which now takes `ended_at` and `day_item_id`. A session for an event line takes the event's title as its label, kind "event" and the event's area; an energy type still has to come from that area's default or from the caller, as for any event session. The timer's clock is one variable in the Go code so tests can move it.
+- **Sync across versions.** The sync code now skips a synced table that a database does not have yet, so a phone held at an older version still syncs.
+
 ## Open questions
 
 - **"Too low" on the ceiling question.** It only cancels a "too high" hold. Should it suggest more hours for the next days?

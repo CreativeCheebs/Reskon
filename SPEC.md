@@ -329,6 +329,19 @@ The plan is carried forward from your last plan, so most mornings are one tap (*
 - **"Too high"** makes the next three mornings suggest 80% of that day's ceiling for that type, then eases back over four days (85, 90, 95, 100%), rounded to quarter hours. Holding a lower number is normal, not a setback. **"Too low"** only cancels a "too high" hold. Any later answer ends the hold.
 - Days are never locked. Any day can be edited at any time.
 
+### 8.3 The Day Planner (replaces the morning plan in the screens)
+
+The planner replaces the Ceilings morning plan (8.1) in the web and phone screens. The ceilings data and their API are unchanged and still work (and still feed the evening readout and the plan metrics); the screens simply no longer show them.
+
+- **A day's list.** Each day has an ordered list of lines. A line is a **task** planned for that day, or an **event**: a title, the minutes reserved for it and an optional area. Events are lines on the list, not tasks. A task can be planned on several days but only once on a day. Lines can be reordered, moved to another day (reschedule) and removed; removing a line never touches the task.
+- **What a task line shows.** The task's one whole-task **estimate**, the hours logged against the task **in all time**, and, separately, the hours logged **on that day**. The day's own totals (logged, planned) are for that day only.
+- **Done.** A planned task that is moved to done or cancelled stays on that day's list, shown done. An event is **complete** when a session (not deleted) is linked to it. Saving a session completes it; deleting that session un-completes it. Deleting or rescheduling an event keeps its sessions.
+- **Planned time.** The day's planned time is the sum of the **full** estimates of its planned tasks plus the minutes of its events. A task with no estimate adds nothing (the day says how many there are).
+- **Available time.** Settings hold the minutes available on each weekday, Sunday to Saturday (the `planner_available` setting; a weekday not set is "not set"). A day can override its weekday's value (a day off is 0). The day shows planned against available and is **over** only when an available time is set and the plan is more than it. Without one there is no warning.
+- **Bring forward.** On request only; nothing is ever carried over by itself. The candidates are tasks planned on an earlier day that are not done or cancelled and are not already on the chosen day. Bringing one forward **copies** it onto the day; the earlier day keeps its line.
+- **Timer.** Starting a timer on a task or an event keeps wall-clock timestamps (when it began, when it last resumed, the seconds counted before), so it keeps counting when the app is closed or the device restarts, until it is paused or stopped. Elapsed time is worked out when read. **Stop** does not save anything: it returns a session **draft** (hours, start, end, task or event) to review and save through the ordinary session save; cancelling the draft just discards it. Timers sync between devices. Normally one timer runs at a time (starting a second while one runs is refused, showing the running one), but a phone that was offline can start its own; after syncing, every running timer is shown and flagged as a conflict ("two timers ran at the same time"). An event started from the planner records its start and end; logging an event by hand needs neither.
+- **Calendar.** A range of days can be asked for with planned, logged and available minutes per day.
+
 ---
 
 ## 9. Buffs and debuffs (states)
@@ -581,10 +594,12 @@ The database is SQLite in WAL mode (several readers, one writer). There is one c
 | `status_transition` | The move log. Only ever added to. |
 | `task_link` | "Blocked by" links. |
 | `tag`, `task_tag`, `session_tag` | Tags (unique ignoring capitals), the tags on each task, and the tags put on a session by hand. A session's other tags come from its task when read. |
-| `session` | Logged time: hours, date, start time, description, task, area, task/event, energy type, level, points, note, custom fields, last changed. |
+| `session` | Logged time: hours, date, start time, end time (from a timer), description, task, area, task/event, the plan line it was logged against (`day_item_id`, an event usually), energy type, level, points, note, custom fields, last changed. |
 | `session_energy` | The parts of a session with several energy types: share, level, points. |
 | `session_subtype` | A session's ranked subtypes. |
-| `day_plan` | Each day's focus, ceilings and evening answers. |
+| `day_plan` | Each day's focus, ceilings, evening answers, note, and available minutes for that day (`available_min`, empty = use the weekday's from the `planner_available` setting). |
+| `day_item` | The planner's lines (8.3): a day, task or event, the task or the event's title, minutes and area, position, soft-deleted. Whether it is done, its logged hours and its minutes are worked out when read. |
+| `timer` | Running and paused timers (8.3): day, task or plan line, `started_at`, `resumed_at` (empty while paused), seconds counted before, soft-deleted when stopped or discarded. Elapsed time is worked out when read. |
 | `state` | Buffs, debuffs and modifiers. |
 | `inbox_item` | Inbox lines. |
 | `view` | Saved views: filter, layout, card settings, board settings (grouping, sorting, column limits, collapsed columns, timeline), icon, colour, background. |
@@ -601,7 +616,7 @@ The database is SQLite in WAL mode (several readers, one writer). There is one c
 - Times are UTC text with a fixed width, so sorting text sorts by time.
 - Most deletes only set `deleted_at`, so history still points at real rows.
 - Values worked out from others are never stored, with one exception: a session's points (section 6.3).
-- Migrations so far: 001 the first tables; 002 epics and board settings; 003 intensity becomes 1–5; 004 view icons, colours and backgrounds; 005 dashboards and stored points; 006 all energy types equal; 007 pies and shares; 008 retire "Energy drain felt"; 009 several energy types per session; 010 start and end dates; 011 snooze; 012 duplicate search cache; 013 subtasks; 014 dependencies; 015 inbox; 016 sync; 017 session "last changed", start dates filled in, unfinished parts hidden; 018 tags; 019 where a widget's content comes from (metric, view, app data or app page); 020 the Home dashboard (rows only, no new tables or columns); 021 repairs widgets that reached a not-yet-upgraded device from a newer one (their kind is read back from the chart type or query, and a Board's view from its sync id; rows only); 022 adds the Buffs and debuffs widget at the top of Home (one row added, the other Home widgets move down two rows; rows only).
+- Migrations so far: 001 the first tables; 002 epics and board settings; 003 intensity becomes 1–5; 004 view icons, colours and backgrounds; 005 dashboards and stored points; 006 all energy types equal; 007 pies and shares; 008 retire "Energy drain felt"; 009 several energy types per session; 010 start and end dates; 011 snooze; 012 duplicate search cache; 013 subtasks; 014 dependencies; 015 inbox; 016 sync; 017 session "last changed", start dates filled in, unfinished parts hidden; 018 tags; 019 where a widget's content comes from (metric, view, app data or app page); 020 the Home dashboard (rows only, no new tables or columns); 021 repairs widgets that reached a not-yet-upgraded device from a newer one (their kind is read back from the chart type or query, and a Board's view from its sync id; rows only); 022 adds the Buffs and debuffs widget at the top of Home (one row added, the other Home widgets move down two rows; rows only); 023 the Day Planner: `day_item` and `timer` tables (both sync), a session's `ended_at` and `day_item_id`, and a day's `available_min`.
 
 ---
 
@@ -626,7 +641,11 @@ JSON over HTTP. Every `/api` call except health and sign-in needs the session co
 | `POST /api/capture` | Reads a line. **Never saves anything.** |
 | `GET /api/capture/suggest?q=` | Up to 8 suggestions for the capture box: `{text, kind: task / session / history, task_id?}`. Read only. |
 | `/api/inbox` | Inbox lines, triage, discard. |
-| `GET PATCH /api/day/:date` | The day's plan, readout and totals. |
+| `GET PATCH /api/day/:date` | The day's plan, readout and totals. GET also carries `items` (the planner's lines, 8.3), `plan_totals` (`planned_min`, `logged_min`, `unestimated`, `available_min`, `available_from` (`day`, `weekday` or null), `over`) and `timers`. PATCH also takes `available_min` (0 to 1440, or null for the weekday's). |
+| `POST /api/day/:date/items`, `PUT /api/day/:date/order`, `PATCH DELETE /api/day-items/:id` | The planner's lines. POST `{task_id}` or `{title, planned_min?, area_id?}` (and `position?`); a task already on the day is a 409 with the line. PUT `{ids}` sets the order. PATCH takes `position`, `day` (reschedule) and, for an event, `title`, `planned_min`, `area_id`. DELETE keeps the task and any sessions. |
+| `GET POST /api/day/:date/bring-forward` | GET: the tasks that could be brought onto the day (`task_id`, `title`, `area_id`, `estimate_h`, `logged_h`, `from_day`, `days`). POST `{task_ids}` copies them onto the day and answers the day. |
+| `GET /api/days?from=&to=` | The calendar: one row per day (up to 100) with `items`, `done_items`, `planned_min`, `logged_min`, `available_min`, `available_from`, `over`. |
+| `GET POST /api/timers`, `POST /api/timers/:id/pause`, `.../resume`, `.../stop`, `DELETE /api/timers/:id` | Timers (8.3). GET answers `{timers, conflict}`. POST `{day, task_id}` or `{day, day_item_id}` starts one; a 409 carries `{timers, conflict}` as `current` while another runs. Stop answers `{timer_id, draft}`; the draft (`kind`, `task_id`, `day_item_id`, `label`, `logged_for`, `hours`, `started_at`, `ended_at`) is saved with `POST /api/sessions`, which also takes `ended_at` and `day_item_id`. |
 | `GET /api/journal?from=&to=`, `GET /api/journal?widget=:id` (optionally `&from=&to=`) | What you did each day, for Copy as Markdown (6.4) and the journal widget (10.1). Answers `{from, to, days, more}`; each day (newest first, days without sessions left out) has `day`, `hours`, `points` (the day's totals, from the server), `markdown` (the day ready to paste) and `sessions` (`id`, `task_id`, `what`, `area`, `kind`, `start` and `end` as local HH:MM or null, `hours`, `note`); never a task key. By dates: the newest 366 days with sessions in them (`more: true` when older ones were left out). By widget: the widget's own range, or the dashboard's dates, and at most the newest 62 days (`more: true` when older ones were left out); a widget that is not a journal is a 400, another person's widget a 404. Only reads, so no live note. |
 | `GET /api/metrics`, `GET /api/metrics/catalog` | Chart data (by query, or `?widget=:id`) and what each metric allows. The answer holds `points`, `series`, `total` and `average` (the mean per day, week or group value, also per series; left out for running totals or no points). |
 | `/api/dashboards`, `/api/widgets`, `PATCH /api/dashboards/:id/layout` | Dashboards. A board widget is saved through `/api/widgets` with `source: "view"`, `viz: "board"` (the default) and `query: {"view_id": <view id>}`; the view must exist and not be deleted (400 otherwise), and the query may hold nothing else. Its tasks are read with `GET /api/tasks?view=:id`, the same call the board uses; there is no new endpoint, so the widget never sends a filter. Between devices the view id is swapped for the other device's own id for that view. |
@@ -655,7 +674,8 @@ JSON over HTTP. Every `/api` call except health and sign-in needs the session co
 | **Drift** ("day 7 of a 2-day break") | Hidden, with its settings, until designed. The code stays. |
 | Keyboard shortcuts | Next phase. |
 | Day label (rest / normal / heavy day) | Waits for enough data to set thresholds. |
-| Timer | Its own plan; it will share sessions. |
+| Timer | Built with the Day Planner (8.3). |
+| Day Planner: time-of-day blocks and calendar integration | Later. |
 | Symptom log, and linking symptoms to debuffs | Separate, undecided. |
 | Timeline connectors and editing | Phase 3. |
 | Capture saved offline in the web app | Phase 3 (the phone already works offline). |
