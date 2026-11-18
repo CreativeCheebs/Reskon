@@ -18,13 +18,14 @@ import type { Task } from "../types";
  * day with its button or by dragging it to the plan. Dragging a planned task
  * onto a status here sends it back to that status and takes it off the day.
  */
-export function AvailablePanel({ data, run, onMoveBack }: { data: DayData; run: Run; onMoveBack: (itemId: number, taskId: number, statusId: number) => void }) {
-  const { boot, online, behaviourOf } = useApp();
+export function AvailablePanel({ day, data, run, onMoveBack, tasksVersion }: { day: string; data: DayData; run: Run; onMoveBack: (itemId: number, taskId: number, statusId: number) => void; tasksVersion: number }) {
+  const { boot, online, behaviourOf, reloadKey } = useApp();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [query, setQuery] = useState("");
   const [over, setOver] = useState<number | null>(null);
 
-  // Read again whenever the day is: a move or a log changes the groups.
+  // Read on opening, on another day, after a change to the tasks themselves (a move, a new task) and on
+  // a live reload. Plan changes alone need no read: the lines already on the day are left out here.
   useEffect(() => {
     let live = true;
     api
@@ -34,7 +35,7 @@ export function AvailablePanel({ data, run, onMoveBack }: { data: DayData; run: 
     return () => {
       live = false;
     };
-  }, [data]);
+  }, [day, tasksVersion, reloadKey]);
 
   const planned = useMemo(() => new Set(data.items.flatMap((i) => (i.task_id ? [i.task_id] : []))), [data.items]);
   const groups = groupAvailable(tasks, boot.statuses, behaviourOf, planned, query);

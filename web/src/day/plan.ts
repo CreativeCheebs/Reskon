@@ -36,6 +36,11 @@ export function rowFigures(item: DayItem): string {
   return loggedOfEstimate(item);
 }
 
+/** Whether a running or paused timer of this day is counting on the line (a stopped one is not). */
+export function timingOn(timers: TimerRow[], item: Pick<DayItem, "id" | "kind" | "task_id">, day: string): boolean {
+  return timers.some((t) => !t.stopped && t.day === day && (item.kind === "event" ? t.day_item_id === item.id : t.task_id !== null && t.task_id === item.task_id));
+}
+
 /** Seconds as "12:03" or "1:02:03". */
 export function clock(totalSeconds: number): string {
   const s = Math.max(0, Math.floor(totalSeconds));

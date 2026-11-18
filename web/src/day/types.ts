@@ -64,6 +64,10 @@ export interface TimerRow {
   accumulated_s: number;
   elapsed_s: number;
   running: boolean;
+  /** Stopped, not yet saved or discarded: its time waits for review. */
+  stopped: boolean;
+  /** Set once stopped: the session to review. */
+  draft: TimerDraft | null;
 }
 
 export interface TimerList {

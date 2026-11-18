@@ -30,8 +30,8 @@ function eventStart(title: string, areaId: number | null, day: string, itemId: n
 }
 
 /** The form's starting values for a stopped timer's draft, and the extra fields its save carries. */
-export function sessionStartForDraft(draft: TimerDraft, taskArea: number | null, eventArea: number | null, areas: Area[]): { initial: Partial<SessionDraft>; extra: Record<string, unknown> } {
-  const extra: Record<string, unknown> = { ended_at: draft.ended_at, ...(draft.day_item_id ? { day_item_id: draft.day_item_id } : {}) };
+export function sessionStartForDraft(draft: TimerDraft, timerId: number, taskArea: number | null, eventArea: number | null, areas: Area[]): { initial: Partial<SessionDraft>; extra: Record<string, unknown> } {
+  const extra: Record<string, unknown> = { timer_id: timerId, ended_at: draft.ended_at, ...(draft.day_item_id ? { day_item_id: draft.day_item_id } : {}) };
   if (draft.kind === "event") {
     const s = eventStart(draft.label ?? "", eventArea, draft.logged_for, draft.day_item_id ?? 0, areas);
     return { initial: { ...s.initial, hours: draft.hours, started_at: draft.started_at }, extra };

@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react";
 import { Button, Popconfirm } from "antd";
 import { PauseCircleOutlined, PlayCircleOutlined, StopOutlined } from "@ant-design/icons";
-import { api } from "../api";
 import { useApp } from "../store";
 import { palette } from "../theme/palette";
 import { clock, elapsedNow } from "./plan";
-import type { Run } from "./usePlanner";
 import type { TimerList, TimerRow } from "./types";
 
 /** Now, ticking every second while `active`. */
@@ -20,17 +18,30 @@ function useNow(active: boolean): number {
   return now;
 }
 
+export interface TimerHandlers {
+  onPause: (t: TimerRow) => void;
+  onResume: (t: TimerRow) => void;
+  onStop: (t: TimerRow) => void;
+  /** Open a stopped timer's session for review. */
+  onReview: (t: TimerRow) => void;
+  /** Throw the time away. */
+  onDiscard: (t: TimerRow) => void;
+  /** A timer call is in flight: the buttons wait. */
+  busy?: boolean;
+}
+
 /**
- * The running (or paused) timers. The server keeps the real clock, so this
- * survives closing the app; the screen only ticks on from the moment it read
- * the elapsed time. Two timers at once (a phone that was offline) are both
- * shown, and each is stopped on its own.
+ * The running, paused and stopped timers. The server keeps the real clock, so
+ * this survives closing the app; the screen only ticks on from the moment it
+ * read the elapsed time. A stopped timer waits to be reviewed and saved, or
+ * discarded. Two running timers (a phone that was offline) are both shown, and
+ * each is stopped on its own.
  */
-export function TimerStrip({ list, fetchedAt, run, onStop }: { list: TimerList; fetchedAt: number; run: Run; onStop: (t: TimerRow) => void }) {
+export function TimerStrip({ list, fetchedAt, handlers: h }: { list: TimerList; fetchedAt: number; handlers: TimerHandlers }) {
   const { online } = useApp();
   const now = useNow(list.timers.some((t) => t.running));
   if (list.timers.length === 0) return null;
-  const post = (t: TimerRow, action: "pause" | "resume") => run(() => api.post(`/timers/${t.id}/${action}`));
+  const off = !online || !!h.busy;
   return (
     <section aria-label="Timers" style={{ background: palette.panel, border: `1px solid ${palette.border}`, borderRadius: 8, padding: "8px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
       {list.conflict && (
@@ -40,28 +51,40 @@ export function TimerStrip({ list, fetchedAt, run, onStop }: { list: TimerList; 
       )}
       {list.timers.map((t) => (
         <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span aria-hidden style={{ width: 8, height: 8, borderRadius: 4, background: t.running ? palette.success : palette.subtle }} />
+          <span aria-hidden style={{ width: 8, height: 8, borderRadius: 4, background: t.running ? palette.success : t.stopped ? palette.warn : palette.subtle }} />
           <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            <strong>{t.title}</strong> <span style={{ color: palette.muted, fontSize: 12 }}>{t.kind === "event" ? "event" : "task"}{t.running ? "" : " · paused"}</span>
+            <strong>{t.title}</strong>{" "}
+            <span style={{ color: palette.muted, fontSize: 12 }}>
+              {t.kind === "event" ? "event" : "task"}
+              {t.stopped ? " · Stopped — review" : t.running ? "" : " · paused"}
+            </span>
           </span>
           <span role="timer" aria-label={`Elapsed on ${t.title}`} style={{ fontVariantNumeric: "tabular-nums", fontSize: 18, fontWeight: 600 }}>
             {clock(elapsedNow(t, fetchedAt, now))}
           </span>
-          {t.running ? (
-            <Button size="small" icon={<PauseCircleOutlined />} disabled={!online} onClick={() => post(t, "pause")} aria-label={`Pause timer on ${t.title}`}>
-              Pause
+          {t.stopped ? (
+            <Button size="small" type="primary" disabled={off} onClick={() => h.onReview(t)} aria-label={`Review and save the time on ${t.title}`}>
+              Review
             </Button>
           ) : (
-            <Button size="small" icon={<PlayCircleOutlined />} disabled={!online} onClick={() => post(t, "resume")} aria-label={`Resume timer on ${t.title}`}>
-              Resume
-            </Button>
+            <>
+              {t.running ? (
+                <Button size="small" icon={<PauseCircleOutlined />} disabled={off} onClick={() => h.onPause(t)} aria-label={`Pause timer on ${t.title}`}>
+                  Pause
+                </Button>
+              ) : (
+                <Button size="small" icon={<PlayCircleOutlined />} disabled={off} onClick={() => h.onResume(t)} aria-label={`Resume timer on ${t.title}`}>
+                  Resume
+                </Button>
+              )}
+              <Button size="small" type="primary" icon={<StopOutlined />} disabled={off} onClick={() => h.onStop(t)} aria-label={`Stop timer on ${t.title} and review the session`}>
+                Stop
+              </Button>
+            </>
           )}
-          <Button size="small" type="primary" icon={<StopOutlined />} disabled={!online} onClick={() => onStop(t)} aria-label={`Stop timer on ${t.title} and review the session`}>
-            Stop
-          </Button>
-          <Popconfirm title="Throw this timer away without saving?" okText="Discard" onConfirm={() => run(() => api.del(`/timers/${t.id}`))}>
-            <Button size="small" type="text" disabled={!online} aria-label={`Discard timer on ${t.title}`}>
-              Discard
+          <Popconfirm title="Throw this time away without saving?" okText="Discard time" onConfirm={() => h.onDiscard(t)}>
+            <Button size="small" type="text" disabled={off} aria-label={`Discard time on ${t.title}`}>
+              Discard time
             </Button>
           </Popconfirm>
         </div>

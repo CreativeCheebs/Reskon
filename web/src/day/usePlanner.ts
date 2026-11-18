@@ -17,6 +17,8 @@ export function usePlanner(day: string) {
   // When `data` was read, so a running timer can tick on from here.
   const [fetchedAt, setFetchedAt] = useState(() => Date.now());
   const seq = useRef(0);
+  // Why the day could not be read, while there is nothing on screen to keep showing.
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const n = ++seq.current;
@@ -24,15 +26,21 @@ export function usePlanner(day: string) {
       const d = await api.get<DayData>(`/day/${day}`);
       if (n === seq.current) {
         setData(d);
+        setError(null);
         setFetchedAt(Date.now());
       }
     } catch (e) {
+      if (n !== seq.current) return;
+      setError((e as Error).message);
       message.error((e as Error).message);
     }
   }, [day]);
 
   // Another day starts blank; a reload of the same day keeps it on screen.
-  useEffect(() => setData(null), [day]);
+  useEffect(() => {
+    setData(null);
+    setError(null);
+  }, [day]);
   useEffect(() => {
     load();
   }, [load, reloadKey]);
@@ -53,7 +61,7 @@ export function usePlanner(day: string) {
     [load],
   );
 
-  return { data, fetchedAt, load, run };
+  return { data, error, fetchedAt, load, run };
 }
 
 export type Run = ReturnType<typeof usePlanner>["run"];
