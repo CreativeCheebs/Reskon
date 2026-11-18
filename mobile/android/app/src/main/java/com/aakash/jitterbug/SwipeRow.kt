@@ -93,7 +93,9 @@ private fun swipeColors(key: String): Pair<Color, Color> = when (key) {
     "move" -> Palette.green to Palette.onAccent
     "note" -> Palette.yellow to Palette.onAccent
     "open" -> Palette.accentFg to Palette.onAccent
-    "delete" -> Palette.red to Palette.onAccent
+    "delete", "remove" -> Palette.red to Palette.onAccent
+    "reschedule" -> Palette.green to Palette.onAccent
+    "edit" -> Palette.yellow to Palette.onAccent
     else -> Palette.strong to Palette.fg
 }
 
@@ -103,15 +105,17 @@ fun taskActionIcon(key: String): String = when (key) {
     "note" -> Icons.pencil
     "move" -> Icons.moveTo
     "open" -> Icons.openTask
-    "delete" -> Icons.trash
+    "delete", "remove" -> Icons.trash
+    "reschedule" -> Icons.calendar
+    "edit" -> Icons.pencil
     else -> Icons.dotsH
 }
 
 /** One button of the swipe strip, full height of the row. [onClick] null makes a picture only (the Settings preview). */
 @Composable
-fun SwipeButton(key: String, width: Dp = BUTTON_W, onClick: (() -> Unit)? = null) {
+fun SwipeButton(key: String, width: Dp = BUTTON_W, label: String? = null, onClick: (() -> Unit)? = null) {
     val (bg, fg) = swipeColors(key)
-    val full = if (key == "more") "More" else CARD_ACTIONS.firstOrNull { it.first == key }?.second ?: key
+    val full = label ?: if (key == "more") "More" else CARD_ACTIONS.firstOrNull { it.first == key }?.second ?: key
     Column(
         Modifier.width(width).fillMaxHeight().background(bg)
             .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
@@ -119,9 +123,15 @@ fun SwipeButton(key: String, width: Dp = BUTTON_W, onClick: (() -> Unit)? = null
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
     ) {
         Icon(taskActionIcon(key), fg, 18)
-        T(if (key == "more") "More" else swipeLabel(key), fg, 11.sp, FontWeight.Medium, oneLine = true, modifier = Modifier.padding(horizontal = 2.dp))
+        T(label ?: if (key == "more") "More" else swipeLabel(key), fg, 11.sp, FontWeight.Medium, oneLine = true, modifier = Modifier.padding(horizontal = 2.dp))
     }
 }
+
+/**
+ * Other rows that swipe the same way (the Day Planner's lines): their own buttons, each with a short
+ * label, then More; [onAction] gets the key tapped (or "more"). [all] is every action, for a screen reader.
+ */
+class PlanSwipe(val buttons: List<Pair<String, String>>, val all: List<Pair<String, String>>, val onAction: (String) -> Unit)
 
 /**
  * A task row you can swipe left to show its buttons: the user's chosen ones, then More. Swipe right
@@ -134,15 +144,16 @@ fun SwipeButton(key: String, width: Dp = BUTTON_W, onClick: (() -> Unit)? = null
 fun SwipeRow(
     t: JSONObject, host: TaskActionHost?, faceColor: Color = Palette.panel,
     longClickLabel: String = "Move to another status", onLongClick: (() -> Unit)? = null,
-    onClick: () -> Unit, content: @Composable () -> Unit,
+    plan: PlanSwipe? = null, onClick: () -> Unit, content: @Composable () -> Unit,
 ) {
     if (host == null) {
         Box(Modifier.fillMaxWidth().combinedClickable(onLongClickLabel = longClickLabel.takeIf { onLongClick != null }, onLongClick = onLongClick, onClick = onClick)) { content() }
         return
     }
     val id = t.getLong("id")
-    val keys = swipeActions(App.boot?.settings ?: JSONObject())
+    val keys = plan?.buttons?.map { it.first } ?: swipeActions(App.boot?.settings ?: JSONObject())
     val reveal = with(LocalDensity.current) { (BUTTON_W * (keys.size + 1)).toPx() }
+    fun act(k: String) { if (plan != null) { host.openId = null; plan.onAction(k) } else host.run(k, t) }
     val x = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
     val open = host.openId == id
@@ -165,12 +176,12 @@ fun SwipeRow(
             ),
     ) {
         if (showButtons) Row(Modifier.matchParentSize(), horizontalArrangement = Arrangement.End) {
-            keys.forEach { k -> SwipeButton(k) { host.run(k, t) } }
-            SwipeButton("more") { host.run("more", t) }
+            keys.forEach { k -> SwipeButton(k, label = plan?.buttons?.firstOrNull { it.first == k }?.second) { act(k) } }
+            SwipeButton("more") { act("more") }
         }
         Box(
             Modifier.fillMaxWidth().offset { IntOffset(x.value.roundToInt(), 0) }.background(faceColor)
-                .semantics { customActions = CARD_ACTIONS.map { (k, label) -> CustomAccessibilityAction(label) { host.run(k, t); true } } }
+                .semantics { customActions = (plan?.all ?: CARD_ACTIONS).map { (k, label) -> CustomAccessibilityAction(label) { act(k); true } } }
                 .combinedClickable(
                     onLongClickLabel = longClickLabel.takeIf { onLongClick != null }, onLongClick = onLongClick,
                     onClick = { if (host.openId == id) host.openId = null else onClick() },

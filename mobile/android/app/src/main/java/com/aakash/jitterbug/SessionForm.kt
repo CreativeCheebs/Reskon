@@ -89,12 +89,18 @@ data class Draft(
     val tags: List<String> = emptyList(),
     /** Its task's tags, by name: shown, they follow the task. */
     val inheritedTags: List<String> = emptyList(),
+    /** The planner line (an event) this session completes. */
+    val dayItemId: Long? = null,
+    /** From a timer: its exact start and end, kept while the start time is not changed by hand. */
+    val startStamp: Instant? = null,
+    val endStamp: Instant? = null,
 ) {
     /** Shares must add up to 100 when there is more than one type. */
     val valid get() = (hours ?: 0.0) > 0 && parts.isNotEmpty() && (parts.size == 1 || parts.sumOf { it.share } == 100)
 
     fun body(): JSONObject {
         val first = parts.firstOrNull()
+        val (startIso, endIso) = sessionStamps(loggedFor, startedAt, startStamp, endStamp, ZoneId.systemDefault())
         return jsonOf(
             "task_id" to taskId,
             "label" to label.trim().ifBlank { null },
@@ -105,11 +111,14 @@ data class Draft(
             "difficulty" to first?.difficulty,
             "subtypes" to JSONArray(subtypes),
             "logged_for" to loggedFor.toString(),
-            "started_at" to startedAt?.let { loggedFor.atTime(it).atZone(ZoneId.systemDefault()).toInstant().toString() },
+            "started_at" to startIso,
             "note" to note.ifBlank { null },
             "custom" to custom,
             "tags" to tags.asJson(),
         ).apply {
+            // Only sent when there is one: an edit that leaves them out leaves them as they were.
+            endIso?.let { put("ended_at", it) }
+            dayItemId?.let { put("day_item_id", it) }
             if (parts.size > 1) put("energies", JSONArray(parts.map { jsonOf("energy_type_id" to it.typeId, "share" to it.share / 100.0, "difficulty" to it.difficulty) }))
         }
     }
@@ -128,6 +137,19 @@ data class Draft(
                 note = s.str("note") ?: "", custom = s.optJSONObject("custom") ?: JSONObject(),
                 tags = App.boot?.sessionTagNames(s, fromTask = false) ?: emptyList(),
                 inheritedTags = App.boot?.sessionTagNames(s, fromTask = true) ?: emptyList(),
+                dayItemId = s.id("day_item_id"),
+                startStamp = s.str("started_at")?.let { Instant.parse(it) }, endStamp = s.str("ended_at")?.let { Instant.parse(it) },
+            )
+        }
+
+        /** What a timer's Stop hands back (POST /api/timers/:id/stop `draft`), ready to review and save. */
+        fun ofTimer(d: JSONObject): Draft {
+            val start = d.str("started_at")?.let { Instant.parse(it) }
+            return Draft(
+                hours = d.num("hours")?.takeIf { it > 0 }, taskId = d.id("task_id"), label = d.str("label") ?: "",
+                kind = d.optString("kind", "task"), loggedFor = LocalDate.parse(d.getString("logged_for")),
+                startedAt = start?.atZone(ZoneId.systemDefault())?.toLocalTime()?.withSecond(0)?.withNano(0),
+                dayItemId = d.id("day_item_id"), startStamp = start, endStamp = d.str("ended_at")?.let { Instant.parse(it) },
             )
         }
     }

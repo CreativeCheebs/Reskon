@@ -15,6 +15,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.time.LocalDate
@@ -22,6 +23,26 @@ import java.time.LocalDate
 /** A session handed to the Log screen for editing (set by Sessions and Task). */
 object Editing {
     var session: JSONObject? = null
+
+    /** What a timer's Stop handed back, for the Log screen opened with the "draft" argument. */
+    var timerDraft: JSONObject? = null
+}
+
+/**
+ * The Log screen's first draft. Editing a session fills it from that session; "draft" is a stopped
+ * timer's; "item" is a planner event (its title, its reserved minutes) so saving completes it.
+ */
+private fun startingDraft(r: Route, editing: JSONObject?): Draft {
+    editing?.let { return Draft.of(it) }
+    if (r.args["draft"] != null) Editing.timerDraft?.let { return Draft.ofTimer(it) }
+    val date = r.args["date"]?.let { LocalDate.parse(it) } ?: LocalDate.now()
+    r.long("item")?.let { item ->
+        return Draft(
+            kind = "event", dayItemId = item, label = r.args["label"] ?: "", loggedFor = date,
+            hours = r.args["min"]?.toDoubleOrNull()?.let { it / 60 } ?: 1.0,
+        )
+    }
+    return Draft(loggedFor = date, hours = 1.0)
 }
 
 /**
@@ -31,9 +52,19 @@ object Editing {
 @Composable
 fun LogScreen(r: Route) {
     val editing = remember { r.long("session")?.let { id -> Editing.session?.takeIf { it.getLong("id") == id } } }
-    var d by remember {
-        mutableStateOf(editing?.let { Draft.of(it) } ?: Draft(loggedFor = r.args["date"]?.let { LocalDate.parse(it) } ?: LocalDate.now(), hours = 1.0))
-    }
+    val fromTimer = r.args["draft"] != null && editing == null
+    var d by remember { mutableStateOf(startingDraft(r, editing)) }
+    var confirmDiscard by remember { mutableStateOf(false) }
+    // Leaving a timer's draft without saving throws the counted time away: ask first.
+    val leave: () -> Unit = { if (fromTimer) confirmDiscard = true else App.back() }
+    if (fromTimer) androidx.activity.compose.BackHandler { confirmDiscard = true }
+    if (confirmDiscard) androidx.compose.material3.AlertDialog(
+        onDismissRequest = { confirmDiscard = false }, containerColor = Palette.raised,
+        title = { T("Discard this time?", Palette.fg, 18.sp, androidx.compose.ui.text.font.FontWeight.SemiBold) },
+        text = { T("The timer is stopped. Nothing has been saved, so this time is lost.", Palette.muted, 14.sp) },
+        confirmButton = { androidx.compose.material3.TextButton({ Editing.timerDraft = null; App.back() }) { T("Discard", Palette.red, 15.sp, androidx.compose.ui.text.font.FontWeight.SemiBold) } },
+        dismissButton = { androidx.compose.material3.TextButton({ confirmDiscard = false }) { T("Keep editing", Palette.fg, 15.sp) } },
+    )
     var text by remember { mutableStateOf(durationText(d.hours)) }
     val scope = rememberCoroutineScope()
 
@@ -76,7 +107,7 @@ fun LogScreen(r: Route) {
     val enterSaves: (() -> Unit) = { if (d.valid) save() }
 
     Column(Modifier.fillMaxSize()) {
-        TopBar(if (editing != null) "Edit session" else "Log session", onBack = { App.back() }) {
+        TopBar(if (editing != null) "Edit session" else "Log session", onBack = leave) {
             if (editing != null) TextLink("Delete", Palette.red) {
                 scope.launch {
                     attempt("Not deleted") { Api.del("/sessions/${editing.getLong("id")}"); App.changed(); App.back(); App.say("Session deleted") }
