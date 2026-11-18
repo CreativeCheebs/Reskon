@@ -123,7 +123,7 @@ fun SettingsScreen() {
                 Line(); ListRow("${Terms.capTask} dates", "Start, end and due") { App.go("taskdates") }
                 Line(); ListRow("Snooze", "Longest snooze") { App.go("snoozeset") }
                 Line(); ListRow("Complete details", "Fields an open ${Terms.task} should have") { App.go("complete") }
-                Line(); ListRow("Card actions", "Buttons and menu on web cards") { App.go("cardactions") }
+                Line(); ListRow("Card actions", "Swipe buttons here; buttons and menu on the web") { App.go("cardactions") }
                 Line(); ListRow("Tags", "${boot.tags.size} tags") { App.go("lookup", "kind" to "tags") }
                 Line(); ListRow("Custom fields", "Extra fields on ${Terms.tasks} and sessions") { App.go("fields") }
             }

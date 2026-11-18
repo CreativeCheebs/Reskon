@@ -253,16 +253,7 @@ fun TaskScreen(r: Route) {
         "due" -> DateDialog(t.str("due_at")?.let { LocalDate.parse(it.take(10)) }, { sheet = null }, "No due date", { change(jsonOf("due_at" to null)) }) { change(jsonOf("due_at" to it.toString())) }
         "dates" -> DateDialog(t.str("start_date")?.let { LocalDate.parse(it) }, { sheet = "dates2" }, "No start", { change(jsonOf("start_date" to null)) }) { change(jsonOf("start_date" to it.toString())) }
         "dates2" -> DateDialog(t.str("end_date")?.let { LocalDate.parse(it) }, { sheet = null }, "No end", { change(jsonOf("end_date" to null)) }) { change(jsonOf("end_date" to it.toString())) }
-        "snooze" -> {
-            fun snooze(days: Int, untilUnblocked: Boolean = false) {
-                sheet = null
-                scope.launch { attempt("Not snoozed") { snoozeTask(id, days, untilUnblocked); App.changed() } }
-            }
-            SnoozeSheet(
-                id, { sheet = null },
-                extras = listOf(SnoozeExtra("Until unblocked") { snooze(0, true) }, SnoozeExtra("Wake up now") { snooze(0) }),
-            ) { date -> snooze(snoozeDaysUntil(LocalDate.parse(today()), date)) }
-        }
+        "snooze" -> TaskSnoozeSheet(id, scope) { sheet = null }
         "actions" -> PickSheet(Terms.capTask, listOf(1L to "Log time", 2L to "Delete ${Terms.task}"), { sheet = null }) {
             sheet = null
             if (it == 1L) App.go("log", "task" to id) else confirmDelete = true
@@ -298,8 +289,7 @@ fun TaskScreen(r: Route) {
         )
     }
     if (confirmDelete) {
-        val subs = t.optInt("subtask_count")
-        fun delete(withSubtasks: Boolean) {
+        DeleteTaskDialog(t.optInt("subtask_count"), { confirmDelete = false }) { withSubtasks ->
             confirmDelete = false
             scope.launch {
                 attempt("Not deleted") {
@@ -308,22 +298,6 @@ fun TaskScreen(r: Route) {
                 }
             }
         }
-        AlertDialog(
-            onDismissRequest = { confirmDelete = false }, containerColor = Palette.raised,
-            title = { T("Delete this ${Terms.task}?", Palette.fg, 18.sp, FontWeight.SemiBold) },
-            text = {
-                T(if (subs == 0) "Its sessions stay, with no ${Terms.task}."
-                  else "It has $subs ${if (subs == 1) "subtask" else "subtasks"}. Delete ${if (subs == 1) "it" else "them"} too, or keep ${if (subs == 1) "it as its own ${Terms.task}" else "them as their own ${Terms.tasks}"}? Sessions stay either way.",
-                  Palette.muted, 14.sp)
-            },
-            confirmButton = {
-                Column(horizontalAlignment = Alignment.End) {
-                    if (subs > 0) TextButton({ delete(true) }) { T("Delete with subtasks", Palette.red, 15.sp, FontWeight.SemiBold) }
-                    TextButton({ delete(false) }) { T(if (subs > 0) "Delete, keep subtasks" else "Delete", if (subs > 0) Palette.fg else Palette.red, 15.sp, FontWeight.SemiBold) }
-                }
-            },
-            dismissButton = { TextButton({ confirmDelete = false }) { T("Cancel", Palette.muted, 15.sp) } },
-        )
     }
 }
 
