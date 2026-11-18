@@ -130,6 +130,9 @@ func installSyncTriggers(ctx context.Context, d *sql.DB) error {
 		if err != nil {
 			return err
 		}
+		if len(cols) == 0 {
+			continue // a table a migration has not made yet (a database held at an older version)
+		}
 		for _, stmt := range syncTriggerSQL(t, cols) {
 			if _, err := tx.ExecContext(ctx, stmt); err != nil {
 				return fmt.Errorf("sync trigger on %s: %w", t.name, err)

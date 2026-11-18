@@ -155,6 +155,9 @@ func (d *DB) ExportSync(ctx context.Context, since int64, only, except string, a
 			if t.parent != "" {
 				continue
 			}
+			if cols, _ := tableColumns(ctx, tx, t.name); len(cols) == 0 {
+				continue // a table a migration has not made yet (a phone held at an older version)
+			}
 			col := "id"
 			if t.natural != "" {
 				col = t.natural

@@ -58,10 +58,18 @@ var syncTables = []syncTable{
 			|| (SELECT uid FROM sync_idmap WHERE tbl = 'tag' AND id = NEW.tag_id) END`},
 	{name: "task_link", refs: map[string]string{"blocker_id": "task", "blocked_id": "task"}},
 	{name: "status_transition", refs: map[string]string{"task_id": "task", "from_status_id": "status", "to_status_id": "status"}},
-	{name: "session", refs: map[string]string{"task_id": "task", "area_id": "area", "energy_type_id": "energy_type"}},
+	// A task planned on a day is one record, whichever device planned it (the same
+	// idea as task_tag). A day used again after a reschedule or delete gets a fresh uid.
+	{name: "day_item", refs: map[string]string{"task_id": "task", "area_id": "area"}, uidSQL: `CASE WHEN NEW.task_id IS NOT NULL
+		AND NOT EXISTS (SELECT 1 FROM sync_idmap WHERE tbl = 'day_item' AND uid = 'di-' || NEW.day || '-'
+			|| (SELECT uid FROM sync_idmap WHERE tbl = 'task' AND id = NEW.task_id))
+		THEN 'di-' || NEW.day || '-' || (SELECT uid FROM sync_idmap WHERE tbl = 'task' AND id = NEW.task_id)
+		ELSE lower(hex(randomblob(16))) END`},
+	{name: "session", refs: map[string]string{"task_id": "task", "area_id": "area", "energy_type_id": "energy_type", "day_item_id": "day_item"}},
 	{name: "session_energy", parent: "_energies"},
 	{name: "session_subtype", parent: "_subtypes"},
 	{name: "session_tag", parent: "_tags"},
+	{name: "timer", refs: map[string]string{"day_item_id": "day_item", "task_id": "task"}},
 	{name: "state"},
 	{name: "inbox_item"},
 	{name: "day_plan", natural: "day"},
