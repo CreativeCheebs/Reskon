@@ -3,8 +3,6 @@ package db
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
-	"strconv"
 )
 
 // Bring forward (owner decision): only when the user asks, never by itself.
@@ -68,13 +66,28 @@ func (d *DB) BringForward(ctx context.Context, day string, taskIDs []int64) (*Da
 			return nil, invalid("task %d cannot be brought forward: it was not planned on an earlier day, or it is finished", id)
 		}
 	}
+	// All the lines go in together, or none do.
+	tx, err := d.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+	now := Now()
 	for _, id := range taskIDs {
-		if _, onDay := plannedItemOn(ctx, d, day, id); onDay {
+		if _, onDay := plannedItemOn(ctx, tx, day, id); onDay {
 			continue
 		}
-		if _, err := d.AddDayItem(ctx, day, Fields{"task_id": json.RawMessage(strconv.FormatInt(id, 10))}); err != nil {
+		pos, err := nextPosition(ctx, tx, day)
+		if err != nil {
 			return nil, err
 		}
+		if _, err := tx.ExecContext(ctx, `INSERT INTO day_item (day, kind, task_id, position, created_at, updated_at) VALUES (?, 'task', ?, ?, ?, ?)`,
+			day, id, pos, now, now); err != nil {
+			return nil, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
 	}
 	return d.GetDay(ctx, day)
 }

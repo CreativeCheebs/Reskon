@@ -114,8 +114,8 @@ func (d *DB) GetDayItem(ctx context.Context, id int64) (*DayItem, error) {
 	return it, nil
 }
 
-// nextPosition is one past the last item of the day (soft-deleted ones too,
-// so a position is never reused while a tombstone might still sync).
+// nextPosition is one past the last live item of the day. Positions only
+// order lines, so reusing one that a deleted line held is harmless.
 func nextPosition(ctx context.Context, q querier, day string) (float64, error) {
 	var max float64
 	err := q.QueryRowContext(ctx, `SELECT COALESCE(MAX(position), 0) FROM day_item WHERE day = ? AND deleted_at IS NULL`, day).Scan(&max)
@@ -199,6 +199,11 @@ func (d *DB) AddDayItem(ctx context.Context, day string, f Fields) (*DayItem, er
 	now := Now()
 	var res sql.Result
 	if hasTask {
+		// Checked again inside the transaction, in case a line was added since the check above.
+		if other, dup := plannedItemOn(ctx, tx, day, taskID); dup {
+			tx.Rollback()
+			return nil, d.alreadyPlanned(ctx, other)
+		}
 		res, err = tx.ExecContext(ctx, `INSERT INTO day_item (day, kind, task_id, position, created_at, updated_at) VALUES (?, 'task', ?, ?, ?, ?)`,
 			day, taskID, pos, now, now)
 	} else {
@@ -299,12 +304,42 @@ func (d *DB) PatchDayItem(ctx context.Context, id int64, f Fields) (*DayItem, er
 		return nil, err
 	}
 	defer tx.Rollback()
-	if _, set := sets["day"]; set {
+	if newDay, set := sets["day"]; set {
 		if _, hasPos := sets["position"]; !hasPos {
-			if sets["position"], err = nextPosition(ctx, tx, sets["day"].(string)); err != nil {
+			if sets["position"], err = nextPosition(ctx, tx, newDay.(string)); err != nil {
 				return nil, err
 			}
 		}
+		if cur.TaskID != nil {
+			if other, dup := plannedItemOn(ctx, tx, newDay.(string), *cur.TaskID); dup {
+				tx.Rollback()
+				return nil, d.alreadyPlanned(ctx, other)
+			}
+			// A task line's sync id is made from its day and task, so a line that
+			// changes day is retired and a new one made for the new day (a fresh id
+			// for the new day). Another device planning the task on the old day then
+			// gets its own line instead of merging with this one.
+			now := Now()
+			if _, err := tx.ExecContext(ctx, `UPDATE day_item SET deleted_at = ?, updated_at = ? WHERE id = ?`, now, now, id); err != nil {
+				return nil, err
+			}
+			res, err := tx.ExecContext(ctx, `INSERT INTO day_item (day, kind, task_id, position, created_at, updated_at) VALUES (?, 'task', ?, ?, ?, ?)`,
+				newDay, *cur.TaskID, sets["position"], now, now)
+			if err != nil {
+				return nil, err
+			}
+			if id, err = res.LastInsertId(); err != nil {
+				return nil, err
+			}
+			delete(sets, "day")
+			delete(sets, "position")
+		}
+	}
+	if len(sets) == 0 {
+		if err := tx.Commit(); err != nil {
+			return nil, err
+		}
+		return d.GetDayItem(ctx, id)
 	}
 	sets["updated_at"] = Now()
 	for _, col := range sortedKeys(sets) {
@@ -370,6 +405,32 @@ func (d *DB) applyPlanItem(ctx context.Context, f Fields) error {
 	}
 	if area.Valid {
 		set("area_id", area.Int64)
+	}
+	return nil
+}
+
+// checkMergedTimes checks ended_at is not before started_at once a patch is
+// applied to the session as it is now (the patch may carry only one of them).
+func checkMergedTimes(cur *Session, f Fields) error {
+	start, end := cur.StartedAt, cur.EndedAt
+	for k, dst := range map[string]**string{"started_at": &start, "ended_at": &end} {
+		raw, ok := f[k]
+		if !ok {
+			continue
+		}
+		if isNull(raw) {
+			*dst = nil
+			continue
+		}
+		var s string
+		if json.Unmarshal(raw, &s) == nil && s != "" {
+			*dst = &s
+		} else {
+			*dst = nil
+		}
+	}
+	if start != nil && end != nil && *end < *start {
+		return invalid("ended_at is before started_at")
 	}
 	return nil
 }
