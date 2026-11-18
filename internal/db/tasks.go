@@ -158,6 +158,22 @@ func (d *DB) CreateTask(ctx context.Context, f Fields) (*Task, error) {
 	}
 	delete(f, "status_id")
 	today := localDate(f)
+	// snooze_until (a local date) is only for create: not a column, and
+	// absent or null means not snoozed.
+	snoozeDays, hasSnooze := 0, false
+	if raw, ok := f["snooze_until"]; ok {
+		delete(f, "snooze_until")
+		if !isNull(raw) {
+			var s string
+			if json.Unmarshal(raw, &s) != nil {
+				return nil, invalid("snooze_until must be a date like 2026-11-25")
+			}
+			if snoozeDays, err = snoozeDateDays(s, today); err != nil {
+				return nil, err
+			}
+			hasSnooze = true
+		}
+	}
 	customPatch, hasCustom := f["custom"]
 	delete(f, "custom")
 	tagNames, hasTags, err := parseTags(f)
@@ -247,6 +263,11 @@ func (d *DB) CreateTask(ctx context.Context, f Fields) (*Task, error) {
 	}
 	if err := writeTransition(ctx, tx, id, nil, statusID, "user", now); err != nil {
 		return nil, err
+	}
+	if hasSnooze {
+		if err := snoozeNew(ctx, tx, id, statusID, snoozeDays, today); err != nil {
+			return nil, err
+		}
 	}
 	// A task created straight into In progress (say) gets its start date.
 	if err := applyDateRules(ctx, tx, id, statusID, today); err != nil {
