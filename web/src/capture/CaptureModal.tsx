@@ -15,6 +15,7 @@ import { defaultPriorityId } from "../task/defaultPriority";
 import { palette } from "../theme/palette";
 import { today } from "../format";
 import { SimilarTasksList, useSimilarTasks } from "../task/SimilarTasks";
+import { SnoozeField } from "../task/SnoozeField";
 import { useTerms } from "../terms";
 
 // Quick capture: one line in, filled forms out, nothing written until the
@@ -31,6 +32,8 @@ interface TaskDraft {
   priority_id: number | null;
   /** Tags by name; new names are made when it is saved. */
   tags: string[];
+  /** A local date (YYYY-MM-DD) to hide the new task until; null = not snoozed. */
+  snooze_until: string | null;
 }
 
 type Intent = "task" | "session";
@@ -115,7 +118,7 @@ export function CaptureModal({ onClose, takeEarlyKeys, initialText, onSaved }: P
       id: nextEntryId++,
       parse: p,
       intent: p.intent === "session" ? "session" : p.intent === "task" ? "task" : null,
-      task: { title: p.title ?? raw, area_id: areaId, energy_type_id: energyId, difficulty: p.difficulty, priority_id: defaultPriorityId(boot.settings, boot.priorities), tags: p.tags ?? [] },
+      task: { title: p.title ?? raw, area_id: areaId, energy_type_id: energyId, difficulty: p.difficulty, priority_id: defaultPriorityId(boot.settings, boot.priorities), tags: p.tags ?? [], snooze_until: null },
       session: emptySession({
         task_id: p.matched_task_id ?? null,
         label: p.matched_task_id ? "" : p.title ?? raw,
@@ -169,6 +172,7 @@ export function CaptureModal({ onClose, takeEarlyKeys, initialText, onSaved }: P
       if (t.difficulty) body.difficulty = t.difficulty;
       body.priority_id = t.priority_id; // null is an explicit None
       if (t.tags.length) body.tags = t.tags;
+      if (t.snooze_until) body.snooze_until = t.snooze_until;
       await api.post<Task>("/tasks", body);
       local.set(LAST_AREA, String(t.area_id));
     } else if (e.intent === "session") {
@@ -363,6 +367,9 @@ function TaskFields({ draft, onChange }: { draft: TaskDraft; onChange: (d: TaskD
         </Form.Item>
         <Form.Item label="Tags" style={{ gridColumn: "1 / -1", marginBottom: 8 }}>
           <TagSelect value={draft.tags} onChange={(tags) => set({ tags })} />
+        </Form.Item>
+        <Form.Item label="Snooze until" style={{ gridColumn: "1 / -1", marginBottom: 8 }}>
+          <SnoozeField value={draft.snooze_until} onChange={(snooze_until) => set({ snooze_until })} />
         </Form.Item>
       </div>
     </Form>
