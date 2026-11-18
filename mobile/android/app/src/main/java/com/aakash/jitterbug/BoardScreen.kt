@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -205,6 +206,7 @@ object EpicNames {
     private var names: Map<Long, String> = emptyMap()
     private var version = -1
     fun of(id: Long) = names[id]
+    fun all(): Map<Long, String> = names
     suspend fun load() {
         if (version == App.version) return
         names = Api.arr("/tasks?type=epic").objs().associate { it.getLong("id") to it.getString("title") }
@@ -215,7 +217,11 @@ object EpicNames {
 // ---------------------------------------------------------------- List
 
 /** One section of the list: a status, priority, area... and the tasks in it. */
-private class Group(val key: String, val name: String, val color: Color, val rows: List<JSONObject>, val hiddenStatus: Long? = null)
+private class Group(
+    val key: String, val name: String, val color: Color, val rows: List<JSONObject>, val hiddenStatus: Long? = null,
+    /** What "+ Add" under this group fills in on the new task: a field (status_id, priority_id...) and its id. Null for "No area", "All"... */
+    val field: String? = null, val fieldId: Long? = null,
+)
 
 /**
  * The phone's only layout for a view: a section for each group (by default each status), one under
@@ -239,13 +245,15 @@ private fun ListLayout(view: ViewRef, allTasks: List<JSONObject>, onLongPress: (
         "none" -> "All" to Palette.accent
         else -> boot.status(t.id("status_id"))?.let { it.name to it.color } ?: ("?" to Palette.subtle)
     }
+    // The task field a group stands for; a "No ..." group or the one "All" group fills in nothing.
+    val fieldName = when (groupBy) { "priority" -> "priority_id"; "area" -> "area_id"; "energy_type" -> "energy_type_id"; "epic" -> "epic_id"; else -> null }
     val groups: List<Group> = if (groupBy == "status") {
         // Every status on the board is a section, even an empty one; a hidden one is a section once opened.
         boot.statuses.filter { it.onBoard || it.id in opened }.map { s ->
-            Group("s${s.id}", s.name, s.color, tasks.filter { it.optLong("status_id", -1) == s.id }, hiddenStatus = s.id.takeIf { !s.onBoard })
+            Group("s${s.id}", s.name, s.color, tasks.filter { it.optLong("status_id", -1) == s.id }, hiddenStatus = s.id.takeIf { !s.onBoard }, field = "status_id", fieldId = s.id)
         }
     } else {
-        tasks.groupBy { keyOf(it) }.entries.map { (k, rows) -> Group("${k.first}|${k.second.value}", k.first, k.second, rows) }
+        tasks.groupBy { keyOf(it) }.entries.map { (k, rows) -> Group("${k.first}|${k.second.value}", k.first, k.second, rows, field = fieldName, fieldId = rows.first().id(fieldName ?: "")) }
     }
     // The status to scroll to once the list has been rebuilt with it (a hidden one is added first).
     var pending by remember { mutableStateOf<String?>(null) }
@@ -302,12 +310,25 @@ private fun ListLayout(view: ViewRef, allTasks: List<JSONObject>, onLongPress: (
     LazyColumn(state = listState, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         items(groups, key = { it.key }) { g ->
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(
-                    Modifier.semantics(mergeDescendants = true) { heading(); contentDescription = "${g.name}, ${Terms.countTasks(g.rows.size)}" },
-                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Dot(g.color)
-                    T("${g.name} · ${g.rows.size}", Palette.fg, 14.sp, FontWeight.SemiBold)
+                Row(Modifier.fillMaxWidth().heightIn(min = 40.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        Modifier.weight(1f).semantics(mergeDescendants = true) { heading(); contentDescription = "${g.name}, ${Terms.countTasks(g.rows.size)}" },
+                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Dot(g.color)
+                        T("${g.name} · ${g.rows.size}", Palette.fg, 14.sp, FontWeight.SemiBold, oneLine = true)
+                    }
+                    // "+ Add": a new task that starts in this group (its status, priority, area...).
+                    Row(
+                        Modifier.offset(x = 8.dp).heightIn(min = 48.dp).clip(RoundedCornerShape(24.dp))
+                            .clickable(role = Role.Button, onClickLabel = "Add a ${Terms.task}") {
+                                val args = listOfNotNull("view" to view.id, g.field?.let { "pre" to it }, g.fieldId?.let { "preid" to it })
+                                App.go("newtask", *args.toTypedArray())
+                            }
+                            .semantics(mergeDescendants = true) { contentDescription = "Add a ${Terms.task} to ${g.name}" }
+                            .padding(horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) { T("+ Add", Palette.accentFg, 14.sp, FontWeight.Medium, oneLine = true) }
                 }
                 if (g.rows.isEmpty()) T("No ${Terms.tasks}", Palette.subtle, 13.sp, modifier = Modifier.padding(start = 4.dp))
                 else Card {
