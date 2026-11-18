@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { availableText, clock, elapsedNow, loggedOfEstimate, minutesText, parseMinutes, readAvailable, reorderIds, rowFigures, stepIds, unestimatedText } from "./plan";
+import { availableText, clock, elapsedNow, loggedOfEstimate, minutesText, parseAvailable, parseMinutes, readAvailable, reorderIds, rowFigures, stepIds, unestimatedText } from "./plan";
 import type { DayItem, PlanTotals } from "./types";
 
 const totals = (p: Partial<PlanTotals>): PlanTotals => ({ planned_min: 0, logged_min: 0, unestimated: 0, available_min: null, available_from: null, over: false, ...p });
@@ -50,6 +50,16 @@ describe("ordering", () => {
     expect(stepIds([1, 2, 3], 2, -1)).toEqual([2, 1, 3]);
     expect(stepIds([1, 2, 3], 1, -1)).toEqual([1, 2, 3]);
     expect(stepIds([1, 2, 3], 3, 1)).toEqual([1, 2, 3]);
+  });
+});
+
+describe("available minutes", () => {
+  it("blank is not set, 0 is a day off, junk is refused", () => {
+    expect(parseAvailable("")).toBeNull();
+    expect(parseAvailable("0")).toBe(0);
+    expect(parseAvailable("8h")).toBe(480);
+    expect(parseAvailable("25h")).toBeUndefined();
+    expect(parseAvailable("x")).toBeUndefined();
   });
 });
 

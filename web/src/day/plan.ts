@@ -92,7 +92,16 @@ export function readAvailable(setting: unknown): Record<string, number> {
   return out;
 }
 
-/** Parses "90", "1h 30m", "1:30" typed as minutes; null when unreadable or not positive. */
+/** Available minutes typed in settings: blank is "not set" (null), 0 is a day off, unreadable is undefined. */
+export function parseAvailable(text: string): number | null | undefined {
+  const t = text.trim();
+  if (t === "") return null;
+  if (/^0+$/.test(t)) return 0;
+  const m = parseMinutes(t);
+  return m === null || m > 1440 ? undefined : m;
+}
+
+/** Parses "90","1h 30m", "1:30" typed as minutes; null when unreadable or not positive. */
 export function parseMinutes(text: string): number | null {
   const t = text.trim().toLowerCase();
   if (!t) return null;
