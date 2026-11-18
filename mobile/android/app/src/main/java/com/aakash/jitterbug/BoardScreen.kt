@@ -237,13 +237,15 @@ private fun ListLayout(view: ViewRef, allTasks: List<JSONObject>, onLongPress: (
     var opened by remember(view.id) { mutableStateOf(OpenedStatuses.of(view.id)) }
     val tasks = withoutHiddenStatuses(allTasks, boot.statuses, opened)
     val groupBy = view.raw.optJSONObject("board_state")?.optString("group_by")?.ifBlank { null } ?: "status"
-    fun keyOf(t: JSONObject): Pair<String, Color> = when (groupBy) {
-        "priority" -> boot.priority(t.id("priority_id"))?.let { it.name to it.color } ?: ("No priority" to Palette.subtle)
-        "area" -> boot.area(t.id("area_id"))?.let { it.name to it.color } ?: ("No area" to Palette.subtle)
-        "energy_type" -> boot.type(t.id("energy_type_id"))?.let { it.name to it.color } ?: ("No energy type" to Palette.subtle)
-        "epic" -> (t.id("epic_id")?.let { EpicNames.of(it) } ?: "No ${Terms.epic}") to Palette.purple
-        "none" -> "All" to Palette.accent
-        else -> boot.status(t.id("status_id"))?.let { it.name to it.color } ?: ("?" to Palette.subtle)
+    // A group is its name, colour and the id it stands for; the id is null for a "No ..." group (also when the
+    // task's id is no longer known), so "+ Add" there fills nothing in, and two epics with one title stay apart.
+    fun keyOf(t: JSONObject): Triple<String, Color, Long?> = when (groupBy) {
+        "priority" -> boot.priority(t.id("priority_id"))?.let { Triple(it.name, it.color, it.id) } ?: Triple("No priority", Palette.subtle, null)
+        "area" -> boot.area(t.id("area_id"))?.let { Triple(it.name, it.color, it.id) } ?: Triple("No area", Palette.subtle, null)
+        "energy_type" -> boot.type(t.id("energy_type_id"))?.let { Triple(it.name, it.color, it.id) } ?: Triple("No energy type", Palette.subtle, null)
+        "epic" -> t.id("epic_id")?.let { id -> EpicNames.of(id)?.let { Triple(it, Palette.purple, id) } } ?: Triple("No ${Terms.epic}", Palette.purple, null)
+        "none" -> Triple("All", Palette.accent, null)
+        else -> boot.status(t.id("status_id"))?.let { Triple(it.name, it.color, it.id) } ?: Triple("?", Palette.subtle, null)
     }
     // The task field a group stands for; a "No ..." group or the one "All" group fills in nothing.
     val fieldName = when (groupBy) { "priority" -> "priority_id"; "area" -> "area_id"; "energy_type" -> "energy_type_id"; "epic" -> "epic_id"; else -> null }
@@ -253,7 +255,7 @@ private fun ListLayout(view: ViewRef, allTasks: List<JSONObject>, onLongPress: (
             Group("s${s.id}", s.name, s.color, tasks.filter { it.optLong("status_id", -1) == s.id }, hiddenStatus = s.id.takeIf { !s.onBoard }, field = "status_id", fieldId = s.id)
         }
     } else {
-        tasks.groupBy { keyOf(it) }.entries.map { (k, rows) -> Group("${k.first}|${k.second.value}", k.first, k.second, rows, field = fieldName, fieldId = rows.first().id(fieldName ?: "")) }
+        tasks.groupBy { keyOf(it) }.entries.map { (k, rows) -> Group("${k.first}|${k.second.value}|${k.third}", k.first, k.second, rows, field = fieldName.takeIf { k.third != null }, fieldId = k.third) }
     }
     // The status to scroll to once the list has been rebuilt with it (a hidden one is added first).
     var pending by remember { mutableStateOf<String?>(null) }

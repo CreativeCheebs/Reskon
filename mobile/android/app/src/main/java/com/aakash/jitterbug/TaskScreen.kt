@@ -339,7 +339,8 @@ fun NewTaskScreen(r: Route) {
     val preId = r.long("preid")
     fun pick(field: String) = preId.takeIf { pre == field }
     var area by remember { mutableStateOf(pick("area_id") ?: viewAreas?.firstOrNull() ?: boot.areas.first().id) }
-    var status by remember { mutableStateOf(pick("status_id")?.takeIf { id -> boot.statuses.any { it.id == id } }) }
+    val startStatus = remember { pick("status_id")?.takeIf { id -> boot.statuses.any { it.id == id } } }
+    var status by remember { mutableStateOf(startStatus) }
     var epicId by remember { mutableStateOf(pick("epic_id")) }
     var type by remember { mutableStateOf(pick("energy_type_id")) }
     var priority by remember { mutableStateOf(pick("priority_id")) }
@@ -374,7 +375,7 @@ fun NewTaskScreen(r: Route) {
             }
             // Statuses off the board (Backlog...) are offered only when the group you came from is one.
             Chips("Status") {
-                boot.statuses.filter { it.onBoard || it.id == status }.forEach { s -> Pill(s.name, status == s.id, s.color, height = 32, dense = true) { status = if (status == s.id) null else s.id } }
+                boot.statuses.filter { it.onBoard || it.id == startStatus }.forEach { s -> Pill(s.name, status == s.id, s.color, height = 32, dense = true) { status = if (status == s.id) null else s.id } }
             }
             Chips("Area") { boot.areas.forEach { a -> Pill(a.name, area == a.id, height = 32, dense = true) { area = a.id } } }
             if (!epic && epics.isNotEmpty()) Chips(Terms.capEpic) {
@@ -403,13 +404,14 @@ fun NewTaskScreen(r: Route) {
                 try {
                   attempt("Not created") {
                     val t = Api.post("/tasks", jsonOf(
-                        "title" to title.trim(), "area_id" to area, "type" to if (epic) "epic" else "task", "energy_type_id" to type,
-                        "priority_id" to priority, "difficulty" to difficulty, "estimate_h" to parseHours(estimate),
+                        "title" to title.trim(), "area_id" to area, "type" to if (epic) "epic" else "task", "difficulty" to difficulty, "estimate_h" to parseHours(estimate),
                         "due_at" to due?.toString(), "today" to today(),
                     ).apply {
                         if (tags.isNotEmpty()) put("tags", tags.asJson())
                         // Left out (not null) when not chosen, so the server's own default applies.
                         status?.let { put("status_id", it) }
+                        type?.let { put("energy_type_id", it) }
+                        priority?.let { put("priority_id", it) }
                         if (!epic) epicId?.let { put("epic_id", it) }
                     })
                     // A tag typed here may be new, so the lists that name tags are read again.
