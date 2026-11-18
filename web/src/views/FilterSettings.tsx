@@ -7,8 +7,9 @@ import { WriteButton } from "../offline";
 import { TypeLabel, TypeIcon } from "../task/TypeIcon";
 import { useEpics } from "../task/useEpics";
 import { CustomFilterEditor } from "./CustomFilterEditor";
+import { NotToggle } from "./NotToggle";
 import { filterOf } from "./cardConfig";
-import type { TaskType, View, ViewFilter } from "../types";
+import type { NotField, TaskType, View, ViewFilter } from "../types";
 import { DifficultySlider } from "../task/DifficultySlider";
 import { useTerms } from "../terms";
 import { useTags } from "../tags/tags";
@@ -23,6 +24,12 @@ export function FilterSettings({ view, onClose }: { view: View; onClose: () => v
   const [filter, setFilter] = useState<ViewFilter>(filterOf(view));
   const [busy, setBusy] = useState(false);
   const set = <K extends keyof ViewFilter>(k: K, v: ViewFilter[K]) => setFilter((f) => ({ ...f, [k]: v }));
+  const notLabel = (field: NotField, text: string) => (
+    <Space size={8}>
+      {text}
+      <NotToggle field={field} not={filter.not} label={text} onChange={(v) => set("not", v)} />
+    </Space>
+  );
   const list = <T,>(v: T[]) => (v.length ? v : null);
 
   const save = async () => {
@@ -55,7 +62,7 @@ export function FilterSettings({ view, onClose }: { view: View; onClose: () => v
       }
     >
       <Form layout="vertical" size="small">
-        <Form.Item label="Type" help={`Empty means ${T.tasks} and ${T.epics}`}>
+        <Form.Item label={notLabel("types", "Type")} help={`Empty means ${T.tasks} and ${T.epics}`}>
           <Select<TaskType[]>
             mode="multiple"
             allowClear
@@ -64,7 +71,7 @@ export function FilterSettings({ view, onClose }: { view: View; onClose: () => v
             options={(["task", "epic"] as TaskType[]).map((t) => ({ value: t, label: <TypeLabel type={t} /> }))}
           />
         </Form.Item>
-        <Form.Item label={T.Epic} help={`${T.Tasks} belonging to these ${T.epics}. Empty means any.`}>
+        <Form.Item label={notLabel("epics", T.Epic)} help={`${T.Tasks} belonging to these ${T.epics}. Empty means any.`}>
           <Select<number[]>
             mode="multiple"
             allowClear
@@ -86,7 +93,7 @@ export function FilterSettings({ view, onClose }: { view: View; onClose: () => v
             ]}
           />
         </Form.Item>
-        <Form.Item label="Tags" help="Tasks with any of these tags. Empty means any.">
+        <Form.Item label={notLabel("tags", "Tags")} help="Tasks with any of these tags (or, with is not, none of them). Empty means any.">
           <Select<number[]>
             mode="multiple"
             allowClear
@@ -97,7 +104,7 @@ export function FilterSettings({ view, onClose }: { view: View; onClose: () => v
             options={[{ value: 0, label: "No tags" }, ...tags.map((t) => ({ value: t.id, label: t.name }))]}
           />
         </Form.Item>
-        <Form.Item label="Areas" help="Empty means all areas">
+        <Form.Item label={notLabel("areas", "Areas")} help="Empty means all areas">
           <Select
             mode="multiple"
             allowClear
@@ -106,7 +113,7 @@ export function FilterSettings({ view, onClose }: { view: View; onClose: () => v
             options={boot.areas.map((a) => ({ value: a.id, label: a.name }))}
           />
         </Form.Item>
-        <Form.Item label="Statuses" help="Empty means all statuses">
+        <Form.Item label={notLabel("statuses", "Statuses")} help="Empty means all statuses">
           <Select
             mode="multiple"
             allowClear

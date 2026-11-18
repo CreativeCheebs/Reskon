@@ -46,6 +46,9 @@ A session's points are saved with it, instead of being worked out when read. Tha
 ### Keys count up from the highest number ever used
 The next key is the prefix plus one more than the highest number ever used with it, deleted tasks included, worked out while the task is being saved. Keys are never reused. Counting by prefix, not by area, means moving a task between areas doesn't disturb numbering.
 
+### "is not" in view filters (owner request, 2026-11-18)
+Each list in a view's filter (areas, statuses, types, epics, tags) can read "is not". It is stored as a `not` list of field names beside the existing lists, not as new "not_statuses" lists, so one list of chosen values plus one switch is all the screen needs, and old filters (no `not`) are unchanged. The server turns "is not" into NOT around the same condition, treating "no value" as "did not match", so tasks with no epic or no tags are kept. An empty list excludes nothing. The names are checked and a bad one is refused (as unknown keys already are). It combines with the other filters by AND, including Open only.
+
 ### Dates come from the move log, worked out in Go
 The first spec asked for a saved SQL query (a "view") called `task_dates`. It wasn't built. All the dates (first started, completed, ages, time in status) are worked out by `deriveDates` in `internal/db/derive.go`. Having the SQL view too would mean two calculations that could disagree.
 

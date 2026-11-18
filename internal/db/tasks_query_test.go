@@ -112,3 +112,68 @@ func TestListTaskBriefs(t *testing.T) {
 		t.Errorf("fields wrong: %+v %+v", got[0], got[1])
 	}
 }
+
+// "is not": the chosen values are left out; tasks with no value are kept.
+func TestViewFilterIsNot(t *testing.T) {
+	d := openTest(t)
+	ctx := context.Background()
+	per := mustArea(t, d, "Personal", "PER")
+	om := mustArea(t, d, "Main job", "OM2")
+	a := mustTask(t, d, per.ID, "a")
+	b := mustTask(t, d, om.ID, "b")
+	c := mustTask(t, d, per.ID, "c")
+	e := mustTask(t, d, per.ID, "e")
+	epic, err := d.CreateTask(ctx, fields(t, fmt.Sprintf(`{"title":"E","type":"epic","area_id":%d}`, per.ID)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.PatchTask(ctx, a.ID, fields(t, fmt.Sprintf(`{"epic_id":%d,"tags":["x"],"updated_at":%q}`, epic.ID, a.UpdatedAt))); err != nil {
+		t.Fatal(err)
+	}
+	d.Move(ctx, c.ID, MoveRequest{StatusID: 4}) // done
+	_, _ = b, e
+	var tagID int64
+	if err := d.QueryRowContext(ctx, `SELECT id FROM tag WHERE name = 'x'`).Scan(&tagID); err != nil {
+		t.Fatal(err)
+	}
+
+	cases := []struct {
+		filter string
+		want   []string
+	}{
+		{fmt.Sprintf(`{"areas":[%d],"not":["areas"]}`, per.ID), []string{"b"}},
+		{`{"statuses":[4],"not":["statuses"]}`, []string{"a", "b", "e", "E"}},
+		{`{"types":["epic"],"not":["types"]}`, []string{"a", "b", "c", "e"}},
+		{fmt.Sprintf(`{"epics":[%d],"not":["epics"]}`, epic.ID), []string{"b", "c", "e", "E"}}, // no epic is kept
+		{fmt.Sprintf(`{"tags":[%d],"not":["tags"]}`, tagID), []string{"b", "c", "e", "E"}},     // no tags is kept
+		{`{"epics":[0],"not":["epics"]}`, []string{"a"}},
+		// combined with another filter, and with open_only (both apply)
+		{fmt.Sprintf(`{"statuses":[4],"not":["statuses"],"areas":[%d]}`, per.ID), []string{"a", "e", "E"}},
+		{`{"statuses":[4],"not":["statuses"],"open_only":true}`, []string{"a", "b", "e", "E"}},
+		// an empty "is not" list excludes nothing
+		{`{"statuses":[],"not":["statuses"]}`, []string{"a", "b", "c", "e", "E"}},
+		// old filters (no "not") behave as before
+		{`{"statuses":[4]}`, []string{"c"}},
+		{`{"not":[]}`, []string{"a", "b", "c", "e", "E"}},
+	}
+	for _, tc := range cases {
+		got, err := d.ListTasksForView(ctx, viewWith(t, d, tc.filter), "")
+		if err != nil {
+			t.Fatalf("%s: %v", tc.filter, err)
+		}
+		gt := titles(got)
+		if len(gt) != len(tc.want) {
+			t.Errorf("%s: got %v, want %v", tc.filter, gt, tc.want)
+			continue
+		}
+		for _, w := range tc.want {
+			if !gt[w] {
+				t.Errorf("%s: missing %s (got %v)", tc.filter, w, gt)
+			}
+		}
+	}
+	_, err = d.CreateView(ctx, fields(t, `{"name":"v","layout":"table","filter":{"not":["priority"]}}`))
+	if _, ok := err.(*InvalidError); !ok {
+		t.Errorf("want InvalidError for a bad not entry, got %v", err)
+	}
+}

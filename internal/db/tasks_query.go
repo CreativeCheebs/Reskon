@@ -22,9 +22,25 @@ type ViewFilter struct {
 	Epics           []int64                    `json:"epics"`             // tasks in these epics; 0 means "no epic"
 	Tags            []int64                    `json:"tags"`              // tasks with any of these tags; 0 means "no tags"
 	Subtasks        bool                       `json:"subtasks"`          // a view shows subtasks as their own cards only when true
+	Not             []string                   `json:"not"`               // lists above read "is not": areas, statuses, types, epics, tags
 
 	parent       *int64 // the subtasks of one task; never from a view's JSON
 	hideSubtasks bool   // set for views from Subtasks
+}
+
+// negatable lists the filter lists that can read "is not" (the "not" key).
+var negatable = map[string]bool{"areas": true, "statuses": true, "types": true, "epics": true, "tags": true}
+
+// not wraps a condition for list field name: when the view says "is not"
+// for it, the condition is inverted. A task with no value for the field
+// (no epic, no tags) does not match the positive condition, so it is kept.
+func (f *ViewFilter) not(name, cond string) string {
+	for _, n := range f.Not {
+		if n == name {
+			return "NOT COALESCE((" + cond + "), 0)"
+		}
+	}
+	return cond
 }
 
 // customKeyRe limits custom field keys to identifiers, so they can be put
@@ -43,6 +59,11 @@ func parseFilter(raw []byte) (*ViewFilter, error) {
 	for _, t := range f.Types {
 		if t != "task" && t != "epic" {
 			return nil, invalid("filter: types may only contain task and epic")
+		}
+	}
+	for _, n := range f.Not {
+		if !negatable[n] {
+			return nil, invalid("filter: not may only contain areas, statuses, types, epics and tags (got %q)", n)
 		}
 	}
 	for k, v := range f.Custom {
@@ -153,10 +174,10 @@ func (d *DB) queryTasks(ctx context.Context, f *ViewFilter, search string, now t
 	where := []string{"deleted_at IS NULL"}
 	var args []any
 	if f.Areas != nil {
-		where = append(where, inList("area_id", f.Areas, &args))
+		where = append(where, f.not("areas", inList("area_id", f.Areas, &args)))
 	}
 	if f.Statuses != nil {
-		where = append(where, inList("status_id", f.Statuses, &args))
+		where = append(where, f.not("statuses", inList("status_id", f.Statuses, &args)))
 	}
 	if f.Types != nil {
 		ph := make([]string, len(f.Types))
@@ -165,9 +186,9 @@ func (d *DB) queryTasks(ctx context.Context, f *ViewFilter, search string, now t
 			args = append(args, t)
 		}
 		if len(f.Types) == 0 {
-			where = append(where, "0")
+			where = append(where, f.not("types", "0"))
 		} else {
-			where = append(where, "type IN ("+strings.Join(ph, ",")+")")
+			where = append(where, f.not("types", "type IN ("+strings.Join(ph, ",")+")"))
 		}
 	}
 	if f.Epics != nil {
@@ -190,7 +211,7 @@ func (d *DB) queryTasks(ctx context.Context, f *ViewFilter, search string, now t
 		if len(conds) == 0 {
 			conds = []string{"0"}
 		}
-		where = append(where, "("+strings.Join(conds, " OR ")+")")
+		where = append(where, f.not("epics", "("+strings.Join(conds, " OR ")+")"))
 	}
 	if f.Tags != nil {
 		var ids []int64
@@ -212,7 +233,7 @@ func (d *DB) queryTasks(ctx context.Context, f *ViewFilter, search string, now t
 		if len(conds) == 0 {
 			conds = []string{"0"}
 		}
-		where = append(where, "("+strings.Join(conds, " OR ")+")")
+		where = append(where, f.not("tags", "("+strings.Join(conds, " OR ")+")"))
 	}
 	if f.hideSubtasks {
 		where = append(where, "parent_id IS NULL")

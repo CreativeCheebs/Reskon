@@ -71,5 +71,6 @@ export function filterOf(view: View): ViewFilter {
     epics: f.epics ?? null,
     tags: f.tags ?? null,
     subtasks: f.subtasks ?? false,
+    not: f.not ?? null,
   };
 }
