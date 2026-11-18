@@ -166,7 +166,7 @@ function candidates(status, plan) {
     controls.append(grip, action('＋', `Add ${task.name} to plan`, () => addTask(id, true)));
     row.draggable = true;
     row.addEventListener('dragstart', (event) => {
-      draggedTask = id;
+      draggedTask = { id, source: 'available' };
       event.dataTransfer.setData('text/plain', id);
       event.dataTransfer.effectAllowed = 'copy';
     });
@@ -226,6 +226,15 @@ function renderPlan() {
     const completion = event && logged ? ', completed' : '';
     button.setAttribute('aria-label', `${kindLabel(task.kind)}: ${task.name}. ${time} logged this day / ${estimateLabel}${completion}`);
     button.addEventListener('click', () => openTask(id));
+    if (!event) {
+      button.draggable = true;
+      button.addEventListener('dragstart', (dragEvent) => {
+        draggedTask = { id, source: 'plan', date };
+        dragEvent.dataTransfer.setData('text/plain', id);
+        dragEvent.dataTransfer.effectAllowed = 'move';
+      });
+      button.addEventListener('dragend', clearDrag);
+    }
     const ratio = create('span', `${time} / ${estimate}`, 'task-time');
     if (event && logged) ratio.append(create('span', ' ✓', 'event-logged'));
     button.append(itemName(task), ratio);
@@ -359,9 +368,10 @@ const dropSurface = document.querySelector('.plan');
 function clearDrag() {
   draggedTask = null;
   dropSurface.classList.remove('over-target');
+  document.querySelectorAll('.group.over-target').forEach((group) => group.classList.remove('over-target'));
 }
 dropSurface.addEventListener('dragover', (event) => {
-  if (!draggedTask) return;
+  if (draggedTask?.source !== 'available') return;
   event.preventDefault();
   event.dataTransfer.dropEffect = 'copy';
   dropSurface.classList.add('over-target');
@@ -370,10 +380,34 @@ dropSurface.addEventListener('dragleave', (event) => {
   if (!dropSurface.contains(event.relatedTarget)) dropSurface.classList.remove('over-target');
 });
 dropSurface.addEventListener('drop', (event) => {
-  if (!draggedTask) return;
+  if (draggedTask?.source !== 'available') return;
   event.preventDefault();
-  addTask(draggedTask, false);
+  addTask(draggedTask.id, false);
   clearDrag();
 });
+
+for (const group of document.querySelectorAll('.group[data-status]')) {
+  group.addEventListener('dragover', (event) => {
+    if (draggedTask?.source !== 'plan') return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    group.classList.add('over-target');
+  });
+  group.addEventListener('dragleave', (event) => {
+    if (!group.contains(event.relatedTarget)) group.classList.remove('over-target');
+  });
+  group.addEventListener('drop', (event) => {
+    if (draggedTask?.source !== 'plan') return;
+    event.preventDefault();
+    const { id, date: planDate } = draggedTask;
+    const task = tasks.get(id);
+    if (task && task.kind !== 'event' && plans.get(planDate)?.delete(id)) {
+      task.status = group.dataset.status;
+      render();
+      $('announcement').textContent = `Removed ${task.name} from the plan and moved it to ${group.querySelector('h3').textContent}.`;
+    }
+    clearDrag();
+  });
+}
 
 document.addEventListener('DOMContentLoaded', render);

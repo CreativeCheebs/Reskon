@@ -45,16 +45,16 @@
         <div class="planner-grid">
           <aside class="candidates" aria-labelledby="candidates-heading">
             <h2 id="candidates-heading">Available tasks</h2>
-            <p class="muted">Drag a task to the plan or use its add button.</p>
-            <section class="group">
+            <p class="muted">Drag a task to the plan or use its add button. Drag a planned task back to a status to remove it from this day.</p>
+            <section class="group" data-status="inbox">
               <div class="group-heading"><span class="status-dot inbox-dot"></span><h3>Inbox</h3><span id="inbox-count" class="count"></span></div>
               <div class="task-list" id="inbox"></div>
             </section>
-            <section class="group">
+            <section class="group" data-status="todo">
               <div class="group-heading"><span class="status-dot coral"></span><h3>To do</h3><span id="todo-count" class="count"></span></div>
               <div class="task-list" id="todo"></div>
             </section>
-            <section class="group">
+            <section class="group" data-status="active">
               <div class="group-heading"><span class="status-dot blue"></span><h3>In progress</h3><span id="active-count" class="count"></span></div>
               <div class="task-list" id="active"></div>
             </section>

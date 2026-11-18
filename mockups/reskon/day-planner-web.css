@@ -19,6 +19,7 @@
 .muted { color: var(--muted); font-size: 12px; }
 .candidates p { margin: 6px 0 14px; }
 .group + .group { border-top: 1px solid var(--border); padding-top: 15px; margin-top: 15px; }
+.group.over-target { outline: 2px solid var(--accent); outline-offset: 6px; border-radius: 4px; background: #353650; }
 .group-heading { margin-bottom: 8px; }
 .group-heading h3 { margin: 0; font-size: 13px; }
 .task-list, .planned-list { display: grid; gap: 4px; }
@@ -40,6 +41,8 @@
 .item-kind { padding: 1px 5px; border-radius: 4px; background: #35333a; color: var(--muted); font-size: 10px; font-weight: 600; }
 .item-kind.event { background: #353650; color: var(--accent); }
 .planned-row { width: 100%; grid-template-columns: minmax(0, 1fr) auto; padding: 5px 9px; text-align: left; color: var(--text); }
+button.planned-row[draggable="true"] { cursor: grab; }
+button.planned-row[draggable="true"]:active { cursor: grabbing; }
 button.planned-row:hover { background: #35333a; border-color: #827c85; }
 .list-heading { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 5px; padding: 0 9px; color: var(--muted); font-size: 11px; }
 .remove-task { margin-right: auto; color: #f3988f; }
