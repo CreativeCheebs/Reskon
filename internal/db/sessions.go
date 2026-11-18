@@ -22,6 +22,8 @@ type Session struct {
 	PointsNow    *float64         `json:"points_now"` // derived: what it would earn at today's rates
 	Difficulty   *int64           `json:"difficulty"`
 	StartedAt    *string          `json:"started_at"`
+	EndedAt      *string          `json:"ended_at"`    // set when saved from a timer
+	DayItemID    *int64           `json:"day_item_id"` // the planner line (an event, usually) it was logged against
 	LoggedFor    string           `json:"logged_for"`
 	Note         *string          `json:"note"`
 	Custom       json.RawMessage  `json:"custom"`
@@ -41,13 +43,13 @@ type SessionSubtype struct {
 }
 
 const sessionCols = `id, task_id, label, area_id, kind, energy_type_id, hours, points, difficulty,
-	started_at, logged_for, note, custom, created_at, updated_at`
+	started_at, logged_for, note, custom, created_at, updated_at, ended_at, day_item_id`
 
 func scanSession(r interface{ Scan(...any) error }) (*Session, error) {
 	var s Session
 	var custom string
 	err := r.Scan(&s.ID, &s.TaskID, &s.Label, &s.AreaID, &s.Kind, &s.EnergyTypeID, &s.Hours, &s.Points, &s.Difficulty,
-		&s.StartedAt, &s.LoggedFor, &s.Note, &custom, &s.CreatedAt, &s.UpdatedAt)
+		&s.StartedAt, &s.LoggedFor, &s.Note, &custom, &s.CreatedAt, &s.UpdatedAt, &s.EndedAt, &s.DayItemID)
 	s.Custom = json.RawMessage(custom)
 	return &s, err
 }
@@ -62,6 +64,8 @@ var sessionColumns = columns{
 	"points":         kRealNull,
 	"difficulty":     kIntNull,
 	"started_at":     kTextNull,
+	"ended_at":       kTextNull,
+	"day_item_id":    kIntNull,
 	"logged_for":     kText,
 	"note":           kTextNull,
 }
@@ -124,6 +128,23 @@ func validateSessionFields(f Fields) error {
 			return invalid("started_at must be an ISO-8601 timestamp")
 		}
 		f["started_at"], _ = json.Marshal(FormatTime(t))
+	}
+	if s, ok, err := f.stringField("ended_at"); err != nil {
+		return err
+	} else if ok && s != "" {
+		t, err := ParseTime(s)
+		if err != nil {
+			return invalid("ended_at must be an ISO-8601 timestamp")
+		}
+		f["ended_at"], _ = json.Marshal(FormatTime(t))
+		// started_at is normalised above, so the two compare as text.
+		if st, ok, _ := f.stringField("started_at"); ok && st != "" {
+			var started string
+			_ = json.Unmarshal(f["started_at"], &started)
+			if FormatTime(t) < started {
+				return invalid("ended_at is before started_at")
+			}
+		}
 	}
 	if s, ok, err := f.stringField("kind"); err != nil {
 		return err
@@ -230,6 +251,9 @@ func (d *DB) CreateSession(ctx context.Context, f Fields) (*Session, error) {
 	}
 	customPatch, hasCustom := f["custom"]
 	delete(f, "custom")
+	if err := d.applyPlanItem(ctx, f); err != nil {
+		return nil, err
+	}
 	if _, ok := f["kind"]; !ok {
 		f["kind"] = json.RawMessage(`"task"`)
 	}

@@ -21,6 +21,7 @@ type Day struct {
 	Sessions      []*Session     `json:"sessions"`
 	Items         []*DayItem     `json:"items"`       // the planner's list for the day, in order
 	PlanTotals    PlanTotals     `json:"plan_totals"` // planned and logged minutes against the day's available time
+	Timers        *TimerList     `json:"timers"`      // every running or paused timer, whatever its day
 }
 
 type DayPlan struct {
@@ -101,6 +102,9 @@ func (d *DB) GetDay(ctx context.Context, day string) (*Day, error) {
 		return nil, err
 	}
 	if out.PlanTotals, err = d.planTotals(ctx, day, out.Items, out.Plan.AvailableMin); err != nil {
+		return nil, err
+	}
+	if out.Timers, err = d.ListTimers(ctx); err != nil {
 		return nil, err
 	}
 	if out.Sessions, err = d.ListSessions(ctx, SessionQuery{From: day, To: day}); err != nil {

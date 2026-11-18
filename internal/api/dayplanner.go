@@ -14,6 +14,12 @@ func (s *Server) dayPlannerRoutes() {
 	m.HandleFunc("GET /api/day/{date}/bring-forward", s.bringForwardCandidates)
 	m.HandleFunc("POST /api/day/{date}/bring-forward", s.bringForward)
 	m.HandleFunc("GET /api/days", s.daySummaries)
+	m.HandleFunc("GET /api/timers", s.listTimers)
+	m.HandleFunc("POST /api/timers", s.startTimer)
+	m.HandleFunc("POST /api/timers/{id}/pause", s.timerAction)
+	m.HandleFunc("POST /api/timers/{id}/resume", s.timerAction)
+	m.HandleFunc("POST /api/timers/{id}/stop", s.timerAction)
+	m.HandleFunc("DELETE /api/timers/{id}", s.discardTimer)
 	m.HandleFunc("PATCH /api/day-items/{id}", s.patchDayItem)
 	m.HandleFunc("DELETE /api/day-items/{id}", s.deleteDayItem)
 }

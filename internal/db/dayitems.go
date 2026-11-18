@@ -331,6 +331,49 @@ func (d *DB) DeleteDayItem(ctx context.Context, id int64) error {
 	return nil
 }
 
+// applyPlanItem fills what a session saved against a plan line leaves out:
+// an event line gives kind "event", its title as the label and its area; a
+// task line gives its task. Values the caller sent win. Saving the session
+// is what completes an event (derived on read).
+func (d *DB) applyPlanItem(ctx context.Context, f Fields) error {
+	raw, ok := f["day_item_id"]
+	if !ok || isNull(raw) {
+		return nil
+	}
+	id, _, err := f.int64Field("day_item_id")
+	if err != nil {
+		return err
+	}
+	var kind string
+	var task, area sql.NullInt64
+	var title sql.NullString
+	err = d.QueryRowContext(ctx, `SELECT kind, task_id, title, area_id FROM day_item WHERE id = ? AND deleted_at IS NULL`, id).
+		Scan(&kind, &task, &title, &area)
+	if err == sql.ErrNoRows {
+		return invalid("plan item %d does not exist", id)
+	}
+	if err != nil {
+		return err
+	}
+	set := func(k string, v any) {
+		if _, has := f[k]; !has {
+			f[k], _ = json.Marshal(v)
+		}
+	}
+	if kind == "task" {
+		set("task_id", task.Int64)
+		return nil
+	}
+	set("kind", "event")
+	if title.Valid {
+		set("label", title.String)
+	}
+	if area.Valid {
+		set("area_id", area.Int64)
+	}
+	return nil
+}
+
 // OrderDay sets the order of a day's lines to ids, first to last. Lines of
 // the day not listed follow in their old order; an id from another day is
 // refused.
