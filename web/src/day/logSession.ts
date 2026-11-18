@@ -38,8 +38,3 @@ export function sessionStartForDraft(draft: TimerDraft, taskArea: number | null,
   }
   return { initial: { task_id: draft.task_id ?? null, area_id: taskArea, logged_for: draft.logged_for, hours: draft.hours, started_at: draft.started_at }, extra };
 }
-
-/** A draft shorter than a minute shows as "0m": the person should set the time before saving. */
-export function isTinyDraft(hours: number): boolean {
-  return hours < 1 / 120;
-}
