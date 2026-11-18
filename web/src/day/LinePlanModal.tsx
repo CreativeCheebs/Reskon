@@ -20,7 +20,7 @@ export function LinePlanModal({ target, day, onDone, onClose }: { target: LineTa
   const { online } = useApp();
   const item = target.type === "edit" ? target.item : null;
   const [task, setTask] = useState<Task | null>(null);
-  const [minutes, setMinutes] = useState(item?.planned_min ? minutesText(item.planned_min) : "");
+  const [minutes, setMinutes] = useState(item?.planned_min != null ? minutesText(item.planned_min) : "");
   const [name, setName] = useState(item?.title ?? "");
   const [busy, setBusy] = useState(false);
 

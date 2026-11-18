@@ -17,8 +17,8 @@ describe("planner wording", () => {
   });
   it("counts tasks with no estimate", () => {
     expect(unestimatedText(0)).toBe("");
-    expect(unestimatedText(1)).toBe("1 task has no estimate");
-    expect(unestimatedText(3)).toBe("3 tasks have no estimate");
+    expect(unestimatedText(1)).toBe("1 line has no planned time");
+    expect(unestimatedText(3)).toBe("3 lines have no planned time");
   });
   it("shows a task as all-time logged over its estimate, an event as reserved", () => {
     expect(loggedOfEstimate({ logged_h: 0.75, estimate_h: 3 })).toBe("45m / 3h");

@@ -18,10 +18,10 @@ export function availableText(t: PlanTotals): string {
   return `${minutesText(t.available_min)} available (${from})`;
 }
 
-/** "3 tasks have no estimate" or "". */
+/** "3 lines have no planned time" or "". */
 export function unestimatedText(n: number): string {
   if (n <= 0) return "";
-  return n === 1 ? "1 task has no estimate" : `${n} tasks have no estimate`;
+  return n === 1 ? "1 line has no planned time" : `${n} lines have no planned time`;
 }
 
 /** A task's all-time figures: "35m / 3h" or "35m / no estimate". Not the day's totals. */
