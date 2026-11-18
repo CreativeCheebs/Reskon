@@ -5,10 +5,9 @@ import { api } from "../api";
 import { message } from "../theme/feedback";
 import { useApp } from "../store";
 import { palette } from "../theme/palette";
-import { formatHM } from "../format";
+import { loggedOfEstimate } from "./plan";
 import { groupAvailable } from "./availableGroups";
 import { drag } from "./drag";
-import type { Run } from "./usePlanner";
 import type { DayData } from "./types";
 import type { Task } from "../types";
 
@@ -17,7 +16,7 @@ import type { Task } from "../types";
  * day with its button or by dragging it to the plan. Dragging a planned task
  * onto a status here sends it back to that status and takes it off the day.
  */
-export function AvailablePanel({ day, data, run, onMoveBack, tasksVersion }: { day: string; data: DayData; run: Run; onMoveBack: (itemId: number, taskId: number, statusId: number) => void; tasksVersion: number }) {
+export function AvailablePanel({ day, data, onAdd, onMoveBack, tasksVersion }: { day: string; data: DayData; onAdd: (taskId: number) => void; onMoveBack: (itemId: number, taskId: number, statusId: number) => void; tasksVersion: number }) {
   const { boot, online, behaviourOf, reloadKey } = useApp();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [query, setQuery] = useState("");
@@ -87,8 +86,8 @@ export function AvailablePanel({ day, data, run, onMoveBack, tasksVersion }: { d
                 <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={t.title}>
                   {t.title}
                 </span>
-                <span style={{ color: palette.muted, fontSize: 11, whiteSpace: "nowrap" }}>{t.estimate_h === null ? "no estimate" : formatHM(t.estimate_h)}</span>
-                <Button size="small" icon={<PlusOutlined />} disabled={!online} aria-label={`Add ${t.title} to the plan`} onClick={() => run(() => api.post(`/day/${data.day}/items`, { task_id: t.id }))} />
+                <span style={{ color: palette.muted, fontSize: 11, whiteSpace: "nowrap" }}>{loggedOfEstimate(t)}</span>
+                <Button size="small" icon={<PlusOutlined />} disabled={!online} aria-label={`Add ${t.title} to the plan`} onClick={() => onAdd(t.id)} />
               </li>
             ))}
             {list.length === 0 && <li style={{ listStyle: "none", color: palette.subtle, fontSize: 12 }}>None</li>}

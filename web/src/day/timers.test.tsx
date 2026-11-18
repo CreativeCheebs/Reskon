@@ -131,6 +131,9 @@ describe("session starting values", () => {
   it("an event carries its line id and takes the area's energy type", () => {
     const s = sessionStartFor(ev(1), "2026-11-18", areas);
     expect(s.extra).toEqual({ day_item_id: 9 });
+    const t = sessionStartFor({ id: 4, kind: "task", task_id: 5, title: "Part one", renamed: true, area_id: 1 } as DayItem, "2026-11-18", areas);
+    expect(t.extra).toEqual({ day_item_id: 4 });
+    expect(t.initial).toMatchObject({ task_id: 5, label: "Part one" });
     expect(s.initial).toMatchObject({ kind: "event", label: "Meeting", energy_type_id: 3 });
   });
   it("an event with no area default leaves the energy type to choose", () => {

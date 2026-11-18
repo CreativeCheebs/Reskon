@@ -8,7 +8,11 @@ import type { DayItem, TimerDraft } from "./types";
 /** The form's starting values for logging against a plan line on `day`. */
 export function sessionStartFor(item: DayItem, day: string, areas: Area[]): { initial: Partial<SessionDraft>; extra?: Record<string, unknown> } {
   if (item.kind === "task") {
-    return { initial: { task_id: item.task_id, area_id: item.area_id, logged_for: day } };
+    // The line carries the session; a renamed line's name is the description to start with.
+    return {
+      initial: { task_id: item.task_id, area_id: item.area_id, logged_for: day, ...(item.renamed ? { label: item.title, label_suggested: false } : {}) },
+      extra: { day_item_id: item.id },
+    };
   }
   return eventStart(item.title, item.area_id, day, item.id, areas);
 }
