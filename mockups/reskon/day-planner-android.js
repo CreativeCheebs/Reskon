@@ -169,7 +169,13 @@ function render() {
     ? 'Logged / estimate or plan' : 'Logged / estimate';
   $('tasks').replaceChildren(...items.map((item) => taskRow(catalog.find((task) => task.id === item.id), item)));
   renderAwayTimer(items);
-  if (!items.length) $('tasks').append(element('p', 'empty', 'Nothing planned for this day.'));
+  if (!items.length) {
+    const empty = element('div', 'empty');
+    empty.append(element('p', '', 'Nothing planned for this day.'),
+      action('Add to plan', 'text-button empty-action', () => openPicker()));
+    $('tasks').append(empty);
+  }
+  $('gesture-hint').hidden = !items.length;
   $('day-note').textContent = notes.get(selected) || 'No note for this day.';
 }
 

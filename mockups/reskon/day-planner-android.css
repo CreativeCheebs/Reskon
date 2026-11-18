@@ -73,6 +73,8 @@ h2 svg { width: 18px; height: 18px; color: var(--muted); }
 .active-timer { display: flex; align-items: center; gap: 8px; min-width: 0; margin-top: 5px; padding-left: 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); }
 .timer-jump { flex: 1; min-width: 0; min-height: 44px; overflow: hidden; color: var(--accent-fg); text-align: left; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
 .note, .empty { padding: 12px; color: var(--muted); font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.gesture-hint { padding: 4px 10px 0; color: var(--muted); font-size: 11px; }
+.empty-action { margin-left: -10px; }
 .note { margin-bottom: 8px; padding-right: 64px; }
 .fab { position: absolute; right: 16px; bottom: 98px; display: grid; place-items: center; width: 56px; height: 56px; border-radius: 16px; background: var(--accent); color: var(--dim); box-shadow: 0 4px 12px #0006; }
 .fab:hover { background: var(--accent-fg); }
