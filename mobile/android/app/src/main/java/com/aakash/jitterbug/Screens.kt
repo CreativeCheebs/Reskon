@@ -3,7 +3,7 @@ package com.aakash.jitterbug
 import org.json.JSONObject
 
 /** Every tab the bottom bar can show, in order: route name and label. */
-val ALL_TABS = listOf("today" to "Today", "board" to "Board", "sessions" to "Sessions", "inbox" to "Inbox", "more" to "More")
+val ALL_TABS = listOf("today" to "Planner", "board" to "Board", "sessions" to "Sessions", "inbox" to "Inbox", "more" to "More")
 
 /**
  * The `show_day_screen` setting: whether the Day screen (Today here) is offered. One setting on the

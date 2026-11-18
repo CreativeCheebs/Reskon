@@ -25,6 +25,10 @@ class ScreensTest {
         assertEquals(listOf("today", "board", "sessions", "inbox", "more"), visibleTabs(true).map { it.first })
     }
 
+    @Test fun theDayTabIsCalledPlanner() {
+        assertEquals("Planner", ALL_TABS.first { it.first == "today" }.second)
+    }
+
     @Test fun theAppOpensOnBoardUnlessTheDayScreenIsOn() {
         assertEquals("board", startRoute(false))
         assertEquals("today", startRoute(true))

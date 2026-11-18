@@ -108,10 +108,11 @@ fun SettingsScreen() {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             SectionTitle("Screens")
             Card(pad = 16.dp) {
-                SwitchRow("Day screen", showsDay(boot.settings), "The morning plan and evening readout, with its own tab. Off hides it here and on the web. Nothing is deleted.") {
+                SwitchRow("Day screen", showsDay(boot.settings), "The day planner, with its own tab. Off hides it here and on the web. Nothing is deleted.") {
                     scope.launch { attempt("Not saved") { saveSetting("show_day_screen", it) } }
                 }
             }
+            Card { ListRow("Day planner", "Time available on each weekday") { App.go("plannerset") } }
             Card {
                 ListRow("Names", "What ${Terms.tasks} and ${Terms.epics} are called") { App.go("names") }
             }

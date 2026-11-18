@@ -252,6 +252,7 @@ private fun Screen(r: Route) {
                 "taskdates" -> TaskDatesScreen()
                 "names" -> NamesScreen()
                 "snoozeset" -> SnoozeSettingsScreen()
+                "plannerset" -> PlannerSettingsScreen()
                 "complete" -> CompletenessScreen()
                 "cardactions" -> CardActionsScreen()
                 "fields" -> CustomFieldsScreen()
