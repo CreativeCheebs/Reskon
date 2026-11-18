@@ -25,7 +25,7 @@ func (s *Server) startTimer(w http.ResponseWriter, r *http.Request) {
 }
 
 // timerAction serves pause, resume and stop (the last word of the path).
-// Pause and resume return the timer; stop returns {timer_id, draft}.
+// Pause and resume return the timer; stop returns {timer_id, draft} and keeps the timer, stopped, until the draft is saved or the timer discarded.
 func (s *Server) timerAction(w http.ResponseWriter, r *http.Request) {
 	id, err := pathID(r)
 	if err != nil {
@@ -46,8 +46,8 @@ func (s *Server) timerAction(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// discardTimer throws a timer away (cancelling a draft after stop needs no call:
-// stop already retired the timer).
+// discardTimer throws a timer away, running, paused or stopped (it is how a
+// stopped timer's draft is cancelled; saving the draft retires the timer itself).
 func (s *Server) discardTimer(w http.ResponseWriter, r *http.Request) {
 	id, err := pathID(r)
 	if err != nil {
