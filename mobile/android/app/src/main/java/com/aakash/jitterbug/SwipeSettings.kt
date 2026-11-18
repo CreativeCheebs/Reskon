@@ -17,7 +17,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,11 +45,15 @@ import org.json.JSONArray
 fun SwipeActionsSection() {
     val boot = App.boot ?: return
     val scope = rememberCoroutineScope()
-    val chosen = swipeActions(boot.settings)
+    // Kept here as well as in the settings, so quick taps build on each other instead of on the last saved list.
+    var chosen by remember(boot.settings) { mutableStateOf(swipeActions(boot.settings)) }
     fun tap(key: String) {
         val next = toggleSwipe(chosen, key)
         if (next == null) App.say("Up to $SWIPE_MAX buttons; the rest are under More")
-        else scope.launch { attempt("Not saved") { saveSetting("phone_card_actions", jsonOf("swipe" to JSONArray(next))) } }
+        else {
+            chosen = next
+            scope.launch { attempt("Not saved") { saveSetting("phone_card_actions", jsonOf("swipe" to JSONArray(next))) } }
+        }
     }
     SectionTitle("Swipe left · up to $SWIPE_MAX, in the order you tap them")
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

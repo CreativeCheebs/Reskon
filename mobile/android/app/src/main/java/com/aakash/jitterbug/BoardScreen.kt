@@ -44,6 +44,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -333,7 +334,8 @@ private fun ListLayout(view: ViewRef, allTasks: List<JSONObject>, host: TaskActi
                 else Card(radius = 12.dp, bordered = false) {
                     g.rows.forEachIndexed { i, t ->
                         if (i > 0) Line()
-                        ListRowTask(t, host)
+                        // Keyed by task, so an open swipe stays with its task when rows above it come or go.
+                        key(t.getLong("id")) { ListRowTask(t, host) }
                     }
                 }
             }
