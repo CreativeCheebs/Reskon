@@ -18,7 +18,7 @@
         <div class="nav-label workspace-label">WORKSPACE</div>
         <span class="nav"><span aria-hidden="true">▥</span> Dashboards</span>
         <a class="nav active" href="day-planner-web.html" aria-current="page"><span aria-hidden="true">▦</span> Day Planner</a>
-        <span class="nav"><span aria-hidden="true">◷</span> Sessions</span>
+        <button class="nav sessions-link" type="button" data-open-sessions aria-haspopup="dialog"><span aria-hidden="true">◷</span> Sessions</button>
         <span class="nav"><span aria-hidden="true">⌁</span> Cycle time</span>
         <span class="nav"><span aria-hidden="true">⚙</span> Settings</span>
       </nav>
@@ -26,7 +26,7 @@
     </aside>
     <main class="main">
       <header class="topbar">
-        <details class="mobile-nav"><summary aria-label="Open navigation">☰</summary><nav aria-label="Workspace"><a href="index.html">Personal board</a><a href="day-planner-android.html">Android preview</a></nav></details>
+        <details class="mobile-nav"><summary aria-label="Open navigation">☰</summary><nav aria-label="Workspace"><a href="index.html">Personal board</a><button class="nav sessions-link" type="button" data-open-sessions aria-haspopup="dialog">Sessions</button><a href="day-planner-android.html">Android preview</a></nav></details>
         <h1 class="planner-title">Day Planner</h1>
         <div class="top-actions"><span class="preview-pill"><span></span> DESIGN PREVIEW</span><a class="button subtle android-preview" href="day-planner-android.html">Android preview ↗</a></div>
       </header>
@@ -60,14 +60,14 @@
                   <h2 id="plan-heading"></h2>
                   <div class="plan-count muted" id="plan-count"></div>
                 </div>
-                <button class="button primary" id="new-task">＋ New task</button>
+                <button class="button primary" id="new-task" aria-haspopup="dialog">＋ Add to plan</button>
               </div>
               <dl class="totals" id="totals"></dl>
               <div class="capacity-track" id="capacity-track" aria-hidden="true"><div id="capacity-bar"></div></div>
             </header>
             <div class="plan-body">
-              <div class="list-heading" aria-hidden="true"><span>Task</span><span>Logged / Estimate</span></div>
-              <ul id="planned" class="planned-list" aria-label="Planned tasks"></ul>
+              <div class="list-heading" aria-hidden="true"><span>Plan</span><span>Logged / Estimate</span></div>
+              <ul id="planned" class="planned-list" aria-label="Planned tasks and events"></ul>
               <div class="drop-target" id="drop-target">Drop a task here or add one from Available tasks</div>
             </div>
             <div class="notes">
@@ -81,22 +81,48 @@
     </main>
   </div>
   <div class="sr-only" id="announcement" role="status"></div>
+  <dialog id="type-dialog" aria-labelledby="type-heading">
+    <div class="dialog-head"><h2 id="type-heading">Add to plan</h2></div>
+    <div class="type-options">
+      <button type="button" class="button outline" data-new-kind="task">Task</button>
+      <button type="button" class="button outline" data-new-kind="event">Event</button>
+    </div>
+    <div class="dialog-actions"><button class="button outline" type="button" data-close>Cancel</button></div>
+  </dialog>
   <dialog id="task-dialog" aria-labelledby="task-dialog-heading">
     <form id="task-form" method="dialog">
       <div class="dialog-head"><h2 id="task-dialog-heading">New task</h2></div>
-      <label for="task-name">Task name</label>
+      <label for="task-name" id="name-label">Task name</label>
       <input id="task-name" required maxlength="80" placeholder="What do you want to work on?">
       <div class="form-fields">
-        <div><label for="estimate">Whole task estimate (min)</label><input type="number" id="estimate" min="1" max="99999"></div>
-        <div><label for="planned-time">Plan for this day (min)</label><input type="number" id="planned-time" min="1" max="1440"></div>
+        <div id="estimate-field"><label for="estimate">Whole task estimate (min)</label><input type="number" id="estimate" min="1" max="99999"></div>
+        <div><label for="planned-time" id="planned-label">Plan for this day (min)</label><input type="number" id="planned-time" min="1" max="1440"></div>
       </div>
-      <p class="muted" id="task-logged" hidden></p>
+      <div class="task-logging" id="task-logging" hidden>
+        <p class="muted" id="task-logged"></p>
+        <button class="button outline" type="button" id="log-open" aria-haspopup="dialog">Log session</button>
+      </div>
       <div class="dialog-actions">
         <button class="button subtle remove-task" type="button" id="remove-task" hidden>Remove from plan</button>
         <button class="button outline" type="button" data-close>Cancel</button>
         <button class="button primary">Add to plan</button>
       </div>
     </form>
+  </dialog>
+  <dialog id="log-dialog" aria-labelledby="log-heading">
+    <form id="log-form" method="dialog">
+      <div class="dialog-head"><h2 id="log-heading">Log session</h2></div>
+      <p id="log-context" class="muted"></p>
+      <label for="actual-time">Actual time spent (min)</label>
+      <input id="actual-time" type="number" min="1" max="1440" required>
+      <div class="dialog-actions"><button class="button outline" type="button" data-close>Cancel</button><button class="button primary">Log session</button></div>
+    </form>
+  </dialog>
+  <dialog id="sessions-dialog" aria-labelledby="sessions-heading">
+    <div class="dialog-head"><h2 id="sessions-heading">Sessions</h2></div>
+    <p class="muted" id="sessions-date"></p>
+    <ul class="planned-list" id="session-list"></ul>
+    <div class="dialog-actions"><button class="button outline" type="button" data-close>Close</button></div>
   </dialog>
   <dialog id="calendar-dialog" aria-labelledby="month">
     <header class="calendar-header">
@@ -105,7 +131,7 @@
       <button class="button icon-only" id="next-month" aria-label="Next month">›</button>
     </header>
     <div class="month-grid" id="month-grid"></div>
-    <p class="calendar-key muted">Each date shows task count, planned time and time available where set.</p>
+    <p class="calendar-key muted">Each date shows what’s planned and time available where set.</p>
     <div class="dialog-actions"><button class="button outline" type="button" data-close>Close</button></div>
   </dialog>
   <dialog id="capacity-dialog" aria-labelledby="capacity-heading">

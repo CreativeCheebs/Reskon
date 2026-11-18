@@ -32,8 +32,8 @@ const plans = new Map([
   ['2026-11-20', [{ id: 4, planned: 30 }]],
 ]);
 const sessions = new Map([
-  ['2026-11-17', new Map([[6, 45]])],
-  [today, new Map([[1, 35], [2, 15]])],
+  ['2026-11-17', [{ id: 6, minutes: 45 }]],
+  [today, [{ id: 1, minutes: 35 }, { id: 2, minutes: 15 }]],
 ]);
 const capacity = new Map(['2026-11-17', today, '2026-11-19', '2026-11-20'].map((key) => [key, 240]));
 const notes = new Map([[today, 'Finish the outline before lunch. Leave room for reading later.']]);
@@ -101,8 +101,10 @@ function plannedFor(key) {
   return (plans.get(key) || []).reduce((sum, item) => sum + item.planned, 0);
 }
 
-function loggedFor(key) {
-  return [...(sessions.get(key)?.values() || [])].reduce((sum, minutes) => sum + minutes, 0);
+function loggedFor(key, id) {
+  return (sessions.get(key) || []).reduce(
+    (sum, entry) => id === undefined || entry.id === id ? sum + entry.minutes : sum, 0,
+  );
 }
 
 function availableFor(key) {
@@ -113,19 +115,31 @@ function availableFor(key) {
 }
 
 function taskRow(task, item) {
-  const row = action('', 'task', () => openTask(task, item));
+  const isEvent = task.kind === 'event';
+  const logged = loggedFor(selected, task.id);
+  const ratioTarget = isEvent ? item.planned : task.estimate;
+  const row = action('', 'task', () => isEvent ? openEvent(task, item) : openTask(task, item));
   row.dataset.taskId = task.id;
-  const dot = element('span', task.status === 'In progress' ? 'dot progress' : 'dot');
-  dot.setAttribute('aria-hidden', 'true');
-  const logged = sessions.get(selected)?.get(task.id) || 0;
-  const estimate = task.estimate == null ? 'no estimate' : duration(task.estimate) + ' estimated';
-  row.setAttribute('aria-label', task.title + ', ' + duration(logged) + ' logged this day, ' + estimate);
+  const label = isEvent ? 'Event' : 'Task';
+  const target = ratioTarget == null ? 'no estimate' : duration(ratioTarget) + (isEvent ? ' planned' : ' estimated');
+  const completion = isEvent && logged ? ', completed' : '';
+  row.setAttribute('aria-label', label + ': ' + task.title + ', ' + duration(logged) + ' logged this day, ' + target + completion);
+  const ratio = element('span', 'task-ratio', duration(logged) + ' / ' + duration(ratioTarget));
+  if (isEvent && logged) ratio.append(element('span', 'event-logged', ' ✓'));
   row.append(
-    dot,
+    element('span', isEvent ? 'entry-kind event-kind' : 'entry-kind', label),
     element('span', 'task-name', task.title),
-    element('span', 'task-ratio', duration(logged) + ' / ' + duration(task.estimate)),
+    ratio,
   );
-  return row;
+  return withSwipeAction(row, isEvent && logged ? null : task);
+}
+
+function planCount(items) {
+  const eventCount = items.filter(({ id }) => catalog.find((entry) => entry.id === id)?.kind === 'event').length;
+  const taskCount = items.length - eventCount;
+  const tasks = taskCount + (taskCount === 1 ? ' task' : ' tasks');
+  const events = eventCount + (eventCount === 1 ? ' event' : ' events');
+  return eventCount ? (taskCount ? tasks + ' · ' + events : events) : tasks;
 }
 
 function render() {
@@ -142,9 +156,11 @@ function render() {
   $('available-total').title = capacity.has(selected) ?
     'Of ' + duration(capacity.get(selected)) + ' set aside for this day' : 'Availability not set';
   const items = plans.get(selected) || [];
-  $('task-count').textContent = items.length + (items.length === 1 ? ' task' : ' tasks');
+  $('task-count').textContent = planCount(items);
+  $('ratio-label').textContent = items.some(({ id }) => catalog.find((entry) => entry.id === id)?.kind === 'event')
+    ? 'Logged / estimate or plan' : 'Logged / estimate';
   $('tasks').replaceChildren(...items.map((item) => taskRow(catalog.find((task) => task.id === item.id), item)));
-  if (!items.length) $('tasks').append(element('p', 'empty', 'No tasks planned for this day.'));
+  if (!items.length) $('tasks').append(element('p', 'empty', 'Nothing planned for this day.'));
   $('day-note').textContent = notes.get(selected) || 'No note for this day.';
 }
 
@@ -175,132 +191,6 @@ function field(label, name, type, value = '') {
   }
   wrapper.append(input);
   return wrapper;
-}
-
-function openTask(task, item, pickerQuery) {
-  const form = element('form', 'sheet-form');
-  if (task) form.append(element('p', 'sheet-copy', [task.status, task.area].filter(Boolean).join(' · ')));
-  else {
-    const title = field('Task name', 'title', 'text', pickerQuery || '');
-    title.querySelector('input').required = true;
-    title.querySelector('input').maxLength = 160;
-    form.append(title);
-  }
-  const estimate = field('Task estimate (min)', 'estimate', 'number', task?.estimate ?? '');
-  const estimateInput = estimate.querySelector('input');
-  estimateInput.max = '99999';
-  estimateInput.placeholder = 'No estimate';
-  const presets = element('div', 'estimate-presets');
-  presets.setAttribute('role', 'group');
-  presets.setAttribute('aria-label', 'Common estimates');
-  for (const minutes of [15, 30, 45, 60, 90]) {
-    const preset = action(duration(minutes), '', () => {
-      estimateInput.value = minutes;
-      syncPresets();
-    });
-    preset.dataset.minutes = minutes;
-    presets.append(preset);
-  }
-  function syncPresets() {
-    for (const preset of presets.children) {
-      preset.setAttribute('aria-pressed', String(preset.dataset.minutes === estimateInput.value));
-    }
-  }
-  estimateInput.addEventListener('input', syncPresets);
-  syncPresets();
-  form.append(estimate, presets);
-
-  const dayTime = element('details', 'day-time');
-  dayTime.append(element('summary', '', 'Time set aside for this day'));
-  const planned = field('Planned minutes', 'planned', 'number', item?.planned ?? '');
-  const plannedInput = planned.querySelector('input');
-  plannedInput.placeholder = 'Use task estimate';
-  plannedInput.addEventListener('invalid', () => { dayTime.open = true; });
-  dayTime.append(planned);
-  form.append(dayTime);
-  if (item) {
-    form.append(element('p', 'sheet-copy',
-      duration(sessions.get(selected)?.get(task.id) || 0) + ' logged in sessions on this day.'));
-  }
-  const save = element('button', 'primary', item ? 'Save changes' : 'Add to plan');
-  save.type = 'submit';
-  form.append(save);
-  if (pickerQuery !== undefined) {
-    form.append(action('Back to task search', 'text-button', () => openPicker(pickerQuery)));
-  }
-  if (item) form.append(action('Remove from this day', 'text-button remove', () => {
-    plans.set(selected, plans.get(selected).filter((entry) => entry.id !== task.id));
-    sheet.close();
-    render();
-    $('create').focus();
-    showToast('Removed from this day');
-  }));
-  form.addEventListener('submit', (event) => {
-    event.preventDefault();
-    const data = new FormData(form);
-    const title = task?.title || String(data.get('title')).trim();
-    if (!title) {
-      form.querySelector('[name="title"]').focus();
-      return;
-    }
-    const currentTask = task || { id: nextId++, title, area: '', status: 'To do' };
-    currentTask.estimate = data.get('estimate') === '' ? null : Number(data.get('estimate'));
-    if (!task) catalog.push(currentTask);
-    const minutes = data.get('planned') === ''
-      ? Math.min(currentTask.estimate ?? 0, 1440)
-      : Number(data.get('planned'));
-    if (item) item.planned = minutes;
-    else plans.set(selected, [...(plans.get(selected) || []), { id: currentTask.id, planned: minutes }]);
-    sheet.close();
-    render();
-    document.querySelector(`[data-task-id="${currentTask.id}"]`)?.focus({ preventScroll: true });
-    showToast(item ? 'Plan updated' : 'Added to plan');
-  });
-  openSheet(task ? task.title : 'New task', form);
-  form.querySelector('[name="title"], [name="estimate"]').focus();
-}
-
-function openPicker(query = '') {
-  const picker = element('div', 'task-picker');
-  const search = field('Search open tasks', 'query', 'search', query);
-  const searchInput = search.querySelector('input');
-  searchInput.placeholder = 'Search by task name';
-  searchInput.maxLength = 160;
-  const createTask = action('', 'primary picker-create', () => openTask(null, null, searchInput.value.trim()));
-  const results = element('div');
-  const resultStatus = element('p', 'sr-only');
-  resultStatus.setAttribute('role', 'status');
-  picker.append(search, createTask, resultStatus, results);
-  const inPlan = new Set((plans.get(selected) || []).map((item) => item.id));
-  function renderResults() {
-    const typed = searchInput.value.trim();
-    const words = typed.toLowerCase().split(/\s+/).filter(Boolean);
-    const groups = typed ? ['To do', 'In progress', 'Backlog'] : ['To do', 'In progress'];
-    createTask.textContent = typed ? 'Create “' + typed + '”' : 'Create new task';
-    results.replaceChildren();
-    let matches = 0;
-    for (const group of groups) {
-      const candidates = catalog.filter((task) =>
-        task.status === group && !inPlan.has(task.id) &&
-        words.every((word) => task.title.toLowerCase().includes(word)));
-      if (typed && !candidates.length) continue;
-      matches += candidates.length;
-      const list = element('div', 'card');
-      for (const task of candidates) {
-        const row = action('', 'picker-row', () => openTask(task, null, searchInput.value));
-        row.append(element('b', '', task.title), element('small', '', duration(task.estimate)));
-        list.append(row);
-      }
-      if (!candidates.length) list.append(element('p', 'empty', 'No tasks to add.'));
-      results.append(element('h3', 'sheet-section', group), list);
-    }
-    resultStatus.textContent = matches + (matches === 1 ? ' match' : ' matches');
-    if (typed && !matches) results.append(element('p', 'empty', 'No open tasks match your search.'));
-  }
-  renderResults();
-  searchInput.addEventListener('input', renderResults);
-  openSheet('Add task', picker);
-  searchInput.focus();
 }
 
 function openNote() {
@@ -374,15 +264,15 @@ function renderCalendar(focus) {
   const days = new Date(year, month + 1, 0).getDate();
   for (let i = 1; i <= days; i++) {
     const key = dayKey(new Date(year, month, i));
-    const count = plans.get(key)?.length || 0;
+    const items = plans.get(key) || [];
     const day = action(String(i), '', () => {
       setDate(key);
       renderCalendar(key);
     });
     day.dataset.calendarFocus = key;
-    day.setAttribute('aria-label', dateLabel(key) + ', ' + count + ' planned');
+    day.setAttribute('aria-label', dateLabel(key) + ', ' + planCount(items) + ' planned');
     if (key === selected) day.setAttribute('aria-current', 'date');
-    if (count) day.append(element('em', '', count + ' task' + (count === 1 ? '' : 's')));
+    if (items.length) day.append(element('em', '', items.length + ' planned'));
     grid.append(day);
   }
   const foot = element('div', 'calendar-foot');
@@ -412,7 +302,8 @@ function renderCalendar(focus) {
     card.append(row);
   }
   for (const item of items) {
-    const row = element('div', 'summary-row', catalog.find((task) => task.id === item.id).title);
+    const entry = catalog.find((task) => task.id === item.id);
+    const row = element('div', 'summary-row', (entry.kind === 'event' ? 'Event: ' : 'Task: ') + entry.title);
     row.append(element('b', '', duration(item.planned)));
     card.append(row);
   }
@@ -432,6 +323,8 @@ document.querySelectorAll('[data-tab]').forEach((button) => {
     if (button.dataset.tab === 'Planner') {
       setDate(today);
       $('screen').scrollTop = 0;
+    } else if (button.dataset.tab === 'Sessions') {
+      openSessions();
     } else {
       showToast(button.dataset.tab + ' is outside this mock');
     }

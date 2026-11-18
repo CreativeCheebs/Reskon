@@ -25,14 +25,15 @@ const plans = new Map([
   ['2026-11-20', new Map([['health', 30]])],
 ]);
 const sessions = new Map([
-  ['2026-11-17', new Map([['checklist', 45]])],
-  [today, new Map([['outline', 35], ['week', 15]])],
+  ['2026-11-17', [{ id: 'checklist', minutes: 45 }]],
+  [today, [{ id: 'outline', minutes: 35 }, { id: 'week', minutes: 15 }]],
 ]);
 const notes = new Map([[today, 'Finish the outline before lunch. Leave room for reading later.']]);
 const capacities = new Map([...plans.keys()].map((day) => [day, 240]));
 let date = today;
 let month = today.slice(0, 7);
 let editing = null;
+let draftKind = 'task';
 let draggedTask = null;
 let nextId = 1;
 
@@ -76,21 +77,40 @@ function capacityText(minutes) {
   return minutes < 0 ? `${duration(-minutes)} over` : `${duration(minutes)} available`;
 }
 
-function taskCount(count) {
-  return `${count} ${count === 1 ? 'task' : 'tasks'}`;
+function planCount(plan) {
+  const events = [...plan.keys()].filter((id) => tasks.get(id).kind === 'event').length;
+  const work = plan.size - events;
+  const taskText = `${work} ${work === 1 ? 'task' : 'tasks'}`;
+  const eventText = `${events} ${events === 1 ? 'event' : 'events'}`;
+  return events ? [work ? taskText : '', eventText].filter(Boolean).join(', ') : taskText;
+}
+
+function kindLabel(kind) {
+  return kind === 'event' ? 'Event' : 'Task';
+}
+
+function itemName(item) {
+  const name = create('span', '', 'item-name');
+  const kind = create('span', kindLabel(item.kind), item.kind === 'event' ? 'item-kind event' : 'item-kind');
+  name.append(kind, create('strong', item.name, 'task-name'));
+  return name;
+}
+
+function loggedMinutes(id) {
+  const records = sessions.get(date) ?? [];
+  return records.reduce((total, record) => total + (id === undefined || record.id === id ? record.minutes : 0), 0);
 }
 
 function dayButton(iso) {
   const { plan, minutes, available } = summary(iso);
   const number = Number(iso.slice(8));
-  const count = plan.size;
   const button = create('button', '', 'day-cell');
   button.type = 'button';
   button.setAttribute('aria-pressed', String(iso === date));
   const fullDate = displayDate(iso, { weekday: 'long', day: 'numeric', month: 'long' });
-  button.setAttribute('aria-label', `${fullDate}${iso === today ? ' (Today)' : ''}, ${taskCount(count)}, ${duration(minutes)} planned, ${capacityText(available)}`);
+  button.setAttribute('aria-label', `${fullDate}${iso === today ? ' (Today)' : ''}, ${planCount(plan)}, ${duration(minutes)} planned, ${capacityText(available)}`);
   button.append(create('strong', number));
-  if (count) button.append(create('small', `${taskCount(count)} · ${duration(minutes)}`));
+  if (plan.size) button.append(create('small', `${planCount(plan)} · ${duration(minutes)}`));
   if (available !== null) button.append(create('small', capacityText(available)));
   button.addEventListener('click', () => {
     selectDate(iso);
@@ -146,7 +166,7 @@ function candidates(status, plan) {
       event.dataTransfer.effectAllowed = 'copy';
     });
     row.addEventListener('dragend', clearDrag);
-    row.append(controls, create('strong', task.name), estimate);
+    row.append(controls, itemName(task), estimate);
     list.append(row);
   }
 }
@@ -170,15 +190,13 @@ function removeTask(id) {
 
 function renderPlan() {
   const { plan, minutes, capacity, available } = summary(date);
-  const logged = sessions.get(date) ?? new Map();
-  const totalLogged = [...logged.values()].reduce((sum, value) => sum + value, 0);
   const totals = [
     ['Planned', duration(minutes)],
-    ['Logged that day', duration(totalLogged)],
+    ['Logged that day', duration(loggedMinutes())],
     [available !== null && available < 0 ? 'Over capacity' : 'Available', available === null ? '—' : duration(Math.abs(available))],
   ];
   $('plan-heading').textContent = date === today ? 'Today’s plan' : `${displayDate(date, { weekday: 'long' })}’s plan`;
-  $('plan-count').textContent = `${taskCount(plan.size)} · ${capacity === null ? 'No capacity set' : `${duration(capacity)} capacity`}`;
+  $('plan-count').textContent = `${planCount(plan)} · ${capacity === null ? 'No capacity set' : `${duration(capacity)} capacity`}`;
   $('totals').replaceChildren(...totals.map(([label, value]) => {
     const item = create('div', '', label === 'Over capacity' ? 'total over' : 'total');
     item.append(create('dt', label), create('dd', value));
@@ -187,17 +205,24 @@ function renderPlan() {
   $('capacity-track').hidden = capacity === null;
   $('capacity-bar').style.width = `${Math.min(100, capacity ? 100 * minutes / capacity : minutes ? 100 : 0)}%`;
   $('planned').replaceChildren();
-  for (const id of plan.keys()) {
+  for (const [id, planned] of plan) {
     const task = tasks.get(id);
-    const time = duration(logged.get(id) ?? 0);
-    const estimate = task.estimate ? duration(task.estimate) : '—';
+    const logged = loggedMinutes(id);
+    const time = duration(logged);
+    const event = task.kind === 'event';
+    const estimateMinutes = event ? planned : task.estimate;
+    const estimate = estimateMinutes ? duration(estimateMinutes) : '—';
+    const estimateLabel = estimateMinutes ? `${estimate} ${event ? 'planned' : 'estimated'}` : 'no estimate';
     const row = create('li');
     const button = create('button', '', 'planned-row');
     button.type = 'button';
     button.dataset.plannedId = id;
-    button.setAttribute('aria-label', `Edit planned time for ${task.name}. ${time} logged this day / ${task.estimate ? `${estimate} estimated` : 'no estimate'}`);
+    const completion = event && logged ? ', completed' : '';
+    button.setAttribute('aria-label', `${kindLabel(task.kind)}: ${task.name}. ${time} logged this day / ${estimateLabel}${completion}`);
     button.addEventListener('click', () => openTask(id));
-    button.append(create('strong', task.name, 'task-name'), create('span', `${time} / ${estimate}`, 'task-time'));
+    const ratio = create('span', `${time} / ${estimate}`, 'task-time');
+    if (event && logged) ratio.append(create('span', ' ✓', 'event-logged'));
+    button.append(itemName(task), ratio);
     row.append(button);
     $('planned').append(row);
   }
@@ -217,17 +242,29 @@ function selectDate(iso) {
   render();
 }
 
-function openTask(id = null) {
+function openTask(id = null, kind = 'task') {
   editing = id;
   const task = tasks.get(id);
-  $('task-dialog-heading').textContent = task ? 'Edit planned task' : 'New task';
+  draftKind = task ? task.kind ?? 'task' : kind;
+  const event = draftKind === 'event';
+  $('task-dialog-heading').textContent = `${task ? 'Edit planned' : 'New'} ${draftKind}`;
+  $('name-label').textContent = `${kindLabel(draftKind)} name`;
+  $('task-name').placeholder = event ? 'e.g. Nap' : 'What do you want to work on?';
   $('task-name').value = task?.name ?? '';
   $('task-name').setCustomValidity('');
   $('task-name').readOnly = Boolean(task);
+  $('estimate-field').hidden = event;
+  $('estimate').disabled = event;
   $('estimate').value = task?.estimate ?? '';
+  $('planned-label').textContent = event ? 'Planned duration (min)' : 'Plan for this day (min)';
+  $('planned-time').required = event;
   $('planned-time').value = summary(date).plan.get(id) ?? '';
-  $('task-logged').hidden = !task;
-  $('task-logged').textContent = `Logged this day: ${duration(sessions.get(date)?.get(id) ?? 0)}`;
+  $('task-logging').hidden = !task;
+  const logged = task ? loggedMinutes(id) : 0;
+  $('log-open').hidden = event && Boolean(logged);
+  $('task-logged').textContent = event && !logged
+    ? 'Log the session when the event happens.'
+    : `Logged this day: ${duration(logged)}`;
   $('remove-task').hidden = !task;
   $('task-form').querySelector('.primary').textContent = task ? 'Save' : 'Add to plan';
   $('task-dialog').showModal();
@@ -238,12 +275,12 @@ $('task-form').addEventListener('submit', (event) => {
   event.preventDefault();
   const name = $('task-name').value.trim();
   if (!name) {
-    $('task-name').setCustomValidity('Enter a task name.');
+    $('task-name').setCustomValidity(`Enter the ${draftKind} name.`);
     $('task-name').reportValidity();
     return;
   }
   const id = editing ?? `new-${nextId++}`;
-  const task = tasks.get(id) ?? { name, area: 'Personal', status: 'todo' };
+  const task = tasks.get(id) ?? { name, kind: draftKind, status: draftKind === 'task' ? 'todo' : null };
   task.estimate = Number($('estimate').value) || null;
   tasks.set(id, task);
   const { plan } = summary(date);
@@ -254,11 +291,58 @@ $('task-form').addEventListener('submit', (event) => {
   document.querySelector(`[data-planned-id="${id}"]`)?.focus();
 });
 $('task-name').addEventListener('input', () => $('task-name').setCustomValidity(''));
+$('task-dialog').addEventListener('close', () => {
+  if (editing && document.activeElement === document.body) {
+    document.querySelector(`[data-planned-id="${editing}"]`)?.focus();
+  }
+});
 $('remove-task').addEventListener('click', () => {
   $('task-dialog').close();
   removeTask(editing);
 });
-$('new-task').addEventListener('click', () => openTask());
+$('new-task').addEventListener('click', () => $('type-dialog').showModal());
+for (const button of document.querySelectorAll('[data-new-kind]')) {
+  button.addEventListener('click', () => {
+    $('type-dialog').close();
+    openTask(null, button.dataset.newKind);
+  });
+}
+$('log-open').addEventListener('click', () => {
+  const item = tasks.get(editing);
+  $('log-context').textContent = `${item.name} · ${$('date-text').textContent}`;
+  $('actual-time').value = item.kind === 'event' ? summary(date).plan.get(editing) : '';
+  $('log-dialog').showModal();
+  $('actual-time').focus();
+});
+$('log-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  const item = tasks.get(editing);
+  if (item.kind === 'event' && loggedMinutes(editing)) return;
+  const minutes = Number($('actual-time').value);
+  const records = sessions.get(date) ?? [];
+  sessions.set(date, [...records, { id: editing, minutes }]);
+  $('log-dialog').close();
+  $('log-open').hidden = item.kind === 'event';
+  $('task-logged').textContent = `Logged this day: ${duration(loggedMinutes(editing))}`;
+  $('announcement').textContent = `Logged ${duration(minutes)} for ${item.name}.`;
+  if (item.kind === 'event') $('planned-time').focus();
+  renderPlan();
+});
+for (const button of document.querySelectorAll('[data-open-sessions]')) {
+  button.addEventListener('click', () => {
+    $('sessions-date').textContent = $('date-text').textContent;
+    const list = $('session-list');
+    list.replaceChildren();
+    const records = sessions.get(date) ?? [];
+    for (const { id, minutes } of records) {
+      const entry = create('li', '', 'planned-row');
+      entry.append(itemName(tasks.get(id)), create('span', duration(minutes), 'task-time'));
+      list.append(entry);
+    }
+    if (!records.length) list.append(create('li', 'No sessions logged for this day.', 'muted'));
+    $('sessions-dialog').showModal();
+  });
+}
 $('notes').addEventListener('input', (event) => notes.set(date, event.target.value));
 $('previous').addEventListener('click', () => selectDate(shifted(date, -1)));
 $('next').addEventListener('click', () => selectDate(shifted(date, 1)));

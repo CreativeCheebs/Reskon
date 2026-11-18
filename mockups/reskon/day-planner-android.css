@@ -53,10 +53,16 @@ h2 svg { width: 18px; height: 18px; color: var(--muted); }
 .list-meta { display: flex; justify-content: space-between; padding: 5px 10px; color: var(--muted); font-size: 11px; }
 .text-button { min-height: 44px; padding: 0 10px; border-radius: 14px; color: var(--accent-fg); font-weight: 650; font-size: 13px; }
 .card { overflow: hidden; border: 1px solid var(--border); border-radius: 16px; background: var(--panel); }
-.task { display: grid; grid-template-columns: 7px minmax(0, 1fr) auto; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 4px 10px; text-align: left; }
-.task + .task, .picker-row + .picker-row { border-top: 1px solid var(--border); }
-.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
-.dot.progress { background: var(--accent); }
+.plan-entry { position: relative; overflow: hidden; }
+.plan-entry + .plan-entry, .picker-row + .picker-row { border-top: 1px solid var(--border); }
+.task { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 7px; width: 100%; min-height: 44px; padding: 4px 10px; background: var(--panel); text-align: left; touch-action: pan-y; user-select: none; transition: transform .16s ease-out; }
+.plan-entry.revealed .task { transform: translateX(-100px); }
+.swipe-action { position: absolute; z-index: 1; inset: 0 0 0 auto; width: 100px; background: var(--selected); color: var(--accent-fg); font-size: 12px; font-weight: 700; }
+.task:focus-visible, .swipe-action:focus-visible { outline-offset: -2px; }
+@media (prefers-reduced-motion: reduce) { .task { transition: none; } }
+.entry-kind { padding: 2px 4px; border-radius: 4px; background: var(--raised); color: var(--muted); font-size: 10px; }
+.event-kind { background: var(--selected); color: var(--accent-fg); }
+.event-logged { color: var(--green); }
 .task-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 650; }
 .task-ratio { color: var(--muted); white-space: nowrap; font-size: 12px; font-variant-numeric: tabular-nums; }
 .note, .empty { padding: 12px; color: var(--muted); font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -83,6 +89,9 @@ dialog h2 { font-size: 19px; }
 .picker-row b { font-size: 13px; font-weight: 650; overflow-wrap: anywhere; }
 .picker-row small { white-space: nowrap; }
 .task-picker { display: grid; gap: 8px; }
+.entry-choice { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 6px; margin-bottom: 4px; }
+.entry-choice button { border: 1px solid var(--border); border-radius: 10px; }
+.entry-choice [aria-pressed="true"] { background: var(--selected); border-color: var(--accent); }
 .picker-create { overflow-wrap: anywhere; margin-top: 2px; }
 .sheet-form { display: grid; gap: 12px; }
 .sheet-form label, .task-picker label { display: grid; gap: 5px; color: var(--muted); font-size: 13px; }
@@ -93,6 +102,10 @@ dialog h2 { font-size: 19px; }
 .estimate-presets [aria-pressed="true"] { background: var(--selected); border-color: var(--accent); color: var(--accent-fg); }
 .day-time summary { padding: 5px 0; color: var(--muted); font-size: 13px; cursor: pointer; }
 .day-time label { margin-top: 5px; }
+.day-time .estimate-toggle { display: flex; align-items: center; gap: 7px; min-height: 44px; }
+.day-time input[type="checkbox"] { width: 18px; min-height: 18px; }
+.form-error { color: var(--red); font-size: 13px; }
+.form-error:empty { display: none; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .primary { min-height: 48px; padding: 0 14px; border-radius: 12px; background: var(--accent); color: var(--dim); font-weight: 700; }
 .primary:hover { background: var(--accent-fg); }

@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Reskon · Android day planner mock</title>
   <link rel="stylesheet" href="day-planner-android.css">
+  <link rel="stylesheet" href="day-planner-duration.css">
+  <script defer src="day-planner-duration.js"></script>
+  <script defer src="day-planner-android-sessions.js"></script>
+  <script defer src="day-planner-android-tasks.js"></script>
   <script defer src="day-planner-android.js"></script>
 </head>
 <body>
@@ -34,7 +38,7 @@
           <div><span>Logged</span><strong id="logged-total"></strong></div>
           <div><span>Available</span><strong id="available-total"></strong></div>
         </div>
-        <div class="list-meta"><span id="task-count"></span><span>Logged / estimate</span></div>
+        <div class="list-meta"><span id="task-count"></span><span id="ratio-label">Logged / estimate</span></div>
         <div id="tasks" class="card"></div>
         <div class="section-title"><h2><svg><use href="#note"/></svg> Day note</h2><button id="edit-note" class="text-button" type="button">Edit</button></div>
         <p id="day-note" class="card note"></p>
