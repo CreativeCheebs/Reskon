@@ -102,8 +102,10 @@ export function DayScreen({ date, onDate }: { date?: string; onDate: (d: string)
             fetchedAt={fetchedAt}
             handlers={{ onPause: timers.pause, onResume: timers.resume, onStop: timers.stop, onReview: timers.reviewStopped, onDiscard: timers.discard, busy: timers.busy }}
           />
-          <div style={{ display: "grid", gridTemplateColumns: "minmax(260px, 340px) minmax(0, 1fr)", gap: 12, alignItems: "start" }}>
-            <AvailablePanel day={day} data={data} onAdd={addTask} onMoveBack={moveBack} tasksVersion={tasksVersion} />
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(260px, 340px) minmax(0, 1fr)", gap: 12, alignItems: "stretch" }}>
+            <div style={{ position: "relative", minHeight: 360, minWidth: 0 }}>
+              <AvailablePanel day={day} data={data} onAdd={addTask} onMoveBack={moveBack} tasksVersion={tasksVersion} />
+            </div>
             <PlanList
               data={data}
               run={run}

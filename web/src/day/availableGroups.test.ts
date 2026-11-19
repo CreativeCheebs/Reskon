@@ -2,8 +2,25 @@ import { describe, expect, it } from "vitest";
 import { groupAvailable } from "./availableGroups";
 import type { Behaviour, Status, Task } from "../types";
 
-const st = (id: number, position: number): Status => ({ id, name: `S${id}`, category_id: id, color: null, on_board: true, alert_after_days: null, is_builtin: false, position });
-const task = (id: number, status_id: number, p: Partial<Task> = {}): Task => ({ id, status_id, title: `Task ${id}`, key: `K-${id}`, type: "task", ...p }) as Task;
+const st = (id: number, position: number): Status => ({
+  id,
+  name: `S${id}`,
+  category_id: id,
+  color: null,
+  on_board: true,
+  alert_after_days: null,
+  is_builtin: false,
+  position,
+});
+const task = (id: number, status_id: number, p: Partial<Task> = {}): Task =>
+  ({
+    id,
+    status_id,
+    title: `Task ${id}`,
+    key: `K-${id}`,
+    type: "task",
+    ...p,
+  }) as Task;
 const beh = (id: number): Behaviour => (id === 3 ? "done" : id === 2 ? "in_progress" : "todo");
 
 describe("groupAvailable", () => {
