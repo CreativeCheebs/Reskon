@@ -20,25 +20,17 @@ describe("planner wording", () => {
     expect(unestimatedText(1)).toBe("1 line has no planned time");
     expect(unestimatedText(3)).toBe("3 lines have no planned time");
   });
-  it("shows a task as all-time logged over its estimate, an event as reserved", () => {
+  it("shows a task's all-time logged over its estimate", () => {
     expect(loggedOfEstimate({ logged_h: 0.75, estimate_h: 3 })).toBe("45m / 3h");
     expect(loggedOfEstimate({ logged_h: 1, estimate_h: null })).toBe("1h / no estimate");
-    expect(dayFigure({ kind: "event", planned_min: 30, logged_day_h: 0 })).toBe("30m reserved");
   });
-  it("words a task line's day: planned, logged, both or neither", () => {
-    const f = (planned_min: number | null, logged_day_h: number) => dayFigure({ kind: "task", planned_min, logged_day_h });
-    expect(f(120, 0)).toBe("2h today");
-    expect(f(120, 1)).toBe("1h of 2h today");
-    expect(f(null, 0.5)).toBe("30m today");
-    expect(f(null, 0)).toBe("not planned");
-  });
-  it("a ticked line says what was logged, against what was planned", () => {
-    const f = (planned_min: number | null) => dayFigure({ kind: "task", planned_min, logged_day_h: 1, logged_line_min: 60, done: true });
-    expect(f(180)).toBe("1h of 3h · done");
-    expect(f(null)).toBe("1h · done");
-    expect(dayFigure({ kind: "event", planned_min: 30, logged_day_h: 0, done: true, logged_line_min: 0 })).toBe("done");
-    expect(dayFigure({ kind: "event", planned_min: 180, logged_day_h: 0, done: true, logged_line_min: 60 })).toBe("1h of 3h · done");
-    expect(dayFigure({ kind: "event", planned_min: 180, logged_day_h: 0, done: false, logged_line_min: 60 })).toBe("3h reserved");
+  it("words a line's day as logged / planned, the same for tasks and events, ticked or not", () => {
+    const f = (planned_min: number | null, logged_line_min: number) => dayFigure({ planned_min, logged_day_h: 0, logged_line_min });
+    expect(f(240, 0)).toBe("0h / 4h");
+    expect(f(180, 60)).toBe("1h / 3h");
+    expect(f(null, 60)).toBe("1h / –");
+    expect(f(null, 0)).toBe("0h / –");
+    expect(dayFigure({ planned_min: 120, logged_day_h: 0.5 })).toBe("30m / 2h");
   });
   it("builds the add and edit bodies", () => {
     expect(addLineBody(5, "Outline", "2h", "Outline")).toEqual({ task_id: 5, planned_min: 120 });

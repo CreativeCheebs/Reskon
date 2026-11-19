@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Input } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
-import dayjs from "dayjs";
 import { api } from "../api";
 import { useApp } from "../store";
 import { palette } from "../theme/palette";
@@ -58,10 +57,7 @@ export function PlanList({
       <header>
         <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
           <div style={{ flex: 1 }}>
-            <h2 id="plan-heading" style={{ fontSize: 16, margin: 0 }}>
-              {dayjs(day).format("dddd D MMMM")}
-            </h2>
-            <div style={{ color: palette.muted, fontSize: 12 }}>
+            <div id="plan-heading" style={{ color: palette.muted, fontSize: 13, paddingTop: 4 }}>
               {data.items.length === 0 ? "Nothing planned" : `${data.items.length} on the plan`}
             </div>
           </div>

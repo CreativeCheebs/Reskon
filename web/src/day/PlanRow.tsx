@@ -68,6 +68,7 @@ export function PlanRow({ item, first, last, actions }: { item: DayItem; first: 
   };
 
   return (
+    <Dropdown menu={{ items: menu, onClick: onMenu }} trigger={["contextMenu"]} disabled={!online}>
     <li
       draggable={online}
       onDragStart={(e) => {
@@ -133,11 +134,11 @@ export function PlanRow({ item, first, last, actions }: { item: DayItem; first: 
         </div>
       </div>
       <div style={{ textAlign: "right", fontSize: 12, fontVariantNumeric: "tabular-nums" }}>
-        <div style={{ fontWeight: 600 }} title={isTask ? "Planned and logged on this day" : "Minutes reserved for this event"}>
+        <div style={{ fontWeight: 600 }} title="Logged on this day / planned for this day">
           {dayFigure(item)}
         </div>
         {isTask && (
-          <div style={{ color: palette.muted }} title="Logged on the task in all time, against its one whole-task estimate">
+          <div style={{ color: palette.subtle, fontSize: 11 }} title="All time logged / task estimate">
             {loggedOfEstimate(item)}
           </div>
         )}
@@ -158,5 +159,6 @@ export function PlanRow({ item, first, last, actions }: { item: DayItem; first: 
         <Button size="small" type="text" icon={<MoreOutlined />} aria-label={`Actions for ${item.title}`} aria-haspopup="menu" />
       </Dropdown>
     </li>
+    </Dropdown>
   );
 }

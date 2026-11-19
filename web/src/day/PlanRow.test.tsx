@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { PlanRow, type RowActions } from "./PlanRow";
 import { Totals } from "./Totals";
@@ -15,9 +15,9 @@ const actions = (p: Partial<RowActions> = {}): RowActions => ({ onLog: vi.fn(), 
 
 describe("PlanRow", () => {
   it("shows the day's figure apart from the task's all-time logged / estimate", () => {
-    render(<ul><PlanRow item={item({ planned_min: 120 })} first last actions={actions()} /></ul>);
+    render(<ul><PlanRow item={item({ planned_min: 120, logged_line_min: 15 })} first last actions={actions()} /></ul>);
     expect(screen.getByText("45m / 3h")).toBeInTheDocument();
-    expect(screen.getByText("15m of 2h today")).toBeInTheDocument();
+    expect(screen.getByText("15m / 2h")).toBeInTheDocument();
   });
   it("a renamed line shows its own name and the task it is part of, and opens the task", async () => {
     const open = vi.fn();
@@ -32,9 +32,9 @@ describe("PlanRow", () => {
     await userEvent.click(screen.getByRole("checkbox", { name: "Mark done: Meeting" }));
     expect(toggle).toHaveBeenCalled();
   });
-  it("shows an event's reserved minutes and a done task as done", () => {
+  it("shows an event the same way and a done task as done", () => {
     render(<ul><PlanRow item={item({ kind: "event", task_id: null, planned_min: 30, title: "Meeting", done: false })} first last actions={actions()} /><PlanRow item={item({ id: 2, done: true })} first last actions={actions()} /></ul>);
-    expect(screen.getByText("30m reserved")).toBeInTheDocument();
+    expect(screen.getByText("0h / 30m")).toBeInTheDocument();
     expect(screen.getAllByRole("checkbox")[1]).toBeChecked();
   });
   it("a task checkbox ticks the line; a done task shows checked and cannot be unticked here", async () => {
@@ -52,6 +52,11 @@ describe("PlanRow", () => {
     expect(screen.getByLabelText("Task")).toBeInTheDocument();
     expect(screen.getByLabelText("Event")).toBeInTheDocument();
   });
+  it("right-click opens the actions menu", async () => {
+    render(<ul><PlanRow item={item({})} first last actions={actions()} /></ul>);
+    fireEvent.contextMenu(screen.getByText("Write outline"));
+    expect(await screen.findByText("Edit plan…")).toBeInTheDocument();
+  });
   it("logs from the Log button", async () => {
     const a = actions();
     render(<ul><PlanRow item={item({})} first last actions={a} /></ul>);
@@ -64,7 +69,7 @@ describe("Totals", () => {
   const t = (p: Partial<PlanTotals>): PlanTotals => ({ planned_min: 300, logged_min: 60, unestimated: 0, available_min: null, available_from: null, over: false, reserved_min: 0, unplanned_logged_min: 0, free_min: null, ...p });
   it("does not warn when available time is not set", () => {
     render(<Totals totals={t({})} day="2026-11-18" />);
-    expect(screen.getByText("Available time not set")).toBeInTheDocument();
+    expect(screen.getByText("not set")).toBeInTheDocument();
     expect(screen.queryByRole("status")).toBeNull();
   });
   it("warns when over", () => {
@@ -74,7 +79,8 @@ describe("Totals", () => {
   it("shows free time from the server, and only says today on today", () => {
     render(<Totals totals={t({ available_min: 480, available_from: "day", free_min: 240 })} day="2026-11-18" />);
     expect(screen.getByText("4h")).toBeInTheDocument();
-    expect(screen.getByText("free of 8h")).toBeInTheDocument();
+    expect(screen.queryByText(/free of/)).toBeNull();
+    expect(screen.queryByText(/from the weekday/)).toBeNull();
     expect(screen.getByText("Planned")).toBeInTheDocument();
     expect(screen.getByText("Logged")).toBeInTheDocument();
   });

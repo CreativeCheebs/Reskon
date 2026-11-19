@@ -1,6 +1,8 @@
+import { Tag } from "antd";
+import { WarningOutlined } from "@ant-design/icons";
 import { palette } from "../theme/palette";
 import { today } from "../format";
-import { availableText, minutesText, unestimatedText } from "./plan";
+import { minutesText, unestimatedText } from "./plan";
 import type { PlanTotals } from "./types";
 
 /**
@@ -22,29 +24,28 @@ export function Totals({ totals, day }: { totals: PlanTotals; day: string }) {
           ) : free < 0 ? (
             <dd style={{ ...valueStyle, fontSize: 22, color: palette.warn }} role="status">
               {minutesText(-free)} over
-              <span style={subStyle}>of {minutesText(totals.available_min)} available</span>
             </dd>
           ) : (
             <dd style={{ ...valueStyle, fontSize: 22 }}>
               {minutesText(free)}
-              <span style={subStyle}>free of {minutesText(totals.available_min)}</span>
             </dd>
           )}
         </div>
         <Stat label={`Planned${when}`} value={minutesText(totals.planned_min)} />
         <Stat label={`Logged${when}`} value={minutesText(totals.logged_min)} />
+        {totals.over && (
+          <Tag color="warning" icon={<WarningOutlined />} style={{ alignSelf: "center", marginInlineEnd: 0 }}>
+            Planned is more than available
+          </Tag>
+        )}
       </dl>
-      <div style={{ color: palette.muted, fontSize: 12, marginTop: 4 }}>
-        {availableText(totals)}
-        {unest && ` · ${unest}`}
-      </div>
+      {unest && <div style={{ color: palette.muted, fontSize: 12, marginTop: 4 }}>{unest}</div>}
     </div>
   );
 }
 
 const labelStyle = { color: palette.subtle, fontSize: 11, textTransform: "uppercase", letterSpacing: 0.6 } as const;
 const valueStyle = { margin: 0, fontSize: 16, fontWeight: 600, fontVariantNumeric: "tabular-nums" } as const;
-const subStyle = { display: "block", color: palette.muted, fontSize: 12, fontWeight: 400 } as const;
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (

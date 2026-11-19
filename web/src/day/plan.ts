@@ -30,22 +30,11 @@ export function loggedOfEstimate(item: Pick<DayItem, "logged_h" | "estimate_h">)
   return `${formatHM(item.logged_h)} / ${est}`;
 }
 
-/** The line's figure for this day: "1h of 2h today", "2h today", "1h today" (nothing planned) or "not planned". */
-export function dayFigure(item: Pick<DayItem, "kind" | "planned_min" | "logged_day_h"> & { done?: boolean; logged_line_min?: number }): string {
-  // A ticked line, task or event, says what was logged against what was planned.
-  if (item.done) {
-    const mins = item.logged_line_min ?? Math.round(item.logged_day_h * 60);
-    if (mins <= 0) return "done";
-    const logged = minutesText(mins);
-    return item.planned_min === null ? `${logged} · done` : `${logged} of ${minutesText(item.planned_min)} · done`;
-  }
-  if (item.kind === "event") return item.planned_min === null ? "–" : `${minutesText(item.planned_min)} reserved`;
-  const planned = item.planned_min === null ? null : minutesText(item.planned_min);
-  const logged = item.logged_day_h > 0 ? formatHM(item.logged_day_h) : null;
-  if (planned && logged) return `${logged} of ${planned} today`;
-  if (planned) return `${planned} today`;
-  if (logged) return `${logged} today`;
-  return "not planned";
+/** The line's figure for this day, the same for tasks and events: logged on this day / planned ("1h / 4h", "0h / 4h", "1h / –"). */
+export function dayFigure(item: Pick<DayItem, "planned_min" | "logged_day_h"> & { logged_line_min?: number }): string {
+  const mins = item.logged_line_min ?? Math.round(item.logged_day_h * 60);
+  const logged = mins <= 0 ? "0h" : minutesText(mins);
+  return `${logged} / ${item.planned_min === null ? "–" : minutesText(item.planned_min)}`;
 }
 
 /** The Add-to-plan body for a task line: the day's planned minutes and a name only when it differs from the task's. */
