@@ -143,6 +143,7 @@ func (d *DB) DaySummaries(ctx context.Context, from, to string) ([]DaySummary, e
 	for i, s := range out {
 		idx[s.Day] = i
 	}
+	reservedH := map[string]float64{}
 	for _, it := range items {
 		s := &out[idx[it.Day]]
 		s.Items++
@@ -152,11 +153,12 @@ func (d *DB) DaySummaries(ctx context.Context, from, to string) ([]DaySummary, e
 		if it.PlannedMin != nil {
 			s.PlannedMin += *it.PlannedMin
 		}
-		s.ReservedMin += it.ReservedMin
+		reservedH[it.Day] += it.reservedH
 	}
 	for i := range out {
 		s := &out[i]
 		s.LoggedMin = minutesOf(logged[s.Day])
+		s.ReservedMin = minutesOf(reservedH[s.Day])
 		var ov *int64
 		if m, ok := overrides[s.Day]; ok {
 			ov = &m

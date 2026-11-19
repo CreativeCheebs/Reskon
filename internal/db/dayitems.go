@@ -54,16 +54,20 @@ type DayItem struct {
 	// all that task's sessions that day, for an event the sessions linked to it that
 	// day. ReservedMin is what the line takes from the day's available time: once
 	// done, what was logged; before, the larger of the planned and the logged minutes.
-	LoggedLineMin int64  `json:"logged_line_min"`
-	ReservedMin   int64  `json:"reserved_min"`
-	CreatedAt     string `json:"created_at"`
-	UpdatedAt     string `json:"updated_at"`
+	// A session counts on one line only: one linked to an event line of its day counts
+	// there, not on its task's line.
+	LoggedLineMin int64   `json:"logged_line_min"`
+	ReservedMin   int64   `json:"reserved_min"`
+	reservedH     float64 // ReservedMin before rounding, so day totals round once
+	CreatedAt     string  `json:"created_at"`
+	UpdatedAt     string  `json:"updated_at"`
 }
 
 const dayItemSelect = `SELECT i.id, i.day, i.kind, i.task_id, COALESCE(NULLIF(i.title, ''), t.title, ''), t.title, COALESCE(i.title, '') != '',
 	COALESCE(t.area_id, i.area_id), i.position, i.planned_min, t.estimate_h, t.status_id, c.behaviour,
 	COALESCE((SELECT SUM(hours) FROM session WHERE deleted_at IS NULL AND task_id = i.task_id), 0),
-	COALESCE((SELECT SUM(hours) FROM session WHERE deleted_at IS NULL AND task_id = i.task_id AND logged_for = i.day), 0),
+	COALESCE((SELECT SUM(hours) FROM session WHERE deleted_at IS NULL AND task_id = i.task_id AND logged_for = i.day
+		AND NOT EXISTS (SELECT 1 FROM day_item e WHERE e.id = session.day_item_id AND e.kind = 'event' AND e.deleted_at IS NULL AND e.day = session.logged_for)), 0),
 	COALESCE((SELECT SUM(hours) FROM session WHERE deleted_at IS NULL AND day_item_id = i.id), 0),
 	(SELECT COUNT(*) FROM session WHERE deleted_at IS NULL AND day_item_id = i.id),
 	COALESCE((SELECT SUM(hours) FROM session WHERE deleted_at IS NULL AND day_item_id = i.id AND logged_for = i.day), 0),
@@ -92,17 +96,19 @@ func scanDayItem(r *sql.Rows) (*DayItem, error) {
 		it.LoggedDayH = 0
 		it.Renamed = false
 		it.LoggedLineMin = minutesOf(evDayH)
+		it.reservedH = evDayH
 	} else {
 		if b := it.StatusBehaviour; b != nil {
 			it.TaskDone = *b == "done" || *b == "cancelled"
 		}
 		it.LoggedLineMin = minutesOf(it.LoggedDayH)
+		it.reservedH = it.LoggedDayH
 	}
 	it.Done = it.DoneAt != nil || it.TaskDone
-	it.ReservedMin = it.LoggedLineMin
-	if !it.Done && it.PlannedMin != nil && *it.PlannedMin > it.ReservedMin {
-		it.ReservedMin = *it.PlannedMin
+	if !it.Done && it.PlannedMin != nil && float64(*it.PlannedMin)/60 > it.reservedH {
+		it.reservedH = float64(*it.PlannedMin) / 60
 	}
+	it.ReservedMin = minutesOf(it.reservedH)
 	return &it, nil
 }
 
@@ -477,6 +483,10 @@ func (d *DB) applyPlanItem(ctx context.Context, f Fields) error {
 		}
 		f["task_id"], _ = json.Marshal(task.Int64)
 		return nil
+	}
+	// A session is for the event or for a task, not both (it would be counted twice).
+	if sent, ok, _ := f.int64Field("task_id"); ok {
+		return invalid("a session for an event line cannot also name task %d", sent)
 	}
 	set("kind", "event")
 	if title.Valid {
