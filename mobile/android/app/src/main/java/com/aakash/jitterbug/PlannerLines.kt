@@ -29,19 +29,18 @@ fun isTaskDone(item: JSONObject) = !isEvent(item) && item.optBoolean("task_done"
 
 /**
  * The line's figure for its day. Open: "2h today", "35m of 2h today", "35m today" (nothing: null); an
- * event "45m reserved". Ticked done: "1h of 3h · done", "1h · done", or just "done".
+ * event "45m reserved". Ticked done, task or event: "1h of 3h · done", "1h · done", or just "done" (nothing logged).
  */
 fun todayText(item: JSONObject): String? {
     val planned = item.mins("planned_min")
     val done = isLineDone(item)
-    if (isEvent(item)) return planned?.let { "${minText(it)} reserved" + if (done) " · done" else "" } ?: if (done) "done" else null
+    if (isEvent(item) && !done) return planned?.let { "${minText(it)} reserved" }
     // What was logged against this line, else on its day.
     val logged = if (item.has("logged_line_min") && !item.isNull("logged_line_min")) item.optLong("logged_line_min") else item.loggedMin("logged_day_h")
     if (done) {
         val head = when {
             planned != null && logged > 0 -> "${minText(logged)} of ${minText(planned)}"
             logged > 0 -> minText(logged)
-            planned != null -> minText(planned)
             else -> null
         }
         return listOfNotNull(head, "done").joinToString(" · ")

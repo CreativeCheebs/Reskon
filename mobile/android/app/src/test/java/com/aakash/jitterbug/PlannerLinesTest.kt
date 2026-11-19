@@ -95,9 +95,11 @@ class PlannerLinesTest {
     @Test fun aTickedLineSaysDoneAfterItsFigure() {
         assertEquals("1h of 3h · done", todayText(obj("""{"kind":"task","done":true,"planned_min":180,"logged_line_min":60,"logged_day_h":0}""")))
         assertEquals("1h · done", todayText(obj("""{"kind":"task","done":true,"planned_min":null,"logged_line_min":60}""")))
-        assertEquals("3h · done", todayText(obj("""{"kind":"task","done":true,"planned_min":180,"logged_line_min":0}""")))
+        assertEquals("done", todayText(obj("""{"kind":"task","done":true,"planned_min":180,"logged_line_min":0}""")))
         assertEquals("done", todayText(obj("""{"kind":"task","done":true,"planned_min":null,"logged_line_min":0}""")))
-        assertEquals("45m reserved · done", todayText(obj("""{"kind":"event","done":true,"planned_min":45}""")))
+        assertEquals("done", todayText(obj("""{"kind":"event","done":true,"planned_min":45}""")))
+        assertEquals("1h of 3h · done", todayText(obj("""{"kind":"event","done":true,"planned_min":180,"logged_line_min":60}""")))
+        assertEquals("3h reserved", todayText(obj("""{"kind":"event","done":false,"planned_min":180,"logged_line_min":60}""")))
     }
 
     @Test fun anOpenLineStillSaysToday() {
