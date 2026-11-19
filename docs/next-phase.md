@@ -60,7 +60,7 @@ Each step below is built, tested, reviewed and committed on its own.
   - the phone's default for a bare address becomes `https://` (`Sync.normalise`);
   - `android:usesCleartextTraffic` is removed from the manifest;
   - `JITTERBUG_SECURE_COOKIE=1` becomes the default;
-  - the Dockerfile and a sample `Caddyfile` are added to the repo, and `SPEC.md` and the README say how to run it.
+  - the Dockerfile and a sample `Caddyfile` are added to the repo, and `SPEC.md` and `docs/developer.md` say how to run it.
 - **Done when:** the web app and the phone sync over HTTPS only, and `http://` is refused or redirected.
 
 ### 2.2 Touch targets on the phone — **Decided: mockups first**
