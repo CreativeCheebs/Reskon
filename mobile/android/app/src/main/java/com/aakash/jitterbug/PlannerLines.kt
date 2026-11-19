@@ -56,7 +56,8 @@ fun todayText(item: JSONObject): String? {
 /** A task's all-time figures: "1h 5m / 3h all time", or "1h 5m logged, no estimate". An event: what its sessions add up to. */
 fun allTimeText(item: JSONObject): String? {
     val logged = item.loggedMin("logged_h")
-    if (isEvent(item)) return if (logged > 0) "${minText(logged)} logged" else null
+    // A ticked event already says what was logged ("1h of 3h · done").
+    if (isEvent(item)) return if (logged > 0 && !isLineDone(item)) "${minText(logged)} logged" else null
     val est = hoursToMin(item.num("estimate_h"))
     return when {
         est != null -> "${minText(logged)} / ${minText(est)} all time"
