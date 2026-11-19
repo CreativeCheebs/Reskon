@@ -129,7 +129,6 @@ export function PlanRow({ item, first, last, actions }: { item: DayItem; first: 
         <div style={{ color: palette.muted, fontSize: 12 }}>
           {isTask && item.renamed && item.task_title && `Part of: ${item.task_title} · `}
           {area?.name ?? "No area"}
-          {item.done && " · done"}
           {item.session_count > 0 && !isTask && ` · ${item.session_count} session${item.session_count === 1 ? "" : "s"}`}
         </div>
       </div>

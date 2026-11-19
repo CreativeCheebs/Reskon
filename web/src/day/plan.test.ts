@@ -36,7 +36,9 @@ describe("planner wording", () => {
     const f = (planned_min: number | null) => dayFigure({ kind: "task", planned_min, logged_day_h: 1, logged_line_min: 60, done: true });
     expect(f(180)).toBe("1h of 3h · done");
     expect(f(null)).toBe("1h · done");
-    expect(dayFigure({ kind: "event", planned_min: 30, logged_day_h: 0, done: true })).toBe("30m reserved · done");
+    expect(dayFigure({ kind: "event", planned_min: 30, logged_day_h: 0, done: true, logged_line_min: 0 })).toBe("done");
+    expect(dayFigure({ kind: "event", planned_min: 180, logged_day_h: 0, done: true, logged_line_min: 60 })).toBe("1h of 3h · done");
+    expect(dayFigure({ kind: "event", planned_min: 180, logged_day_h: 0, done: false, logged_line_min: 60 })).toBe("3h reserved");
   });
   it("builds the add and edit bodies", () => {
     expect(addLineBody(5, "Outline", "2h", "Outline")).toEqual({ task_id: 5, planned_min: 120 });
