@@ -254,8 +254,10 @@ export function Lane(props: Props) {
   const sentStatus = useRef(new Map<number, number>());
   const send = (taskId: number, body: { status_id: number; before_id: number | null; after_id: number | null }) => {
     const n = ++moveSeq.current;
-    // The status it leaves, to tell a move into done from a reorder inside it.
-    const fromStatus = sentStatus.current.get(taskId) ?? byId.get(taskId)?.status_id;
+    // The status it leaves as last saved, to tell a move into done from a
+    // reorder inside it (a reorder sent before the move into done answered
+    // still counts as coming from outside).
+    const fromStatus = byId.get(taskId)?.status_id;
     const wasDone = fromStatus !== undefined && behaviourOf(fromStatus) === "done";
     lastMove.current.set(taskId, n);
     pending.current.set(taskId, (pending.current.get(taskId) ?? 0) + 1);

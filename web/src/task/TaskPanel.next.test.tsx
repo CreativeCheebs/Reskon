@@ -65,6 +65,17 @@ describe("What's next? after a move in the task panel", () => {
     expect(screen.queryByRole("region", { name: "What's next?" })).toBeNull();
   });
 
+  it("asking again after a task was made opens a fresh box", async () => {
+    render(<TaskPanel taskId={5} initial={task} openNext={{ mode: "continue" }} onClose={() => undefined} onChanged={() => undefined} onDeleted={() => undefined} />);
+    fireEvent.change(await screen.findByLabelText("Next task title"), { target: { value: "After" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create next task" }));
+    expect(await screen.findByText(/Made/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Next/ }));
+    fireEvent.click(await screen.findByText("Continue with a new task…"));
+    expect(await screen.findByLabelText("Next task title")).toHaveValue("");
+    expect(screen.queryByText(/Made/)).toBeNull();
+  });
+
   it("opens with the asked-for form when the caller asks", async () => {
     render(<TaskPanel taskId={5} initial={task} openNext={{ mode: "round" }} onClose={() => undefined} onChanged={() => undefined} onDeleted={() => undefined} />);
     expect(await screen.findByRole("region", { name: "What's next?" })).toBeInTheDocument();

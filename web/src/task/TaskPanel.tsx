@@ -111,7 +111,9 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted, open
   const childChanged = useRef(false);
   // The "What's next?" box (SPEC 4.17): opened by moving the task into a
   // done status here, or asked for by the caller or the Next button.
-  const [next, setNext] = useState<NextMode | null>(openNext?.mode ?? null);
+  // n counts the requests, so each one opens a fresh box (even after "Made …").
+  const [next, setNextState] = useState<{ mode: NextMode; n: number } | null>(openNext ? { mode: openNext.mode, n: 0 } : null);
+  const setNext = (mode: NextMode | null) => setNextState((cur) => (mode ? { mode, n: (cur?.n ?? 0) + 1 } : null));
   useEffect(() => setNext(openNext?.mode ?? null), [taskId, openNext]);
   useEffect(() => {
     const t = window.setTimeout(() => setRest(true), 0);
@@ -295,13 +297,14 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted, open
             {next && (
               <Descriptions.Item label="" span={1}>
                 <WhatsNext
-                  key={`${task.id}:${next}`}
+                  key={`${task.id}:${next.n}`}
                   task={task}
-                  mode={next}
+                  mode={next.mode}
                   onClose={() => setNext(null)}
                   onMade={(_, epic) => {
                     load(true);
-                    if (epic === "new") refreshEpics();
+                    // A new epic: one made for both, or the next one of an epic.
+                    if (epic === "new" || task.type === "epic") refreshEpics();
                   }}
                   onOpenTask={openChild}
                 />

@@ -2,7 +2,7 @@ import { Divider } from "antd";
 import { pressable } from "../a11y";
 import { palette } from "../theme/palette";
 import type { LinkedTask, Task } from "../types";
-import { TaskTitle } from "./RoundTag";
+import { TaskTitle, titleText } from "./RoundTag";
 
 // The task panel's Chain (SPEC 4.17): the task this one continues ("Comes
 // after") and the tasks that continue it ("Next"), each opening that task.
@@ -21,7 +21,7 @@ export function Chain({ task, onOpenTask }: { task: Task; onOpenTask: (id: numbe
           links.map((l) => {
             const finished = l.behaviour === "done" || l.behaviour === "cancelled";
             return (
-              <span key={l.id} className="jb-clickable" {...pressable(() => onOpenTask(l.id), `Open ${l.title}`)} style={{ cursor: "pointer", borderRadius: 4 }}>
+              <span key={l.id} className="jb-clickable" {...pressable(() => onOpenTask(l.id), `Open ${l.key} ${titleText(l)}`)} style={{ cursor: "pointer", borderRadius: 4 }}>
                 <span style={{ color: palette.muted, fontSize: 12, marginRight: 6 }}>{l.key}</span>
                 <span style={{ color: finished ? palette.muted : palette.fg, textDecoration: finished ? "line-through" : undefined }}>
                   <TaskTitle task={l} />

@@ -160,10 +160,11 @@ export function useCardActions(task: Task, { onOpen, onChanged, onDeleted }: Car
     ...(task.type !== "epic" ? [{ key: "next:round", label: "Start next round", icon: <RedoOutlined />, disabled: !app.online }] : []),
   ];
   // Delete sits apart, after a divider. A list with nothing chosen stays
-  // empty, so the browser's own menu shows.
+  // empty, so the browser's own menu shows; chosen actions that don't apply
+  // to this task (Snooze on a done one) still leave Continue and Next round.
   const list = (keys: CardActionKey[]): Item[] => {
+    if (keys.length === 0) return [];
     const ks = keys.filter(applies);
-    if (ks.length === 0) return [];
     const plain = ks.filter((k) => k !== "delete").map(item);
     const main = [...plain, ...(plain.length ? [{ type: "divider" as const }] : []), ...nextItems];
     return ks.includes("delete") ? [...main, { type: "divider" as const }, item("delete")] : main;

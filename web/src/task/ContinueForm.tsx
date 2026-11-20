@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert, Button, Input, Radio, Select, Space, Typography } from "antd";
 import { api } from "../api";
 import { today } from "../format";
@@ -35,7 +35,18 @@ export function ContinueForm({ task, onMade }: { task: Task; onMade: (t: Task, e
   const [pickId, setPickId] = useState<number | null>(null);
   const [separate, setSeparate] = useState(false);
   const [busy, setBusy] = useState(false);
+  // busy for a second Enter before the screen has redrawn: one task only.
+  const busyRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
+
+  // The task changed while the box was open (moved into an epic, made a
+  // subtask ...): its epic question changes, so the choice starts over.
+  const [shownCase, setShownCase] = useState(kase);
+  if (shownCase !== kase) {
+    setShownCase(kase);
+    setEpic(defaultEpicChoice(task));
+    setSeparate(false);
+  }
 
   // A subtask's choice names its parent.
   const [parentTitle, setParentTitle] = useState<string | null>(null);
@@ -50,6 +61,7 @@ export function ContinueForm({ task, onMade }: { task: Task; onMade: (t: Task, e
   const toggle = (k: CopyKey, on: boolean) => setCopy((cur) => COPY_KEYS.filter((x) => (x === k ? on : cur.includes(x))));
 
   const submit = async () => {
+    if (!online || busyRef.current) return;
     if (!title.trim()) {
       setError(`The next ${T.task} needs a title.`);
       return;
@@ -61,6 +73,7 @@ export function ContinueForm({ task, onMade }: { task: Task; onMade: (t: Task, e
     const body: ContinueBody = { title: title.trim(), copy, epic, separate: kase === "subtask" && separate, today: today() };
     if (epic === "new") body.epic_title = epicTitle.trim() || task.title;
     if (epic === "pick" && pickId !== null) body.epic_id = pickId;
+    busyRef.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -68,6 +81,7 @@ export function ContinueForm({ task, onMade }: { task: Task; onMade: (t: Task, e
     } catch (e) {
       setError((e as Error).message);
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   };

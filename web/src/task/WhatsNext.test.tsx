@@ -12,7 +12,8 @@ import { expectNoA11yViolations } from "../test/a11y";
 const post = vi.fn(async (_p: string, _b?: unknown): Promise<unknown> => ({ id: 43, title: "Wire garage camera", round_no: null, round_kind: null }));
 const get = vi.fn(async (_p: string): Promise<unknown> => ({ id: 7, title: "Install cameras" }));
 vi.mock("../api", () => ({ api: { get: (p: string) => get(p), post: (p: string, b?: unknown) => post(p, b) } }));
-vi.mock("../store", () => ({ useApp: () => ({ online: true, boot: { settings: {} } }) }));
+let online = true;
+vi.mock("../store", () => ({ useApp: () => ({ online, boot: { settings: {} } }) }));
 const house = { id: 9, title: "House", type: "epic" };
 vi.mock("./useEpics", () => ({ useEpics: () => ({ epics: [house], byId: new Map([[9, house]]), refresh: vi.fn() }) }));
 const { WhatsNext } = await import("./WhatsNext");
@@ -31,6 +32,41 @@ describe("What's next? box", () => {
   beforeEach(() => {
     post.mockClear();
     get.mockClear();
+    online = true;
+  });
+
+  it("two quick Enters make one task", async () => {
+    let answer: (v: unknown) => void = () => undefined;
+    post.mockImplementationOnce(() => new Promise((r) => (answer = r)));
+    show({});
+    typeTitle("Wire garage camera");
+    const box = screen.getByLabelText("Next task title");
+    fireEvent.keyDown(box, { key: "Enter", keyCode: 13 });
+    fireEvent.keyDown(box, { key: "Enter", keyCode: 13 });
+    answer({ id: 43, title: "Wire garage camera" });
+    expect(await screen.findByText(/Made/)).toBeInTheDocument();
+    expect(post).toHaveBeenCalledTimes(1);
+  });
+
+  it("Enter offline sends nothing", () => {
+    online = false;
+    show({});
+    typeTitle("Offline");
+    fireEvent.keyDown(screen.getByLabelText("Next task title"), { key: "Enter", keyCode: 13 });
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it("switching to Next round and back keeps the typed title; Nothing closes", () => {
+    const onClose = vi.fn();
+    render(<WhatsNext task={base} mode="continue" onClose={onClose} onMade={() => undefined} onOpenTask={() => undefined} />);
+    typeTitle("Wire garage camera");
+    fireEvent.click(screen.getByText("Next round"));
+    expect(screen.getByRole("button", { name: "Start next round" })).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Continue"));
+    expect((screen.getByLabelText("Next task title") as HTMLInputElement).value).toBe("Wire garage camera");
+    expect(onClose).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Nothing" }));
+    expect(onClose).toHaveBeenCalled();
   });
 
   it("no epic: an epic for both is chosen, named after the task, and editable", async () => {
@@ -113,6 +149,6 @@ describe("What's next? box", () => {
     await waitFor(() => expect(post).toHaveBeenCalled());
     expect(post.mock.calls[0][0]).toBe("/tasks/42/next-round");
     expect(sent()).toMatchObject({ kind: "version", snooze_until: daysFromToday(7) });
-    expect((await screen.findByText(/Made/)).textContent).toContain("Set up NVRv2");
+    expect((await screen.findByText(/Made/)).textContent).toContain("Set up NVR v2");
   });
 });

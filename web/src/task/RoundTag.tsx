@@ -20,8 +20,9 @@ export function titleText(t: { title: string; round_no?: number | null; round_ki
   return label ? `${t.title} ${label}` : t.title;
 }
 
-/** Just the number, styled; nothing when there is none. */
-export function RoundTag({ no, kind }: { no: number | null | undefined; kind: RoundKind | null | undefined }) {
+/** Just the number, styled; nothing when there is none. `bg` is the surface
+ *  it sits on (the panel colour unless given), so the accent stays readable. */
+export function RoundTag({ no, kind, bg }: { no: number | null | undefined; kind: RoundKind | null | undefined; bg?: string }) {
   const label = roundLabel(no, kind);
   if (!label) return null;
   return (
@@ -33,7 +34,7 @@ export function RoundTag({ no, kind }: { no: number | null | undefined; kind: Ro
         fontWeight: 500,
         marginLeft: "0.4em",
         whiteSpace: "nowrap",
-        color: readable(palette.accent, palette.panel),
+        color: readable(palette.accent, bg ?? palette.panel),
       }}
     >
       {label}
@@ -43,11 +44,11 @@ export function RoundTag({ no, kind }: { no: number | null | undefined; kind: Ro
 
 /** A task's title followed by its round number. The round fields are
  *  optional: a linked task (Chain, dependencies) carries only its title. */
-export function TaskTitle({ task }: { task: { title: string; round_no?: number | null; round_kind?: RoundKind | null } }) {
+export function TaskTitle({ task, bg }: { task: { title: string; round_no?: number | null; round_kind?: RoundKind | null }; bg?: string }) {
   return (
     <>
       {task.title}
-      <RoundTag no={task.round_no} kind={task.round_kind} />
+      <RoundTag no={task.round_no} kind={task.round_kind} bg={bg} />
     </>
   );
 }

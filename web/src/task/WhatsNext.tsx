@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Alert, Button, Dropdown, Radio, Segmented, Space, Typography } from "antd";
 import { ArrowRightOutlined, CloseOutlined } from "@ant-design/icons";
 import { useApp } from "../store";
@@ -7,7 +7,7 @@ import { useTerms } from "../terms";
 import type { RoundKind, Task } from "../types";
 import { ContinueForm } from "./ContinueForm";
 import { nextRound, type EpicChoice, type NextMode } from "./nextTask";
-import { RoundTag, TaskTitle } from "./RoundTag";
+import { RoundTag, TaskTitle, titleText } from "./RoundTag";
 import { daysFromToday } from "./SnoozeForecast";
 import { intervalLabel, snoozeIntervals } from "./snoozeIntervals";
 
@@ -15,8 +15,6 @@ import { intervalLabel, snoozeIntervals } from "./snoozeIntervals";
 // different task that comes after this one), Next round (the same task
 // again) or Nothing. It opens under the status after the task is moved to a
 // done status, or from the panel's and the card's actions at any time.
-
-type Choice = NextMode | "nothing";
 
 interface Props {
   task: Task;
@@ -31,7 +29,7 @@ interface Props {
 export function WhatsNext({ task, mode, onClose, onMade, onOpenTask }: Props) {
   const T = useTerms();
   const canRound = task.type !== "epic";
-  const [choice, setChoice] = useState<Choice>(canRound ? mode : "continue");
+  const [choice, setChoice] = useState<NextMode>(canRound ? mode : "continue");
   const [made, setMade] = useState<Task | null>(null);
 
   const done = (t: Task, epic?: EpicChoice) => {
@@ -54,7 +52,7 @@ export function WhatsNext({ task, mode, onClose, onMade, onOpenTask }: Props) {
           showIcon
           message={
             <span>
-              Made <TaskTitle task={made} />.
+              Made <strong>{titleText(made)}</strong>.
             </span>
           }
           action={
@@ -65,20 +63,34 @@ export function WhatsNext({ task, mode, onClose, onMade, onOpenTask }: Props) {
         />
       ) : (
         <>
-          <Segmented<Choice>
-            block
-            value={choice}
-            onChange={(v) => (v === "nothing" ? onClose() : setChoice(v))}
-            options={[
-              { value: "continue", label: "Continue" },
-              ...(canRound ? [{ value: "round" as const, label: "Next round" }] : []),
-              { value: "nothing", label: "Nothing" },
-            ]}
-          />
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <Segmented<NextMode>
+              style={{ flex: 1 }}
+              block
+              aria-label="What comes next"
+              value={choice}
+              onChange={setChoice}
+              options={[
+                { value: "continue", label: "Continue" },
+                ...(canRound ? [{ value: "round" as const, label: "Next round" }] : []),
+              ]}
+            />
+            <Button size="small" type="text" onClick={onClose}>
+              Nothing
+            </Button>
+          </div>
           <Typography.Text type="secondary" style={{ fontSize: 12, marginTop: -6 }}>
             {choice === "continue" ? `A new ${T.task} that comes after this one.` : "The same task again, with its own hours and points."}
           </Typography.Text>
-          {choice === "continue" ? <ContinueForm task={task} onMade={done} /> : <RoundForm task={task} onMade={done} />}
+          {/* Both stay mounted, so switching keeps what was typed. */}
+          <div hidden={choice !== "continue"}>
+            <ContinueForm task={task} onMade={done} />
+          </div>
+          {canRound && (
+            <div hidden={choice !== "round"}>
+              <RoundForm task={task} onMade={done} />
+            </div>
+          )}
         </>
       )}
     </section>
@@ -93,10 +105,13 @@ export function RoundForm({ task, onMade }: { task: Task; onMade: (t: Task) => v
   const [kind, setKind] = useState<RoundKind>(task.round_kind ?? "round");
   const [days, setDays] = useState(0); // 0: right away
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false); // one round per click, however quick
   const [error, setError] = useState<string | null>(null);
   const word = kind === "version" ? "version" : "round";
 
   const submit = async () => {
+    if (!online || busyRef.current) return;
+    busyRef.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -104,6 +119,7 @@ export function RoundForm({ task, onMade }: { task: Task; onMade: (t: Task) => v
     } catch (e) {
       setError((e as Error).message);
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   };
@@ -122,12 +138,12 @@ export function RoundForm({ task, onMade }: { task: Task; onMade: (t: Task) => v
           </div>
           <Typography.Text style={{ fontSize: 13 }}>
             Makes <strong>{task.title}</strong>
-            <RoundTag no={2} kind={kind} /> with the same details and estimate. This one becomes <RoundTag no={1} kind={kind} />.
+            <RoundTag no={2} kind={kind} bg={palette.panelDim} /> with the same details and estimate. This one becomes <RoundTag no={1} kind={kind} bg={palette.panelDim} />.
           </Typography.Text>
         </>
       ) : (
         <Typography.Text style={{ fontSize: 13 }}>
-          Makes the next {word} of <TaskTitle task={task} /> with the same details and estimate.
+          Makes the next {word} of <TaskTitle task={task} bg={palette.panelDim} /> with the same details and estimate.
         </Typography.Text>
       )}
       <div>
