@@ -8,6 +8,7 @@ import { palette } from "../theme/palette";
 import { useTerms } from "../terms";
 import type { Task } from "../types";
 import { TypeIcon } from "./TypeIcon";
+import { nextGrid, nextLabel } from "./nextLayout";
 import { useEpics } from "./useEpics";
 import { COPY_KEYS, continueTask, epicCaseOf, type ContinueBody, type CopyKey, type EpicChoice } from "./nextTask";
 
@@ -98,7 +99,7 @@ export function ContinueForm({ task, onMade }: { task: Task; onMade: (t: Task, e
   // One short row: a label on the left, the choice and its field beside it.
   const row = (label: string, body: React.ReactNode) => (
     <>
-      <span style={{ fontSize: 12, color: palette.muted }}>{label}</span>
+      <span style={nextLabel}>{label}</span>
       <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", minWidth: 0 }}>{body}</div>
     </>
   );
@@ -177,7 +178,7 @@ export function ContinueForm({ task, onMade }: { task: Task; onMade: (t: Task, e
     );
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <Space.Compact style={{ width: "100%" }}>
         <Input
           autoFocus
@@ -191,7 +192,7 @@ export function ContinueForm({ task, onMade }: { task: Task; onMade: (t: Task, e
           Create {T.task}
         </Button>
       </Space.Compact>
-      <div style={{ display: "grid", gridTemplateColumns: "64px 1fr", gap: "8px 8px", alignItems: "center" }}>
+      <div style={nextGrid}>
         {where}
         {row(
           "Copy over",

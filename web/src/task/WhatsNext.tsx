@@ -6,6 +6,7 @@ import { palette } from "../theme/palette";
 import { useTerms } from "../terms";
 import type { RoundKind, Task } from "../types";
 import { ContinueForm } from "./ContinueForm";
+import { nextGrid, nextLabel } from "./nextLayout";
 import { nextRound, type EpicChoice, type NextMode } from "./nextTask";
 import { RoundTag, TaskTitle, titleText } from "./RoundTag";
 import { daysFromToday } from "./SnoozeForecast";
@@ -126,58 +127,67 @@ export function RoundForm({ task, onMade }: { task: Task; onMade: (t: Task) => v
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      {first ? (
-        <Typography.Text style={{ fontSize: 13 }}>
-          Makes{" "}
-          <strong>
-            {task.title}
-            <RoundTag no={2} kind={kind} bg={palette.panelDim} />
-          </strong>{" "}
-          with the same details.{" "}
-          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            This one becomes <RoundTag no={1} kind={kind} bg={palette.panelDim} />.
-          </Typography.Text>
-        </Typography.Text>
-      ) : (
-        <Typography.Text style={{ fontSize: 13 }}>
-          Makes the next {word} of <TaskTitle task={task} bg={palette.panelDim} /> with the same details.
-        </Typography.Text>
-      )}
-      {first && (
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <span style={{ fontSize: 12, color: palette.muted }}>Count as</span>
-          <Segmented<RoundKind>
-            size="small"
-            aria-label="Count it as"
-            value={kind}
-            onChange={setKind}
-            options={[
-              { value: "round", label: "Rounds" },
-              { value: "version", label: "Versions" },
-            ]}
-          />
-        </div>
-      )}
-      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-        <Select<number>
-          size="small"
-          style={{ width: 130 }}
-          aria-label="Bring the next one back"
-          value={days}
-          onChange={setDays}
-          options={[{ value: 0, label: "Right away" }, ...snoozeIntervals(boot.settings).map((n) => ({ value: n, label: `In ${intervalLabel(n).toLowerCase()}` }))]}
-        />
-        <Button type="primary" size="small" loading={busy} disabled={!online} onClick={submit} style={{ marginLeft: "auto" }}>
-          Start next {word}
-        </Button>
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ fontSize: 13, lineHeight: 1.6 }}>
+        {first ? (
+          <>
+            <div>
+              Makes{" "}
+              <strong>
+                {task.title}
+                <RoundTag no={2} kind={kind} bg={palette.panelDim} />
+              </strong>{" "}
+              with the same details.
+            </div>
+            <div style={{ color: palette.muted }}>
+              This one becomes <RoundTag no={1} kind={kind} bg={palette.panelDim} />.
+            </div>
+          </>
+        ) : (
+          <div>
+            Makes the next {word} of <TaskTitle task={task} bg={palette.panelDim} /> with the same details.
+          </div>
+        )}
       </div>
-      {days > 0 && (
-        <Typography.Text type="secondary" style={{ fontSize: 12, marginTop: -4 }}>
-          It stays off the board until then.
-        </Typography.Text>
-      )}
+      <div style={nextGrid}>
+        {first && (
+          <>
+            <span style={nextLabel}>Count as</span>
+            <div>
+              <Segmented<RoundKind>
+                size="small"
+                aria-label="Count it as"
+                value={kind}
+                onChange={setKind}
+                options={[
+                  { value: "round", label: "Rounds" },
+                  { value: "version", label: "Versions" },
+                ]}
+              />
+            </div>
+          </>
+        )}
+        <span style={nextLabel}>Comes back</span>
+        <div>
+          <Select<number>
+            size="small"
+            style={{ width: 150 }}
+            aria-label="Bring the next one back"
+            value={days}
+            onChange={setDays}
+            options={[{ value: 0, label: "Right away" }, ...snoozeIntervals(boot.settings).map((n) => ({ value: n, label: `In ${intervalLabel(n).toLowerCase()}` }))]}
+          />
+          {days > 0 && (
+            <Typography.Text type="secondary" style={{ fontSize: 12, marginLeft: 8 }}>
+              Off the board until then
+            </Typography.Text>
+          )}
+        </div>
+      </div>
       {error && <Alert type="error" showIcon message={error} style={{ padding: "4px 10px" }} />}
+      <Button type="primary" loading={busy} disabled={!online} onClick={submit} style={{ alignSelf: "flex-end" }}>
+        Start next {word}
+      </Button>
     </div>
   );
 }
