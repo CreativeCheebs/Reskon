@@ -41,11 +41,11 @@ fun epicOptions(kind: ContinueKind, epicName: String?, parentName: String?, hasE
     )
     ContinueKind.IN_EPIC -> listOf(
         EpicOption("same", "Keep both in ${epicName ?: "the same ${Terms.epic}"}"),
-        EpicOption("none", "No ${Terms.epic}"),
+        EpicOption("none", "New ${Terms.task} has no ${Terms.epic}"),
     )
     ContinueKind.PLAIN -> listOfNotNull(
-        EpicOption("new", "Make an ${Terms.epic} for both"),
-        EpicOption("pick", "Put both in an ${Terms.epic} I already have").takeIf { hasEpics },
+        EpicOption("new", "New ${Terms.epic} for both"),
+        EpicOption("pick", "An ${Terms.epic} I have").takeIf { hasEpics },
         EpicOption("none", "No ${Terms.epic}"),
     )
 }
@@ -57,7 +57,7 @@ fun epicOptions(kind: ContinueKind, epicName: String?, parentName: String?, hasE
 fun asksWhatsNext(from: String?, to: String?): Boolean = to == "done" && from != "done"
 
 /** What Continue can copy besides the area (always copied), in the order shown. */
-val CONTINUE_COPIES = listOf("energy_type" to "Energy type", "priority" to "Priority", "level" to "Level", "tags" to "Tags")
+val CONTINUE_COPIES = listOf("energy_type" to "Energy", "priority" to "Priority", "level" to "Level", "tags" to "Tags")
 
 /** Whether the Continue form can be sent: a title, and an epic chosen when picking one. */
 fun canContinue(title: String, choice: String?, epicId: Long?): Boolean =

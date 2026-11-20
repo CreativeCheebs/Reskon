@@ -175,7 +175,7 @@ export function RoundForm({ task, onMade }: { task: Task; onMade: (t: Task) => v
             aria-label="Bring the next one back"
             value={days}
             onChange={setDays}
-            options={[{ value: 0, label: "Right away" }, ...snoozeIntervals(boot.settings).map((n) => ({ value: n, label: `In ${intervalLabel(n).toLowerCase()}` }))]}
+            options={[{ value: 0, label: "Right away" }, ...snoozeIntervals(boot.settings).map((n) => ({ value: n, label: intervalLabel(n) }))]}
           />
           {days > 0 && (
             <Typography.Text type="secondary" style={{ fontSize: 12, marginLeft: 8 }}>

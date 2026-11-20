@@ -2,6 +2,11 @@
 
 What changed in each version of Reskon, newest first: one line per change, in plain words. Versions before 0.6.6 are in the git history (commits called "Version x.y.z: ...").
 
+## 0.7.5 (20 Nov 2026)
+
+- Changed: the phone's "What's next?" sheet now looks like the web box: a label column, drop-downs for the epic and Comes back, Skip at the top, the main button at the bottom right.
+- Fixed: the web's Comes back list said "In tomorrow"; it now reads Tomorrow, 2 days, 1 week…
+
 ## 0.7.4 (20 Nov 2026)
 
 - Changed: Continue and Next round in the "What's next?" box now look alike: the same label column, and the main button at the bottom right.

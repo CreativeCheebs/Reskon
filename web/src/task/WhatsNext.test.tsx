@@ -151,7 +151,7 @@ describe("What's next? box", () => {
     post.mockResolvedValueOnce({ id: 44, title: "Set up NVR", round_no: 2, round_kind: "version" });
     show({}, "round");
     fireEvent.click(screen.getByText("Versions"));
-    await pick("Bring the next one back", /In 1 week/);
+    await pick("Bring the next one back", /^1 week$/);
     fireEvent.click(screen.getByRole("button", { name: "Start next version" }));
     await waitFor(() => expect(post).toHaveBeenCalled());
     expect(post.mock.calls[0][0]).toBe("/tasks/42/next-round");
