@@ -12,6 +12,23 @@ The owner is an embedded developer who manages this project: they decide what th
 - **Be honest about status:** say plainly what was tested and what was not. "Done" means tested, reviewed, committed, and (for phone changes) a signed release built.
 - **Their standing wishes:** test every change, have review agents check it, commit after each step; the live server needs a backup first and only when they ask; the test server and test phone are disposable (data loss there is fine); phone changes also get a signed release APK (`mobile/release.ps1`); commits are all by `CreativeCheebs`.
 - Their login for the test server is in `tools/perf-test-login.txt` (not in git).
+- **Which model does the work:** hand smaller, easier tasks to Sonnet subagents; complex ones (design across many parts, hard bugs, risky data changes) are done by Opus; very small, mechanical ones (a version bump, a one-line fix, running a script and reporting) go to Haiku. The main session plans, checks and reports.
+- **Change log:** every version bump adds an entry to `CHANGELOG.md`: a list of one-liners, one per change, plain words, newest version first.
+- **Publishing the phone app:** after a signed release APK is built, upload it to the owner's F-Droid repo (below).
+
+## Publishing APKs to the F-Droid repo
+
+After building a signed release APK (`mobile/release.ps1`, which names it `Reskon-<version>.apk`), upload it to the owner's self-hosted F-Droid repo.
+
+1. One-time setup (Git Bash; the token comes from the owner and is never put in git):
+   ```sh
+   curl -o ~/.local/bin/fdroid-push http://100.101.47.62:8096/client.sh && chmod +x ~/.local/bin/fdroid-push
+   printf 'FDROID_URL=http://100.101.47.62:8096\nFDROID_TOKEN=<token>\n' > ~/.config/fdroid-push
+   ```
+2. Upload: `fdroid-push path/to/Reskon-0.6.6.apk`
+   - Name files `<App>-<version>.apk`. Use `-f` only to replace a file with the same name.
+   - The APK must be signed with the same key as earlier versions, and `versionCode` must increase.
+   - 200 = published; 409 = that name exists; 422 = rejected (for example unsigned); the log is in the response.
 
 ## Stack
 
