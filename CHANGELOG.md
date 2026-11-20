@@ -2,6 +2,11 @@
 
 What changed in each version of Reskon, newest first: one line per change, in plain words. Versions before 0.6.6 are in the git history (commits called "Version x.y.z: ...").
 
+## 0.7.6 (20 Nov 2026)
+
+- Fixed: on the phone, switching between Continue and Next round while one is being made can no longer make a second task.
+- Fixed: on the phone, an emptied epic name uses the task's title, as on the web.
+
 ## 0.7.5 (20 Nov 2026)
 
 - Changed: the phone's "What's next?" sheet now looks like the web box: a label column, drop-downs for the epic and Comes back, Skip at the top, the main button at the bottom right.

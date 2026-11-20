@@ -70,6 +70,15 @@ private class ContinueState(t: JSONObject) {
     var epicId by mutableStateOf<Long?>(null)
 }
 
+/**
+ * A create in flight and its error, one for the whole sheet: a form left mid-send (tab switched)
+ * must not offer its button again, and the other form must not send at the same time.
+ */
+private class Sending {
+    var busy by mutableStateOf(false)
+    var error by mutableStateOf<String?>(null)
+}
+
 /** What the Next round form holds while the sheet is open. */
 private class RoundState {
     var kind by mutableStateOf("round")
@@ -90,6 +99,7 @@ fun WhatsNextSheet(t: JSONObject, start: String, scope: CoroutineScope, onDismis
     var made by remember { mutableStateOf<JSONObject?>(null) }
     val cont = remember { ContinueState(t) }
     val round = remember { RoundState() }
+    val sending = remember { Sending() }
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = Palette.raised) {
         Column(
             Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 24.dp),
@@ -115,12 +125,12 @@ fun WhatsNextSheet(t: JSONObject, start: String, scope: CoroutineScope, onDismis
                 ) { T("Skip", Palette.muted, 15.sp, FontWeight.Medium) }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Pill("Continue", mode == "continue", height = 48, dense = true) { mode = "continue" }
-                if (!isEpic) Pill("Next round", mode == "round", height = 48, dense = true) { mode = "round" }
+                Pill("Continue", mode == "continue", height = 48, dense = true) { if (!sending.busy) { mode = "continue"; sending.error = null } }
+                if (!isEpic) Pill("Next round", mode == "round", height = 48, dense = true) { if (!sending.busy) { mode = "round"; sending.error = null } }
             }
             when (mode) {
-                "continue" -> ContinueForm(t, cont, scope) { made = it }
-                else -> NextRoundForm(t, round, scope) { made = it }
+                "continue" -> ContinueForm(t, cont, sending, scope) { made = it }
+                else -> NextRoundForm(t, round, sending, scope) { made = it }
             }
         }
     }
@@ -130,7 +140,7 @@ fun WhatsNextSheet(t: JSONObject, start: String, scope: CoroutineScope, onDismis
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ContinueForm(t: JSONObject, s: ContinueState, scope: CoroutineScope, onMade: (JSONObject) -> Unit) {
+private fun ContinueForm(t: JSONObject, s: ContinueState, sending: Sending, scope: CoroutineScope, onMade: (JSONObject) -> Unit) {
     val id = t.getLong("id")
     var epics by remember { mutableStateOf(EpicNames.all()) }
     var parentName by remember { mutableStateOf<String?>(null) }
@@ -139,17 +149,21 @@ private fun ContinueForm(t: JSONObject, s: ContinueState, scope: CoroutineScope,
         t.id("parent_id")?.let { p -> parentName = orNull { Api.obj("/tasks/$p").optString("title") } }
     }
     val options = epicOptions(s.kind, t.id("epic_id")?.let { epics[it] }, parentName, epics.isNotEmpty())
-    var busy by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
-    val ok = canContinue(s.title, s.choice, s.epicId) && !busy
+    // A choice no longer offered (no epics left to pick) falls back to the first one.
+    LaunchedEffect(options.map { it.key }) {
+        if (options.isNotEmpty() && options.none { it.key == s.choice }) s.choice = options.first().key
+    }
+    val ok = canContinue(s.title, s.choice, s.epicId) && !sending.busy
     val send: () -> Unit = {
-        if (ok && !busy) { // !busy again: a second tap before the screen redraws
-            busy = true
-            error = null
+        if (canContinue(s.title, s.choice, s.epicId) && !sending.busy) { // read now: a second tap before the screen redraws
+            sending.busy = true
+            sending.error = null
+            // An emptied epic name falls back to the task's title, as on the web.
+            val epicTitle = s.epicTitle.ifBlank { t.optString("title") }
             scope.launch {
-                val (made, err) = tryCreate { Api.post("/tasks/$id/continue", continueBody(s.kind, s.title, s.copy, s.choice, s.epicTitle, s.epicId, today())) }
-                busy = false
-                error = err
+                val (made, err) = tryCreate { Api.post("/tasks/$id/continue", continueBody(s.kind, s.title, s.copy, s.choice, epicTitle, s.epicId, today())) }
+                sending.busy = false
+                sending.error = err
                 made?.let(onMade)
             }
         }
@@ -176,20 +190,18 @@ private fun ContinueForm(t: JSONObject, s: ContinueState, scope: CoroutineScope,
             CONTINUE_COPIES.forEach { (k, label) -> Pill(label, k in s.copy, height = 48, dense = true) { s.copy = if (k in s.copy) s.copy - k else s.copy + k } }
         }
     }
-    ErrorText(error)
-    MainButton(if (busy) "Making…" else "Create next ${Terms.task}", ok, send)
+    ErrorText(sending.error)
+    MainButton(if (sending.busy) "Making…" else "Create next ${Terms.task}", ok, send)
 }
 
 @Composable
-private fun NextRoundForm(t: JSONObject, s: RoundState, scope: CoroutineScope, onMade: (JSONObject) -> Unit) {
+private fun NextRoundForm(t: JSONObject, s: RoundState, sending: Sending, scope: CoroutineScope, onMade: (JSONObject) -> Unit) {
     val id = t.getLong("id")
     val boot = App.boot ?: return
     val first = t.id("round_of") == null
     val kind = if (first) s.kind else t.str("round_kind") ?: "round"
     val word = if (kind == "version") "version" else "round"
     var picking by remember { mutableStateOf(false) }
-    var busy by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
     val today = remember { LocalDate.now() }
     val choices = remember(boot.settings) { snoozeChoices(boot.settings, today) }
 
@@ -222,15 +234,15 @@ private fun NextRoundForm(t: JSONObject, s: RoundState, scope: CoroutineScope, o
         }
         if (snooze != null) T("Off the board until ${dayLabel(snooze.toString())}", Palette.muted, 13.sp)
     }
-    ErrorText(error)
-    MainButton(if (busy) "Starting…" else "Start next $word", !busy) {
-        if (busy) return@MainButton // a second tap before the button greys out
-        busy = true
-        error = null
+    ErrorText(sending.error)
+    MainButton(if (sending.busy) "Starting…" else "Start next $word", !sending.busy) {
+        if (sending.busy) return@MainButton // a second tap before the button greys out
+        sending.busy = true
+        sending.error = null
         scope.launch {
             val (made, err) = tryCreate { Api.post("/tasks/$id/next-round", nextRoundBody(first, s.kind, s.snooze, today())) }
-            busy = false
-            error = err
+            sending.busy = false
+            sending.error = err
             made?.let(onMade)
         }
     }
