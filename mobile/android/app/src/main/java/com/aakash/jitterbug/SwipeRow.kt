@@ -108,6 +108,8 @@ fun taskActionIcon(key: String): String = when (key) {
     "delete", "remove" -> Icons.trash
     "reschedule" -> Icons.calendar
     "edit" -> Icons.pencil
+    "continue" -> Icons.right
+    "round" -> Icons.sync
     else -> Icons.dotsH
 }
 

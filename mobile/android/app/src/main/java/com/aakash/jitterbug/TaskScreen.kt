@@ -21,6 +21,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -33,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -70,11 +72,15 @@ fun TaskScreen(r: Route) {
     var sheet by remember { mutableStateOf<String?>(null) }
     var editText by remember { mutableStateOf<Pair<String, String>?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
+    // "What's next?" (4.17): "ask" after marking it done, or "continue" / "round" from the menu, with the task it was opened for.
+    var next by remember { mutableStateOf<Pair<String, JSONObject>?>(null) }
     val scope = rememberCoroutineScope()
     val (t, subtasks, sessions) = data ?: return
     fun change(body: JSONObject) = scope.launch { attempt("Not saved") { patchTask(t, body); App.changed() } }
     fun move(statusId: Long) = scope.launch {
-        attempt("Not moved") { Api.post("/tasks/$id/move", jsonOf("status_id" to statusId, "today" to today())); App.changed() }
+        val moved = attempt("Not moved") { Api.post("/tasks/$id/move", jsonOf("status_id" to statusId, "today" to today())); App.changed(); true }
+        // Into a done status (by behaviour, never by name; cancelled does not ask): offer what comes next.
+        if (moved == true && statusId != t.id("status_id") && boot.status(statusId)?.behaviour == "done") next = "ask" to t
     }
 
     Column(Modifier.fillMaxSize()) {
@@ -86,7 +92,8 @@ fun TaskScreen(r: Route) {
             Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            T(t.optString("title"), Palette.fg, 22.sp, FontWeight.SemiBold, Modifier.clickable { editText = "title" to t.optString("title") })
+            Text(titleWithRound(t.optString("title"), roundTag(t), 22.sp), Modifier.clickable { editText = "title" to t.optString("title") },
+                color = Palette.fg, style = TextStyle(fontSize = 22.sp, fontWeight = FontWeight.SemiBold))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 val s = boot.status(t.id("status_id"))
                 Row(
@@ -165,7 +172,7 @@ fun TaskScreen(r: Route) {
                                     .border(2.dp, if (done) Palette.accent else Palette.strong, RoundedCornerShape(5.dp)),
                                 contentAlignment = Alignment.Center,
                             ) { if (done) Icon(Icons.check, Palette.onAccent, 14, 3f) }
-                            T(s.optString("title"), if (done) Palette.subtle else Palette.fg, 15.sp, strike = done,
+                            RoundTitle(s, if (done) Palette.subtle else Palette.fg, 15.sp, FontWeight.Normal, strike = done,
                                 modifier = Modifier.weight(1f).clickable { App.go("task", "id" to s.getLong("id")) })
                         }
                     }
@@ -189,6 +196,9 @@ fun TaskScreen(r: Route) {
                 }
                 TextLink("+ Blocked by…") { sheet = "blocker" }
             }
+
+            TaskChainSection(t)
+            TaskRoundsSection(t)
 
             SectionTitle("Figures")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -254,15 +264,25 @@ fun TaskScreen(r: Route) {
         "dates" -> DateDialog(t.str("start_date")?.let { LocalDate.parse(it) }, { sheet = "dates2" }, "No start", { change(jsonOf("start_date" to null)) }) { change(jsonOf("start_date" to it.toString())) }
         "dates2" -> DateDialog(t.str("end_date")?.let { LocalDate.parse(it) }, { sheet = null }, "No end", { change(jsonOf("end_date" to null)) }) { change(jsonOf("end_date" to it.toString())) }
         "snooze" -> TaskSnoozeSheet(id, scope) { sheet = null }
-        "actions" -> PickSheet(Terms.capTask, listOf(1L to "Log time", 2L to "Delete ${Terms.task}"), { sheet = null }) {
+        "actions" -> PickSheet(
+            Terms.capTask,
+            listOfNotNull(1L to "Log time", 3L to "Continue with a new ${Terms.task}…", (4L to "Start next round").takeIf { t.optString("type") != "epic" }, 2L to "Delete ${Terms.task}"),
+            { sheet = null },
+        ) {
             sheet = null
-            if (it == 1L) App.go("log", "task" to id) else confirmDelete = true
+            when (it) {
+                1L -> App.go("log", "task" to id)
+                3L -> next = "continue" to t
+                4L -> next = "round" to t
+                else -> confirmDelete = true
+            }
         }
         "blocker" -> TaskPicker(onDismiss = { sheet = null }, allowNone = false) { o ->
             sheet = null
             o?.let { scope.launch { attempt("Not linked") { Api.post("/task-links", jsonOf("blocker_id" to it.getLong("id"), "blocked_id" to id)); App.changed() } } }
         }
     }
+    next?.let { (start, task) -> WhatsNextSheet(task, start) { next = null } }
     editText?.let { (field, initial) ->
         var v by remember(field) { mutableStateOf(initial) }
         AlertDialog(

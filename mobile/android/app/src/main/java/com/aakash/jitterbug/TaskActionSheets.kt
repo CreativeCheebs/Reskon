@@ -44,7 +44,9 @@ fun TaskActionSheets(host: TaskActionHost) {
     val id = t.getLong("id")
     val close = { host.pending = null }
     when (key) {
-        "more" -> TaskMoreSheet(t.optString("title"), close) { host.run(it, t) }
+        "more" -> TaskMoreSheet(t.optString("title"), t.optString("type") == "epic", close) { host.run(it, t) }
+        "continue" -> WhatsNextSheet(t, "continue", close)
+        "round" -> WhatsNextSheet(t, "round", close)
         "snooze" -> TaskSnoozeSheet(id, scope, close)
         "move" -> PickSheet("Move \"${t.optString("title")}\" to", boot.statuses.filter { it.id != t.getLong("status_id") }.map { it.id to it.name }, close) { sid ->
             close()
@@ -111,14 +113,20 @@ fun DeleteTaskDialog(subtasks: Int, onDismiss: () -> Unit, onDelete: (withSubtas
     )
 }
 
-/** "More": every action, titled with the task, in the web right-click menu's order, Delete last in red after a divider. */
+/**
+ * "More": every action, titled with the task, in the web right-click menu's order, then Continue
+ * and Start next round (4.17; not for an [isEpic], which can't have rounds), Delete last in red
+ * after a divider. The two are menu-only: they are not swipe actions or card-action settings.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TaskMoreSheet(title: String, onDismiss: () -> Unit, onPick: (String) -> Unit) {
+fun TaskMoreSheet(title: String, isEpic: Boolean, onDismiss: () -> Unit, onPick: (String) -> Unit) {
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = Palette.raised) {
         Column(Modifier.verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
             T(title, Palette.fg, 17.sp, FontWeight.SemiBold, Modifier.padding(horizontal = 20.dp).padding(bottom = 8.dp).semantics { heading() }, oneLine = true)
             CARD_ACTIONS.filter { it.first != "delete" }.forEach { (k, label) -> MoreRow(k, label, Palette.fg, onPick) }
+            MoreRow("continue", "Continue with a new ${Terms.task}…", Palette.fg, onPick)
+            if (!isEpic) MoreRow("round", "Start next round", Palette.fg, onPick)
             Column(Modifier.padding(vertical = 4.dp)) { Line() }
             MoreRow("delete", CARD_ACTIONS.first { it.first == "delete" }.second, Palette.red, onPick)
         }

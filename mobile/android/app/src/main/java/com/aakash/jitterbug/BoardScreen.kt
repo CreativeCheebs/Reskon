@@ -356,7 +356,7 @@ internal fun ListRowTask(t: JSONObject, host: TaskActionHost) {
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            T(t.optString("title"), Palette.fg, 15.sp, FontWeight.Medium, oneLine = true)
+            RoundTitle(t, Palette.fg, 15.sp, FontWeight.Medium)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Dot(boot.priority(t.id("priority_id"))?.color ?: Palette.subtle, 7)
                 val meta = listOfNotNull(boot.area(t.id("area_id"))?.name, boot.type(t.id("energy_type_id"))?.name,
@@ -419,7 +419,7 @@ private fun TimelineLayout(tasks: List<JSONObject>) {
                             val to = (ChronoUnit.DAYS.between(start, b) + 1).coerceIn(0, days.toLong())
                             val color = boot.status(t.id("status_id"))?.color ?: Palette.accent
                             Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { App.go("task", "id" to t.getLong("id")) }.padding(vertical = 2.dp)) {
-                                T(t.optString("title"), Palette.fg, 13.sp, oneLine = true)
+                                RoundTitle(t, Palette.fg, 13.sp, FontWeight.Normal)
                                 Box(Modifier.fillMaxWidth().height(10.dp)) {
                                     if (to > from) Box(
                                         Modifier.offset(x = w * (from.toFloat() / days)).width(w * ((to - from).toFloat() / days)).fillMaxHeight()

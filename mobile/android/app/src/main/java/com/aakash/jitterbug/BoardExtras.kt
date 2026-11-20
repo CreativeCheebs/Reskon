@@ -69,7 +69,7 @@ private fun SheetTask(t: JSONObject, host: TaskActionHost?, onOpen: () -> Unit, 
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                T(t.optString("title"), Palette.fg, 15.sp, FontWeight.Medium)
+                RoundTitle(t, Palette.fg, 15.sp, FontWeight.Medium)
                 T(listOfNotNull(boot.status(t.id("status_id"))?.name, boot.area(t.id("area_id"))?.name).joinToString(" · "), Palette.muted, 13.sp, oneLine = true)
                 detail()
             }
