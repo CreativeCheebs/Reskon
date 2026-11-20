@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Alert, Button, Input, Radio, Select, Space, Typography } from "antd";
+import { Alert, Button, Input, Select, Space, Typography } from "antd";
+import { CheckOutlined } from "@ant-design/icons";
 import { api } from "../api";
 import { today } from "../format";
 import { useApp } from "../store";
@@ -13,8 +14,10 @@ import { COPY_KEYS, continueTask, epicCaseOf, type ContinueBody, type CopyKey, t
 // The Continue form of the "What's next?" box (SPEC 4.17): the next task's
 // title, what it copies, and the epic question that fits the old task.
 // Typed text stays when the server refuses, so nothing has to be typed again.
+// It is kept short: the title and its Create button on one line, then one
+// line each for the epic and for what it copies.
 
-const COPY_LABELS: Record<CopyKey, string> = { energy_type: "Energy type", priority: "Priority", level: "Level", tags: "Tags" };
+const COPY_LABELS: Record<CopyKey, string> = { energy_type: "Energy", priority: "Priority", level: "Level", tags: "Tags" };
 
 /** The epic choice a task starts with: an epic for both when it has none,
  *  the same epic when it has one, otherwise no epic question at all. */
@@ -86,83 +89,96 @@ export function ContinueForm({ task, onMade }: { task: Task; onMade: (t: Task, e
     }
   };
 
-  // A field that belongs to a choice sits under it, not inside its label,
-  // so clicking the field never clicks the radio.
-  const choice = (value: string, label: React.ReactNode, extra?: React.ReactNode) => (
-    <div>
-      <Radio value={value}>{label}</Radio>
-      {extra && <div style={{ margin: "6px 0 0 24px" }}>{extra}</div>}
-    </div>
-  );
   const epicName = (name: string) => (
     <span style={{ color: palette.epic }}>
       <TypeIcon type="epic" /> {name}
     </span>
   );
 
-  let where: React.ReactNode = null;
+  // One short row: a label on the left, the choice and its field beside it.
+  const row = (label: string, body: React.ReactNode) => (
+    <>
+      <span style={{ fontSize: 12, color: palette.muted }}>{label}</span>
+      <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", minWidth: 0 }}>{body}</div>
+    </>
+  );
+
+  let where: React.ReactNode;
   if (kase === "free")
-    where = (
-      <Radio.Group aria-label={`Link both with an ${T.epic}`} value={epic} onChange={(e) => setEpic(e.target.value)}>
-        <Space direction="vertical" size={6}>
-          {choice(
-            "new",
-            `Make an ${T.epic} for both`,
-            epic === "new" && (
-              <Input size="small" style={{ width: 260 }} aria-label={`${T.Epic} name`} value={epicTitle} onChange={(e) => setEpicTitle(e.target.value)} />
-            ),
-          )}
-          {choice(
-            "pick",
-            `Put both in an ${T.epic} I already have`,
-            epic === "pick" && (
-              <Select
-                size="small"
-                style={{ width: 260 }}
-                showSearch
-                optionFilterProp="search"
-                placeholder={`Choose an ${T.epic}`}
-                aria-label={`Choose an ${T.epic}`}
-                value={pickId ?? undefined}
-                onChange={(v) => setPickId(v)}
-                options={epics.map((e) => ({ value: e.id, search: e.title.toLowerCase(), label: e.title }))}
-              />
-            ),
-          )}
-          {choice("none", `No ${T.epic}, just link them`)}
-        </Space>
-      </Radio.Group>
+    where = row(
+      T.Epic,
+      <>
+        <Select<EpicChoice>
+          size="small"
+          style={{ width: 170 }}
+          aria-label={`Link both with an ${T.epic}`}
+          value={epic}
+          onChange={setEpic}
+          options={[
+            { value: "new", label: `New ${T.epic} for both` },
+            { value: "pick", label: `An ${T.epic} I have` },
+            { value: "none", label: `No ${T.epic}` },
+          ]}
+        />
+        {epic === "new" && (
+          <Input size="small" style={{ flex: 1, minWidth: 100 }} aria-label={`${T.Epic} name`} value={epicTitle} onChange={(e) => setEpicTitle(e.target.value)} onPressEnter={submit} />
+        )}
+        {epic === "pick" && (
+          <Select
+            size="small"
+            style={{ flex: 1, minWidth: 100 }}
+            showSearch
+            optionFilterProp="search"
+            placeholder={`Choose an ${T.epic}`}
+            aria-label={`Choose an ${T.epic}`}
+            value={pickId ?? undefined}
+            onChange={(v) => setPickId(v)}
+            options={epics.map((e) => ({ value: e.id, search: e.title.toLowerCase(), label: e.title }))}
+          />
+        )}
+      </>,
     );
   else if (kase === "in_epic")
-    where = (
-      <Radio.Group aria-label={T.Epic} value={epic} onChange={(e) => setEpic(e.target.value)}>
-        <Space direction="vertical" size={6}>
-          {choice("same", <>Keep both in {epicName(byId.get(task.epic_id!)?.title ?? `its ${T.epic}`)}</>)}
-          {choice("none", `New ${T.task} has no ${T.epic}`)}
-        </Space>
-      </Radio.Group>
+    where = row(
+      T.Epic,
+      <Select<EpicChoice>
+        size="small"
+        style={{ flex: 1, minWidth: 0 }}
+        aria-label={T.Epic}
+        value={epic}
+        onChange={setEpic}
+        options={[
+          { value: "same", label: <>Keep both in {epicName(byId.get(task.epic_id!)?.title ?? `its ${T.epic}`)}</> },
+          { value: "none", label: `New ${T.task} has no ${T.epic}` },
+        ]}
+      />,
     );
   else if (kase === "subtask")
-    where = (
-      <Radio.Group aria-label="Where does it go" value={separate ? "own" : "sub"} onChange={(e) => setSeparate(e.target.value === "own")}>
-        <Space direction="vertical" size={6}>
-          {choice("sub", <>Next subtask of {parentTitle ? <strong>{parentTitle}</strong> : "the same parent"}</>)}
-          {choice("own", `A separate ${T.task}`)}
-        </Space>
-      </Radio.Group>
+    where = row(
+      "Goes",
+      <Select<"sub" | "own">
+        size="small"
+        style={{ flex: 1, minWidth: 0 }}
+        aria-label="Where does it go"
+        value={separate ? "own" : "sub"}
+        onChange={(v) => setSeparate(v === "own")}
+        options={[
+          { value: "sub", label: <>Next subtask of {parentTitle ? <strong>{parentTitle}</strong> : "the same parent"}</> },
+          { value: "own", label: `A separate ${T.task}` },
+        ]}
+      />,
     );
   else
-    where = (
+    where = row(
+      T.Epic,
       <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-        An {T.epic} can't be inside another {T.epic}, so the next one is an {T.epic} too.
-      </Typography.Text>
+        The next one is an {T.epic} too.
+      </Typography.Text>,
     );
 
-  const label = (text: string) => <div style={{ fontSize: 12, color: palette.muted, marginBottom: 4 }}>{text}</div>;
   return (
-    <Space direction="vertical" size={12} style={{ width: "100%" }}>
-      <div>
-        {label(`Next ${T.task}`)}
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <Space.Compact style={{ width: "100%" }}>
         <Input
           autoFocus
           aria-label={`Next ${T.task} title`}
@@ -171,35 +187,36 @@ export function ContinueForm({ task, onMade }: { task: Task; onMade: (t: Task, e
           onChange={(e) => setTitle(e.target.value)}
           onPressEnter={submit}
         />
-      </div>
-      <div>
-        {label(`Copy from this ${T.task} (click to leave out)`)}
-        <div role="group" aria-label={`Copy from this ${T.task}`}>
-          <Space size={6} wrap>
+        <Button type="primary" loading={busy} disabled={!online} onClick={submit}>
+          Create {T.task}
+        </Button>
+      </Space.Compact>
+      <div style={{ display: "grid", gridTemplateColumns: "64px 1fr", gap: "8px 8px", alignItems: "center" }}>
+        {where}
+        {row(
+          "Copy over",
+          <div role="group" aria-label={`Copy from this ${T.task}`} style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
             {COPY_KEYS.map((k) => {
               const on = copy.includes(k);
               return (
-                <Button key={k} size="small" shape="round" type={on ? "primary" : "default"} ghost={on} aria-pressed={on} onClick={() => toggle(k, !on)}>
+                <Button
+                  key={k}
+                  size="small"
+                  type={on ? "primary" : "default"}
+                  ghost={on}
+                  aria-pressed={on}
+                  icon={<CheckOutlined aria-hidden style={{ visibility: on ? "visible" : "hidden" }} />}
+                  onClick={() => toggle(k, !on)}
+                  style={{ fontSize: 12, paddingInline: 8 }}
+                >
                   {COPY_LABELS[k]}
                 </Button>
               );
             })}
-          </Space>
-        </div>
-      </div>
-      <div>
-        {kase !== "epic" && label(kase === "subtask" ? "Where does it go" : T.Epic)}
-        {where}
+          </div>,
+        )}
       </div>
       {error && <Alert type="error" showIcon message={error} style={{ padding: "4px 10px" }} />}
-      <Space size={10} align="center">
-        <Button type="primary" loading={busy} disabled={!online} onClick={submit}>
-          Create next {T.task}
-        </Button>
-        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-          Starts in the first to-do status
-        </Typography.Text>
-      </Space>
-    </Space>
+    </div>
   );
 }

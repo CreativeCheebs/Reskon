@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Alert, Button, Dropdown, Radio, Segmented, Space, Typography } from "antd";
+import { Alert, Button, Dropdown, Segmented, Select, Tooltip, Typography } from "antd";
 import { ArrowRightOutlined, CloseOutlined } from "@ant-design/icons";
 import { useApp } from "../store";
 import { palette } from "../theme/palette";
@@ -40,11 +40,31 @@ export function WhatsNext({ task, mode, onClose, onMade, onOpenTask }: Props) {
   return (
     <section
       aria-label="What's next?"
-      style={{ border: `1px solid ${palette.border}`, background: palette.panelDim, borderRadius: 8, padding: 12, display: "flex", flexDirection: "column", gap: 12 }}
+      style={{ border: `1px solid ${palette.border}`, background: palette.panelDim, borderRadius: 8, padding: 10, display: "flex", flexDirection: "column", gap: 10 }}
     >
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <strong>What's next?</strong>
-        <Button size="small" type="text" icon={<CloseOutlined />} aria-label="Close what's next" onClick={onClose} />
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <strong style={{ whiteSpace: "nowrap" }}>What's next?</strong>
+        {!made && (
+          <Segmented<NextMode>
+            size="small"
+            aria-label="What comes next"
+            value={choice}
+            onChange={setChoice}
+            options={[
+              { value: "continue", label: "Continue", title: `A new ${T.task} that comes after this one` },
+              ...(canRound ? [{ value: "round" as const, label: "Next round", title: "The same task again, with its own hours and points" }] : []),
+            ]}
+          />
+        )}
+        {made ? (
+          <Button size="small" type="text" icon={<CloseOutlined />} aria-label="Close" onClick={onClose} style={{ marginLeft: "auto" }} />
+        ) : (
+          <Tooltip title="Nothing comes next: close this">
+            <Button size="small" type="text" onClick={onClose} style={{ marginLeft: "auto", color: palette.muted }}>
+              Skip
+            </Button>
+          </Tooltip>
+        )}
       </div>
       {made ? (
         <Alert
@@ -63,25 +83,6 @@ export function WhatsNext({ task, mode, onClose, onMade, onOpenTask }: Props) {
         />
       ) : (
         <>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <Segmented<NextMode>
-              style={{ flex: 1 }}
-              block
-              aria-label="What comes next"
-              value={choice}
-              onChange={setChoice}
-              options={[
-                { value: "continue", label: "Continue" },
-                ...(canRound ? [{ value: "round" as const, label: "Next round" }] : []),
-              ]}
-            />
-            <Button size="small" type="text" onClick={onClose}>
-              Nothing
-            </Button>
-          </div>
-          <Typography.Text type="secondary" style={{ fontSize: 12, marginTop: -6 }}>
-            {choice === "continue" ? `A new ${T.task} that comes after this one.` : "The same task again, with its own hours and points."}
-          </Typography.Text>
           {/* Both stay mounted, so switching keeps what was typed. */}
           <div hidden={choice !== "continue"}>
             <ContinueForm task={task} onMade={done} />
@@ -124,49 +125,60 @@ export function RoundForm({ task, onMade }: { task: Task; onMade: (t: Task) => v
     }
   };
 
-  const label = (text: string) => <div style={{ fontSize: 12, color: palette.muted, marginBottom: 4 }}>{text}</div>;
   return (
-    <Space direction="vertical" size={12} style={{ width: "100%" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       {first ? (
-        <>
-          <div>
-            {label("Count it as")}
-            <Radio.Group aria-label="Count it as" optionType="button" size="small" value={kind} onChange={(e) => setKind(e.target.value)}>
-              <Radio value="round">Rounds #</Radio>
-              <Radio value="version">Versions v</Radio>
-            </Radio.Group>
-          </div>
-          <Typography.Text style={{ fontSize: 13 }}>
-            Makes <strong>{task.title}</strong>
-            <RoundTag no={2} kind={kind} bg={palette.panelDim} /> with the same details and estimate. This one becomes <RoundTag no={1} kind={kind} bg={palette.panelDim} />.
+        <Typography.Text style={{ fontSize: 13 }}>
+          Makes{" "}
+          <strong>
+            {task.title}
+            <RoundTag no={2} kind={kind} bg={palette.panelDim} />
+          </strong>{" "}
+          with the same details.{" "}
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+            This one becomes <RoundTag no={1} kind={kind} bg={palette.panelDim} />.
           </Typography.Text>
-        </>
+        </Typography.Text>
       ) : (
         <Typography.Text style={{ fontSize: 13 }}>
-          Makes the next {word} of <TaskTitle task={task} bg={palette.panelDim} /> with the same details and estimate.
+          Makes the next {word} of <TaskTitle task={task} bg={palette.panelDim} /> with the same details.
         </Typography.Text>
       )}
-      <div>
-        {label("Bring the next one back")}
-        <Radio.Group aria-label="Bring the next one back" optionType="button" size="small" value={days} onChange={(e) => setDays(e.target.value)}>
-          <Radio value={0}>Right away</Radio>
-          {snoozeIntervals(boot.settings).map((n) => (
-            <Radio key={n} value={n}>
-              {intervalLabel(n)}
-            </Radio>
-          ))}
-        </Radio.Group>
-        {days > 0 && (
-          <Typography.Text type="secondary" style={{ display: "block", fontSize: 12, marginTop: 4 }}>
-            Snoozed: it stays off the board until then.
-          </Typography.Text>
-        )}
+      {first && (
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <span style={{ fontSize: 12, color: palette.muted }}>Count as</span>
+          <Segmented<RoundKind>
+            size="small"
+            aria-label="Count it as"
+            value={kind}
+            onChange={setKind}
+            options={[
+              { value: "round", label: "Rounds" },
+              { value: "version", label: "Versions" },
+            ]}
+          />
+        </div>
+      )}
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <Select<number>
+          size="small"
+          style={{ width: 130 }}
+          aria-label="Bring the next one back"
+          value={days}
+          onChange={setDays}
+          options={[{ value: 0, label: "Right away" }, ...snoozeIntervals(boot.settings).map((n) => ({ value: n, label: `In ${intervalLabel(n).toLowerCase()}` }))]}
+        />
+        <Button type="primary" size="small" loading={busy} disabled={!online} onClick={submit} style={{ marginLeft: "auto" }}>
+          Start next {word}
+        </Button>
       </div>
+      {days > 0 && (
+        <Typography.Text type="secondary" style={{ fontSize: 12, marginTop: -4 }}>
+          It stays off the board until then.
+        </Typography.Text>
+      )}
       {error && <Alert type="error" showIcon message={error} style={{ padding: "4px 10px" }} />}
-      <Button type="primary" loading={busy} disabled={!online} onClick={submit} style={{ alignSelf: "flex-start" }}>
-        Start next {word}
-      </Button>
-    </Space>
+    </div>
   );
 }
 

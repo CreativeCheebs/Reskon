@@ -25,7 +25,15 @@ const show = (t: Partial<Task>, mode: "continue" | "round" = "continue") => {
   return onMade;
 };
 const typeTitle = (text: string) => fireEvent.change(screen.getByLabelText("Next task title"), { target: { value: text } });
-const create = () => fireEvent.click(screen.getByRole("button", { name: "Create next task" }));
+const create = () => fireEvent.click(screen.getByRole("button", { name: "Create task" }));
+/** The shown value of the drop-down with this name. */
+const shown = (name: string) => screen.getByRole("combobox", { name }).closest(".ant-select")?.querySelector(".ant-select-selection-item")?.textContent;
+/** Opens the drop-down with this name and clicks the option with this text. */
+const pick = async (name: string, option: RegExp) => {
+  fireEvent.mouseDown(screen.getByRole("combobox", { name }));
+  const opts = await screen.findAllByText(option, { selector: ".ant-select-item-option-content, .ant-select-item-option-content *" });
+  fireEvent.click(opts[opts.length - 1]);
+};
 const sent = () => post.mock.calls[0][1] as Record<string, unknown>;
 
 describe("What's next? box", () => {
@@ -65,15 +73,13 @@ describe("What's next? box", () => {
     fireEvent.click(screen.getByText("Continue"));
     expect((screen.getByLabelText("Next task title") as HTMLInputElement).value).toBe("Wire garage camera");
     expect(onClose).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Nothing" }));
+    fireEvent.click(screen.getByRole("button", { name: "Skip" }));
     expect(onClose).toHaveBeenCalled();
   });
 
   it("no epic: an epic for both is chosen, named after the task, and editable", async () => {
     const onMade = show({});
-    expect(screen.getByRole("radio", { name: /Make an epic for both/ })).toBeChecked();
-    expect(screen.getByRole("radio", { name: /Put both in an epic I already have/ })).not.toBeChecked();
-    expect(screen.getByRole("radio", { name: /No epic, just link them/ })).not.toBeChecked();
+    expect(shown("Link both with an epic")).toBe("New epic for both");
     const name = screen.getByLabelText("Epic name") as HTMLInputElement;
     expect(name.value).toBe("Set up NVR");
     fireEvent.change(name, { target: { value: "NVR cameras" } });
@@ -90,10 +96,11 @@ describe("What's next? box", () => {
 
   it("in an epic: only keep both in it (chosen) or no epic", async () => {
     show({ epic_id: 9 });
-    expect(screen.getByRole("radio", { name: /Keep both in/ })).toBeChecked();
-    expect(screen.getByText("House")).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: /New task has no epic/ })).toBeInTheDocument();
-    expect(screen.queryByText(/Make an epic/)).toBeNull();
+    expect(shown("Epic")).toMatch(/Keep both in.*House/);
+    await pick("Epic", /New task has no epic/);
+    expect(shown("Epic")).toBe("New task has no epic");
+    await pick("Epic", /Keep both in/);
+    expect(screen.queryByText(/New epic for both/)).toBeNull();
     expect(screen.queryByText(/new epic/i)).toBeNull();
     typeTitle("Next");
     create();
@@ -105,9 +112,9 @@ describe("What's next? box", () => {
   it("a subtask: next subtask of its parent (chosen) or a separate task, no epic question", async () => {
     show({ parent_id: 7 });
     expect(await screen.findByText("Install cameras")).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: /Next subtask of/ })).toBeChecked();
+    expect(shown("Where does it go")).toMatch(/Next subtask of/);
     expect(screen.queryByText(/epic/i)).toBeNull();
-    fireEvent.click(screen.getByRole("radio", { name: /A separate task/ }));
+    await pick("Where does it go", /A separate task/);
     typeTitle("Mount back camera");
     create();
     await waitFor(() => expect(post).toHaveBeenCalled());
@@ -118,7 +125,7 @@ describe("What's next? box", () => {
     show({ type: "epic" } as Partial<Task>, "round");
     expect(screen.queryByText(/both/)).toBeNull();
     expect(screen.queryByText(/subtask/)).toBeNull();
-    expect(screen.getByText(/the next one is an epic too/)).toBeInTheDocument();
+    expect(screen.getByText(/The next one is an epic too/)).toBeInTheDocument();
     expect(screen.queryByText("Next round")).toBeNull();
     typeTitle("Phase 2");
     create();
@@ -143,8 +150,8 @@ describe("What's next? box", () => {
   it("next round: snoozed for a week sends that local date", async () => {
     post.mockResolvedValueOnce({ id: 44, title: "Set up NVR", round_no: 2, round_kind: "version" });
     show({}, "round");
-    fireEvent.click(screen.getByRole("radio", { name: "Versions v" }));
-    fireEvent.click(screen.getByRole("radio", { name: "1 week" }));
+    fireEvent.click(screen.getByText("Versions"));
+    await pick("Bring the next one back", /In 1 week/);
     fireEvent.click(screen.getByRole("button", { name: "Start next version" }));
     await waitFor(() => expect(post).toHaveBeenCalled());
     expect(post.mock.calls[0][0]).toBe("/tasks/42/next-round");
