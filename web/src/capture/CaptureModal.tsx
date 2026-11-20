@@ -293,7 +293,7 @@ export function CaptureModal({ onClose, takeEarlyKeys, initialText, onSaved }: P
                 if (typed) setText((t) => typed + t);
               }}
             />
-            <Typography.Text type="secondary" style={{ fontSize: 11 }}>
+            <Typography.Text type="secondary" style={{ display: "block", marginTop: 8, fontSize: 11 }}>
               Enter to read it · Esc to close · past tense logs a session, future or imperative makes {T.tasks} · one line can hold several
             </Typography.Text>
             <SimilarTasksList {...similar} />

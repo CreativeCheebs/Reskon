@@ -197,12 +197,20 @@ export function SessionsScreen() {
       key: "tags",
       title: "Tags",
       width: 140,
-      render: (_, s) =>
-        (s.tags ?? []).map((g) => (
-          <Tag key={g.tag_id} style={g.from_task ? { borderStyle: "dashed" } : undefined} title={g.from_task ? "From the task" : "On this session"}>
-            {tagById.get(g.tag_id)?.name}
-          </Tag>
-        )),
+      // A flex row with a gap keeps tags apart when they wrap onto a second line.
+      render: (_, s) => (
+        <span style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+          {(s.tags ?? []).map((g) => (
+            <Tag
+              key={g.tag_id}
+              style={{ marginInlineEnd: 0, ...(g.from_task ? { borderStyle: "dashed" } : {}) }}
+              title={g.from_task ? "From the task" : "On this session"}
+            >
+              {tagById.get(g.tag_id)?.name}
+            </Tag>
+          ))}
+        </span>
+      ),
     },
     { key: "hours", title: "Hours", width: 70, render: (_, s) => formatHours(s.hours) },
     { key: "points", title: "Points", width: 64, render: (_, s) => (s.points === null ? "" : Number(s.points.toFixed(2))) },
@@ -234,11 +242,15 @@ export function SessionsScreen() {
             key: "subtypes",
             title: "Subtypes",
             render: (_: unknown, s: Session) =>
-              s.subtypes.map((st) => (
-                <Tag key={st.rank} bordered={false}>
-                  {subtype(st.subtype_id)} {formatHours(st.weighted_h)}
-                </Tag>
-              )),
+              (
+                <span style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                  {s.subtypes.map((st) => (
+                    <Tag key={st.rank} bordered={false} style={{ marginInlineEnd: 0 }}>
+                      {subtype(st.subtype_id)} {formatHours(st.weighted_h)}
+                    </Tag>
+                  ))}
+                </span>
+              ),
           },
         ]
       : []),
@@ -437,7 +449,7 @@ export function SessionsScreen() {
             <Space wrap style={{ marginBottom: 6 }}>
               <span style={{ fontWeight: 600 }}>{dayjs(day).format("ddd D MMM YYYY")}</span>
               {t && t.totals.length > 0 && (
-                <span style={{ color: palette.muted }}>
+                <span style={{ color: palette.muted, display: "inline-flex", flexWrap: "wrap", gap: 6 }}>
                   {t.totals.map((x) => (
                     <Lozenge key={x.energy_type_id} color={energy(x.energy_type_id)?.color}>
                       {x.name} {formatHours(x.hours)}

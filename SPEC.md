@@ -202,7 +202,7 @@ A **view** is a saved way of looking at tasks: a filter, card settings, a layout
 
 ### 5.2 Card settings: what a card shows
 
-Per view: area, created age, started age, time in status, level, priority, energy type, subtypes (of sessions logged on the task), estimate, time bar with pace, due, start, end, epic, logged time, and chosen custom fields. Density: compact or comfortable. Lists can show priority and level as symbols only. Board cards never show the status (the column already does). A task's symbol is a blue page and an epic's a purple bolt; neither is a tick-box, so nothing on a card looks done unless it is. Changing these changes that view only.
+Per view: area, created age, started age, time in status, level, priority, energy type, subtypes (of sessions logged on the task), estimate, time bar with pace, due, start, end, epic, logged time, and chosen custom fields. Density: compact or comfortable. Lists and board cards can show priority and level as symbols only (the name shows when you point at the symbol). Board cards never show the status (the column already does). A task's symbol is a blue page and an epic's a purple bolt; neither is a tick-box, so nothing on a card looks done unless it is. Changing these changes that view only.
 
 ### 5.3 Board
 

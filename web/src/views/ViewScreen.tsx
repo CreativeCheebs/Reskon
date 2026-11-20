@@ -26,7 +26,7 @@ import { blend, palette } from "../theme/palette";
 import { ViewIconMark } from "../icons/ViewIconMark";
 import { SurfaceOpacityProvider, surfaceOpacityOf, ViewBackdrop, withAlpha } from "./ViewBackdrop";
 import { lookOf, ViewLookSettings, type ViewLook } from "./ViewLookSettings";
-import { ToolbarGroup } from "../theme/Toolbar";
+import { Toolbar, ToolbarGroup } from "../theme/Toolbar";
 import { LoadingDots, SimilarTasksList, useSimilarTasks } from "../task/SimilarTasks";
 import { useTerms } from "../terms";
 
@@ -274,7 +274,7 @@ export function ViewScreen({ view }: { view: View }) {
             </div>
           )}
         </div>
-        <div className="jb-toolbar">
+        <Toolbar>
           <ToolbarGroup>
             <Segmented
               size="small"
@@ -358,7 +358,7 @@ export function ViewScreen({ view }: { view: View }) {
               <Button size="small" aria-label="View menu" icon={<EllipsisOutlined />} />
             </Dropdown>
           </ToolbarGroup>
-        </div>
+        </Toolbar>
       </div>
       <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
         {error && shown && online && <LoadError message={error} onRetry={refetch} stale />}

@@ -27,6 +27,9 @@ import { useTags } from "../tags/tags";
 // With onMoved, rows can be ticked (a group's header box ticks the group)
 // and moved to another status together.
 
+/** The narrowest the title column gets before the table scrolls sideways. */
+const TITLE_MIN = 240;
+
 export function TaskTable({
   tasks,
   config,
@@ -241,6 +244,11 @@ export function TaskTable({
     });
   if (extraColumn) cols.push(extraColumn);
   const sized = useColumnWidths<Task>(widthsKey, cols);
+  // The title column has no set width: it takes what the others leave. With
+  // many columns in a narrow space (a pop-up) that came to nothing and the
+  // title wrapped one letter per line. The table is made at least wide enough
+  // for the title to keep TITLE_MIN, and scrolls sideways when it is wider.
+  const scrollX = sized.columns.reduce((sum, c) => sum + (typeof c.width === "number" ? c.width : 0), onMoved ? 36 : 0) + TITLE_MIN;
   const surface = useSurfaceOpacity();
   // Rows start in aging order even when the column is hidden.
   const rows = [...tasks].sort((a, b) => b.time_in_status_h - a.time_in_status_h);
@@ -277,6 +285,7 @@ export function TaskTable({
       pagination={false}
       sticky={sticky}
       tableLayout="fixed"
+      scroll={{ x: scrollX }}
       rowSelection={
         onMoved && {
           columnWidth: 36,

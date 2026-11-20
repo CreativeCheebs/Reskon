@@ -46,6 +46,8 @@ export function TaskCard({
   const priority = boot.priorities.find((p) => p.id === task.priority_id);
   const energy = boot.energy_types.find((e) => e.id === task.energy_type_id);
   const compact = config.density === "compact";
+  // Symbols only: priority and level show their symbol; the name is in the tooltip.
+  const iconsOnly = config.icons_only;
   const overdue = task.days_to_due !== null && task.days_to_due < 0;
 
   const labels: React.ReactNode[] = [];
@@ -68,8 +70,9 @@ export function TaskCard({
         color={priorityColor(priority, boot.priorities)}
         icon={<PriorityIcon priority={priority} all={boot.priorities} size={12} tip={false} />}
         tip={`Priority: ${priority.name}`}
+        label={iconsOnly ? `Priority: ${priority.name}` : undefined}
       >
-        {priority.name}
+        {iconsOnly ? undefined : priority.name}
       </Chip>,
     );
   if (show.difficulty && task.difficulty)
@@ -79,8 +82,9 @@ export function TaskCard({
         color={palette[`difficulty${task.difficulty}` as "difficulty1"]}
         icon={<DifficultyIcon level={task.difficulty} size={12} tip={false} decorative />}
         tip={`${levelName(task.difficulty)} of 5`}
+        label={iconsOnly ? `Level ${task.difficulty} of 5` : undefined}
       >
-        {levelName(task.difficulty)}
+        {iconsOnly ? undefined : levelName(task.difficulty)}
       </Chip>,
     );
   if (task.type === "epic" && task.epic_tasks)

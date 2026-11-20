@@ -18,11 +18,13 @@ export function PageHeader({ title, children, end }: { title: ReactNode; childre
   );
 }
 
-/** A row of control groups that wraps a whole group at a time. */
+/** A row of control groups that wraps a whole group at a time. A thin line
+ *  sits between groups on the same line; the inner row clips the line off a
+ *  group that wrapped to the start of a new line, so no line dangles there. */
 export function Toolbar({ children, style }: { children: ReactNode; style?: React.CSSProperties }) {
   return (
     <div className="jb-toolbar" style={style}>
-      {children}
+      <div className="jb-toolbar-row">{children}</div>
     </div>
   );
 }

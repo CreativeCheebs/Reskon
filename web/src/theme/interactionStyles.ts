@@ -219,7 +219,7 @@ export function interactionCss(): string {
     .jb-page-title { margin: 0; font-family: Georgia, serif; font-size: 22px; line-height: 30px; font-weight: 400; letter-spacing: -0.2px; color: ${palette.fg}; white-space: nowrap; }
     .jb-content { padding: 24px !important; }
     .jb-content > div { min-width: 0; }
-    .jb-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; }
+    .jb-toolbar-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 20px; clip-path: inset(-10px -10px -10px -6px); }
     .jb-toolbar-group { display: flex; align-items: center; gap: 6px; flex: none; }
     .jb-toolbar-end { margin-left: auto; display: flex; align-items: center; gap: 6px; }
     /* Small buttons and pickers share the selects' outline and padding. */
@@ -319,10 +319,18 @@ export function interactionCss(): string {
     .jb-toolbar, .jb-dashboard-toolbar {
       padding: 10px 12px; border: 1px solid ${palette.border};
       border-radius: 10px; background: ${blend(palette.panel, palette.bg, 0.45)};
-      gap: 10px 20px;
     }
-    .jb-toolbar-group { flex-wrap: wrap; row-gap: 8px; }
-    .jb-toolbar-group + .jb-toolbar-group { padding-left: 16px; border-left: 1px solid ${palette.border}; }
+    .jb-dashboard-toolbar { gap: 10px 20px; }
+    .jb-toolbar-group { flex-wrap: wrap; row-gap: 8px; position: relative; }
+    /* The divider sits in the middle of the 20px gap, 10px left of the group.
+       A group that starts a line has it outside the row, where it is clipped. */
+    .jb-toolbar-group + .jb-toolbar-group::before {
+      content: ""; position: absolute; left: -10px; top: 2px; bottom: 2px;
+      border-left: 1px solid ${palette.border};
+    }
+    /* The right-hand group is set apart by the space before it; a line there
+       would float alone if it wrapped onto its own line. */
+    .jb-toolbar-group.jb-toolbar-end::before { display: none; }
     .jb-settings-title { font-size: 17px; line-height: 28px; }
     .jb-settings-intro { margin-bottom: 20px; }
     .jb-settings-panel { padding: 18px; border-radius: 10px; }
@@ -335,11 +343,14 @@ export function interactionCss(): string {
     .ant-btn:focus-visible, .ant-select-focused .ant-select-selector, .ant-input:focus-visible {
       outline: 2px solid ${palette.accent}; outline-offset: 3px;
     }
+    /* An autocomplete wraps a real text box that draws its own ring; a second
+       ring on the wrapper sat a little off from it. */
+    .ant-select-auto-complete.ant-select-focused .ant-select-selector { outline: none; }
     .ant-empty-description { color: ${palette.muted}; line-height: 1.7; }
     .ant-alert { border-radius: 8px; }
     .ant-message-notice-content { border: 1px solid ${palette.border}; }
     @media (max-width: 767px) {
-      .jb-toolbar-group + .jb-toolbar-group { padding-left: 0; border-left: 0; }
+      .jb-toolbar-group + .jb-toolbar-group::before { display: none; }
       .jb-toolbar-group { max-width: 100%; }
       .jb-content { padding-inline: 16px !important; }
     }

@@ -62,13 +62,11 @@ export function CardSettings({ view, sample, onClose }: { view: View; sample?: T
               </Checkbox>
             ))}
         </div>
-        {view.layout === "table" && (
-          <Form.Item>
-            <Checkbox checked={card.icons_only} onChange={(e) => setCard((c) => ({ ...c, icons_only: e.target.checked }))}>
-              Symbols only: hide the priority and level names
-            </Checkbox>
-          </Form.Item>
-        )}
+        <Form.Item>
+          <Checkbox checked={card.icons_only} onChange={(e) => setCard((c) => ({ ...c, icons_only: e.target.checked }))}>
+            Symbols only: hide the priority and level names
+          </Checkbox>
+        </Form.Item>
         {taskFields.length > 0 && (
           <Form.Item label="Custom fields">
             <Select
