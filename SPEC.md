@@ -273,12 +273,13 @@ A view has an icon (emoji, or an icon from Fluent UI or PrimeIcons), a colour, a
 ### 6.1 What a session holds
 
 - **Hours** (more than 0, at most 24), the **date** it was for, and optionally a **start time**.
-- **Description** (shown as the session's title), an optional **task**, an **area**, and **task or event**.
+- An optional **title**, a **description**, an optional **task**, an **area**, and **task or event**. A session is named everywhere (the Sessions list, Copy as Markdown, the journal) by its title, else its task's title, else its description. Example: title *Sprint planning*, description *Planned the next two weeks with the team*.
 - The task picker ends with **Create new task** (on the web: in the Log time and Edit session forms and in each entry of quick capture; on the phone: in the session form's task picker). It asks only for a title (starting with what was typed in the picker's search box) and an area (the session's, else the first), makes the task in the first to-do status, and picks it for the session. Everything else on the new task can be filled in later on the task. It is not offered when the picker is only filtering (the Sessions screen's task filter).
 - **Energy types**: one, or up to four with shares in whole percents that add up to 100% ("70% Engineering, 30% Admin"). Each part has its own level. An hour is never counted twice, so a day can't pass 24 hours.
 - **Subtypes**: up to four, ranked by dragging, or with the keyboard (focus the handle, Space, arrow keys). Each has a Remove button. Rank weights are a setting (default 100%, 50%, 25%, 25%). Percentages are never typed.
 - A **note**, and custom fields.
 - Points (below), and when it was created and last changed.
+- The task panel's list of sessions shows each one's title, description and note (not the task's title, which is the panel's own).
 
 ### 6.2 Where the energy type comes from
 
@@ -302,8 +303,9 @@ Choosing a task also fills in its level, unless you set one yourself. You can al
 ### 6.4 The Sessions screen
 
 - Filters: dates, energy type, area, task, task/event, has a task or not, has a level, has subtypes, and words. All filtering is done on the server.
-- Days show their totals per energy type, from the server.
-- **Bulk changes**: tick sessions (or whole days, or all shown) and change their energy type, task/event, area, level, date or task, or delete them. All or nothing. Detaching from a task keeps the task's title as the description; attaching takes the task's area.
+- Days show their totals per energy type, from the server. The totals always count the whole day, whatever the filters.
+- The table's **What** column shows the session's name (title, else task title, else description). A **Description** column shows the description while some shown session has one; it is left blank in a row whose name already is its description, so the words never appear twice.
+- **Bulk changes**: tick sessions (or whole days, or all shown) and change their energy type, task/event, area, level, date or task, **add tags** to them (tags they already have stay), or delete them. All or nothing. Detaching from a task keeps the task's title as the description; attaching takes the task's area.
 - **Copy as Markdown.** Each day shown has a **Copy as Markdown** button that copies that whole day's sessions, ready to paste into a journal (it ignores the filters, like the day totals do). Example:
 
   ```
@@ -630,7 +632,7 @@ The database is SQLite in WAL mode (several readers, one writer). There is one c
 | `status_transition` | The move log. Only ever added to. |
 | `task_link` | "Blocked by" links. |
 | `tag`, `task_tag`, `session_tag` | Tags (unique ignoring capitals), the tags on each task, and the tags put on a session by hand. A session's other tags come from its task when read. |
-| `session` | Logged time: hours, date, start time, end time (from a timer), description, task, area, task/event, the plan line it was logged against (`day_item_id`, an event usually), energy type, level, points, note, custom fields, last changed. |
+| `session` | Logged time: hours, date, start time, end time (from a timer), title (`title`, migration 026), description (`label`), task, area, task/event, the plan line it was logged against (`day_item_id`, an event usually), energy type, level, points, note, custom fields, last changed. |
 | `session_energy` | The parts of a session with several energy types: share, level, points. |
 | `session_subtype` | A session's ranked subtypes. |
 | `day_plan` | Each day's focus, ceilings, evening answers, note, and available minutes for that day (`available_min`, empty = use the weekday's from the `planner_available` setting). |
@@ -652,7 +654,7 @@ The database is SQLite in WAL mode (several readers, one writer). There is one c
 - Times are UTC text with a fixed width, so sorting text sorts by time.
 - Most deletes only set `deleted_at`, so history still points at real rows.
 - Values worked out from others are never stored, with one exception: a session's points (section 6.3).
-- Migrations so far: 001 the first tables; 002 epics and board settings; 003 intensity becomes 1–5; 004 view icons, colours and backgrounds; 005 dashboards and stored points; 006 all energy types equal; 007 pies and shares; 008 retire "Energy drain felt"; 009 several energy types per session; 010 start and end dates; 011 snooze; 012 duplicate search cache; 013 subtasks; 014 dependencies; 015 inbox; 016 sync; 017 session "last changed", start dates filled in, unfinished parts hidden; 018 tags; 019 where a widget's content comes from (metric, view, app data or app page); 020 the Home dashboard (rows only, no new tables or columns); 021 repairs widgets that reached a not-yet-upgraded device from a newer one (their kind is read back from the chart type or query, and a Board's view from its sync id; rows only); 022 adds the Buffs and debuffs widget at the top of Home (one row added, the other Home widgets move down two rows; rows only); 023 the Day Planner: `day_item` and `timer` tables (both sync), a session's `ended_at` and `day_item_id`, and a day's `available_min`; 024 `done_at` on plan lines (an event is done when marked); 025 continue and rounds: a task's `follows_id`, `round_of`, `round_no` and `round_kind` (4.17).
+- Migrations so far: 001 the first tables; 002 epics and board settings; 003 intensity becomes 1–5; 004 view icons, colours and backgrounds; 005 dashboards and stored points; 006 all energy types equal; 007 pies and shares; 008 retire "Energy drain felt"; 009 several energy types per session; 010 start and end dates; 011 snooze; 012 duplicate search cache; 013 subtasks; 014 dependencies; 015 inbox; 016 sync; 017 session "last changed", start dates filled in, unfinished parts hidden; 018 tags; 019 where a widget's content comes from (metric, view, app data or app page); 020 the Home dashboard (rows only, no new tables or columns); 021 repairs widgets that reached a not-yet-upgraded device from a newer one (their kind is read back from the chart type or query, and a Board's view from its sync id; rows only); 022 adds the Buffs and debuffs widget at the top of Home (one row added, the other Home widgets move down two rows; rows only); 023 the Day Planner: `day_item` and `timer` tables (both sync), a session's `ended_at` and `day_item_id`, and a day's `available_min`; 024 `done_at` on plan lines (an event is done when marked); 025 continue and rounds: a task's `follows_id`, `round_of`, `round_no` and `round_kind` (4.17). 026 a session's optional `title` (6.1; empty on older sessions).
 
 ---
 

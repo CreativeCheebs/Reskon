@@ -101,6 +101,12 @@ The Stuck view, the Stuck work widget and Drift aren't designed yet. They are hi
 ### Session edits: the latest change of each field wins (owner, 2026-11-04)
 Tasks warn when you save over a change made elsewhere. Sessions don't. Each field keeps its latest change, between tabs and devices, the way Todoist does it. Sessions still record when they last changed (`updated_at`, set by a small database rule on every change). The other option was to warn like tasks; it was rejected because it sometimes makes you redo an edit for little benefit.
 
+### Session title: a new field, and one naming rule (owner, 2026-11-20)
+The owner asked for a session title shown in the list instead of the description, with the description in its own column. It is a new optional `title` field; the existing description (`label`) stays as it was, so nothing old changes meaning. A session's name is its title, else its task's title, else its description, everywhere one is shown, so a session without a title looks exactly as before. In the Sessions table the Description cell is left blank when the name already is the description, so the same words never appear twice. The phone does not show or edit the title yet; it keeps it unchanged through sync.
+
+### Bulk tags only add (2026-11-20)
+The owner asked to add tags to selected sessions. The bulk bar adds tags and keeps the ones a session already has; taking tags off stays a per-session edit. Adding is the safe direction: nothing on a session is lost by a mis-click.
+
 ### Session hours: more than 0, at most 24
 This stops a typo like 25 or 250.
 
@@ -482,7 +488,7 @@ How next-phase step 9 works, and why:
 - **Text typed by the person is escaped, not trusted.** A session name that starts like Markdown gets a backslash (`\# not a heading`); a note line made only of `-` or `=` gets one too (it would turn the line above into a heading); lines that another follows end with two spaces, so renderers that ignore single breaks keep the lines apart. The two trailing spaces are invisible, which is the price; a backslash at the end would show in plain text.
 - **Times are shown only when the start belongs to the day:** its local date is the day it is logged for, or the day before. A start time left over from some other date (an import, an edited date) would only mislead, so the line shows no times. Such a session is listed with the untimed ones.
 - **Every answer is capped:** the widget at the newest 62 days, any answer at 366 (`more` says so). The Sessions screen asks for the dates shown; a day beyond the cap is fetched alone when its button is clicked.
-- **Copy as Markdown always copies the whole day,** even when the Sessions filters hide some sessions, the same as the day totals beside it (which already say they include all sessions).
+- **Copy as Markdown always copies the whole day,** even when the Sessions filters hide some sessions, the same as the day totals beside it. (The screen used to say so in a small note while filters were on; the owner asked for the note to go on 2026-11-20, and this document and SPEC.md 6.4 still say it.)
 - **Clipboard fallbacks.** Browsers hide the clipboard on plain http, which is how the home server is reached. So: the clipboard, then the older copy command (which works there), then a box with the text selected. "Copied" is only said when a copy really happened.
 - **The journal widget saves only a range** (Today, Yesterday, 7 days, 30 days, This month; no 90 days or year, since every session is listed), and its chart type is always `journal`. Like the board it takes no filter. At most the newest 62 days with sessions are listed, and it says so when older ones were cut off. The Sessions screen's copy is limited only by the 366-day cap, and a day beyond it is fetched alone when clicked. No migration: the source column already exists (019), and the phone's core accepts the new source; the phone shows it as "Shown in the web app".
 - **Seeded dashboards are not changed.** Home has no journal; the owner adds one if wanted.
@@ -620,6 +626,7 @@ The owner chose: the number shown plain after the title (style A, not boxed or r
 
 ## Open questions
 
+- **A planner event's name on its session.** Logging time against an event line puts the line's name in the session's description. Now that sessions have a title, should it go in the title instead? Left as it was (2026-11-20).
 - **"Too low" on the ceiling question.** It only cancels a "too high" hold. Should it suggest more hours for the next days?
 - **Built-in statuses.** All five seeded statuses are built in, so none can be deleted. Should any of them be deletable?
 - **Cancelled tasks can't be snoozed.** They are already off the board, so snoozing would hide nothing. Allow it?

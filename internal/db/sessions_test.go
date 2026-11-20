@@ -150,7 +150,7 @@ func TestSessionPointsStoredAtLogTime(t *testing.T) {
 		t.Errorf("recalculated = %v, want 3.5", *again.Points)
 	}
 	d.PatchEnergyType(ctx, 4, fields(t, `{"points_per_hour":2}`))
-	if n, err := d.BulkSessions(ctx, []int64{rest.ID, sleep.ID}, fields(t, `{"recalculate":true}`), false); err != nil || n != 2 {
+	if n, err := d.BulkSessions(ctx, []int64{rest.ID, sleep.ID}, fields(t, `{"recalculate":true}`), false, nil); err != nil || n != 2 {
 		t.Fatalf("bulk recalculate: %d, %v", n, err)
 	}
 	if a, b := deref(mustGet(t, d, rest.ID).Points), deref(mustGet(t, d, sleep.ID).Points); a != 14.0 || b != 32.0 {

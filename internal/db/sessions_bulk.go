@@ -27,12 +27,41 @@ var bulkSessionColumns = columns{
 // session's label when it has none, so the row never goes blank. Attaching
 // to a task takes the task's area unless area_id is also set.
 //
+// A third action, addTags, adds tags (by name, made if new) to every selected
+// session and keeps the tags they already have. It is exclusive with set and
+// delete and never touches points.
+//
 // Points are stored afresh at today's rates when the change is to energy
 // type, intensity or task, or when set is just {"recalculate": true}
 // (Change 002).
-func (d *DB) BulkSessions(ctx context.Context, ids []int64, set Fields, del bool) (int, error) {
+func (d *DB) BulkSessions(ctx context.Context, ids []int64, set Fields, del bool, addTags []string) (int, error) {
 	if len(ids) == 0 {
 		return 0, invalid("no sessions selected")
+	}
+	adding := addTags != nil
+	if adding {
+		if del || len(set) > 0 {
+			return 0, invalid("give exactly one of fields to set, delete, or tags to add")
+		}
+		var names []string
+		seen := map[string]bool{}
+		for _, n := range addTags {
+			c, err := cleanTagName(n)
+			if err != nil {
+				return 0, err
+			}
+			if k := strings.ToLower(c); !seen[k] {
+				seen[k] = true
+				names = append(names, c)
+			}
+		}
+		if len(names) == 0 {
+			return 0, invalid("give at least one tag name to add")
+		}
+		if len(names) > maxTagsPerItem {
+			return 0, invalid("at most %d tags", maxTagsPerItem)
+		}
+		addTags = names
 	}
 	recalc := takeRecalculate(set)
 	for _, k := range []string{"energy_type_id", "difficulty", "task_id"} {
@@ -40,13 +69,16 @@ func (d *DB) BulkSessions(ctx context.Context, ids []int64, set Fields, del bool
 			recalc = true
 		}
 	}
+	if adding {
+		recalc = false
+	}
 	if recalc && del {
 		return 0, invalid("give either fields to set or delete, not both or neither")
 	}
 	if recalc && len(set) == 0 {
 		set = Fields{}
 	}
-	if del == (len(set) > 0 || recalc) {
+	if !adding && del == (len(set) > 0 || recalc) {
 		return 0, invalid("give either fields to set or delete, not both or neither")
 	}
 	seen := map[int64]bool{}
@@ -72,6 +104,30 @@ func (d *DB) BulkSessions(ctx context.Context, ids []int64, set Fields, del bool
 	}
 	if found != len(uniq) {
 		return 0, &ConflictError{Msg: fmt.Sprintf("%d of the %d selected sessions no longer exist; reload and try again", len(uniq)-found, len(uniq))}
+	}
+
+	if adding {
+		tagIDs, err := ensureTags(ctx, tx, addTags)
+		if err != nil {
+			return 0, err
+		}
+		for _, id := range uniq {
+			for _, tg := range tagIDs {
+				if _, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO session_tag (session_id, tag_id) VALUES (?, ?)`, id, tg); err != nil {
+					return 0, err
+				}
+			}
+		}
+		var over int
+		var tagArgs []any
+		tagIn := inList("session_id", uniq, &tagArgs)
+		if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM (SELECT session_id FROM session_tag WHERE `+tagIn+` GROUP BY session_id HAVING COUNT(*) > ?)`, append(tagArgs, maxTagsPerItem)...).Scan(&over); err != nil {
+			return 0, err
+		}
+		if over > 0 {
+			return 0, invalid("a session can have at most %d tags", maxTagsPerItem)
+		}
+		return len(uniq), tx.Commit()
 	}
 
 	if del {

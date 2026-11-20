@@ -80,7 +80,7 @@ export function TaskExtras({
               {formatHM(s.hours)}
             </span>
             <span style={{ color: palette.muted, flex: 1, minWidth: 0, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {[s.label, s.note].filter(Boolean).join(" · ")}
+              {[s.title, s.label, s.note].filter(Boolean).join(" · ")}
             </span>
           </List.Item>
         )}

@@ -17,7 +17,7 @@ type SessionQuery struct {
 	HasTask     *bool   // true: attached to a task; false: not attached
 	HasDiff     *bool   // true: difficulty set; false: not set
 	HasSubtypes *bool   // true: at least one subtype; false: none
-	Search      string  // every word in label, note or task title
+	Search      string  // every word in title, label, note or task title
 }
 
 func (d *DB) ListSessions(ctx context.Context, q SessionQuery) ([]*Session, error) {
@@ -74,9 +74,9 @@ func (d *DB) ListSessions(ctx context.Context, q SessionQuery) ([]*Session, erro
 	}
 	for _, w := range strings.Fields(q.Search) {
 		like := "%" + likeEscape(w) + "%"
-		where = append(where, `(COALESCE(s.label,'') LIKE ? ESCAPE '\' OR COALESCE(s.note,'') LIKE ? ESCAPE '\'
+		where = append(where, `(COALESCE(s.title,'') LIKE ? ESCAPE '\' OR COALESCE(s.label,'') LIKE ? ESCAPE '\' OR COALESCE(s.note,'') LIKE ? ESCAPE '\'
 			OR COALESCE(t.title,'') LIKE ? ESCAPE '\' OR COALESCE(t.key,'') LIKE ? ESCAPE '\')`)
-		args = append(args, like, like, like, like)
+		args = append(args, like, like, like, like, like)
 	}
 	cols := "s." + strings.ReplaceAll(sessionCols, ", ", ", s.")
 	sessions, err := collect(ctx, d, `SELECT `+cols+` FROM session s LEFT JOIN task t ON t.id = s.task_id

@@ -2,6 +2,14 @@
 
 What changed in each version of Reskon, newest first: one line per change, in plain words. Versions before 0.6.6 are in the git history (commits called "Version x.y.z: ...").
 
+## 0.7.7 (20 Nov 2026)
+
+- Added: a session can have a title. The Sessions list shows it instead of the description, and Copy as Markdown uses it too.
+- Added: a Description column in the Sessions list.
+- Added: "Add tags…" in the bar for selected sessions adds tags to all of them at once.
+- Fixed: the tick in the row checkboxes of the Sessions and task tables is now centred.
+- Removed: the note "(day totals and Copy as Markdown include all sessions)" on the Sessions screen.
+
 ## 0.7.6 (20 Nov 2026)
 
 - Fixed: on the phone, switching between Continue and Next round while one is being made can no longer make a second task.

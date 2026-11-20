@@ -32,6 +32,7 @@ export function SessionModal({
     editing
       ? emptySession({
           task_id: editing.task_id,
+          title: editing.title ?? "",
           label: editing.label ?? "",
           area_id: editing.area_id,
           kind: editing.kind,

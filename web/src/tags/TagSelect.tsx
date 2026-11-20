@@ -17,6 +17,7 @@ export function TagSelect({
   placeholder = "Add tags",
   id,
   ariaLabel = "Tags",
+  autoFocus,
 }: {
   /** The tags that can be changed, by name. */
   value: string[];
@@ -27,12 +28,14 @@ export function TagSelect({
   placeholder?: string;
   id?: string;
   ariaLabel?: string;
+  autoFocus?: boolean;
 }) {
   const { tags } = useTags();
   const fixedKeys = new Set(fixed.map((f) => f.toLowerCase()));
   return (
     <Select
       id={id}
+      autoFocus={autoFocus}
       aria-label={ariaLabel}
       mode="tags"
       size={size}

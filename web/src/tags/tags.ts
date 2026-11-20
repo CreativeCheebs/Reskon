@@ -45,8 +45,8 @@ export function useTags() {
   const known = useMemo(() => new Set(tags.map((t) => t.name.toLowerCase())), [tags]);
   /** Call after saving tag names: reloads the list when one of them is new, so it shows up everywhere. */
   const refreshIfNew = useCallback(
-    (names: string[]) => {
-      if (names.some((n) => !known.has(n.toLowerCase()))) reloadBootstrap().catch(() => undefined);
+    async (names: string[]) => {
+      if (names.some((n) => !known.has(n.toLowerCase()))) await reloadBootstrap().catch(() => undefined);
     },
     [known, reloadBootstrap],
   );

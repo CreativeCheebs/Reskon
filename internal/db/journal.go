@@ -62,7 +62,7 @@ func ParseJournalQuery(raw json.RawMessage) (JournalQuery, error) {
 type JournalSession struct {
 	ID     int64   `json:"id"`
 	TaskID *int64  `json:"task_id"`
-	What   string  `json:"what"`  // the task's title, else the session's own label
+	What   string  `json:"what"`  // the session's title, else its task's title, else its label
 	Area   *string `json:"area"`  // the area's name
 	Kind   string  `json:"kind"`  // task or event
 	Start  *string `json:"start"` // local HH:MM, when the session has a start time
@@ -122,17 +122,17 @@ func (d *DB) Journal(ctx context.Context, from, to string, maxDays int) (*Journa
 	loc := d.Location(ctx)
 	// The task's title is read even from a deleted task, so an old session
 	// keeps its name. The task's key is never read.
-	rows, err := collect(ctx, d, `SELECT s.id, s.task_id, t.title, s.label, a.name, s.kind, s.hours, s.points,
+	rows, err := collect(ctx, d, `SELECT s.id, s.task_id, s.title, t.title, s.label, a.name, s.kind, s.hours, s.points,
 			COALESCE(s.started_at, ''), s.logged_for, s.note
 		FROM session s LEFT JOIN task t ON t.id = s.task_id LEFT JOIN area a ON a.id = s.area_id
 		WHERE s.deleted_at IS NULL AND s.logged_for >= ? AND s.logged_for <= ?
 		ORDER BY s.logged_for DESC, s.created_at, s.id`,
 		func(r *sql.Rows) (journalRow, error) {
 			var x journalRow
-			var title, label, note sql.NullString
+			var own, title, label, note sql.NullString
 			var points sql.NullFloat64
-			err := r.Scan(&x.ID, &x.TaskID, &title, &label, &x.Area, &x.Kind, &x.Hours, &points, &x.startedAt, &x.day, &note)
-			x.what = journalWhat(title.String, label.String, x.Kind)
+			err := r.Scan(&x.ID, &x.TaskID, &own, &title, &label, &x.Area, &x.Kind, &x.Hours, &points, &x.startedAt, &x.day, &note)
+			x.what = journalWhat(own.String, title.String, label.String, x.Kind)
 			x.points = points.Float64
 			x.Note = cleanNote(note.String)
 			x.setTimes(loc)
@@ -197,10 +197,11 @@ func (x *journalRow) setTimes(loc *time.Location) {
 	x.Start, x.End = &start, &end
 }
 
-// journalWhat is a session's name: its task's title, else its own label,
-// else a plain word so a line is never empty.
-func journalWhat(title, label, kind string) string {
-	for _, s := range []string{title, label} {
+// journalWhat is a session's name: its own title, else its task's title,
+// else its label (the description), else a plain word so a line is never
+// empty.
+func journalWhat(own, title, label, kind string) string {
+	for _, s := range []string{own, title, label} {
 		if s = strings.Join(strings.Fields(s), " "); s != "" {
 			return s
 		}

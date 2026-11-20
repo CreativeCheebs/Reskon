@@ -61,18 +61,19 @@ func (s *Server) listSessions(w http.ResponseWriter, r *http.Request) {
 }
 
 // bulkSessions: {"ids": [...], "set": {field: value, ...}} or
-// {"ids": [...], "delete": true}. All or nothing.
+// {"ids": [...], "delete": true} or {"ids": [...], "add_tags": ["name", ...]}. All or nothing.
 func (s *Server) bulkSessions(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		IDs    []int64   `json:"ids"`
-		Set    db.Fields `json:"set"`
-		Delete bool      `json:"delete"`
+		IDs     []int64   `json:"ids"`
+		Set     db.Fields `json:"set"`
+		Delete  bool      `json:"delete"`
+		AddTags []string  `json:"add_tags"`
 	}
 	if err := decodeBody(r, &body); err != nil {
 		respond(w, nil, err)
 		return
 	}
-	n, err := dbOf(r.Context()).BulkSessions(r.Context(), body.IDs, body.Set, body.Delete)
+	n, err := dbOf(r.Context()).BulkSessions(r.Context(), body.IDs, body.Set, body.Delete, body.AddTags)
 	respond(w, map[string]int{"changed": n}, err)
 }
 

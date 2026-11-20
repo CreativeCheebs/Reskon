@@ -355,6 +355,9 @@ export interface SessionEnergy {
 export interface Session {
   id: number;
   task_id: number | null;
+  /** Its own name; lists show it before the task's title and the label. */
+  title: string | null;
+  /** The description. */
   label: string | null;
   area_id: number | null;
   kind: "task" | "event";

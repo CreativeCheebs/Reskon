@@ -26,6 +26,7 @@ func (d *DB) PatchSession(ctx context.Context, id int64, f Fields) (*Session, er
 	if err != nil {
 		return nil, err
 	}
+	trimTitle(f)
 	recalcAsked := takeRecalculate(f)
 	_, typeSet := f["energy_type_id"]
 	_, diffSet := f["difficulty"]

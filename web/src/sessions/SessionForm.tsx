@@ -39,6 +39,8 @@ export interface EnergyPart {
 
 export interface SessionDraft {
   task_id: number | null;
+  /** The session's own short name; empty means lists show the task's title. */
+  title: string;
   /** The worklog description (session.label). With a task it starts as the
    *  task's title; left that way it is saved empty, so lists show the task. */
   label: string;
@@ -68,6 +70,7 @@ export interface SessionDraft {
 export function emptySession(partial: Partial<SessionDraft> = {}): SessionDraft {
   return {
     task_id: null,
+    title: "",
     label: "",
     area_id: null,
     kind: "task",
@@ -138,6 +141,7 @@ export function sessionReady(d: SessionDraft): boolean {
 export function sessionBody(d: SessionDraft) {
   return {
     task_id: d.task_id,
+    title: d.title.trim() || null,
     label: d.task_id && d.label_suggested ? null : d.label.trim() || null,
     area_id: d.area_id,
     kind: d.kind,
@@ -317,6 +321,16 @@ export function SessionFields({
             />
           </Form.Item>
         </div>
+        <Form.Item label="Title" htmlFor="session-title" style={tight} extra={`Shown in the sessions list. Leave empty to use the ${T.task}'s title, or the description.`}>
+          <Input
+            id="session-title"
+            size="middle"
+            value={draft.title}
+            onChange={(e) => set({ title: e.target.value })}
+            placeholder="optional"
+            maxLength={120}
+          />
+        </Form.Item>
         <Form.Item
           label="Description"
           htmlFor="session-description"

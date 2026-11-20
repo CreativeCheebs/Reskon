@@ -80,7 +80,7 @@ func TestSessionWithSeveralEnergyTypes(t *testing.T) {
 	}
 
 	// Intensity set in bulk applies to every part, and recalculates.
-	if _, err := d.BulkSessions(ctx, []int64{s.ID}, fields(t, `{"difficulty":5}`), false); err != nil {
+	if _, err := d.BulkSessions(ctx, []int64{s.ID}, fields(t, `{"difficulty":5}`), false, nil); err != nil {
 		t.Fatal(err)
 	}
 	s, _ = d.GetSession(ctx, s.ID)

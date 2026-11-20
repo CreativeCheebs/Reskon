@@ -181,6 +181,9 @@ export function interactionCss(): string {
       width: 24px; height: 24px;
       display: inline-flex; align-items: center; justify-content: center;
     }
+    /* antd places the tick against .ant-checkbox, now 24px wide, so it sat
+       off-centre; place it against the 16px box instead. */
+    .ant-table-selection-column .ant-checkbox-inner { position: relative; }
     /* Every segmented switch (Board/Table, the dashboard's ranges, Task or
        Event ...) looks like the board toolbar's. 24px tall like the selects
        beside them: a 1px border, then a 2px gap

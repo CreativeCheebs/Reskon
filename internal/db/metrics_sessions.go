@@ -175,7 +175,7 @@ func (d *DB) loadSessions(ctx context.Context, r *metricRun, energy map[int64]bo
 	var out []*sessionRow
 	byID := map[int64][]*sessionRow{}
 	err := scanInto(ctx, d, `SELECT s.id, s.logged_for, COALESCE(s.area_id, 0), `+partEnergy+`, s.kind, s.hours * `+partShare+`,
-		`+partPointsCol+`, `+partShare+`, COALESCE(t.title, s.label, '')
+		`+partPointsCol+`, `+partShare+`, COALESCE(NULLIF(TRIM(s.title), ''), t.title, s.label, '')
 		FROM session s `+sessionPartsJoin+` LEFT JOIN task t ON t.id = s.task_id
 		WHERE `+strings.Join(where, " AND ")+` ORDER BY s.logged_for, s.id, p.position`, func(rows *sql.Rows) error {
 		s := &sessionRow{}

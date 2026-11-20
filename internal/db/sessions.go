@@ -13,7 +13,8 @@ import (
 type Session struct {
 	ID           int64            `json:"id"`
 	TaskID       *int64           `json:"task_id"`
-	Label        *string          `json:"label"`
+	Title        *string          `json:"title"` // its own name; lists show it before the task's title and the label
+	Label        *string          `json:"label"` // the description
 	AreaID       *int64           `json:"area_id"`
 	Kind         string           `json:"kind"`
 	EnergyTypeID int64            `json:"energy_type_id"`
@@ -43,19 +44,20 @@ type SessionSubtype struct {
 }
 
 const sessionCols = `id, task_id, label, area_id, kind, energy_type_id, hours, points, difficulty,
-	started_at, logged_for, note, custom, created_at, updated_at, ended_at, day_item_id`
+	started_at, logged_for, note, custom, created_at, updated_at, ended_at, day_item_id, title`
 
 func scanSession(r interface{ Scan(...any) error }) (*Session, error) {
 	var s Session
 	var custom string
 	err := r.Scan(&s.ID, &s.TaskID, &s.Label, &s.AreaID, &s.Kind, &s.EnergyTypeID, &s.Hours, &s.Points, &s.Difficulty,
-		&s.StartedAt, &s.LoggedFor, &s.Note, &custom, &s.CreatedAt, &s.UpdatedAt, &s.EndedAt, &s.DayItemID)
+		&s.StartedAt, &s.LoggedFor, &s.Note, &custom, &s.CreatedAt, &s.UpdatedAt, &s.EndedAt, &s.DayItemID, &s.Title)
 	s.Custom = json.RawMessage(custom)
 	return &s, err
 }
 
 var sessionColumns = columns{
 	"task_id":        kIntNull,
+	"title":          kTextNull,
 	"label":          kTextNull,
 	"area_id":        kIntNull,
 	"kind":           kText,
@@ -235,6 +237,23 @@ func writeSubtypes(ctx context.Context, tx *sql.Tx, sessionID int64, ids []int64
 	return nil
 }
 
+// trimTitle makes a given title trimmed; a blank one is stored as null.
+func trimTitle(f Fields) {
+	raw, ok := f["title"]
+	if !ok {
+		return
+	}
+	var t string
+	if json.Unmarshal(raw, &t) != nil {
+		return // not a string: decode reports it
+	}
+	if t = strings.TrimSpace(t); t == "" {
+		f["title"] = json.RawMessage("null")
+	} else {
+		f["title"], _ = json.Marshal(t)
+	}
+}
+
 func (d *DB) CreateSession(ctx context.Context, f Fields) (*Session, error) {
 	subtypes, _, err := parseSubtypes(f)
 	if err != nil {
@@ -255,6 +274,7 @@ func (d *DB) CreateSession(ctx context.Context, f Fields) (*Session, error) {
 	if err != nil {
 		return nil, err
 	}
+	trimTitle(f)
 	customPatch, hasCustom := f["custom"]
 	delete(f, "custom")
 	if err := d.applyPlanItem(ctx, f); err != nil {

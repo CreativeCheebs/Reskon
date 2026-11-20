@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Dayjs } from "dayjs";
 import { Button, DatePicker, Divider, Popover, Select, Space, Tooltip } from "antd";
 import { api } from "../api";
@@ -8,6 +8,8 @@ import { confirm, message } from "../theme/feedback";
 import { palette } from "../theme/palette";
 import { DifficultySlider } from "../task/DifficultySlider";
 import { useTerms } from "../terms";
+import { TagSelect } from "../tags/TagSelect";
+import { useTags } from "../tags/tags";
 
 // Actions on the selected sessions. Each one is a single all-or-nothing
 // request (POST /api/sessions/bulk).
@@ -25,27 +27,39 @@ export function BulkBar({
 }) {
   const { boot } = useApp();
   const T = useTerms();
+  const { refreshIfNew } = useTags();
   const [busy, setBusy] = useState(false);
   const running = useRef(false); // a second action never starts while one runs
   const [diff, setDiff] = useState<number | null>(null);
   const [date, setDate] = useState<Dayjs | null>(null);
+  const [tagNames, setTagNames] = useState<string[]>([]);
+  const [tagOpens, setTagOpens] = useState(0); // a new picker each time the popover opens, so it takes focus
+  const idsKey = ids.join(",");
+  useEffect(() => setTagNames([]), [idsKey]);
   const n = ids.length;
   const plural = `${n} session${n === 1 ? "" : "s"}`;
 
-  const run = async (body: Record<string, unknown>, done: string) => {
-    if (running.current) return;
+  const run = async (body: Record<string, unknown>, done: string, beforeDone?: () => Promise<void>): Promise<boolean> => {
+    if (running.current) return false;
     running.current = true;
     setBusy(true);
     try {
       await api.post("/sessions/bulk", { ids, ...body });
       message.success(done);
+      await beforeDone?.(); // new tags are loaded before the list shows them
       onDone();
+      return true;
     } catch (e) {
       message.error((e as Error).message);
+      return false;
     } finally {
       running.current = false;
       setBusy(false);
     }
+  };
+  const addTags = async () => {
+    const names = tagNames;
+    if (await run({ add_tags: names }, `Tags added to ${plural}`, () => refreshIfNew(names))) setTagNames([]);
   };
   const set = (fields: Record<string, unknown>, what: string) => run({ set: fields }, `${what} on ${plural}`);
 
@@ -136,6 +150,33 @@ export function BulkBar({
       >
         <Button size="small" disabled={busy}>
           Move to date…
+        </Button>
+      </Popover>
+      <Popover
+        trigger="click"
+        onOpenChange={(open) => {
+          if (open) setTagOpens((k) => k + 1);
+          else setTagNames([]);
+        }}
+        content={
+          <Space direction="vertical" style={{ width: 280 }}>
+            <TagSelect
+              key={tagOpens}
+              autoFocus
+              size="small"
+              value={tagNames}
+              onChange={setTagNames}
+              placeholder="Type a tag, press Enter"
+              ariaLabel="Tags to add to the selected sessions"
+            />
+            <WriteButton size="small" type="primary" disabled={busy || tagNames.length === 0} onClick={addTags}>
+              Add to {plural}
+            </WriteButton>
+          </Space>
+        }
+      >
+        <Button size="small" disabled={busy}>
+          Add tags…
         </Button>
       </Popover>
       <Tooltip title="Work out their points again at today's rates (after a rate change)">

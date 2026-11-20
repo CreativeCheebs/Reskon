@@ -12,6 +12,7 @@ import { Lozenge } from "../theme/Lozenge";
 import type { Session } from "../types";
 import { SessionModal } from "./SessionModal";
 import { BulkBar } from "./BulkBar";
+import { descriptionToShow, sessionName } from "./sessionName";
 import { useColumnWidths } from "../views/useColumnWidths";
 import { DifficultyIcon } from "../task/LevelIcons";
 import { FilterSelect, PageHeader, Toolbar, ToolbarGroup } from "../theme/Toolbar";
@@ -148,6 +149,7 @@ export function SessionsScreen() {
   }, [loadTitles, reloadKey]);
 
   const titleOf = useMemo(() => new Map(tasks.map((t) => [t.id, t.title])), [tasks]);
+  const nameOf = (s: Session, fallback: string) => sessionName(s, (id) => titleOf.get(id), T.task, fallback);
   const energy = (id: number) => boot.energy_types.find((e) => e.id === id);
   const subtype = (id: number) => boot.subtypes.find((s) => s.id === id)?.name ?? `#${id}`;
   const byDay = [...new Set(sessions.map((s) => s.logged_for))];
@@ -166,7 +168,10 @@ export function SessionsScreen() {
   const setF = <K extends keyof Filters>(k: K, v: Filters[K]) => setFilters((f) => ({ ...f, [k]: v }));
 
   // One set of columns for every day's table; widths are kept in this browser.
-  // Subtypes and Note only take a column while some shown session has them.
+  // Description, Subtypes and Note only take a column while some shown
+  // session has one. A description already shown as the name (no title, no
+  // task) is not shown again.
+  const showLabel = sessions.some((s) => descriptionToShow(s, nameOf(s, "–")));
   const showSubtypes = sessions.some((s) => s.subtypes.length > 0);
   const showNote = sessions.some((s) => s.note);
   const sessionCols = useColumnWidths<Session>("sessions", [
@@ -175,13 +180,16 @@ export function SessionsScreen() {
       title: "What",
       render: (_, s) => (
         <span>
-          {s.task_id ? titleOf.get(s.task_id) ?? `${T.task} #${s.task_id}` : s.label ?? "–"}
+          {nameOf(s, "–")}
           {s.started_at && (
             <span style={{ color: palette.subtle, fontSize: 11 }}> · {dayjs(s.started_at).format("HH:mm")}</span>
           )}
         </span>
       ),
     },
+    ...(showLabel
+      ? [{ key: "label", title: "Description", ellipsis: true, render: (_: unknown, s: Session) => descriptionToShow(s, nameOf(s, "–")) }]
+      : []),
     { key: "kind", title: "Kind", width: 84, render: (_, s) => <KindChip kind={s.kind} /> },
     {
       key: "energy",
@@ -266,7 +274,7 @@ export function SessionsScreen() {
             okButtonProps={{ danger: true }}
             onConfirm={() => remove(s.id)}
           >
-            <Button size="small" type="text" icon={<DeleteOutlined />} aria-label={`Delete session: ${s.task_id ? titleOf.get(s.task_id) ?? `${T.task} #${s.task_id}` : s.label ?? `no ${T.task}`} on ${s.logged_for}`} />
+            <Button size="small" type="text" icon={<DeleteOutlined />} aria-label={`Delete session: ${nameOf(s, `no ${T.task}`)} on ${s.logged_for}`} />
           </Popconfirm>
         </span>
       ),
@@ -310,7 +318,7 @@ export function SessionsScreen() {
             size="small"
             allowClear
             prefix={<SearchOutlined />}
-            placeholder={`Search label, note, ${T.task}`}
+            placeholder={`Search title, description, note, ${T.task}`}
             style={{ width: 200 }}
             className={search ? "jb-active" : undefined}
             aria-label="Search sessions"
@@ -457,7 +465,6 @@ export function SessionsScreen() {
                   ))}
                 </span>
               )}
-              {filtered && <span style={{ color: palette.subtle, fontSize: 11 }}>(day totals and Copy as Markdown include all sessions)</span>}
               <CopyMarkdownButton day={day} markdown={markdown[day]} fetchMarkdown={() => dayMarkdown(day)} />
             </Space>
             <Table<Session>
@@ -467,7 +474,7 @@ export function SessionsScreen() {
               dataSource={rows}
               // The header checkbox selects this whole day.
               rowSelection={{
-                getCheckboxProps: (r) => checkboxLabel(`Select session: ${r.task_id ? titleOf.get(r.task_id) ?? `${T.task} #${r.task_id}` : r.label ?? `no ${T.task}`}`),
+                getCheckboxProps: (r) => checkboxLabel(`Select session: ${nameOf(r, `no ${T.task}`)}`),
               selectedRowKeys: rows.filter((r) => selected.has(r.id)).map((r) => r.id),
                 onChange: (keys) =>
                   setSelected((sel) => {
