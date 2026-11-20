@@ -6,6 +6,7 @@ import { useApp } from "../store";
 import { formatHours, today } from "../format";
 import { palette } from "../theme/palette";
 import type { Task, TaskBrief } from "../types";
+import { TaskTitle } from "./RoundTag";
 import { pressable } from "../a11y";
 import { useTerms } from "../terms";
 
@@ -107,7 +108,7 @@ export function Subtasks({ parent, version, onOpenTask, onChanged }: Props) {
                     textDecoration: finished ? "line-through" : undefined,
                   }}
                 >
-                  {t.title}
+                  <TaskTitle task={t} />
                 </span>
                 {t.logged_h > 0 && <span style={{ color: palette.muted, fontSize: 12 }}>⏱ {formatHours(t.logged_h)}</span>}
                 <span style={{ color: palette.muted, fontSize: 12 }}>{status?.name}</span>

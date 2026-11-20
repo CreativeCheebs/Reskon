@@ -8,6 +8,7 @@ import { useSaveView } from "../views/useViewState";
 import { useEpics } from "../task/useEpics";
 import { TypeIcon } from "../task/TypeIcon";
 import type { ColumnLimit, Task, View } from "../types";
+import type { NextMode } from "../task/nextTask";
 import { limitUse } from "./limits";
 import { Lane } from "./Lane";
 import { COL_GAP, useBoardFit } from "./useBoardFit";
@@ -23,7 +24,7 @@ interface Props {
   tasks: Task[];
   setTasks: (fn: (prev: Task[]) => Task[]) => void;
   refetch: () => void;
-  onOpenTask: (id: number) => void;
+  onOpenTask: (id: number, next?: NextMode) => void;
 }
 
 export const Board = memo(function Board({ view, tasks, setTasks, refetch, onOpenTask }: Props) {

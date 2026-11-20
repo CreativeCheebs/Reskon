@@ -5,6 +5,7 @@ import { useEpics } from "../task/useEpics";
 import { blend, palette } from "../theme/palette";
 import { today } from "../format";
 import type { Task } from "../types";
+import { titleText } from "../task/RoundTag";
 import { pressable } from "../a11y";
 import { useTerms } from "../terms";
 
@@ -137,8 +138,8 @@ export function Timeline({ tasks, zoom, onZoom, onOpenTask }: Props) {
     return (
       <div
         className="jb-clickable"
-        {...pressable(() => onOpenTask(s.task.id), s.task.title)}
-        title={`${s.task.title} · ${dateOf(s.from).toISOString().slice(0, 10)} → ${dateOf(s.to).toISOString().slice(0, 10)}${status ? ` · ${status.name}` : ""}`}
+        {...pressable(() => onOpenTask(s.task.id), titleText(s.task))}
+        title={`${titleText(s.task)} · ${dateOf(s.from).toISOString().slice(0, 10)} → ${dateOf(s.to).toISOString().slice(0, 10)}${status ? ` · ${status.name}` : ""}`}
         style={{
           position: "absolute",
           left: x(s.from) + 1,
@@ -158,7 +159,7 @@ export function Timeline({ tasks, zoom, onZoom, onOpenTask }: Props) {
           boxSizing: "border-box",
         }}
       >
-        {!epic && w > 60 ? s.task.title : null}
+        {!epic && w > 60 ? titleText(s.task) : null}
       </div>
     );
   };
@@ -209,7 +210,7 @@ export function Timeline({ tasks, zoom, onZoom, onOpenTask }: Props) {
           )}
           {rows.map((r, i) => {
             const label =
-              r.kind === "task" ? r.span!.task.title : r.kind === "epic" ? r.group.title : `No ${T.epic}`;
+              r.kind === "task" ? titleText(r.span!.task) : r.kind === "epic" ? r.group.title : `No ${T.epic}`;
             const epicSpan = r.kind === "epic" && r.group.epic ? spanOf(r.group.epic) : null;
             return (
               <div key={r.kind === "task" ? `t${r.span!.task.id}` : `g${r.group.key}`} style={{ display: "flex", height: ROW, borderTop: i ? `1px solid ${blend(palette.border, palette.bg, 0.5)}` : undefined }}>

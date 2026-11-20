@@ -7,7 +7,9 @@ import {
   ExpandAltOutlined,
   FileTextOutlined,
   MoonOutlined,
+  RedoOutlined,
   SwapRightOutlined,
+  ArrowRightOutlined,
 } from "@ant-design/icons";
 import { message } from "../theme/feedback";
 import { api, patchWithRetry } from "../api";
@@ -18,7 +20,9 @@ import { deleteTaskAsking } from "../task/deleteTask";
 import { snoozeTask } from "../task/SnoozeButton";
 import { snoozeIntervals } from "../task/snoozeIntervals";
 import { daysFromToday, SnoozeHead, SnoozeRowBody, useSnoozeForecast } from "../task/SnoozeForecast";
+import type { NextMode } from "../task/nextTask";
 import type { Task } from "../types";
+import { TaskTitle, titleText } from "../task/RoundTag";
 import { makeTerms, termWords, useTerms, type Terms } from "../terms";
 
 // A board card's quick actions. Which ones sit in the hover rail over the
@@ -29,6 +33,11 @@ import { makeTerms, termWords, useTerms, type Terms } from "../terms";
 // open. Touch screens have no hover, so there the rail is just More, always
 // shown, holding every action (see interactionStyles). Every change goes
 // through the usual endpoints.
+//
+// Two more items, "Continue with a new task…" and "Start next round" (SPEC
+// 4.17), are always in the right-click menu and More, before Delete; they are
+// not part of the setting, so they never sit on the rail. They open the task
+// panel with its "What's next?" box showing that form.
 
 export type CardActionKey = "log" | "snooze" | "note" | "move" | "open" | "delete";
 
@@ -64,7 +73,8 @@ export function cardActionsOf(settings: Record<string, unknown>): CardActionConf
 }
 
 export interface CardHandlers {
-  onOpen: (id: number) => void;
+  /** Opens the task panel; with a mode, its "What's next?" box too. */
+  onOpen: (id: number, next?: NextMode) => void;
   onChanged: (t: Task) => void;
   onDeleted: (id: number) => void;
 }
@@ -144,11 +154,19 @@ export function useCardActions(task: Task, { onOpen, onChanged, onDeleted }: Car
       return { key: k, label: a.label, icon: a.icon, disabled: offline, children: choices[k], popupClassName: "jb-menu" };
     return { key: k, label: a.label, icon: a.icon, disabled: offline, danger: k === "delete" };
   };
-  // Delete sits apart, after a divider.
+  // Continue and Next round (not for an epic) follow the chosen actions.
+  const nextItems: Item[] = [
+    { key: "next:continue", label: `Continue with a new ${T.task}…`, icon: <ArrowRightOutlined />, disabled: !app.online },
+    ...(task.type !== "epic" ? [{ key: "next:round", label: "Start next round", icon: <RedoOutlined />, disabled: !app.online }] : []),
+  ];
+  // Delete sits apart, after a divider. A list with nothing chosen stays
+  // empty, so the browser's own menu shows.
   const list = (keys: CardActionKey[]): Item[] => {
     const ks = keys.filter(applies);
-    const main = ks.filter((k) => k !== "delete").map(item);
-    return ks.includes("delete") ? [...main, ...(main.length ? [{ type: "divider" as const }] : []), item("delete")] : main;
+    if (ks.length === 0) return [];
+    const plain = ks.filter((k) => k !== "delete").map(item);
+    const main = [...plain, ...(plain.length ? [{ type: "divider" as const }] : []), ...nextItems];
+    return ks.includes("delete") ? [...main, { type: "divider" as const }, item("delete")] : main;
   };
 
   const onClick: MenuProps["onClick"] = ({ key, domEvent }) => {
@@ -157,6 +175,7 @@ export function useCardActions(task: Task, { onOpen, onChanged, onDeleted }: Car
     setContextOpen(false);
     const [what, arg] = key.split(":");
     if (what === "open") onOpen(task.id);
+    else if (what === "next") onOpen(task.id, arg as NextMode);
     else if (what === "note") setNoteOpen(true);
     else if (what === "log") setLogging(true);
     else if (what === "move") move(Number(arg));
@@ -208,8 +227,8 @@ export function CardContextMenu({ actions, children }: { actions: Actions; child
       onOpenChange={actions.setContextOpen}
       popupRender={(menu) => (
         <div className="jb-menu-panel">
-          <div className="jb-menu-head" title={actions.task.title}>
-            {actions.task.title}
+          <div className="jb-menu-head" title={titleText(actions.task)}>
+            <TaskTitle task={actions.task} />
           </div>
           {menu}
         </div>

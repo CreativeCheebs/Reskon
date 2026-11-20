@@ -7,6 +7,7 @@ import { WriteButton } from "../offline";
 import { today } from "../format";
 import { TaskTable } from "../views/TaskTable";
 import type { CardConfig, GroupBy, Task } from "../types";
+import type { NextMode } from "../task/nextTask";
 
 // Overlay for a hidden (on_board = 0) status such as Backlog. Escape closes
 // it; it is not a route. It is the view's own table (same columns, grouping,
@@ -25,7 +26,7 @@ interface Props {
   /** Called with the tasks a move changed. */
   onMoved: (tasks: Task[]) => void;
   onDeleted: (ids: number[]) => void;
-  onOpenTask: (id: number) => void;
+  onOpenTask: (id: number, next?: NextMode) => void;
 }
 
 /** Above the pop-up itself, so its bulk bar can be reached. */

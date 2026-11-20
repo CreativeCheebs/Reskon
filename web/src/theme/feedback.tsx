@@ -1,5 +1,6 @@
-import { App, message as staticMessage, Modal as StaticModal } from "antd";
+import { App, message as staticMessage, Modal as StaticModal, notification as staticNotification } from "antd";
 import type { MessageInstance } from "antd/es/message/interface";
+import type { NotificationInstance } from "antd/es/notification/interface";
 import type { HookAPI } from "antd/es/modal/useModal";
 
 // Ant's static message() and Modal.confirm() render outside the theme (white
@@ -9,6 +10,7 @@ import type { HookAPI } from "antd/es/modal/useModal";
 let msg: MessageInstance = staticMessage;
 // Until the bridge mounts (a split second at start-up) fall back to the
 // unthemed static versions.
+let note: NotificationInstance = staticNotification;
 let modal: { confirm: (props: Parameters<HookAPI["confirm"]>[0]) => { destroy: () => void } } = { confirm: StaticModal.confirm };
 
 export const message: Pick<MessageInstance, "success" | "error" | "info" | "warning"> = {
@@ -32,12 +34,18 @@ export async function autosave<T>(work: Promise<T>): Promise<T> {
   }
 }
 
+/** A small note with buttons in a corner, gone after `seconds` or when
+ *  closed with closeNote(key). Never stops what the person is doing. */
+export const notify = (props: Parameters<NotificationInstance["open"]>[0]) => note.open(props);
+export const closeNote = (key: string) => note.destroy(key);
+
 // Returns a handle whose destroy() closes the dialog (for custom buttons).
 export const confirm = (props: Parameters<HookAPI["confirm"]>[0]) => modal.confirm(props);
 
 export function FeedbackBridge() {
   const app = App.useApp();
   msg = app.message;
+  note = app.notification;
   modal = app.modal;
   return null;
 }

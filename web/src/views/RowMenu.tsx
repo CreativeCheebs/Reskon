@@ -3,6 +3,7 @@ import { Dropdown, Modal } from "antd";
 import { NoteEditor, useCardActions, type CardHandlers } from "../board/CardActions";
 import { SessionModal } from "../sessions/SessionModal";
 import type { Task } from "../types";
+import { TaskTitle, titleText } from "../task/RoundTag";
 
 // The right-click menu of a table row: the same actions, in the same order,
 // as the right-click menu of a board card. Settings > Card actions chooses
@@ -49,8 +50,8 @@ export function RowMenu({
         }}
         popupRender={(menu) => (
           <div className="jb-menu-panel">
-            <div className="jb-menu-head" title={task.title}>
-              {task.title}
+            <div className="jb-menu-head" title={titleText(task)}>
+              <TaskTitle task={task} />
             </div>
             {menu}
           </div>

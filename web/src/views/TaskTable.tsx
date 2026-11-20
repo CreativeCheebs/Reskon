@@ -7,6 +7,8 @@ import { formatAge, formatHours } from "../format";
 import { palette } from "../theme/palette";
 import { Lozenge } from "../theme/Lozenge";
 import type { CardConfig, GroupBy, Task } from "../types";
+import type { NextMode } from "../task/nextTask";
+import { TaskTitle } from "../task/RoundTag";
 import { TypeIcon } from "../task/TypeIcon";
 import { DifficultyIcon, PriorityIcon } from "../task/LevelIcons";
 import { useEpics } from "../task/useEpics";
@@ -47,7 +49,7 @@ export function TaskTable({
   groupBy?: GroupBy;
   /** Names this table for its saved column widths, e.g. "view:3". */
   widthsKey: string;
-  onOpenTask: (id: number) => void;
+  onOpenTask: (id: number, next?: NextMode) => void;
   /** Turns on row selection, the status button and the right-click menu;
    *  called with the tasks a move changed. */
   onMoved?: (tasks: Task[]) => void;
@@ -90,7 +92,7 @@ export function TaskTable({
             {title} <span style={{ color: palette.muted, fontSize: 11 }}>{t.epic_done}/{t.epic_tasks} done</span>
           </span>
         ) : (
-          title
+          <TaskTitle task={t} />
         ),
     },
   ];

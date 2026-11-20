@@ -29,6 +29,7 @@ import { lookOf, ViewLookSettings, type ViewLook } from "./ViewLookSettings";
 import { Toolbar, ToolbarGroup } from "../theme/Toolbar";
 import { LoadingDots, SimilarTasksList, useSimilarTasks } from "../task/SimilarTasks";
 import { useTerms } from "../terms";
+import type { NextMode } from "../task/nextTask";
 
 // Loads a view's tasks (the server resolves the filter and the search) and
 // renders the board or the table, plus the overlays that hang off it.
@@ -46,6 +47,13 @@ export function ViewScreen({ view }: { view: View }) {
   const [blockedOpen, setBlockedOpen] = useState(false);
   const [incompleteOpen, setIncompleteOpen] = useState(false);
   const [openTask, setOpenTask] = useState<number | null>(null);
+  // Opened from a card's Continue or Next round: the panel's "What's next?" box too.
+  const [openNext, setOpenNext] = useState<{ mode: NextMode }>();
+  // Stable, so the memoised board does not redraw for it.
+  const openTaskWith = useCallback((id: number, next?: NextMode) => {
+    setOpenTask(id);
+    setOpenNext(next ? { mode: next } : undefined);
+  }, []);
   const panelChanged = useRef(false); // refetch on close only if the open task changed
   const [drawer, setDrawer] = useState<"filter" | "card" | "look" | null>(null);
   const [preview, setPreview] = useState<ViewLook | null>(null); // while the look drawer is open
@@ -373,17 +381,17 @@ export function ViewScreen({ view }: { view: View }) {
             tasks={shown}
             zoom={view.board_state?.timeline_zoom ?? "months"}
             onZoom={(z) => save({ board_state: { timeline_zoom: z } })}
-            onOpenTask={setOpenTask}
+            onOpenTask={openTaskWith}
           />
         ) : view.layout === "board" ? (
-          <Board view={view} tasks={shown} setTasks={update} refetch={refetch} onOpenTask={setOpenTask} />
+          <Board view={view} tasks={shown} setTasks={update} refetch={refetch} onOpenTask={openTaskWith} />
         ) : (
           <TaskTable
             tasks={shown}
             config={cardConfigOf(view)}
             groupBy={groupBy}
             widthsKey={`view:${view.id}`}
-            onOpenTask={setOpenTask}
+            onOpenTask={openTaskWith}
             onMoved={moved}
             onDeleted={deleted}
           />
@@ -399,26 +407,28 @@ export function ViewScreen({ view }: { view: View }) {
           onClose={() => setHiddenStatus(null)}
           onMoved={moved}
           onDeleted={deleted}
-          onOpenTask={setOpenTask}
+          onOpenTask={openTaskWith}
         />
       )}
-      {shown && incompleteOpen && <IncompleteOverlay tasks={shown} onClose={() => setIncompleteOpen(false)} onOpenTask={setOpenTask} />}
+      {shown && incompleteOpen && <IncompleteOverlay tasks={shown} onClose={() => setIncompleteOpen(false)} onOpenTask={openTaskWith} />}
       {awake && blockedOpen && (
         <BlockedOverlay
           tasks={awake}
           hidden={hideBlocked}
           onHidden={(hide) => save({ board_state: { hide_blocked: hide } })}
           onClose={() => setBlockedOpen(false)}
-          onOpenTask={setOpenTask}
+          onOpenTask={openTaskWith}
         />
       )}
-      {tasks && snoozedOpen && <SnoozedOverlay tasks={tasks} onClose={() => setSnoozedOpen(false)} onChanged={replace} onOpenTask={setOpenTask} />}
+      {tasks && snoozedOpen && <SnoozedOverlay tasks={tasks} onClose={() => setSnoozedOpen(false)} onChanged={replace} onOpenTask={openTaskWith} />}
       {openTask !== null && (
         <TaskPanel
           taskId={openTask}
           initial={tasks?.find((t) => t.id === openTask)}
+          openNext={openNext}
           onClose={() => {
             setOpenTask(null);
+            setOpenNext(undefined);
             // An edit may have taken the task out of this view's filter, or
             // changed an epic's progress.
             if (panelChanged.current) {

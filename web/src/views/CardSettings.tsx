@@ -96,4 +96,5 @@ const SAMPLE: Task = {
   started_age_h: 30, time_in_status_h: 20, stalled: false, points: 4, logged_h: 1.5, logged_total_h: 1.5, progress_pct: 50, remaining_h: 1.5, days_to_due: 2, pace_h: 0.5, snoozed: false, missing: [],
   subtypes: ["coding"], epic_tasks: null, epic_done: null, epic_estimate_h: null, epic_logged_h: null,
   subtask_count: 0, subtask_done: 0, blocked: false, blocked_by: [], blocks: [],
+  follows_id: null, round_of: null, round_no: null, round_kind: null, follows: null, followed_by: [], rounds: [],
 };

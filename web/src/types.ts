@@ -238,6 +238,13 @@ export interface Task {
   parent_id: number | null;
   /** Hidden while an open task blocks it; set only by POST /tasks/:id/snooze. */
   snooze_until_unblocked: boolean;
+  /** The task this one continues; set only by POST /tasks/:id/continue. */
+  follows_id: number | null;
+  /** Rounds (SPEC 4.17): the first round of its series, its number (never
+   *  changed) and whether the series counts rounds (#3) or versions (v3). */
+  round_of: number | null;
+  round_no: number | null;
+  round_kind: RoundKind | null;
   board_pos: number;
   custom: Record<string, unknown>;
   created_at: string;
@@ -277,6 +284,25 @@ export interface Task {
   blocked: boolean;
   blocked_by: LinkedTask[];
   blocks: LinkedTask[];
+  /** The task this one continues ("comes after"), and the tasks that continue it ("next"). */
+  follows: LinkedTask | null;
+  followed_by: LinkedTask[];
+  /** Every round of its series, oldest first; filled only by GET /tasks/:id. */
+  rounds: Round[];
+}
+
+export type RoundKind = "round" | "version";
+
+/** One round of a series, as the task panel lists it. */
+export interface Round {
+  id: number;
+  key: string;
+  title: string;
+  no: number;
+  behaviour: Behaviour;
+  completed_at: string | null;
+  logged_h: number;
+  points: number;
 }
 
 /** The other end of a dependency link. */

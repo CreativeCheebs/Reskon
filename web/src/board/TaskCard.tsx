@@ -5,6 +5,7 @@ import { Chip } from "../theme/Chip";
 import { Lozenge } from "../theme/Lozenge";
 import { levelName, type CardConfig, type Task } from "../types";
 import { TypeIcon } from "../task/TypeIcon";
+import { TaskTitle } from "../task/RoundTag";
 import { DifficultyIcon, PriorityIcon, priorityColor } from "../task/LevelIcons";
 import { useEpics } from "../task/useEpics";
 import { paceChip, TimeBar } from "../task/TimeBar";
@@ -175,7 +176,7 @@ export function TaskCard({
           <TypeIcon type={task.type} />
         </span>
         <span style={{ flex: 1, minWidth: 0, fontSize: 14, lineHeight: "19px", fontWeight: 600, color: palette.fg, overflowWrap: "anywhere" }}>
-          {task.title}
+          <TaskTitle task={task} />
         </span>
       </div>
       {labels.length > 0 && <div style={row}>{labels}</div>}

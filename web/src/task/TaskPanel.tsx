@@ -24,6 +24,11 @@ import { TimeBar } from "./TimeBar";
 import { SnoozeButton } from "./SnoozeButton";
 import { fieldLabel } from "./completeness";
 import { useTerms } from "../terms";
+import { RoundTag } from "./RoundTag";
+import { NextButton, WhatsNext } from "./WhatsNext";
+import { Chain } from "./Chain";
+import { Rounds } from "./Rounds";
+import type { NextMode } from "./nextTask";
 
 // The task panel: the only place the task key is shown. Every edit is a
 // PATCH carrying the updated_at last seen; status changes go through /move.
@@ -35,9 +40,12 @@ interface Props {
   onClose: () => void;
   onChanged: (t: Task) => void;
   onDeleted: (id: number) => void;
+  /** Open with the "What's next?" box showing this form. A new object each
+   *  time, so asking again for the same form opens it again. */
+  openNext?: { mode: NextMode };
 }
 
-export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Props) {
+export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted, openNext }: Props) {
   const { boot, online, reloadKey } = useApp();
   const { namesOf, refreshIfNew } = useTags();
   const T = useTerms();
@@ -95,7 +103,16 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
   // this panel.
   const [child, setChild] = useState<number | null>(null);
   const [childVersion, setChildVersion] = useState(0);
+  const [childNext, setChildNext] = useState<{ mode: NextMode }>();
+  const openChild = (id: number, mode?: NextMode) => {
+    setChild(id);
+    setChildNext(mode ? { mode } : undefined);
+  };
   const childChanged = useRef(false);
+  // The "What's next?" box (SPEC 4.17): opened by moving the task into a
+  // done status here, or asked for by the caller or the Next button.
+  const [next, setNext] = useState<NextMode | null>(openNext?.mode ?? null);
+  useEffect(() => setNext(openNext?.mode ?? null), [taskId, openNext]);
   useEffect(() => {
     const t = window.setTimeout(() => setRest(true), 0);
     return () => window.clearTimeout(t);
@@ -150,8 +167,12 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
 
   const move = async (status_id: number) => {
     if (!task) return;
+    const wasDone = task.behaviour === "done";
     try {
-      apply(await api.post<Task>(`/tasks/${task.id}/move`, { status_id, today: today() }));
+      const moved = await api.post<Task>(`/tasks/${task.id}/move`, { status_id, today: today() });
+      apply(moved);
+      // Into a done status (never cancelled): ask what comes next.
+      if (moved.behaviour === "done" && !wasDone) setNext("continue");
     } catch (e) {
       message.error((e as Error).message);
     }
@@ -181,6 +202,7 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
       extra={
         task && (
           <Space size={8}>
+            <NextButton task={task} disabled={ro} onPick={setNext} />
             <SnoozeButton task={task} onChanged={apply} />
             <WriteButton danger size="small" onClick={remove}>
               Delete
@@ -201,6 +223,7 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
             onChange={(e) => setTitle(e.target.value)}
             onBlur={() => title.trim() && title !== task.title && patch({ title: title.trim() })}
             onPressEnter={(e) => (e.target as HTMLInputElement).blur()}
+            suffix={<RoundTag no={task.round_no} kind={task.round_kind} />}
           />
           <Descriptions title="Details" column={1} size="small" colon={false} labelStyle={{ color: palette.muted, width: 90 }}>
             <Descriptions.Item label="Type">
@@ -264,6 +287,21 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
             <Descriptions.Item label="Status">
               <Select size="small" style={{ width: 150 }} disabled={ro} value={task.status_id} onChange={move} options={opt(boot.statuses)} />
             </Descriptions.Item>
+            {next && (
+              <Descriptions.Item label="" span={1}>
+                <WhatsNext
+                  key={`${task.id}:${next}`}
+                  task={task}
+                  mode={next}
+                  onClose={() => setNext(null)}
+                  onMade={(_, epic) => {
+                    load(true);
+                    if (epic === "new") refreshEpics();
+                  }}
+                  onOpenTask={openChild}
+                />
+              </Descriptions.Item>
+            )}
             <Descriptions.Item label="Area">
               <Select size="small" style={{ width: 150 }} disabled={ro} value={task.area_id} onChange={(v) => patch({ area_id: v })} options={opt(boot.areas)} />
             </Descriptions.Item>
@@ -367,11 +405,13 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
             onBlur={() => desc !== (task.description ?? "") && patch({ description: desc })}
           />
 
-          {rest && task.type === "epic" && <EpicTasks epic={task} version={childVersion} onOpenTask={setChild} />}
+          {rest && task.type === "epic" && <EpicTasks epic={task} version={childVersion} onOpenTask={openChild} />}
           {rest && task.type === "task" && !task.parent_id && (
-            <Subtasks parent={task} version={childVersion} onOpenTask={setChild} onChanged={() => load(true)} />
+            <Subtasks parent={task} version={childVersion} onOpenTask={openChild} onChanged={() => load(true)} />
           )}
           {rest && <Dependencies task={task} onOpenTask={setChild} onChanged={() => load(true)} />}
+          {rest && <Chain task={task} onOpenTask={openChild} />}
+          {rest && <Rounds task={task} onOpenTask={openChild} onChanged={() => load(true)} />}
           {rest && (
             <>
               <TaskExtras task={task} patch={patch} onTaskChanged={() => load(true)} />
@@ -405,6 +445,7 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted }: Pr
       {child !== null && (
         <TaskPanel
           taskId={child}
+          openNext={childNext}
           onClose={() => {
             setChild(null);
             // A task's time or status feeds the epic's totals.

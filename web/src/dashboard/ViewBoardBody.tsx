@@ -9,6 +9,7 @@ import { TaskPanel } from "../task/TaskPanel";
 import { DEFAULT_SHOW } from "../views/cardConfig";
 import { useTerms } from "../terms";
 import type { CardConfig, Task, View } from "../types";
+import type { NextMode } from "../task/nextTask";
 import { openColumns, type OpenColumn } from "./boardColumns";
 
 // A board widget's body: the view's open tasks as small columns of the
@@ -44,7 +45,14 @@ export function ViewBoardBody({ view, tasks, editing, refetch }: { view: View; t
   const [open, setOpen] = useState<number | null>(null);
   const changed = useRef(false);
   // While editing the layout a click must not open a panel: the widget is for dragging.
-  const onOpen = editing ? undefined : setOpen;
+  // Opened from a card's Continue or Next round: the panel's "What's next?" box too.
+  const [openNext, setOpenNext] = useState<{ mode: NextMode }>();
+  const onOpen = editing
+    ? undefined
+    : (id: number, next?: NextMode) => {
+        setOpen(id);
+        setOpenNext(next ? { mode: next } : undefined);
+      };
   const nothing = columns.length === 0 || columns.every((c) => c.count === 0);
 
   // The panel is drawn whatever the columns hold: a live reload that empties
@@ -68,9 +76,11 @@ export function ViewBoardBody({ view, tasks, editing, refetch }: { view: View; t
       {open !== null && (
         <TaskPanel
           taskId={open}
+          openNext={openNext}
           initial={tasks.find((t) => t.id === open)}
           onClose={() => {
             setOpen(null);
+            setOpenNext(undefined);
             // An edit may have moved the task on, or out of the view.
             if (changed.current) {
               changed.current = false;
@@ -94,7 +104,7 @@ function Column({
 }: {
   column: OpenColumn;
   viewId: number;
-  onOpen?: (id: number) => void;
+  onOpen?: (id: number, next?: NextMode) => void;
   editing: boolean;
   refetch: () => void;
 }) {
@@ -156,8 +166,8 @@ function Column({
  *  (the server decides where the task belongs now). While the dashboard
  *  layout is edited there are no actions and nothing opens, since the widget
  *  is for dragging then. Cards do not drag between columns here. */
-function WidgetCard({ task, onOpen, editing, refetch }: { task: Task; onOpen?: (id: number) => void; editing: boolean; refetch: () => void }) {
-  const actions = useCardActions(task, { onOpen: (id) => onOpen?.(id), onChanged: () => refetch(), onDeleted: () => refetch() });
+function WidgetCard({ task, onOpen, editing, refetch }: { task: Task; onOpen?: (id: number, next?: NextMode) => void; editing: boolean; refetch: () => void }) {
+  const actions = useCardActions(task, { onOpen: (id, next) => onOpen?.(id, next), onChanged: () => refetch(), onDeleted: () => refetch() });
   const pinned = !editing && actions.pinned;
   // The card's open area is its own button; the quick-action rail is its
   // sibling, so no button sits inside another.

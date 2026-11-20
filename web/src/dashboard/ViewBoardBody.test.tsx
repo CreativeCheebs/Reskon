@@ -79,9 +79,10 @@ vi.mock("../sessions/SessionModal", () => ({
   ),
 }));
 vi.mock("../task/TaskPanel", () => ({
-  TaskPanel: ({ taskId, onClose, onChanged }: { taskId: number; onClose: () => void; onChanged: (t: unknown) => void }) => (
+  TaskPanel: ({ taskId, onClose, onChanged, openNext }: { taskId: number; onClose: () => void; onChanged: (t: unknown) => void; openNext?: { mode: string } }) => (
     <div role="dialog">
       panel {taskId}
+      {openNext && ` next ${openNext.mode}`}
       <button onClick={() => onChanged({})}>change it</button>
       <button onClick={onClose}>close it</button>
     </div>
@@ -205,9 +206,17 @@ describe("ViewBoardBody", () => {
       fireEvent.contextMenu(cardOne());
       const menu = await screen.findByRole("menu");
       const items = within(menu).getAllByRole("menuitem").map((i) => i.textContent);
-      expect(items).toEqual(["Log time", "Snooze", "Edit description", "Move to", "Open task", "Delete"]);
+      expect(items).toEqual(["Log time", "Snooze", "Edit description", "Move to", "Open task", "Continue with a new task…", "Start next round", "Delete"]);
       fireEvent.click(within(menu).getByText("Open task"));
       expect(screen.getByRole("dialog").textContent).toContain("panel 1");
+    });
+
+    it("Start next round in the right-click menu opens the panel with the What's next box", async () => {
+      render(<ViewBoardBody view={view()} tasks={one} editing={false} refetch={() => undefined} />);
+      fireEvent.contextMenu(cardOne());
+      const menu = await screen.findByRole("menu");
+      fireEvent.click(within(menu).getByText("Start next round"));
+      expect(screen.getByRole("dialog").textContent).toContain("panel 1 next round");
     });
 
     it("moves a task from Move to with the move call, then reloads", async () => {

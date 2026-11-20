@@ -20,6 +20,9 @@ import { api } from "../api";
 import { useApp } from "../store";
 import { cardConfigOf } from "../views/cardConfig";
 import type { ColumnLimit, Status, Task, View } from "../types";
+import type { NextMode } from "../task/nextTask";
+import { titleText } from "../task/RoundTag";
+import { showDoneNote } from "./doneNote";
 import { confirm } from "../theme/feedback";
 import { formatLimit, limitWeight } from "./limits";
 import { today } from "../format";
@@ -63,13 +66,13 @@ interface Props {
   createDefaults: Record<string, unknown>;
   setTasks: (fn: (prev: Task[]) => Task[]) => void;
   refetch: () => void;
-  onOpenTask: (id: number) => void;
+  onOpenTask: (id: number, next?: NextMode) => void;
 }
 
 export function Lane(props: Props) {
   const { view, tasks, boardStatuses, collapsed, onToggleCollapse, limits, onSetLimit, inLane, createDefaults, setTasks, refetch, onOpenTask } =
     props;
-  const { online, boot } = useApp();
+  const { online, boot, behaviourOf } = useApp();
   const T = useTerms();
   const config = useMemo(() => cardConfigOf(view), [view]);
   const sort = view.board_state?.sort ?? "manual";
@@ -125,7 +128,10 @@ export function Lane(props: Props) {
 
   // What a screen reader says while a card is moved with the keyboard. Without
   // this it would read internal ids ("col-3") instead of titles and statuses.
-  const titleOf = (id: string | number) => byId.get(Number(id))?.title ?? `the ${T.task}`;
+  const titleOf = (id: string | number) => {
+    const t = byId.get(Number(id));
+    return t ? titleText(t) : `the ${T.task}`;
+  };
   const placeOf = (id: string | number) => boardStatuses.find((st) => st.id === containerOf(id))?.name ?? "the board";
   const announcements: Announcements = {
     onDragStart: ({ active }) => `Picked up ${titleOf(active.id)}.`,
@@ -248,6 +254,9 @@ export function Lane(props: Props) {
   const sentStatus = useRef(new Map<number, number>());
   const send = (taskId: number, body: { status_id: number; before_id: number | null; after_id: number | null }) => {
     const n = ++moveSeq.current;
+    // The status it leaves, to tell a move into done from a reorder inside it.
+    const fromStatus = sentStatus.current.get(taskId) ?? byId.get(taskId)?.status_id;
+    const wasDone = fromStatus !== undefined && behaviourOf(fromStatus) === "done";
     lastMove.current.set(taskId, n);
     pending.current.set(taskId, (pending.current.get(taskId) ?? 0) + 1);
     sentStatus.current.set(taskId, body.status_id);
@@ -257,7 +266,12 @@ export function Lane(props: Props) {
         const reply = api.post<Task & { column_renumbered?: boolean }>(`/tasks/${taskId}/move`, { ...body, today: today() });
         const timeout = new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error("The move took too long; the board was reloaded.")), 15_000));
         const { column_renumbered, ...updated } = await Promise.race([reply, timeout]);
-        if (lastMove.current.get(taskId) === n) setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+        if (lastMove.current.get(taskId) === n) {
+          setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+          // Into a done column (never cancelled): offer what comes next.
+          if (updated.behaviour === "done" && !wasDone)
+            showDoneNote(updated, boot.statuses.find((s) => s.id === updated.status_id)?.name ?? "Done", onOpenTask);
+        }
         // The server made room by renumbering the column: reload the others.
         if (column_renumbered) refetch();
       } catch (err) {

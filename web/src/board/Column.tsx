@@ -7,6 +7,7 @@ import { useApp } from "../store";
 import { blend, palette, readable } from "../theme/palette";
 import { columnBg, columnBorder } from "./columnStyle";
 import type { CardConfig, ColumnLimit, Status, Task, View } from "../types";
+import type { NextMode } from "../task/nextTask";
 import { ColumnLimitControl } from "./ColumnLimitControl";
 import { DoneWindow } from "./DoneWindow";
 import { TaskCard } from "./TaskCard";
@@ -31,7 +32,7 @@ interface Props {
   /** In swimlanes, columns size to their cards instead of filling the screen. */
   inLane: boolean;
   createDefaults: Record<string, unknown>;
-  onOpenTask: (id: number) => void;
+  onOpenTask: (id: number, next?: NextMode) => void;
   onCreated: (t: Task) => void;
   /** A card's quick action changed or deleted its task. */
   onTaskChanged: (t: Task) => void;
