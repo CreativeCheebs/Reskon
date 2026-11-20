@@ -232,6 +232,21 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted, open
               styles: { input: { fontSize: 20, fontWeight: 600, padding: 0, fieldSizing: "content", minWidth: 40 } as React.CSSProperties },
             })}
           />
+          {/* What's next? sits under the title, apart from the details. */}
+          {next && (
+            <WhatsNext
+              key={`${task.id}:${next.n}`}
+              task={task}
+              mode={next.mode}
+              onClose={() => setNext(null)}
+              onMade={(_, epic) => {
+                load(true);
+                // A new epic: one made for both, or the next one of an epic.
+                if (epic === "new" || task.type === "epic") refreshEpics();
+              }}
+              onOpenTask={openChild}
+            />
+          )}
           <Descriptions title="Details" column={1} size="small" colon={false} labelStyle={{ color: palette.muted, width: 90 }}>
             <Descriptions.Item label="Type">
               <Select
@@ -294,22 +309,6 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted, open
             <Descriptions.Item label="Status">
               <Select size="small" style={{ width: 150 }} disabled={ro} value={task.status_id} onChange={move} options={opt(boot.statuses)} />
             </Descriptions.Item>
-            {next && (
-              <Descriptions.Item label="" span={1}>
-                <WhatsNext
-                  key={`${task.id}:${next.n}`}
-                  task={task}
-                  mode={next.mode}
-                  onClose={() => setNext(null)}
-                  onMade={(_, epic) => {
-                    load(true);
-                    // A new epic: one made for both, or the next one of an epic.
-                    if (epic === "new" || task.type === "epic") refreshEpics();
-                  }}
-                  onOpenTask={openChild}
-                />
-              </Descriptions.Item>
-            )}
             <Descriptions.Item label="Area">
               <Select size="small" style={{ width: 150 }} disabled={ro} value={task.area_id} onChange={(v) => patch({ area_id: v })} options={opt(boot.areas)} />
             </Descriptions.Item>

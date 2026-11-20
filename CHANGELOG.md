@@ -2,6 +2,10 @@
 
 What changed in each version of Reskon, newest first: one line per change, in plain words. Versions before 0.6.6 are in the git history (commits called "Version x.y.z: ...").
 
+## 0.7.2 (20 Nov 2026)
+
+- Changed: the "What's next?" box now sits at the top of the task panel, under the title, instead of in the middle of the details.
+
 ## 0.7.1 (20 Nov 2026)
 
 - Changed: the "What's next?" box in the task panel is about half as tall: the title and its Create button share a line, the epic is one drop-down, and what to copy over is one row of buttons.

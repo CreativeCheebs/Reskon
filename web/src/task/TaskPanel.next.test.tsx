@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { Task } from "../types";
 
 // Moving a task into a done status in the task panel opens the "What's
-// next?" box under the status (SPEC 4.17); a cancelled status does not.
+// next?" box under the title (SPEC 4.17); a cancelled status does not.
 // Whether a status is done comes from the server's answer, never its name.
 const task = { id: 5, key: "PER-5", title: "Write it", type: "task", description: null, area_id: 7, status_id: 1, priority_id: null, energy_type_id: null, difficulty: null, epic_id: null, updated_at: "t1", tag_ids: [], behaviour: "todo", missing: [], blocked: false, snoozed: false, tags: [] } as unknown as Task;
 const get = vi.fn(async (_p: string): Promise<unknown> => task);

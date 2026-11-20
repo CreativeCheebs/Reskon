@@ -13,7 +13,7 @@ import { intervalLabel, snoozeIntervals } from "./snoozeIntervals";
 
 // The "What's next?" box in the task panel (SPEC 4.17): Continue (a new,
 // different task that comes after this one), Next round (the same task
-// again) or Nothing. It opens under the status after the task is moved to a
+// again) or Skip. It opens under the panel title after the task is moved to a
 // done status, or from the panel's and the card's actions at any time.
 
 interface Props {
