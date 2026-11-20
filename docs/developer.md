@@ -76,7 +76,7 @@ Reskon has one version number, `major.minor.patch` (for example `0.2.0`), writte
 
 Next to the version is the day it was last updated, `Updated` in `internal/version/version.go` (year-month-day, for example `2026-11-13`). Set it to today whenever you send a build to the test or live server, even if the number did not change. Settings › About shows it as "Updated 13 Nov 2026", and `GET /api/health` returns it.
 
-To release a new version: change the number in three places that must agree, `VERSION`, `internal/version/version.go` and `web/package.json` (a test fails if they differ), commit, and tag the commit `v<version>` (`git tag v0.2.0`). Raise the middle number when the app gains something people will notice, and the last one for fixes only.
+To release a new version: change the number in three places that must agree, `VERSION`, `internal/version/version.go` and `web/package.json` (a test fails if they differ), add what changed to `CHANGELOG.md`, commit, and tag the commit `v<version>` (`git tag v0.2.0`). Raise the middle number when the app gains something people will notice, and the last one for fixes only.
 
 ## Themes
 
