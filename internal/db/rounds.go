@@ -76,7 +76,7 @@ func (d *DB) NextRound(ctx context.Context, id int64, in RoundInput) (*Task, err
 			return err
 		}
 
-		f := Fields{"title": mustJSON(src.Title), "area_id": mustJSON(src.AreaID), "custom": src.Custom}
+		f := Fields{"title": mustJSON(src.Title), "area_id": mustJSON(src.AreaID)}
 		if in.Today != "" {
 			f["today"] = mustJSON(in.Today)
 		}
@@ -101,8 +101,10 @@ func (d *DB) NextRound(ctx context.Context, id int64, in RoundInput) (*Task, err
 		if newID, err = d.createTaskTx(ctx, tx, f); err != nil {
 			return err
 		}
-		_, err = tx.ExecContext(ctx, `UPDATE task SET round_of = ?, round_no = ?, round_kind = ? WHERE id = ?`,
-			series, top.Int64+1, kind, newID)
+		// Custom values are copied as stored: a field option removed since
+		// must not stop the next round.
+		_, err = tx.ExecContext(ctx, `UPDATE task SET round_of = ?, round_no = ?, round_kind = ?, custom = ? WHERE id = ?`,
+			series, top.Int64+1, kind, string(src.Custom), newID)
 		return err
 	})
 	if err != nil {

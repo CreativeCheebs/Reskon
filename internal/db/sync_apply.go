@@ -80,6 +80,12 @@ type applier struct {
 	renumbered string
 }
 
+// taskRefLater: a task's reference to another task, which may arrive later
+// in the same batch (tasks are not sorted among themselves).
+func taskRefLater(t *syncTable, col string) bool {
+	return t.name == "task" && (col == "epic_id" || col == "parent_id" || col == "follows_id" || col == "round_of")
+}
+
 type laterRef struct {
 	task     int64
 	col, uid string
@@ -206,7 +212,7 @@ func (a *applier) insert(t *syncTable, r SyncRow) error {
 		}
 		lv, ok := a.local(t, c, v)
 		if !ok {
-			if uid, isUID := v.(string); isUID && t.name == "task" && (c == "epic_id" || c == "parent_id" || c == "follows_id" || c == "round_of") {
+			if uid, isUID := v.(string); isUID && taskRefLater(t, c) {
 				pend = append(pend, [2]string{c, uid})
 			}
 			lv = nil
@@ -332,6 +338,13 @@ func (a *applier) update(t *syncTable, r SyncRow, key string, local map[string]S
 			lv, ok := a.local(t, c, v)
 			if !ok {
 				lv = nil
+				// A task this batch has not inserted yet (a new epic, say):
+				// set it once every row is in, as insert does.
+				if uid, isUID := v.(string); isUID && taskRefLater(t, c) {
+					if id, err := strconv.ParseInt(key, 10, 64); err == nil {
+						a.later = append(a.later, laterRef{id, c, uid})
+					}
+				}
 			}
 			if _, err := a.tx.ExecContext(a.ctx, `UPDATE `+t.name+` SET `+c+` = ? WHERE `+keyCol+` = ?`, lv, key); err != nil {
 				// A constraint here: skip this field, the rest still applies, but say so.

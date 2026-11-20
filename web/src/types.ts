@@ -313,6 +313,8 @@ export interface LinkedTask {
   title: string;
   status_id: number;
   behaviour: Behaviour;
+  round_no?: number | null; // its round, if it has one (SPEC 4.17)
+  round_kind?: RoundKind | null;
 }
 
 export interface Transition {

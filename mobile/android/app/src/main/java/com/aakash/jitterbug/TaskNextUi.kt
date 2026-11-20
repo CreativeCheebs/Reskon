@@ -114,8 +114,7 @@ fun TaskChainSection(t: JSONObject) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 T(rel, Palette.muted, 14.sp, modifier = Modifier.width(96.dp))
-                // A link carries no round number, so its title is shown plain.
-                T(o.optString("title"), Palette.fg, 15.sp, modifier = Modifier.weight(1f), oneLine = true,
+                RoundTitle(o, Palette.fg, 15.sp, modifier = Modifier.weight(1f), oneLine = true,
                     strike = o.optString("behaviour") == "done")
                 Icon(Icons.right, Palette.subtle, 18)
             }

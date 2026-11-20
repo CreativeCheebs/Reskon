@@ -245,3 +245,116 @@ func TestContinueAndRoundsSync(t *testing.T) {
 		t.Errorf("round 1 on the phone: of %v no %v rounds %d", one.RoundOf, one.RoundNo, len(one.Rounds))
 	}
 }
+
+// The phone already has the old task; the server continues it into a new
+// epic. However the rows arrive, the phone ends with the old task in the
+// epic (an update naming a task not yet inserted is set after the batch).
+func TestContinueIntoNewEpicSyncsToAPhoneThatHasTheOldTask(t *testing.T) {
+	ctx := context.Background()
+	srv, phone := openTest(t), openTest(t)
+	a := mustArea(t, srv, "Home", "HOM")
+	old := mustTask(t, srv, a.ID, "Set up NVR")
+	syncOnce(t, phone, srv)
+	if _, err := srv.ContinueTask(ctx, old.ID, ContinueInput{Title: "Wire garage camera", Epic: "new"}); err != nil {
+		t.Fatal(err)
+	}
+	syncOnce(t, phone, srv)
+	pOld := taskByTitle(t, phone, "Set up NVR")
+	pNext := taskByTitle(t, phone, "Wire garage camera")
+	if pOld.EpicID == nil || pNext.EpicID == nil || *pOld.EpicID != *pNext.EpicID {
+		t.Fatalf("phone: old epic %v, next epic %v", pOld.EpicID, pNext.EpicID)
+	}
+
+	// The same through an update applied before its epic arrives: rows in
+	// the worst order, the old task's change first.
+	other := mustTask(t, srv, a.ID, "Buy cables")
+	syncOnce(t, phone, srv)
+	if _, err := srv.ContinueTask(ctx, other.ID, ContinueInput{Title: "Run cables", Epic: "new", EpicTitle: "Cabling"}); err != nil {
+		t.Fatal(err)
+	}
+	_, token, _, _ := phone.SyncState(ctx)
+	rows, _, err := srv.ExportSync(ctx, token, "", "", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	otherUID := mustUID(t, srv, "task", other.ID)
+	var first, rest []SyncRow
+	for _, r := range roundTrip(t, rows) {
+		if r.Table == "task" && r.UID == otherUID {
+			first = append(first, r)
+		} else {
+			rest = append(rest, r)
+		}
+	}
+	if len(first) != 1 {
+		t.Fatalf("old task row not in the batch: %d", len(first))
+	}
+	if err := phone.ApplySync(ctx, append(first, rest...), false); err != nil {
+		t.Fatal(err)
+	}
+	if got := taskByTitle(t, phone, "Buy cables"); got.EpicID == nil {
+		t.Error("old task lost its new epic when its update came first")
+	}
+}
+
+func TestContinueAndRoundsRefuseWithoutWriting(t *testing.T) {
+	d := openTest(t)
+	ctx := context.Background()
+	a := mustArea(t, d, "Home", "HOM")
+	epic := mustCreate(t, d, fmt.Sprintf(`{"title":"House","area_id":%d,"type":"epic"}`, a.ID))
+	inEpic := mustCreate(t, d, fmt.Sprintf(`{"title":"In epic","area_id":%d,"epic_id":%d}`, a.ID, epic.ID))
+	parent := mustTask(t, d, a.ID, "Parent")
+	sub := mustCreate(t, d, fmt.Sprintf(`{"title":"Sub","parent_id":%d}`, parent.ID))
+	before := count(t, d, "task")
+
+	for name, c := range map[string]struct {
+		id int64
+		in ContinueInput
+	}{
+		"new for a task in an epic": {inEpic.ID, ContinueInput{Title: "x", Epic: "new"}},
+		"pick without an epic":      {parent.ID, ContinueInput{Title: "x", Epic: "pick"}},
+		"unknown epic choice":       {parent.ID, ContinueInput{Title: "x", Epic: "maybe"}},
+		"new for a subtask":         {sub.ID, ContinueInput{Title: "x", Epic: "new"}},
+		"pick for a subtask":        {sub.ID, ContinueInput{Title: "x", Epic: "pick", EpicID: &epic.ID}},
+		"same with no epic":         {parent.ID, ContinueInput{Title: "x", Epic: "same"}},
+	} {
+		if _, err := d.ContinueTask(ctx, c.id, c.in); err == nil {
+			t.Errorf("%s: accepted", name)
+		}
+	}
+	if n := count(t, d, "task"); n != before {
+		t.Errorf("refused calls wrote tasks: %d, was %d", n, before)
+	}
+
+	// A round keeps its parent and its epic; it can't be turned into an epic.
+	rs, err := d.NextRound(ctx, sub.ID, RoundInput{})
+	if err != nil || rs.ParentID == nil || *rs.ParentID != parent.ID {
+		t.Errorf("subtask round: %v %+v", err, rs)
+	}
+	re, err := d.NextRound(ctx, inEpic.ID, RoundInput{})
+	if err != nil || re.EpicID == nil || *re.EpicID != epic.ID {
+		t.Fatalf("epic round: %v %+v", err, re)
+	}
+	if _, err := d.PatchTask(ctx, re.ID, fields(t, fmt.Sprintf(`{"type":"epic","epic_id":null,"updated_at":%q}`, re.UpdatedAt))); err == nil {
+		t.Error("a round became an epic")
+	}
+}
+
+// A custom value that today's field would refuse is copied as it is, so it
+// never blocks the next round.
+func TestNextRoundCopiesCustomValuesAsStored(t *testing.T) {
+	d := openTest(t)
+	ctx := context.Background()
+	a := mustArea(t, d, "Home", "HOM")
+	src := mustTask(t, d, a.ID, "Clean home")
+	if _, err := d.ExecContext(ctx, `UPDATE task SET custom = '{"cadence":"weekly-gone"}' WHERE id = ?`, src.ID); err != nil {
+		t.Fatal(err)
+	}
+	r2, err := d.NextRound(ctx, src.ID, RoundInput{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(r2.Custom) != `{"cadence":"weekly-gone"}` {
+		t.Errorf("custom = %s", r2.Custom)
+	}
+}

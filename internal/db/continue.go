@@ -202,12 +202,12 @@ func taskTagNames(ctx context.Context, q querier, id int64) ([]string, error) {
 // tasks that continue each one. Deleted tasks are left out.
 func (d *DB) chainOf(ctx context.Context, ids []any, in string) (follows map[int64]*LinkedTask, followedBy map[int64][]LinkedTask, err error) {
 	follows, followedBy = map[int64]*LinkedTask{}, map[int64][]LinkedTask{}
-	const cols = `o.id, o.key, o.title, o.status_id, c.behaviour FROM task t JOIN task o ON %s AND o.deleted_at IS NULL
+	const cols = `o.id, o.key, o.title, o.status_id, c.behaviour, o.round_no, o.round_kind FROM task t JOIN task o ON %s AND o.deleted_at IS NULL
 		JOIN status s ON s.id = o.status_id JOIN status_category c ON c.id = s.category_id`
 	err = scanInto(ctx, d, `SELECT t.id, `+fmt.Sprintf(cols, "o.id = t.follows_id")+` WHERE t.id IN (`+in+`)`, func(r *sql.Rows) error {
 		var id int64
 		var lt LinkedTask
-		err := r.Scan(&id, &lt.ID, &lt.Key, &lt.Title, &lt.StatusID, &lt.Behaviour)
+		err := r.Scan(&id, &lt.ID, &lt.Key, &lt.Title, &lt.StatusID, &lt.Behaviour, &lt.RoundNo, &lt.RoundKind)
 		follows[id] = &lt
 		return err
 	}, ids...)
@@ -217,7 +217,7 @@ func (d *DB) chainOf(ctx context.Context, ids []any, in string) (follows map[int
 	err = scanInto(ctx, d, `SELECT t.id, `+fmt.Sprintf(cols, "o.follows_id = t.id")+` WHERE t.id IN (`+in+`) ORDER BY o.id`, func(r *sql.Rows) error {
 		var id int64
 		var lt LinkedTask
-		err := r.Scan(&id, &lt.ID, &lt.Key, &lt.Title, &lt.StatusID, &lt.Behaviour)
+		err := r.Scan(&id, &lt.ID, &lt.Key, &lt.Title, &lt.StatusID, &lt.Behaviour, &lt.RoundNo, &lt.RoundKind)
 		followedBy[id] = append(followedBy[id], lt)
 		return err
 	}, ids...)

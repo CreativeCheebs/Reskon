@@ -12,12 +12,14 @@ import (
 
 // LinkedTask is the other end of a link, as a task panel lists it.
 type LinkedTask struct {
-	LinkID    int64  `json:"link_id"`
-	ID        int64  `json:"id"`
-	Key       string `json:"key"`
-	Title     string `json:"title"`
-	StatusID  int64  `json:"status_id"`
-	Behaviour string `json:"behaviour"`
+	LinkID    int64   `json:"link_id"`
+	ID        int64   `json:"id"`
+	Key       string  `json:"key"`
+	Title     string  `json:"title"`
+	StatusID  int64   `json:"status_id"`
+	Behaviour string  `json:"behaviour"`
+	RoundNo   *int64  `json:"round_no"`   // its round, if it has one (see rounds.go)
+	RoundKind *string `json:"round_kind"` // "round" or "version"
 }
 
 func openBehaviour(b string) bool { return b != "done" && b != "cancelled" }
@@ -124,14 +126,14 @@ func releaseUnblocked(ctx context.Context, tx *sql.Tx) error {
 func (d *DB) linksOf(ctx context.Context, ids []any, in string) (blockedBy, blocks map[int64][]LinkedTask, err error) {
 	blockedBy, blocks = map[int64][]LinkedTask{}, map[int64][]LinkedTask{}
 	query := func(mine, other string, into map[int64][]LinkedTask) error {
-		return scanInto(ctx, d, fmt.Sprintf(`SELECT l.%s, l.id, t.id, t.key, t.title, t.status_id, c.behaviour FROM task_link l
+		return scanInto(ctx, d, fmt.Sprintf(`SELECT l.%s, l.id, t.id, t.key, t.title, t.status_id, c.behaviour, t.round_no, t.round_kind FROM task_link l
 			JOIN task t ON t.id = l.%s AND t.deleted_at IS NULL
 			JOIN status s ON s.id = t.status_id
 			JOIN status_category c ON c.id = s.category_id
 			WHERE l.deleted_at IS NULL AND l.%s IN (%s) ORDER BY l.id`, mine, other, mine, in), func(r *sql.Rows) error {
 			var id int64
 			var lt LinkedTask
-			err := r.Scan(&id, &lt.LinkID, &lt.ID, &lt.Key, &lt.Title, &lt.StatusID, &lt.Behaviour)
+			err := r.Scan(&id, &lt.LinkID, &lt.ID, &lt.Key, &lt.Title, &lt.StatusID, &lt.Behaviour, &lt.RoundNo, &lt.RoundKind)
 			into[id] = append(into[id], lt)
 			return err
 		}, ids...)
