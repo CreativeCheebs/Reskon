@@ -25,7 +25,7 @@ const show = (t: Partial<Task>, mode: "continue" | "round" = "continue") => {
   return onMade;
 };
 const typeTitle = (text: string) => fireEvent.change(screen.getByLabelText("Next task title"), { target: { value: text } });
-const create = () => fireEvent.click(screen.getByRole("button", { name: "Create task" }));
+const create = () => fireEvent.click(screen.getByRole("button", { name: "Create next task" }));
 /** The shown value of the drop-down with this name. */
 const shown = (name: string) => screen.getByRole("combobox", { name }).closest(".ant-select")?.querySelector(".ant-select-selection-item")?.textContent;
 /** Opens the drop-down with this name and clicks the option with this text. */
@@ -68,7 +68,7 @@ describe("What's next? box", () => {
     const onClose = vi.fn();
     render(<WhatsNext task={base} mode="continue" onClose={onClose} onMade={() => undefined} onOpenTask={() => undefined} />);
     typeTitle("Wire garage camera");
-    fireEvent.click(screen.getByText("Next round"));
+    fireEvent.click(screen.getByText("Next round", { selector: ".ant-segmented-item-label" }));
     expect(screen.getByRole("button", { name: "Start next round" })).toBeInTheDocument();
     fireEvent.click(screen.getByText("Continue"));
     expect((screen.getByLabelText("Next task title") as HTMLInputElement).value).toBe("Wire garage camera");

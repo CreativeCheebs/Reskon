@@ -128,28 +128,28 @@ export function RoundForm({ task, onMade }: { task: Task; onMade: (t: Task) => v
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div style={{ fontSize: 13, lineHeight: 1.6 }}>
-        {first ? (
-          <>
-            <div>
-              Makes{" "}
+      <div style={nextGrid}>
+        <span style={nextLabel}>Next {word}</span>
+        <div style={{ fontSize: 13, lineHeight: 1.5, minWidth: 0 }}>
+          {first ? (
+            <>
               <strong>
                 {task.title}
                 <RoundTag no={2} kind={kind} bg={palette.panelDim} />
-              </strong>{" "}
-              with the same details.
-            </div>
-            <div style={{ color: palette.muted }}>
-              This one becomes <RoundTag no={1} kind={kind} bg={palette.panelDim} />.
-            </div>
-          </>
-        ) : (
-          <div>
-            Makes the next {word} of <TaskTitle task={task} bg={palette.panelDim} /> with the same details.
-          </div>
-        )}
-      </div>
-      <div style={nextGrid}>
+              </strong>
+              <div style={{ color: palette.muted, fontSize: 12 }}>
+                Same details. This one becomes <RoundTag no={1} kind={kind} bg={palette.panelDim} />.
+              </div>
+            </>
+          ) : (
+            <>
+              <strong>{task.title}</strong>
+              <div style={{ color: palette.muted, fontSize: 12 }}>
+                Same details, numbered after <TaskTitle task={task} bg={palette.panelDim} />.
+              </div>
+            </>
+          )}
+        </div>
         {first && (
           <>
             <span style={nextLabel}>Count as</span>

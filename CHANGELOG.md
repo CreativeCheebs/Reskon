@@ -2,6 +2,10 @@
 
 What changed in each version of Reskon, newest first: one line per change, in plain words. Versions before 0.6.6 are in the git history (commits called "Version x.y.z: ...").
 
+## 0.7.4 (20 Nov 2026)
+
+- Changed: Continue and Next round in the "What's next?" box now look alike: the same label column, and the main button at the bottom right.
+
 ## 0.7.3 (20 Nov 2026)
 
 - Fixed: the "What's next?" box lines up: labels in one column, "This one becomes #1" on its own line, and the Start button at the bottom right.

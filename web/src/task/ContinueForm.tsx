@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Alert, Button, Input, Select, Space, Typography } from "antd";
+import { Alert, Button, Input, Select, Typography } from "antd";
 import { CheckOutlined } from "@ant-design/icons";
 import { api } from "../api";
 import { today } from "../format";
@@ -15,8 +15,8 @@ import { COPY_KEYS, continueTask, epicCaseOf, type ContinueBody, type CopyKey, t
 // The Continue form of the "What's next?" box (SPEC 4.17): the next task's
 // title, what it copies, and the epic question that fits the old task.
 // Typed text stays when the server refuses, so nothing has to be typed again.
-// It is kept short: the title and its Create button on one line, then one
-// line each for the epic and for what it copies.
+// It has the same shape as the Next round form: a label column (next task,
+// epic, copy over) and the main button at the bottom right.
 
 const COPY_LABELS: Record<CopyKey, string> = { energy_type: "Energy", priority: "Priority", level: "Level", tags: "Tags" };
 
@@ -179,20 +179,18 @@ export function ContinueForm({ task, onMade }: { task: Task; onMade: (t: Task, e
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <Space.Compact style={{ width: "100%" }}>
-        <Input
-          autoFocus
-          aria-label={`Next ${T.task} title`}
-          placeholder={`What comes after “${task.title}”?`}
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          onPressEnter={submit}
-        />
-        <Button type="primary" loading={busy} disabled={!online} onClick={submit}>
-          Create {T.task}
-        </Button>
-      </Space.Compact>
       <div style={nextGrid}>
+        {row(
+          `Next ${T.task}`,
+          <Input
+            autoFocus
+            aria-label={`Next ${T.task} title`}
+            placeholder={`What comes after “${task.title}”?`}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onPressEnter={submit}
+          />,
+        )}
         {where}
         {row(
           "Copy over",
@@ -218,6 +216,9 @@ export function ContinueForm({ task, onMade }: { task: Task; onMade: (t: Task, e
         )}
       </div>
       {error && <Alert type="error" showIcon message={error} style={{ padding: "4px 10px" }} />}
+      <Button type="primary" loading={busy} disabled={!online} onClick={submit} style={{ alignSelf: "flex-end" }}>
+        Create next {T.task}
+      </Button>
     </div>
   );
 }

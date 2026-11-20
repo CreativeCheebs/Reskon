@@ -68,7 +68,7 @@ describe("What's next? after a move in the task panel", () => {
   it("asking again after a task was made opens a fresh box", async () => {
     render(<TaskPanel taskId={5} initial={task} openNext={{ mode: "continue" }} onClose={() => undefined} onChanged={() => undefined} onDeleted={() => undefined} />);
     fireEvent.change(await screen.findByLabelText("Next task title"), { target: { value: "After" } });
-    fireEvent.click(screen.getByRole("button", { name: "Create task" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create next task" }));
     expect(await screen.findByText(/Made/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Next/ }));
     fireEvent.click(await screen.findByText("Continue with a new task…"));
