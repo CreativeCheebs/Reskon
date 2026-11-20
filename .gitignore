@@ -47,3 +47,6 @@ web/src/icons/generated/
 web/test-results/
 web/playwright-report/
 .claude/scheduled_tasks.lock
+
+# F-Droid upload token (local only)
+/upload_token
