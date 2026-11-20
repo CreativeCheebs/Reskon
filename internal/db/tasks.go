@@ -134,27 +134,43 @@ func (d *DB) getTask(ctx context.Context, q querier, id int64) (*Task, error) {
 // Defaults: status is the first on-board status in a todo category;
 // energy type is the area's default.
 func (d *DB) CreateTask(ctx context.Context, f Fields) (*Task, error) {
-	if _, ok := f["title"]; !ok {
-		return nil, invalid("title is required")
-	}
-	areaID, ok, err := f.int64Field("area_id")
+	var id int64
+	err := d.inTx(ctx, func(tx *sql.Tx) error {
+		var err error
+		id, err = d.createTaskTx(ctx, tx, f)
+		return err
+	})
 	if err != nil {
 		return nil, err
 	}
+	return d.GetTask(ctx, id)
+}
+
+// createTaskTx is CreateTask inside a transaction the caller owns, so a
+// task can be made together with other changes (see continue.go). It
+// returns the new task's id.
+func (d *DB) createTaskTx(ctx context.Context, tx *sql.Tx, f Fields) (int64, error) {
+	if _, ok := f["title"]; !ok {
+		return 0, invalid("title is required")
+	}
+	areaID, ok, err := f.int64Field("area_id")
+	if err != nil {
+		return 0, err
+	}
 	if !ok {
 		// A subtask without an area takes its parent's.
-		if areaID, ok, err = d.parentArea(ctx, f); err != nil {
-			return nil, err
+		if areaID, ok, err = parentArea(ctx, tx, f); err != nil {
+			return 0, err
 		} else if ok {
 			f["area_id"], _ = json.Marshal(areaID)
 		}
 	}
 	if !ok {
-		return nil, invalid("area_id is required")
+		return 0, invalid("area_id is required")
 	}
 	statusID, hasStatus, err := f.int64Field("status_id")
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 	delete(f, "status_id")
 	today := localDate(f)
@@ -166,10 +182,10 @@ func (d *DB) CreateTask(ctx context.Context, f Fields) (*Task, error) {
 		if !isNull(raw) {
 			var s string
 			if json.Unmarshal(raw, &s) != nil {
-				return nil, invalid("snooze_until must be a date like 2026-11-25")
+				return 0, invalid("snooze_until must be a date like 2026-11-25")
 			}
 			if snoozeDays, err = snoozeDateDays(s, today); err != nil {
-				return nil, err
+				return 0, err
 			}
 			hasSnooze = true
 		}
@@ -178,27 +194,21 @@ func (d *DB) CreateTask(ctx context.Context, f Fields) (*Task, error) {
 	delete(f, "custom")
 	tagNames, hasTags, err := parseTags(f)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 	if err := validateTaskFields(f); err != nil {
-		return nil, err
+		return 0, err
 	}
-
-	tx, err := d.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback()
 
 	var prefix string
 	var defaultEnergy sql.NullInt64
 	err = tx.QueryRowContext(ctx, `SELECT key_prefix, default_energy_type_id FROM area
 		WHERE id = ? AND deleted_at IS NULL`, areaID).Scan(&prefix, &defaultEnergy)
 	if err == sql.ErrNoRows {
-		return nil, invalid("area %d does not exist", areaID)
+		return 0, invalid("area %d does not exist", areaID)
 	}
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 	if _, set := f["energy_type_id"]; !set && defaultEnergy.Valid {
 		f["energy_type_id"], _ = json.Marshal(defaultEnergy.Int64)
@@ -207,7 +217,7 @@ func (d *DB) CreateTask(ctx context.Context, f Fields) (*Task, error) {
 		// Created without a priority: the Default priority setting applies.
 		pid, err := defaultPriorityID(ctx, tx)
 		if err != nil {
-			return nil, err
+			return 0, err
 		}
 		if pid != nil {
 			f["priority_id"], _ = json.Marshal(*pid)
@@ -215,37 +225,37 @@ func (d *DB) CreateTask(ctx context.Context, f Fields) (*Task, error) {
 	}
 	if !hasStatus {
 		if statusID, err = defaultStatus(ctx, tx); err != nil {
-			return nil, err
+			return 0, err
 		}
 	} else if err := statusExists(ctx, tx, statusID); err != nil {
-		return nil, err
+		return 0, err
 	}
 
 	if err := checkParentFields(ctx, tx, 0, "task", nil, f); err != nil {
-		return nil, err
+		return 0, err
 	}
 	if err := checkEpicFields(ctx, tx, 0, "task", nil, f); err != nil {
-		return nil, err
+		return 0, err
 	}
 	custom := "{}"
 	if hasCustom {
 		if custom, err = d.mergeCustom(ctx, tx, "task", "{}", customPatch); err != nil {
-			return nil, err
+			return 0, err
 		}
 	}
 
 	key, err := nextKey(ctx, tx, prefix)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 	pos, err := endOfColumn(ctx, tx, statusID)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
 	cols, vals, err := f.decode(taskColumns)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 	now := Now()
 	cols = append(cols, "key", "status_id", "board_pos", "custom", "created_at", "updated_at")
@@ -253,30 +263,27 @@ func (d *DB) CreateTask(ctx context.Context, f Fields) (*Task, error) {
 	res, err := tx.ExecContext(ctx, fmt.Sprintf(`INSERT INTO task (%s) VALUES (%s)`,
 		strings.Join(cols, ","), placeholders(len(cols))), vals...)
 	if err != nil {
-		return nil, uniqueAsConflict(err, "task key collision")
+		return 0, uniqueAsConflict(err, "task key collision")
 	}
 	id, _ := res.LastInsertId()
 	if hasTags {
 		if err := setTaskTags(ctx, tx, id, tagNames); err != nil {
-			return nil, err
+			return 0, err
 		}
 	}
 	if err := writeTransition(ctx, tx, id, nil, statusID, "user", now); err != nil {
-		return nil, err
+		return 0, err
 	}
 	if hasSnooze {
 		if err := snoozeNew(ctx, tx, id, statusID, snoozeDays, today); err != nil {
-			return nil, err
+			return 0, err
 		}
 	}
 	// A task created straight into In progress (say) gets its start date.
 	if err := applyDateRules(ctx, tx, id, statusID, today); err != nil {
-		return nil, err
+		return 0, err
 	}
-	if err := tx.Commit(); err != nil {
-		return nil, err
-	}
-	return d.GetTask(ctx, id)
+	return id, nil
 }
 
 // nextKey returns PREFIX-N where N is one more than the highest number ever

@@ -76,13 +76,13 @@ func checkParentFields(ctx context.Context, q querier, id int64, curType string,
 
 // parentArea is the area of the parent named in f, for a subtask created
 // without one.
-func (d *DB) parentArea(ctx context.Context, f Fields) (int64, bool, error) {
+func parentArea(ctx context.Context, q querier, f Fields) (int64, bool, error) {
 	p, ok, err := f.int64Field("parent_id")
 	if err != nil || !ok {
 		return 0, false, err
 	}
 	var area int64
-	err = d.QueryRowContext(ctx, `SELECT area_id FROM task WHERE id = ? AND deleted_at IS NULL`, p).Scan(&area)
+	err = q.QueryRowContext(ctx, `SELECT area_id FROM task WHERE id = ? AND deleted_at IS NULL`, p).Scan(&area)
 	if err == sql.ErrNoRows {
 		return 0, false, invalid("task %d does not exist", p)
 	}
