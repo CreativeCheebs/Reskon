@@ -80,7 +80,7 @@ fun TaskScreen(r: Route) {
     fun move(statusId: Long) = scope.launch {
         val moved = attempt("Not moved") { Api.post("/tasks/$id/move", jsonOf("status_id" to statusId, "today" to today())); App.changed(); true }
         // Into a done status (by behaviour, never by name; cancelled does not ask): offer what comes next.
-        if (moved == true && statusId != t.id("status_id") && boot.status(statusId)?.behaviour == "done") next = "ask" to t
+        if (moved == true && asksWhatsNext(boot.status(t.id("status_id"))?.behaviour, boot.status(statusId)?.behaviour)) next = "ask" to t
     }
 
     Column(Modifier.fillMaxSize()) {
@@ -282,7 +282,7 @@ fun TaskScreen(r: Route) {
             o?.let { scope.launch { attempt("Not linked") { Api.post("/task-links", jsonOf("blocker_id" to it.getLong("id"), "blocked_id" to id)); App.changed() } } }
         }
     }
-    next?.let { (start, task) -> WhatsNextSheet(task, start) { next = null } }
+    next?.let { (start, task) -> WhatsNextSheet(task, start, scope) { next = null } }
     editText?.let { (field, initial) ->
         var v by remember(field) { mutableStateOf(initial) }
         AlertDialog(

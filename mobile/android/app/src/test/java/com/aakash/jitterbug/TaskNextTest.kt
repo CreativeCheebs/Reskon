@@ -93,6 +93,15 @@ class TaskNextTest {
         assertEquals("2026-11-20", later.getString("today"))
     }
 
+    @Test fun asksOnlyWhenNewlyDone() {
+        assertTrue(asksWhatsNext("todo", "done"))
+        assertTrue(asksWhatsNext("in_progress", "done"))
+        assertTrue(asksWhatsNext("cancelled", "done"))
+        assertFalse(asksWhatsNext("done", "done")) // Done to Verified
+        assertFalse(asksWhatsNext("in_progress", "cancelled"))
+        assertFalse(asksWhatsNext("done", "todo"))
+    }
+
     @Test fun roundStateShowsDoneDateOrState() {
         assertEquals("Done 18 Nov", roundState(JSONObject("""{"completed_at":"2026-11-18T10:00:00Z","behaviour":"done"}""")))
         assertEquals("In progress", roundState(JSONObject("""{"completed_at":null,"behaviour":"in_progress"}""")))

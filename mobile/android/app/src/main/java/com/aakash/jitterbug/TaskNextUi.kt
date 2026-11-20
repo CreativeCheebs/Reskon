@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,8 +33,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -46,6 +49,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.time.LocalDate
@@ -115,7 +119,7 @@ fun TaskChainSection(t: JSONObject) {
             ) {
                 T(rel, Palette.muted, 14.sp, modifier = Modifier.width(96.dp))
                 RoundTitle(o, Palette.fg, 15.sp, modifier = Modifier.weight(1f), oneLine = true,
-                    strike = o.optString("behaviour") == "done")
+                    strike = o.optString("behaviour") in setOf("done", "cancelled"))
                 Icon(Icons.right, Palette.subtle, 18)
             }
         }
@@ -168,11 +172,12 @@ fun TaskRoundsSection(t: JSONObject) {
 /**
  * "What's next?" for task [t]. [start] is "ask" (after marking it done: Continue, Next round or
  * Nothing), "continue" or "round" (from a menu). Errors show in the sheet and what was typed stays.
- * After a task is made it says so and offers to open it.
+ * After a task is made it says so and offers to open it. [scope] must outlive the sheet, so a
+ * create still finishes (and the screens reload) if the sheet is closed while it runs.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WhatsNextSheet(t: JSONObject, start: String, onDismiss: () -> Unit) {
+fun WhatsNextSheet(t: JSONObject, start: String, scope: CoroutineScope, onDismiss: () -> Unit) {
     val isEpic = t.optString("type") == "epic"
     var mode by remember { mutableStateOf(start.takeIf { it != "ask" }) }
     var made by remember { mutableStateOf<JSONObject?>(null) }
@@ -202,20 +207,38 @@ fun WhatsNextSheet(t: JSONObject, start: String, onDismiss: () -> Unit) {
                 if (mode == null) T("The ${Terms.task} is done either way.", Palette.muted, 13.sp)
             }
             when (mode) {
-                "continue" -> ContinueForm(t) { made = it; App.changed() }
-                "round" -> NextRoundForm(t) { made = it; App.changed() }
+                "continue" -> ContinueForm(t, scope) { made = it }
+                "round" -> NextRoundForm(t, scope) { made = it }
             }
         }
     }
 }
 
-/** Runs a create and gives back the error text instead of a toast (a toast would sit under the sheet). */
+/**
+ * Runs a create and gives back the error text instead of a toast (a toast would sit under the
+ * sheet). After a create the screens reload, whether or not the sheet is still open.
+ */
 private suspend fun tryCreate(f: suspend () -> JSONObject): Pair<JSONObject?, String?> = try {
-    f() to null
+    f().also { App.changed() } to null
 } catch (e: CancellationException) {
     throw e
 } catch (e: Exception) {
     null to (e.message ?: "Not made")
+}
+
+/** A load whose failure only means "not known" (null); leaving the screen still cancels it. */
+private suspend fun <T> orNull(f: suspend () -> T): T? = try {
+    f()
+} catch (e: CancellationException) {
+    throw e
+} catch (e: Exception) {
+    null
+}
+
+/** An error line in the sheet, read out by TalkBack when it appears. */
+@Composable
+private fun ErrorText(text: String?) {
+    if (text != null) T(text, Palette.red, 14.sp, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
 }
 
 /** The form's send button: filled accent, grey while it can't be sent. */
@@ -231,7 +254,7 @@ private fun PrimaryButton(label: String, enabled: Boolean, onClick: () -> Unit) 
 @Composable
 private fun ChoiceRow(label: String, on: Boolean, onClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.RadioButton, onClick = onClick).semantics { selected = on },
+        Modifier.fillMaxWidth().heightIn(min = 48.dp).selectable(selected = on, role = Role.RadioButton, onClick = onClick),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Box(Modifier.width(20.dp), contentAlignment = Alignment.Center) {
@@ -243,17 +266,16 @@ private fun ChoiceRow(label: String, on: Boolean, onClick: () -> Unit) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ContinueForm(t: JSONObject, onMade: (JSONObject) -> Unit) {
+private fun ContinueForm(t: JSONObject, scope: CoroutineScope, onMade: (JSONObject) -> Unit) {
     val id = t.getLong("id")
     val kind = remember { continueKind(t) }
-    val scope = rememberCoroutineScope()
     var title by remember { mutableStateOf("") }
     var copy by remember { mutableStateOf(CONTINUE_COPIES.map { it.first }.toSet()) }
     var epics by remember { mutableStateOf(EpicNames.all()) }
     var parentName by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) {
-        runCatching { EpicNames.load(); epics = EpicNames.all() }
-        t.id("parent_id")?.let { p -> parentName = runCatching { Api.obj("/tasks/$p").optString("title") }.getOrNull() }
+        orNull { EpicNames.load(); epics = EpicNames.all() }
+        t.id("parent_id")?.let { p -> parentName = orNull { Api.obj("/tasks/$p").optString("title") } }
     }
     val options = epicOptions(kind, t.id("epic_id")?.let { epics[it] }, parentName, epics.isNotEmpty())
     var choice by remember { mutableStateOf(options.firstOrNull()?.key) }
@@ -269,7 +291,7 @@ private fun ContinueForm(t: JSONObject, onMade: (JSONObject) -> Unit) {
             CONTINUE_COPIES.forEach { (k, label) -> Pill(label, k in copy, height = 48, dense = true) { copy = if (k in copy) copy - k else copy + k } }
         }
     }
-    if (options.isNotEmpty()) Column {
+    if (options.isNotEmpty()) Column(Modifier.selectableGroup()) {
         T(if (kind == ContinueKind.SUBTASK) "Where it goes" else Terms.capEpic, Palette.muted, 12.sp)
         options.forEach { o ->
             ChoiceRow(o.label, choice == o.key) { choice = o.key }
@@ -279,8 +301,9 @@ private fun ContinueForm(t: JSONObject, onMade: (JSONObject) -> Unit) {
             }
         }
     }
-    error?.let { T(it, Palette.red, 14.sp) }
+    ErrorText(error)
     PrimaryButton(if (busy) "Making…" else "Make the next ${Terms.task}", canContinue(title, choice, epicId) && !busy) {
+        if (busy) return@PrimaryButton // a second tap before the button greys out
         busy = true
         error = null
         scope.launch {
@@ -294,10 +317,9 @@ private fun ContinueForm(t: JSONObject, onMade: (JSONObject) -> Unit) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun NextRoundForm(t: JSONObject, onMade: (JSONObject) -> Unit) {
+private fun NextRoundForm(t: JSONObject, scope: CoroutineScope, onMade: (JSONObject) -> Unit) {
     val id = t.getLong("id")
     val boot = App.boot ?: return
-    val scope = rememberCoroutineScope()
     val first = t.id("round_of") == null
     var kind by remember { mutableStateOf("round") }
     var snooze by remember { mutableStateOf<LocalDate?>(null) }
@@ -326,8 +348,9 @@ private fun NextRoundForm(t: JSONObject, onMade: (JSONObject) -> Unit) {
         }
         snooze?.let { T("Snoozed until ${dayLabel(it.toString())}", Palette.muted, 12.sp) }
     }
-    error?.let { T(it, Palette.red, 14.sp) }
+    ErrorText(error)
     PrimaryButton(if (busy) "Starting…" else "Start next round", !busy) {
+        if (busy) return@PrimaryButton // a second tap before the button greys out
         busy = true
         error = null
         scope.launch {

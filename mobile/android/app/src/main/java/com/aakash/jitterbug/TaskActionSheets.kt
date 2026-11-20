@@ -45,8 +45,8 @@ fun TaskActionSheets(host: TaskActionHost) {
     val close = { host.pending = null }
     when (key) {
         "more" -> TaskMoreSheet(t.optString("title"), t.optString("type") == "epic", close) { host.run(it, t) }
-        "continue" -> WhatsNextSheet(t, "continue", close)
-        "round" -> WhatsNextSheet(t, "round", close)
+        "continue" -> WhatsNextSheet(t, "continue", scope, close)
+        "round" -> WhatsNextSheet(t, "round", scope, close)
         "snooze" -> TaskSnoozeSheet(id, scope, close)
         "move" -> PickSheet("Move \"${t.optString("title")}\" to", boot.statuses.filter { it.id != t.getLong("status_id") }.map { it.id to it.name }, close) { sid ->
             close()

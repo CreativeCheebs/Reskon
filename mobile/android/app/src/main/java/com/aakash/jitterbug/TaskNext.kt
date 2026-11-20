@@ -50,6 +50,12 @@ fun epicOptions(kind: ContinueKind, epicName: String?, parentName: String?, hasE
     )
 }
 
+/**
+ * Whether moving a task from a status of behaviour [from] to one of [to] asks "What's next?": only
+ * into done from a status that was not done (Done to Verified does not ask; cancelled never does).
+ */
+fun asksWhatsNext(from: String?, to: String?): Boolean = to == "done" && from != "done"
+
 /** What Continue can copy besides the area (always copied), in the order shown. */
 val CONTINUE_COPIES = listOf("energy_type" to "Energy type", "priority" to "Priority", "level" to "Level", "tags" to "Tags")
 
