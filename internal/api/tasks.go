@@ -23,6 +23,7 @@ func (s *Server) taskRoutes() {
 	m.HandleFunc("GET /api/cycle-time", s.cycleTime)
 	m.HandleFunc("POST /api/task-links", s.addLink)
 	m.HandleFunc("DELETE /api/task-links/{id}", s.removeLink)
+	s.continueRoutes()
 }
 
 // addLink records that blocker_id must finish before blocked_id; it

@@ -46,6 +46,7 @@ var syncTables = []syncTable{
 	{name: "task", refs: map[string]string{
 		"area_id": "area", "status_id": "status", "priority_id": "priority",
 		"energy_type_id": "energy_type", "epic_id": "task", "parent_id": "task",
+		"follows_id": "task", "round_of": "task",
 	}, skip: []string{"status_id"}},
 	// A task's tag is its uid made of the task's and the tag's, so the same tag added to the
 	// same task on two devices is one record, and removing it on one removes it on the other.

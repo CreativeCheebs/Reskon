@@ -206,7 +206,7 @@ func (a *applier) insert(t *syncTable, r SyncRow) error {
 		}
 		lv, ok := a.local(t, c, v)
 		if !ok {
-			if uid, isUID := v.(string); isUID && t.name == "task" && (c == "epic_id" || c == "parent_id") {
+			if uid, isUID := v.(string); isUID && t.name == "task" && (c == "epic_id" || c == "parent_id" || c == "follows_id" || c == "round_of") {
 				pend = append(pend, [2]string{c, uid})
 			}
 			lv = nil

@@ -31,6 +31,10 @@ type Task struct {
 	EpicID               *int64          `json:"epic_id"`                // the epic this task belongs to
 	ParentID             *int64          `json:"parent_id"`              // set on a subtask: the task it belongs to (see subtasks.go)
 	SnoozeUntilUnblocked bool            `json:"snooze_until_unblocked"` // hidden while an open task blocks it; set only by Snooze (see links.go)
+	FollowsID            *int64          `json:"follows_id"`             // the task this one continues; set only by Continue (see continue.go)
+	RoundOf              *int64          `json:"round_of"`               // first round of its series; set only by NextRound (see rounds.go)
+	RoundNo              *int64          `json:"round_no"`               // its number in the series, never changed
+	RoundKind            *string         `json:"round_kind"`             // "round" (#3) or "version" (v3)
 	BoardPos             float64         `json:"board_pos"`
 	TagIDs               []int64         `json:"tag_ids"` // derived: its tags, by name (see tags.go)
 	Custom               json.RawMessage `json:"custom"`
@@ -40,14 +44,16 @@ type Task struct {
 }
 
 const taskCols = `id, key, title, description, area_id, status_id, priority_id, energy_type_id,
-	difficulty, estimate_h, due_at, board_pos, custom, created_at, updated_at, type, epic_id, start_date, end_date, snoozed_until, parent_id, snooze_until_unblocked`
+	difficulty, estimate_h, due_at, board_pos, custom, created_at, updated_at, type, epic_id, start_date, end_date, snoozed_until, parent_id, snooze_until_unblocked,
+	follows_id, round_of, round_no, round_kind`
 
 func scanTask(r interface{ Scan(...any) error }) (*Task, error) {
 	var t Task
 	var custom string
 	err := r.Scan(&t.ID, &t.Key, &t.Title, &t.Description, &t.AreaID, &t.StatusID, &t.PriorityID,
 		&t.EnergyTypeID, &t.Difficulty, &t.EstimateH, &t.DueAt, &t.BoardPos, &custom, &t.CreatedAt, &t.UpdatedAt,
-		&t.Type, &t.EpicID, &t.StartDate, &t.EndDate, &t.SnoozedUntil, &t.ParentID, &t.SnoozeUntilUnblocked)
+		&t.Type, &t.EpicID, &t.StartDate, &t.EndDate, &t.SnoozedUntil, &t.ParentID, &t.SnoozeUntilUnblocked,
+		&t.FollowsID, &t.RoundOf, &t.RoundNo, &t.RoundKind)
 	t.Custom = json.RawMessage(custom)
 	return &t, err
 }
@@ -115,6 +121,9 @@ func (d *DB) GetTask(ctx context.Context, id int64) (*Task, error) {
 		return nil, err
 	}
 	if err := d.derive(ctx, []*Task{t}, d.Now(ctx)); err != nil {
+		return nil, err
+	}
+	if t.Rounds, err = d.roundsOf(ctx, t); err != nil {
 		return nil, err
 	}
 	return t, nil

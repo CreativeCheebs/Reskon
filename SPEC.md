@@ -185,6 +185,39 @@ A **tag** is a short free word on a task ("backend", "q4"), beside its area and 
 - When you save a task, the app sends the "last changed" time it saw. If the task changed in the meantime (another tab), the server answers "conflict" with the current version, and the screen applies your change on top of it.
 - **Sessions** don't warn. Each field keeps its latest change, between tabs and between devices (the same way Todoist works).
 
+### 4.17 Continue a task, and rounds of the same task
+
+Two ways to say what comes after a task (owner, 2026-11-20). **Continue** makes the next, *different* task ("Set up NVR", then "Wire garage camera"). **Next round** makes the *same* task again ("Clean home #3", then "Clean home #4"), for chores or for versions of something you build ("Board layout v2").
+
+**Continue**
+
+- The new task gets the title you type, the old task's area, and (each can be left out) its energy type, priority, level and tags. It does not take the estimate, dates or description. It starts in the first *to do* status. The old task keeps its status.
+- The new task remembers the one it continues. The task panel shows a **Chain**: *Comes after* (the task it continues) and *Next* (the tasks that continue it), each a link to open that task. A deleted task drops out of the chain.
+- **Epic.** What is offered depends on the old task:
+  - **No epic:** *Make an epic for both* is chosen already, named after the old task (the name can be changed). If an epic with that name exists (ignoring capitals), both go into it instead of making a second one. *Put both in an epic I already have* and *No epic* are the other choices. Both tasks end up in the chosen epic.
+  - **Already in an epic:** the new task joins the same epic, or has none. No new epic is offered, because a task can be in only one epic.
+  - **A subtask:** the new task is the next subtask of the same parent (the default) or a task of its own. A subtask has no epic of its own, so there is no epic question.
+  - **An epic:** the next one is also an epic. An epic can't be in an epic, so there is no epic question.
+- All of it is saved in one step: the new task, a new epic, and the old task joining the epic, or none of them.
+
+**Next round**
+
+- A task that has never had a next round becomes **#1**; the new one is **#2**. Every round is its own task, with its own key, status, sessions, hours and points. The new round copies the title, description, area, energy type, priority, level, estimate, epic, parent, tags and custom fields, and starts in the first *to do* status.
+- **The number is shown after the title** in a small code-style font in the accent colour (*Clean home* **#3**), on cards, in lists and tables, and in the task panel, so it reads as a label and is not part of the title. It is kept separately from the title, so renaming a task never changes it.
+- **Rounds or versions.** A series counts as rounds (*#3*) or versions (*v3*), chosen when the first next round is made (rounds unless chosen otherwise) and changeable later in the task panel; the choice applies to every round of the series.
+- **Numbers never change.** They can't be edited by hand, and deleting #2 leaves a gap: #3 stays #3 and the next is #4.
+- **Any task can start a series** (it becomes #1), and any round can start the next one; the number is always one past the highest the series ever had.
+- The next round can **start snoozed** (the usual snooze list, such as *1 week*), so a chore stays off the board until it is due again. Rounds never repeat by themselves on a schedule.
+- The task panel lists **earlier rounds**: each round's number, when it was done, its hours and its points. They are only listed side by side, never added up or set against each other.
+- An epic can't have rounds.
+
+**Where you find them**
+
+- **Finishing a task.** Moving a task into a *done* status in the task panel opens a small **What's next?** box under the status, with three choices: *Continue* (a new task that comes after this), *Next round* and *Nothing*. Ignoring it is fine; the task is already done. A *cancelled* status does not ask.
+- **Dragging a card into a done column** never stops the drag with a pop-up. A small note (*Moved to Done. Continue it · Next round*) shows for a few seconds; either button opens the task panel with the box open.
+- **Any time.** The card's right-click menu and the task panel have *Continue with a new task…* and *Start next round*, for a task in any status.
+- **On the phone** the task screen has the same box after marking a task done, and the same two actions in its menu.
+
 ---
 
 ## 5. Board, list and timeline (views)
@@ -592,7 +625,7 @@ The database is SQLite in WAL mode (several readers, one writer). There is one c
 | `energy_type` | Your energy types: colour, points per hour. (An old `direction` column is no longer read.) |
 | `subtype` | Subtypes, each under one energy type. |
 | `area` | Areas: name, key prefix, colour, default energy type. |
-| `task` | Tasks, epics and subtasks: key, title, description, area, status, priority, energy type, level, estimate, due, start and end dates, snooze, epic, parent, board position, custom fields. |
+| `task` | Tasks, epics and subtasks: key, title, description, area, status, priority, energy type, level, estimate, due, start and end dates, snooze, epic, parent, board position, custom fields, the task it continues (`follows_id`), and its round (`round_of` the first round, `round_no`, `round_kind` round or version; see 4.17). |
 | `status_transition` | The move log. Only ever added to. |
 | `task_link` | "Blocked by" links. |
 | `tag`, `task_tag`, `session_tag` | Tags (unique ignoring capitals), the tags on each task, and the tags put on a session by hand. A session's other tags come from its task when read. |
@@ -618,7 +651,7 @@ The database is SQLite in WAL mode (several readers, one writer). There is one c
 - Times are UTC text with a fixed width, so sorting text sorts by time.
 - Most deletes only set `deleted_at`, so history still points at real rows.
 - Values worked out from others are never stored, with one exception: a session's points (section 6.3).
-- Migrations so far: 001 the first tables; 002 epics and board settings; 003 intensity becomes 1–5; 004 view icons, colours and backgrounds; 005 dashboards and stored points; 006 all energy types equal; 007 pies and shares; 008 retire "Energy drain felt"; 009 several energy types per session; 010 start and end dates; 011 snooze; 012 duplicate search cache; 013 subtasks; 014 dependencies; 015 inbox; 016 sync; 017 session "last changed", start dates filled in, unfinished parts hidden; 018 tags; 019 where a widget's content comes from (metric, view, app data or app page); 020 the Home dashboard (rows only, no new tables or columns); 021 repairs widgets that reached a not-yet-upgraded device from a newer one (their kind is read back from the chart type or query, and a Board's view from its sync id; rows only); 022 adds the Buffs and debuffs widget at the top of Home (one row added, the other Home widgets move down two rows; rows only); 023 the Day Planner: `day_item` and `timer` tables (both sync), a session's `ended_at` and `day_item_id`, and a day's `available_min`; 024 `done_at` on plan lines (an event is done when marked).
+- Migrations so far: 001 the first tables; 002 epics and board settings; 003 intensity becomes 1–5; 004 view icons, colours and backgrounds; 005 dashboards and stored points; 006 all energy types equal; 007 pies and shares; 008 retire "Energy drain felt"; 009 several energy types per session; 010 start and end dates; 011 snooze; 012 duplicate search cache; 013 subtasks; 014 dependencies; 015 inbox; 016 sync; 017 session "last changed", start dates filled in, unfinished parts hidden; 018 tags; 019 where a widget's content comes from (metric, view, app data or app page); 020 the Home dashboard (rows only, no new tables or columns); 021 repairs widgets that reached a not-yet-upgraded device from a newer one (their kind is read back from the chart type or query, and a Board's view from its sync id; rows only); 022 adds the Buffs and debuffs widget at the top of Home (one row added, the other Home widgets move down two rows; rows only); 023 the Day Planner: `day_item` and `timer` tables (both sync), a session's `ended_at` and `day_item_id`, and a day's `available_min`; 024 `done_at` on plan lines (an event is done when marked); 025 continue and rounds: a task's `follows_id`, `round_of`, `round_no` and `round_kind` (4.17).
 
 ---
 
@@ -639,6 +672,9 @@ JSON over HTTP. Every `/api` call except health and sign-in needs the session co
 | `GET /api/tasks/:id/transitions`, `GET /api/cycle-time?view=:id` | Move history and cycle time. |
 | `GET /api/tasks/similar?q=` | Duplicate search. `/api/semantic` for the meaning model. |
 | `POST /api/task-links`, `DELETE /api/task-links/:id` | Dependencies. |
+| `POST /api/tasks/:id/continue` | Make the task that comes after this one (4.17): `{title, copy, epic, epic_title, epic_id, separate, today}`. `copy` lists what to take besides the area (`energy_type`, `priority`, `level`, `tags`; null takes all). `epic` is `same` (the default for a task in an epic), `new`, `pick` (with `epic_id`) or `none` (the default otherwise). Returns the new task. A task read also carries `follows` (the task it continues), `followed_by` (tasks that continue it) and, read on its own, `rounds` (every round of its series). |
+| `POST /api/tasks/:id/next-round` | Make the next round (4.17): `{kind, snooze_until, today}`. `kind` (`round` or `version`) counts only for a task's first next round. Returns the new round. |
+| `POST /api/tasks/:id/round-kind` | `{kind}`: show the whole series as rounds (#) or versions (v). |
 | `GET POST /api/sessions`, `PATCH DELETE /api/sessions/:id`, `POST /api/sessions/bulk` | Sessions. |
 | `POST /api/capture` | Reads a line. **Never saves anything.** |
 | `GET /api/capture/suggest?q=` | Up to 8 suggestions for the capture box: `{text, kind: task / session / history, task_id?}`. Read only. |

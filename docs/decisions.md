@@ -607,6 +607,17 @@ Nothing new is stored. Every task or session saved from Quick capture already ke
 - **A draft is saved through the normal session create**, which now takes `ended_at` and `day_item_id`. A session for an event line takes the event's title as its label, kind "event" and the event's area; an energy type still has to come from that area's default or from the caller, as for any event session. The timer's clock is one variable in the Go code so tests can move it.
 - **Sync across versions.** The sync code now skips a synced table that a database does not have yet, so a phone held at an older version still syncs.
 
+### Continue a task, and rounds (owner chose from the mock, 2026-11-20)
+
+The owner chose: the number shown plain after the title (style A, not boxed or raised); *Make an epic for both* ticked by default; no new epic offered for a task already in an epic; a subtask continues as the next subtask of the same parent; Cancelled does not ask; rounds don't repeat on a schedule; numbers never change when a round is deleted and can't be edited by hand; any existing task can become round #1; the phone gets it too. The engineering choices:
+
+- **"Comes after" is a column on the new task** (`follows_id`), not a row in `task_link`. A task continues at most one task, "next" is found by looking the other way, and `task_link` already means "blocked by", whose rules (blocked tasks leave the board) must not apply here.
+- **A series is held by the first round's id** (`round_of`; round 1 points at itself) plus a number that is stored, not counted. Counting live rounds would renumber after a delete, which the owner ruled out. The next number is one past the highest ever used, deleted rounds included, like task keys. Two phones offline both starting the next round would each make the same number; that is rare and only shows as two rounds with one number, so nothing guards it.
+- **Rounds and continuations are separate.** A round does not set `follows_id`, so a chore's rounds don't fill its chain, and a series is not an epic: a round can still be in any epic.
+- **"Make an epic for both" reuses an epic with the same name** (ignoring capitals) rather than making a second one, the same rule as the epic picker's *Create epic*.
+- **The API defaults are cautious; the screens set the owner's defaults.** Without an `epic` choice the call makes no new epic (and a task in an epic keeps the next one in it); the web and phone send `new` when *Make an epic for both* is ticked.
+- **Everything is one transaction.** Task creation was split so a task can be made inside a larger save; continuing never leaves an epic without its tasks.
+
 ## Open questions
 
 - **"Too low" on the ceiling question.** It only cancels a "too high" hold. Should it suggest more hours for the next days?

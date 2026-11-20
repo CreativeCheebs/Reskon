@@ -40,6 +40,9 @@ type TaskDerived struct {
 	Blocked        bool         `json:"blocked"`          // an open task blocks it (it may be finished itself)
 	BlockedBy      []LinkedTask `json:"blocked_by"`       // tasks that must finish first
 	Blocks         []LinkedTask `json:"blocks"`           // tasks waiting on this one
+	Follows        *LinkedTask  `json:"follows"`          // the task this one continues ("comes after"); nil when none or deleted
+	FollowedBy     []LinkedTask `json:"followed_by"`      // tasks that continue this one ("next")
+	Rounds         []Round      `json:"rounds"`           // single-task reads only (GetTask): every round of its series, oldest first; empty otherwise
 }
 
 // transitionStep is one transition with the behaviour of the status it
@@ -270,6 +273,10 @@ func (d *DB) derive(ctx context.Context, tasks []*Task, now time.Time) error {
 	if err != nil {
 		return err
 	}
+	follows, followedBy, err := d.chainOf(ctx, ids, in)
+	if err != nil {
+		return err
+	}
 	required, err := d.loadCompleteness(ctx)
 	if err != nil {
 		return err
@@ -310,6 +317,8 @@ func (d *DB) derive(ctx context.Context, tasks []*Task, now time.Time) error {
 		t.Snoozed = isSnoozed(t.SnoozedUntil, t.Behaviour, now) ||
 			(t.SnoozeUntilUnblocked && t.Blocked && openBehaviour(t.Behaviour))
 		t.Missing = missingFields(t, required)
+		t.Follows, t.FollowedBy = follows[t.ID], orEmpty(followedBy[t.ID])
+		t.Rounds = []Round{}
 		t.Subtypes = subtypes[t.ID]
 		if t.Subtypes == nil {
 			t.Subtypes = []string{}
