@@ -172,7 +172,7 @@ fun TaskScreen(r: Route) {
                                     .border(2.dp, if (done) Palette.accent else Palette.strong, RoundedCornerShape(5.dp)),
                                 contentAlignment = Alignment.Center,
                             ) { if (done) Icon(Icons.check, Palette.onAccent, 14, 3f) }
-                            RoundTitle(s, if (done) Palette.subtle else Palette.fg, 15.sp, FontWeight.Normal, strike = done,
+                            RoundTitle(s, if (done) Palette.subtle else Palette.fg, 15.sp, FontWeight.Normal, strike = done, oneLine = false,
                                 modifier = Modifier.weight(1f).clickable { App.go("task", "id" to s.getLong("id")) })
                         }
                     }

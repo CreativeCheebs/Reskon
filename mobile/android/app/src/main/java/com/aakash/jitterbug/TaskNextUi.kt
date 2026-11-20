@@ -40,6 +40,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -59,15 +60,27 @@ fun RoundTag(tag: String?, size: TextUnit = 12.sp) {
 }
 
 /**
- * A one-line title with its round label after it. The title gives way (ellipsis) so the label is
- * never cut off. Used by list and sheet rows.
+ * A title with its round label after it. One line ([oneLine]): the title gives way (ellipsis) so
+ * the label is never cut off; used by list rows. Otherwise it wraps, the label after the last word.
+ * A strike-through marks the title only, never the label.
  */
 @Composable
 fun RoundTitle(
     t: JSONObject, color: Color = Palette.fg, size: TextUnit = 15.sp, weight: FontWeight = FontWeight.Medium,
-    modifier: Modifier = Modifier, strike: Boolean = false,
+    modifier: Modifier = Modifier, strike: Boolean = false, oneLine: Boolean = true,
 ) {
     val tag = roundTag(t)
+    if (!oneLine) {
+        val text = buildAnnotatedString {
+            withStyle(SpanStyle(textDecoration = if (strike) TextDecoration.LineThrough else null)) { append(t.optString("title")) }
+            if (tag != null) {
+                append("  ")
+                withStyle(SpanStyle(color = Palette.accent, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Medium, fontSize = (size.value * 0.8f).sp)) { append(tag) }
+            }
+        }
+        Text(text, modifier, color = color, style = TextStyle(fontSize = size, fontWeight = weight, fontFeatureSettings = "tnum"))
+        return
+    }
     Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         T(t.optString("title"), color, size, weight, Modifier.weight(1f, fill = false), oneLine = true, strike = strike)
         RoundTag(tag, (size.value * 0.8f).sp)
