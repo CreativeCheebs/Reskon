@@ -2,6 +2,18 @@
 
 What changed in each version of Reskon, newest first: one line per change, in plain words. Versions before 0.6.6 are in the git history (commits called "Version x.y.z: ...").
 
+## 0.7.0 (20 Nov 2026)
+
+- New: Continue a task: when you finish a task, a "What's next?" box makes the next task that comes after it.
+- New: Continue can put both tasks in an epic ("Make an epic for both" is chosen already when the task has none).
+- New: the task panel shows a Chain: what a task comes after, and what comes next.
+- New: Next round: do the same task again, numbered #2, #3… (or v2, v3 for versions), shown after the title.
+- New: the next round can come back right away or snoozed (for example in 1 week).
+- New: the task panel lists earlier rounds with their done date, hours and points.
+- New: Continue and Start next round are also on the card's right-click menu, and a note after dragging a card into Done offers them.
+- New: the phone app has all of this too.
+- Fixed: syncing a task into an epic made in the same sync no longer loses the epic on the other device.
+
 ## 0.6.6 (20 Nov 2026)
 
 - New: board cards can show priority and level as symbols only (Card settings → "Symbols only").

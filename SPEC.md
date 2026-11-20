@@ -206,7 +206,7 @@ Two ways to say what comes after a task (owner, 2026-11-20). **Continue** makes 
 - **The number is shown after the title** in a small code-style font in the accent colour (*Clean home* **#3**), on cards, in lists and tables, and in the task panel, so it reads as a label and is not part of the title. It is kept separately from the title, so renaming a task never changes it.
 - **Rounds or versions.** A series counts as rounds (*#3*) or versions (*v3*), chosen when the first next round is made (rounds unless chosen otherwise) and changeable later in the task panel; the choice applies to every round of the series.
 - **Numbers never change.** They can't be edited by hand, and deleting #2 leaves a gap: #3 stays #3 and the next is #4.
-- **Any task can start a series** (it becomes #1), and any round can start the next one; the number is always one past the highest the series ever had.
+- **Any task can start a series** (it becomes #1), and any round can start the next one; the number is always one past the highest the series ever had. (Two devices that both start the next round while offline can each give out the same number; after syncing, the series simply shows two rounds with that number. Nothing else breaks.)
 - The next round can **start snoozed** (the usual snooze list, such as *1 week*), so a chore stays off the board until it is due again. Rounds never repeat by themselves on a schedule.
 - The task panel lists **earlier rounds**: each round's number, when it was done, its hours and its points. They are only listed side by side, never added up or set against each other.
 - An epic can't have rounds.
