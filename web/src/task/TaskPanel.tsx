@@ -223,7 +223,12 @@ export function TaskPanel({ taskId, initial, onClose, onChanged, onDeleted, open
             onChange={(e) => setTitle(e.target.value)}
             onBlur={() => title.trim() && title !== task.title && patch({ title: title.trim() })}
             onPressEnter={(e) => (e.target as HTMLInputElement).blur()}
-            suffix={<RoundTag no={task.round_no} kind={task.round_kind} />}
+            // A round's number right after the title (where the browser can
+            // size the field to its text; elsewhere at the field's end).
+            {...(task.round_no !== null && {
+              suffix: <RoundTag no={task.round_no} kind={task.round_kind} />,
+              styles: { input: { fontSize: 20, fontWeight: 600, padding: 0, fieldSizing: "content", minWidth: 40 } as React.CSSProperties },
+            })}
           />
           <Descriptions title="Details" column={1} size="small" colon={false} labelStyle={{ color: palette.muted, width: 90 }}>
             <Descriptions.Item label="Type">

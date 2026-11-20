@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { Task } from "../types";
 import { daysFromToday } from "./SnoozeForecast";
+import { expectNoA11yViolations } from "../test/a11y";
 
 // The "What's next?" box (SPEC 4.17): the epic question fits the task (no
 // epic, in an epic, a subtask, an epic), and the request carries exactly
@@ -87,6 +88,11 @@ describe("What's next? box", () => {
     create();
     await waitFor(() => expect(post).toHaveBeenCalled());
     expect(sent()).toMatchObject({ epic: "none", separate: false });
+  });
+
+  it("has no accessibility problems", async () => {
+    render(<WhatsNext task={base} mode="continue" onClose={() => undefined} onMade={() => undefined} onOpenTask={() => undefined} />);
+    await expectNoA11yViolations(document.body);
   });
 
   it("a refused request shows the server's words and keeps the typed title", async () => {

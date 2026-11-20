@@ -7,7 +7,7 @@ import { useApp } from "../store";
 import { palette } from "../theme/palette";
 import type { Round, RoundKind, Task } from "../types";
 import { setRoundKind } from "./nextTask";
-import { RoundTag } from "./RoundTag";
+import { roundLabel, RoundTag } from "./RoundTag";
 
 // A task's rounds in the task panel (SPEC 4.17): whether the series counts
 // rounds (#3) or versions (v3), switchable here, and every round of the
@@ -53,6 +53,7 @@ export function Rounds({ task, onChanged, onOpenTask }: { task: Task; onChanged:
         <span style={{ color: palette.muted, width: 90 }}>{kind === "version" ? "Version" : "Round"}</span>
         <RoundTag no={task.round_no} kind={kind} />
         <Segmented<RoundKind>
+          aria-label="Count as rounds or versions"
           size="small"
           disabled={!online || busy}
           value={kind}
@@ -82,7 +83,7 @@ export function Rounds({ task, onChanged, onOpenTask }: { task: Task; onChanged:
                     {self ? (
                       <RoundTag no={r.no} kind={kind} />
                     ) : (
-                      <span className="jb-clickable" {...pressable(() => onOpenTask(r.id), `Open ${r.title} ${r.no}`)} style={{ cursor: "pointer" }}>
+                      <span className="jb-clickable" {...pressable(() => onOpenTask(r.id), `Open ${r.title} ${roundLabel(r.no, kind)}`)} style={{ cursor: "pointer" }}>
                         <RoundTag no={r.no} kind={kind} />
                       </span>
                     )}

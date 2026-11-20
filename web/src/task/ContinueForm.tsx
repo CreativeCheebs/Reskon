@@ -72,11 +72,13 @@ export function ContinueForm({ task, onMade }: { task: Task; onMade: (t: Task, e
     }
   };
 
+  // A field that belongs to a choice sits under it, not inside its label,
+  // so clicking the field never clicks the radio.
   const choice = (value: string, label: React.ReactNode, extra?: React.ReactNode) => (
-    <Radio value={value} style={{ alignItems: "flex-start" }}>
-      <span>{label}</span>
-      {extra && <div style={{ marginTop: 6 }}>{extra}</div>}
-    </Radio>
+    <div>
+      <Radio value={value}>{label}</Radio>
+      {extra && <div style={{ margin: "6px 0 0 24px" }}>{extra}</div>}
+    </div>
   );
   const epicName = (name: string) => (
     <span style={{ color: palette.epic }}>
